@@ -9,22 +9,24 @@
 
 ## Current Phase
 
-**Phase 1 — Project & Data Foundation**（准备期：先完成 spec 调研，再开始实现）
+**Phase 1 — Project & Data Foundation**（准备期已全部完成，正式进入实现期）
 
 ## Current Subphase
 
-**1.0 — Phase 1 Spec & Requirements**（依据 `docs/research/software-spec-plan.md` v2 的行动项 A1–A6；纯文档 subphase，不建代码分支）
+**1.0 — Phase 1 Spec & Requirements** ✅ 已完成（2026-08-28，A1–A6 全部交付，software-spec-plan.md v2 转 Closed）
+下一个：**1.1 — 数据模型核心实现**（编号已预留在本文件历史中，Issue 待建）
 
 ## Current Slice
 
-**A1 领域模型与数据分层语义**（未开始；建议 A1 → A2 → A3 同一会话完成）
+无（subphase 1.0 已收尾；1.1 的 Slice 划分在其 mini-plan 中确定）
 
 ## Current Goal
 
-在写任何代码之前，产出 Phase 1 的三份 spec 文档（`docs/spec/data-model.md` / `docs/spec/project-format.md` / `docs/spec/phase1-requirements.md`）+ ADR-0003，满足 software-spec-plan.md §5 的全部 Phase 1 Readiness Criteria。
+Phase 1.1：按 `docs/spec/phase1-requirements.md` 落地数据模型核心（src-layout + `pyproject.toml` + 核心对象 + 持久化 + pytest），对照 AC-1…AC-10 验收。
 
 ## Recently Completed
 
+- **Subphase 1.0 — Phase 1 Spec & Requirements**（2026-08-28）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md` + **ADR-0003**（JSON 清单优先持久化）、`docs/spec/phase1-requirements.md`（AC-1…AC-10，含 DLC 无损转换设计）；`docs/research/software-spec-plan.md` §5 Readiness Criteria 全部勾选，PLAN 转 Closed
 - **Phase 0 — Project Initialization**（2026-08-27）：仓库结构、基础文档、Git/GitHub 初始化 ✅
 - 开源生态调研：project map + 14 份 raw notes（`docs/research/`）
 - 跨平台开发模式确定：macOS 开发 → Windows 发布（`docs/development.md` §1.1）
@@ -36,19 +38,20 @@
 **已定决策**
 
 - Python 3.11（ADR-0002）
-- 持久化格式待定 → A4 将产出 ADR-0003
-- Phase 1 前的设计只到字段级建议，**不写 Python class**（实现属 Phase 1）
+- 持久化格式：**JSON 清单优先混合方案**（ADR-0003）——`project.json` 单文件 + 引擎输出外置 `data/engines/`，`schema_version` + 迁移链，原子写入 + 滚动备份
+- 数据模型核心结论（`docs/spec/data-model.md`）：帧号 0-based、CFR（VFR 显式拒绝）、raw 只存像素坐标、手工修正遮蔽 AI 预测不覆盖（superseded 链）、confidence 与 visibility 分立、source 开放注册表、标定变更仅派生层失效、裁剪不重置时间基准
+- Phase 1 前的设计只到字段级建议，**不写 Python class**（自 Phase 1.1 起）
 - 数值微分/平滑方法 → Phase 3 前出 ADR
 
 **Blockers**：无。
 
 ## Next Recommended Action
 
-执行 software-spec-plan.md 的 **A1 → A2 → A3**（领域模型 / 时间语义 / 标定模型，三者同源，建议一次会话完成）：
+开始 **Phase 1.1 — 数据模型核心实现**：
 
-- **输入**：project map §6 + raw notes（TrackLab / Kinovea / Tracker / SLEAP / DLC 五套模型范本）
-- **产出**：`docs/spec/data-model.md` 的术语表、对象关系与字段级建议、四层数据语义、时间语义章节、标定章节
-- **验收**：plan A1/A2/A3 各自列出的书面问题全部有明确结论
-- 完成后更新本文件；之后依次 **A4（含 ADR-0003）→ A6 → 勾选 §5 Readiness Criteria**。
+1. 用 `docs/templates/subphase-plan.md` 写 mini-plan，建 GitHub Issue `Phase 1.1 — data model core`；
+2. 建分支 `feat/p1.1-data-model`；
+3. Slice 划分建议：`pyproject.toml` + src-layout 骨架 → 核心值对象（Video/Timeline/Track/TrackPoint/Calibration，纯数据无 Qt）→ TrackStore 写入/遮蔽/解析语义 → ProjectRepository 持久化（ADR-0003）→ 测试补齐；
+4. 验收对照 `docs/spec/phase1-requirements.md` AC-1…AC-10（AC-9 已完成）；实现前先读 `docs/spec/data-model.md` 与 AGENTS.md §5 列出的对应研究小节。
 
-Phase 1 正式实现（建 Issue `Phase 1.1` + 分支 + `pyproject.toml` 骨架）在 Readiness Criteria 全部勾选后才开始。
+Phase 1.1 完成后再规划 1.2（预计为持久化/转换器收尾或按实现期实际情况拆分）。

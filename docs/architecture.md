@@ -78,15 +78,17 @@ DLC 模型（dlc-models, PyTorch engine）
 - 数据流：Raw Track → Calibration → (Smooth → Differentiate) → 派生量序列
 - 可视化：交互图表使用 PyQtGraph（与视频帧时间同步联动），科学出图导出使用 Matplotlib。
 
-## 5. 持久化与文件布局（示意）
+## 5. 持久化与文件布局（Phase 1 已定，见 ADR-0003）
 
 ```text
 <user_project>/
-├── project.json (或 .sqlite)     # 项目与数据体系（格式 Phase 1 定，记 ADR）
+├── project.json                 # 项目清单与全部第一方数据（schema_version 守卫）
 ├── videos/ → 外部视频引用        # 视频文件不复制、不入库（gitignore）
-├── tracks/                       # 原始轨迹与派生数据
+├── data/engines|derived/         # 引擎原始输出 / 外置派生数组（只引用）
 └── models/                       # 本项目训练/引用的模型（gitignore）
 ```
+
+格式与目录细则见 [project-format.md](spec/project-format.md)。
 
 ## 6. 打包与发布（Phase 9 细化）
 
@@ -100,3 +102,4 @@ DLC 模型（dlc-models, PyTorch engine）
 
 - [0001 — 记录架构决策的方式](decisions/0001-record-architecture-decisions.md)
 - [0002 — 选择 Python 3.11](decisions/0002-choose-python-3.11.md)
+- [0003 — 项目持久化采用 JSON 清单优先的混合方案](decisions/0003-project-persistence-format.md)
