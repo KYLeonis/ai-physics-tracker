@@ -86,6 +86,8 @@ Last Completed:  Phase 0 — Project Initialization ✅（2026-08-27）
 
 Phase 0 已完成：仓库结构、全部基础文档、Git 初始化与 GitHub 远程推送均已就绪。目前尚无可运行代码——第一版核心数据体系将在 Phase 1 中建立。
 
+> **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
+
 ## Roadmap
 
 | 阶段 | 名称 | 状态 |
@@ -118,6 +120,8 @@ Phase 0 已完成：仓库结构、全部基础文档、Git 初始化与 GitHub 
 ## 文档索引
 
 - [AGENTS.md](AGENTS.md) — 面向 Coding Agent 的项目指南
+- [docs/status/current.md](docs/status/current.md) — 当前状态与下一步（不知道做什么先读）
+- [docs/workflow.md](docs/workflow.md) — 开发循环说明书（Phase / Subphase / Slice）
 - [docs/roadmap.md](docs/roadmap.md) — 详细路线图
 - [docs/architecture.md](docs/architecture.md) — 高层架构设计
 - [docs/development.md](docs/development.md) — 开发环境与工作流
