@@ -70,6 +70,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - 路线图：`docs/roadmap.md`
 - 架构设计：`docs/architecture.md`
 - 开发环境与工作流：`docs/development.md`
+- 实现参考与前期调研（开源生态地图）：`docs/research/open-source-project-map.md` —— 实现任何模块前先读其对应小节；各项目源码级细节见 `docs/research/raw/`，仓库快照与校验规则见 `docs/research/README.md`
 - 架构决策记录（ADR）：`docs/decisions/NNNN-*.md`（模板见 `docs/decisions/0001-record-architecture-decisions.md`）
 - 各顶层目录内有 `README.md` 说明该目录的用途与约定
 

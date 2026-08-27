@@ -189,3 +189,7 @@ coverage.xml
 *.cover
 .cover
 .python-version.local
+
+# ---------- Research-only upstream snapshots ----------
+# Shallow/partial clones used to verify the open-source project map.
+docs/research/.upstream/
