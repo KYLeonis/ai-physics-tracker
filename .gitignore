@@ -1,0 +1,191 @@
+# ===================================================================
+# AI Physics Tracker .gitignore
+# 特别注意：视频、模型 checkpoint、训练数据、构建产物一律不入库
+# ===================================================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ---------- 虚拟环境 / 包管理 ----------
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+condarc
+# uv / pipenv
+uv.lock.bak/
+Pipfile.lock.bak/
+# 不忽略依赖锁定文件本身（requirements.txt / pyproject.toml lock 将入库）
+
+# ---------- 测试 / 覆盖率 / 类型检查 ----------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+pyre/
+pytype/
+
+# ---------- IDE / 编辑器 ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 视频 / 媒体（实验数据，严禁入库） ----------
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+*.flv
+*.webm
+*.m4v
+*.mpg
+*.mpeg
+*.mts
+*.m2ts
+*.3gp
+*.gif
+*.webp
+*.bmp
+*.tif
+*.tiff
+*.heic
+*.jfif
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.ico
+
+# 白名单：明确允许入库的小型资源/测试图片
+!resources/**/*.svg
+!resources/**/*.ico
+!resources/**/*.png
+!docs/images/**
+!tests/fixtures/**/*.png
+!tests/fixtures/**/*.jpg
+!tests/fixtures/**/*.svg
+
+# ---------- AI / DeepLabCut / PyTorch ----------
+# 模型权重与 checkpoint
+*.pth
+*.pt
+*.ckpt
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.onnx
+*.engine
+*.plan
+*.bin
+# DeepLabCut 项目结构（数据集、训练产物）
+*-dlc/
+**/labeled-data/
+**/training-datasets/
+**/dlc-models/
+**/videos/
+**/labeled-data*/
+**/collected_data*.h5
+**/CollectedData_*.csv
+**/CollectedData_*.pickle
+**/machinelabels-iter*.csv
+**/Documentation_data*
+**/evaluation-results/
+**/snapshots/
+**/split.txt
+# 训练日志
+runs/
+wandb/
+lightning_logs/
+checkpoints/
+tb_logs/
+tensorboard/
+*.log
+logs/
+
+# ---------- 用户项目数据（应用运行时生成） ----------
+*.apt/
+user_projects/
+*.atp
+*.trackerproj
+
+# ---------- CUDA / 运行时 / 大型二进制 ----------
+*.dll
+*.dylib
+*.so.*
+*.exe
+*.msi
+*.whl
+cuda*/
+cudnn*/
+nvidia/
+
+# ---------- Windows 打包产物 ----------
+packaging/output/
+packaging/dist/
+packaging/build/
+installer_output/
+*.iss.user
+ISCC*.dat
+
+# ---------- PyInstaller / Nuitka ----------
+*.spec.bak
+nuitka_*/
+onefile_*/
+
+# ---------- 临时与备份文件 ----------
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
+*.patch
+crash-*.txt
+.ipynb_checkpoints/
+
+# ---------- FFmpeg ----------
+ffmpeg*.zip
+ffprobe*.zip
+
+# ---------- 其他 ----------
+.cache/
+coverage.xml
+*.cover
+.cover
+.python-version.local

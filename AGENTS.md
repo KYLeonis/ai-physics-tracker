@@ -1,0 +1,137 @@
+# AGENTS.md
+
+本文件面向在本仓库工作的 Coding Agent（以及人类开发者），帮助其快速理解项目并按统一规范继续开发。请保持本文件简洁、随项目进展持续更新。
+
+## 1. 项目长期目标
+
+AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量和科学教育的**桌面视频跟踪与数据分析平台**：
+
+- 技术基础：DeepLabCut 3.x（PyTorch 路线）+ 传统运动学分析工作流
+- 核心体验：用户标注少量代表帧 → AI 训练/微调 → 自动跟踪整段视频 → 修正困难帧 → 再训练 → 高质量运动轨迹 → 物理量计算与导出
+- 最终形态：面向普通 Windows 用户的桌面安装程序（无需配置 Python 环境）
+- 基准实验：**单摆**（早期重点测试案例，用于建立算法、数据处理与工作流基准）
+
+## 2. 当前 Roadmap（概要）
+
+| 阶段 | 名称 | 一句话目标 |
+| --- | --- | --- |
+| Phase 0 | Project Initialization | 仓库、文档、Git 初始化（**当前阶段**） |
+| Phase 1 | Project & Data Foundation | Project / Video / Track / Annotation / Calibration 数据体系 |
+| Phase 2 | Video Analysis MVP | 可用的 GUI + 视频播放 + 手工标记 + 项目保存 |
+| Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表 |
+| Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪 |
+| Phase 5 | AI-assisted Annotation & Refinement | 代表帧选取、困难帧发现、快速修正与再训练 |
+| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析 |
+| Phase 7 | Model Library | 模型保存、版本管理、应用到新视频 |
+| Phase 8 | Export & Scientific Workflow | CSV/Excel/图表/视频导出、项目归档 |
+| Phase 9 | Optimization & Packaging | 性能优化、GPU、Windows 打包发布 |
+| Phase 10 | Extended Capabilities | 多目标/多关键点/多相机/3D/插件等（范围待定） |
+
+完整版本（目标、交付物、验收标准、技术风险）见 `docs/roadmap.md`。
+
+## 3. 预期技术栈
+
+```text
+OS:          Windows 10/11 64-bit（目标平台）；开发亦可在 macOS/Linux
+Python:      3.11（DeepLabCut 3.x 支持 3.10–3.12）
+AI:          PyTorch（先装 PyTorch 再装 deeplabcut）
+Tracking:    DeepLabCut 3.x，PyTorch 引擎
+GUI:         PySide6 / Qt（优先评估）
+Video:       OpenCV、FFmpeg
+Sci Comp:    NumPy、SciPy、Pandas
+Plotting:    PyQtGraph（交互）、Matplotlib（导出）
+Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
+```
+
+版本依据与安装注意事项见 `docs/development.md`。
+
+## 4. 项目目录说明
+
+```text
+.
+├── README.md            # 面向所有人的项目介绍
+├── AGENTS.md            # 本文件：Agent 开发指南
+├── LICENSE              # 许可证（当前 TBD）
+├── docs/                # 项目文档
+│   ├── roadmap.md       # 详细路线图（各阶段目标/交付物/验收标准/风险）
+│   ├── architecture.md  # 高层架构设计
+│   ├── development.md   # 开发环境、版本选择、工作流
+│   └── decisions/       # 架构决策记录（ADR）
+├── src/                 # 源代码（Phase 1 起填充）
+├── tests/               # 测试（Phase 1 起填充）
+├── scripts/             # 开发辅助脚本
+├── resources/           # 应用资源（图标、UI 文件等）
+├── examples/            # 示例工程/用法（不含大型视频）
+└── packaging/           # Windows 打包相关（Phase 9 起填充）
+```
+
+## 5. 文档位置
+
+- 路线图：`docs/roadmap.md`
+- 架构设计：`docs/architecture.md`
+- 开发环境与工作流：`docs/development.md`
+- 架构决策记录（ADR）：`docs/decisions/NNNN-*.md`（模板见 `docs/decisions/0001-record-architecture-decisions.md`）
+- 各顶层目录内有 `README.md` 说明该目录的用途与约定
+
+## 6. 开发工作流程
+
+1. 阅读本文件与 `docs/roadmap.md`，确认当前所处 Phase 及其验收标准。
+2. 每次开发聚焦单一 Phase 内的连贯任务；**完成当前 Phase 的验收标准后暂停，等待下一条开发指令**。
+3. 遵循"数据先行"原则：手工跟踪与 AI 跟踪必须使用统一的数据体系（Phase 1 的核心目标）。
+4. 代码进入 `src/`，测试进入 `tests/`，不提交视频、模型 checkpoint、训练数据等大文件（见 `.gitignore`）。
+5. 新的架构/技术选型决策写入 `docs/decisions/`（见第 10 节）。
+
+## 7. 测试和验证要求
+
+- Phase 1 起引入 pytest；核心数据结构（project/track/annotation/calibration）与物理计算（坐标转换、微分、平滑）必须有单元测试。
+- 涉及数值计算的模块测试需使用已知解析解的合成数据（如匀速/匀加速/单摆小角度）。
+- GUI 功能以手动验收为主，逻辑尽量从 GUI 层剥离以便测试。
+- 当前阶段（Phase 0）无代码，无需测试。
+
+## 8. Git 工作方式
+
+- 默认分支：`main`
+- 远程：`origin` → `KYLeonis/ai-physics-tracker`（GitHub，Private）
+- 提交到 `main` 前在工作分支开发（`feat/<phase>-<topic>` / `fix/<topic>` / `docs/<topic>`）。
+- 提交信息使用 Conventional Commits（见第 9 节）。
+- 严禁提交：视频、模型权重、训练数据集、虚拟环境、构建产物（`.gitignore` 已覆盖，新增大文件类型时同步更新 `.gitignore`）。
+
+## 9. 提交规范
+
+Conventional Commits：`<type>: <description>`，例如：
+
+```text
+feat: add project data model and persistence layer
+fix: correct frame index off-by-one in timeline
+docs: expand Phase 1 roadmap acceptance criteria
+chore: initialize AI Physics Tracker project
+refactor: extract coordinate transform from calibration module
+test: add pendulum synthetic data tests for kinematics
+```
+
+常用 type：`feat` / `fix` / `docs` / `refactor` / `test` / `chore` / `perf`。描述使用英文或中英混合均可，但需清晰表达意图。
+
+## 10. 如何记录新的架构决策
+
+重要技术选型（框架替换、数据格式、模块划分变更、打包方案等）需要新增 ADR：
+
+1. 复制 `docs/decisions/_template.md`（或参照 0001）创建 `docs/decisions/NNNN-kebab-title.md`（编号递增）。
+2. 内容包含：Status / Context / Decision / Consequences。
+3. 在相关文档（README、architecture.md）中链接新 ADR。
+4. ADR 一旦接受（Accepted）不再修改内容，推翻时新增 ADR 并将旧的状态改为 Superseded。
+
+## 11. 每次开发后如何更新项目状态
+
+每个开发周期（一次任务/一个 Phase 完成）结束时：
+
+1. 更新 `README.md` 的"当前开发阶段"与 Roadmap 状态表。
+2. 更新 `docs/roadmap.md` 中对应 Phase 的状态标记。
+3. 如有架构变化，更新 `docs/architecture.md`；如有决策，新增 ADR。
+4. 如环境/依赖版本变化，更新 `docs/development.md`。
+5. 提交时使用 `docs: ...` 或随功能提交一并说明。
+
+## 12. 其他注意事项
+
+- 本仓库刻意**不预生成**未来可能被修改的空 Python 文件；代码文件在需要实现时再创建。
+- License 尚为 TBD：引入 DeepLabCut（AGPL-3.0）等依赖后必须进行 license review（见 `docs/decisions/` 与 `LICENSE`）。
+- 开发目标平台是 Windows，但开发可能在 macOS/Linux 进行：注意路径分隔符（用 `pathlib`）、大小写敏感、Qt 平台差异。

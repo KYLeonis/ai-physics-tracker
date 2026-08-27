@@ -1,0 +1,37 @@
+AI Physics Tracker
+Copyright (c) 2026 KYLeonis
+
+LICENSE: TBD (To Be Determined)
+
+This project is currently in the research and development stage and does
+not yet have a final license.
+
+IMPORTANT — Pending license review:
+
+The project is expected to depend on the following third-party components
+(among others), whose licenses MUST be reviewed before choosing and
+publishing a final license for this project:
+
+  - DeepLabCut 3.x ......... AGPL-3.0 (may impose copyleft obligations on
+                             the combined work; requires careful review)
+  - PyTorch ................ BSD-3-Clause
+  - PySide6 / Qt 6 ........ LGPL-3.0 / GPL (LGPL compliance required for
+                             dynamic linking; Qt licensing reviewed at
+                             packaging time)
+  - OpenCV ................ Apache-2.0 (opencv-python is Apache-2.0;
+                             note some contrib modules differ)
+  - FFmpeg ................ LGPL-2.1+ / GPL (depends on build
+                             configuration)
+  - NumPy / SciPy / Pandas . BSD-3-Clause (NumPy/SciPy),
+                             BSD-3-Clause (Pandas)
+  - Model weights .......... license of each pretrained model must be
+                             checked individually
+
+A license decision is tracked as a roadmap task (see
+docs/decisions/ and docs/roadmap.md). Until the license review is
+complete, all rights are reserved by the copyright holder, and the
+repository is intended to remain private.
+
+Do NOT distribute this source code or any derived binaries publicly
+before the license is finalized and third-party license obligations
+(especially DeepLabCut's AGPL-3.0) are resolved.
