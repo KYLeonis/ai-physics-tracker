@@ -15,8 +15,8 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 | 阶段 | 名称 | 一句话目标 |
 | --- | --- | --- |
-| Phase 0 | Project Initialization | 仓库、文档、Git 初始化（**当前阶段**） |
-| Phase 1 | Project & Data Foundation | Project / Video / Track / Annotation / Calibration 数据体系 |
+| Phase 0 | Project Initialization | 仓库、文档、Git 初始化（✅ 已完成） |
+| Phase 1 | Project & Data Foundation | Project / Video / Track / Annotation / Calibration 数据体系（**当前阶段**） |
 | Phase 2 | Video Analysis MVP | 可用的 GUI + 视频播放 + 手工标记 + 项目保存 |
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表 |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪 |
@@ -92,7 +92,9 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 
 - 默认分支：`main`
 - 远程：`origin` → `KYLeonis/ai-physics-tracker`（GitHub，Private）
-- 提交到 `main` 前在工作分支开发（`feat/<phase>-<topic>` / `fix/<topic>` / `docs/<topic>`）。
+- 认证已配置完成（2026-08-27）：HTTPS 凭据存于 macOS 钥匙串（OAuth token，scope: repo/workflow），`git push` / `git pull` 可直接使用；如凭据失效，通过 GitHub OAuth 设备授权流程重新获取（在 GitHub → Settings → Applications 中可查看/撤销）。
+- 提交到 `main` 前在工作分支开发（`feat/<phase>-<topic>` / `fix/<topic>` / `docs/<topic>`）；小规模文档同步可直接提交到 `main`。
+- **每个 Phase 的收尾提交完成后必须 push 到 origin**，保证远程始终反映最新项目状态。
 - 提交信息使用 Conventional Commits（见第 9 节）。
 - 严禁提交：视频、模型权重、训练数据集、虚拟环境、构建产物（`.gitignore` 已覆盖，新增大文件类型时同步更新 `.gitignore`）。
 
@@ -120,15 +122,40 @@ test: add pendulum synthetic data tests for kinematics
 3. 在相关文档（README、architecture.md）中链接新 ADR。
 4. ADR 一旦接受（Accepted）不再修改内容，推翻时新增 ADR 并将旧的状态改为 Superseded。
 
-## 11. 每次开发后如何更新项目状态
+## 11. 阶段收尾流程（每完成一个阶段必做）
 
-每个开发周期（一次任务/一个 Phase 完成）结束时：
+**每完成一个 Phase（或一个可交付的开发周期），必须按以下顺序收尾，全部完成后才算该阶段结束：**
 
-1. 更新 `README.md` 的"当前开发阶段"与 Roadmap 状态表。
-2. 更新 `docs/roadmap.md` 中对应 Phase 的状态标记。
-3. 如有架构变化，更新 `docs/architecture.md`；如有决策，新增 ADR。
-4. 如环境/依赖版本变化，更新 `docs/development.md`。
-5. 提交时使用 `docs: ...` 或随功能提交一并说明。
+### 第一步：核对验收标准
+
+1. 打开 `docs/roadmap.md` 中当前 Phase 的验收标准清单。
+2. 逐项真实验证后将 `[ ]` 改为 `[x]`；无法完成的项目保留 `[ ]` 并在下方用一行文字说明原因与后续处理方式。
+
+### 第二步：同步文档
+
+文档更新是阶段交付物的一部分，不是可选项：
+
+| 文件 | 更新内容 |
+| --- | --- |
+| `docs/roadmap.md` | 顶部"当前阶段 / 最近完成"标记；各 Phase 标题后的状态符号；验收标准勾选 |
+| `README.md` | "当前开发阶段"横幅、Roadmap 状态表、"当前项目状态"一节 |
+| `AGENTS.md` | 第 2 节概要表中的"当前阶段"标记；如技术栈/工作方式有变，同步第 3、8 节 |
+| `docs/architecture.md` | 仅当架构或模块关系有变化时更新 |
+| `docs/development.md` | 仅当环境、依赖版本或工具链有变化时更新 |
+| `docs/decisions/` | 有新的重要技术决策时新增 ADR 并在相关文档中链接 |
+
+### 第三步：Git 提交并推送
+
+1. 阶段的代码/功能变更与文档同步可以分开提交，但**每次开发周期结束前必须包含一次明确的文档同步提交**，不要让仓库停留在"代码已完成而文档过期"的状态过夜。
+2. 提交信息示例：
+   - 阶段功能收尾：`feat: complete Phase N — <名称> core deliverables`
+   - 文档同步收尾：`docs: close out Phase N — sync roadmap, README and AGENTS status`
+3. 收尾提交后执行 `git push`。如果被拒绝且本地领先，先 `git pull --rebase` 再推送。
+
+### 第四步：停止
+
+- 阶段收尾完成后**停止开发，等待下一条指令**再进入下一阶段；不自行开始下一阶段的任何实现工作。
+- 下一次开发会话开始时，先阅读本文件与 `docs/roadmap.md` 找到当前阶段标记，从上次停下的位置继续。
 
 ## 12. 其他注意事项
 

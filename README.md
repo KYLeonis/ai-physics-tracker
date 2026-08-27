@@ -80,17 +80,18 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Phase 0 — Project Initialization ✅（当前阶段）
+Current Phase:   Phase 1 — Project & Data Foundation（待启动）
+Last Completed:  Phase 0 — Project Initialization ✅（2026-08-27）
 ```
 
-项目刚完成仓库初始化，尚无可运行代码。
+Phase 0 已完成：仓库结构、全部基础文档、Git 初始化与 GitHub 远程推送均已就绪。目前尚无可运行代码——第一版核心数据体系将在 Phase 1 中建立。
 
 ## Roadmap
 
 | 阶段 | 名称 | 状态 |
 | --- | --- | --- |
-| Phase 0 | Project Initialization | ✅ 进行中 |
-| Phase 1 | Project & Data Foundation | ⬜ |
+| Phase 0 | Project Initialization | ✅ 已完成（2026-08-27） |
+| Phase 1 | Project & Data Foundation | ⬜ 当前阶段 |
 | Phase 2 | Video Analysis MVP | ⬜ |
 | Phase 3 | Calibration & Physics Engine | ⬜ |
 | Phase 4 | Deep Learning Tracking | ⬜ |
@@ -110,8 +111,8 @@ Phase 0 — Project Initialization ✅（当前阶段）
 
 ## 当前项目状态
 
-- ✅ 仓库结构、基础文档、Git 初始化
-- ⬜ 无可运行代码、无测试、无依赖锁定
+- ✅ 仓库结构、基础文档、Git 初始化、GitHub 远程推送（[KYLeonis/ai-physics-tracker](https://github.com/KYLeonis/ai-physics-tracker)，Private）
+- ⬜ 无可运行代码、无测试、无依赖锁定（属预期状态，Phase 1 起建立）
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引

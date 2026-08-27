@@ -3,12 +3,13 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 当前阶段：**Phase 0 — Project Initialization（🔄）**
-- 各阶段完成后暂停，等待下一条开发指令再进入下一阶段。
+- 最近完成：**Phase 0 — Project Initialization（✅ 2026-08-27）**
+- 当前阶段：**Phase 1 — Project & Data Foundation（⬜ 待启动）**
+- 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
 
-## Phase 0 — Project Initialization 🔄
+## Phase 0 — Project Initialization ✅
 
 **目标**：建立可长期维护的项目仓库与文档基础。
 
@@ -24,10 +25,10 @@
 - [x] AGENTS.md 能指导未来 Agent 完成后续开发
 - [x] Roadmap 覆盖 Phase 0–10 并含验收标准
 - [x] .gitignore 覆盖视频/模型/训练数据/构建产物
-- [ ] Git 仓库正常、GitHub origin 正确、首次 commit 与 push 成功
+- [x] Git 仓库正常、GitHub origin 正确、首次 commit 与 push 成功（首推于 2026-08-27，凭据存于 macOS 钥匙串）
 
 **主要技术风险**
-- GitHub 凭据不可用时需人工完成远程仓库创建与首次 push。
+- ~~GitHub 凭据不可用时需人工完成远程仓库创建与首次 push。~~ 已解决：通过 GitHub OAuth 设备授权获取 token 并存入钥匙串。
 
 ---
 

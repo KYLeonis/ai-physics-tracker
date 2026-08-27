@@ -72,6 +72,7 @@ main（稳定） ← 工作分支 feat/<phase>-<topic> / fix/<topic> / docs/<top
 
 ## 7. GitHub
 
-- 远程：`KYLeonis/ai-physics-tracker`（Private）
-- 默认分支：`main`
-- SSH 22/443 端口在部分网络下不可达时，使用 HTTPS remote（需要 PAT 凭据）
+- 远程：`KYLeonis/ai-physics-tracker`（Private），默认分支：`main`
+- 认证状态（2026-08-27 已配置）：HTTPS remote + macOS 钥匙串凭据（GitHub OAuth 设备授权获取的 token，scope: `repo`/`workflow`）。`git push` / `pull` 开箱即用，无需再输入密码。
+- 说明：本机网络下 SSH 22/443 端口均被代理拦截不可达，必须使用 HTTPS remote。
+- 凭据失效时：重新走一次 GitHub OAuth 设备授权流程并存入钥匙串；或在 GitHub → Settings → Applications 查看/撤销已有授权。
