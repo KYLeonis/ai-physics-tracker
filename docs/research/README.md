@@ -5,6 +5,7 @@
 ## 目录约定
 
 - `open-source-project-map.md`：面向 Coding Agent 的总索引、跨项目比较、License Map 与结论。
+- `software-spec-plan.md`：**Phase 1 前最后一轮准备性调研行动计划**（收敛版 v2，**已 Closed/完成**）——6 个行动项（领域模型、时间语义、标定、持久化、最小接口、Phase 1 验收标准），产出 `docs/spec/` 三份规范 + ADR-0003；后续 Phase 的调研项统一在其 Later Research/Open Items 表中按启动时点取用。
 - `raw/`：每个上游项目一份源码级 Code Map；只记录已检查的源码路径、类/函数、调用链和可借鉴点。
 - `.upstream/`：仅供本地复核的浅克隆/部分克隆源码快照，已加入仓库忽略规则，不作为项目源码提交。
 
