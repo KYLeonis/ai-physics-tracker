@@ -59,7 +59,7 @@ Phase（roadmap 定义，验收标准固定）
 
 ## 5. Implement → Verify → Commit
 
-- **Implement 前**：确认已读相关 spec / ADR / `docs/research/open-source-project-map.md` 对应小节（AGENTS.md §5 的要求）。
+- **Implement 前**：确认已读相关 spec / ADR / `docs/research/open-source-project-map.md` 对应小节（AGENTS.md §5 的要求）；写代码的任务另读 `CODE_STANDARD.md`。
 - **Verify**：按 AGENTS.md §7 与 `docs/development.md` §5 执行——单元测试、解析合成数据（匀速/匀加速/单摆小角度）、GUI 项列出手动验收步骤。验证必须真实运行，不允许"应该能过"。
 - **Commit**：Conventional Commits（AGENTS.md §9）。一个 Slice 通常 1 个 commit；提交前完成 §6 的 self-review。
 
@@ -69,6 +69,7 @@ Phase（roadmap 定义，验收标准固定）
 
 - [ ] diff 只包含本 Slice 范围内的改动
 - [ ] 验证真实运行过，结果与声称一致
+- [ ] 遵守 `CODE_STANDARD.md`（领域词汇表命名、分层依赖方向、错误处理语义）
 - [ ] 遵守 `docs/development.md` §1.1 可移植性规则（`pathlib`、显式 UTF-8、无 symlink、Windows 保留名…）
 - [ ] 新增公开接口/数据结构有 docstring 或文档说明
 - [ ] 暂存区中没有视频/模型/大文件
@@ -131,7 +132,7 @@ Phase（roadmap 定义，验收标准固定）
 5. Continue                               ← 执行 status 的 Next Recommended Action
 ```
 
-status 与仓库实际状态矛盾时，**以仓库为准**，先修正 status 再继续。
+status 与仓库实际状态矛盾时，**以仓库为准**，先修正 status 再继续。**涉及写代码的任务，动手前另读 `CODE_STANDARD.md`**（含领域词汇表与 Agent 使用规则），并延续改动点附近代码的既有模式。
 
 ### 会话退出（每次会话结束必须完整执行）
 

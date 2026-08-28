@@ -26,6 +26,7 @@ Phase 1.1：按 `docs/spec/phase1-requirements.md` 落地数据模型核心（sr
 
 ## Recently Completed
 
+- **代码规范建立**（2026-08-28）：`CODE_STANDARD.md`（根目录）——领域词汇表命名、分层依赖、typing、错误处理语义、数值代码纪律（时间/坐标/容差）、跨平台规则、测试风格、反模式与示例；已加入 Agent 进入协议（AGENTS.md §6 / workflow.md §11）
 - **Subphase 1.0 — Phase 1 Spec & Requirements**（2026-08-28）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md` + **ADR-0003**（JSON 清单优先持久化）、`docs/spec/phase1-requirements.md`（AC-1…AC-10，含 DLC 无损转换设计）；`docs/research/software-spec-plan.md` §5 Readiness Criteria 全部勾选，PLAN 转 Closed
 - **Phase 0 — Project Initialization**（2026-08-27）：仓库结构、基础文档、Git/GitHub 初始化 ✅
 - 开源生态调研：project map + 14 份 raw notes（`docs/research/`）
@@ -52,6 +53,6 @@ Phase 1.1：按 `docs/spec/phase1-requirements.md` 落地数据模型核心（sr
 1. 用 `docs/templates/subphase-plan.md` 写 mini-plan，建 GitHub Issue `Phase 1.1 — data model core`；
 2. 建分支 `feat/p1.1-data-model`；
 3. Slice 划分建议：`pyproject.toml` + src-layout 骨架 → 核心值对象（Video/Timeline/Track/TrackPoint/Calibration，纯数据无 Qt）→ TrackStore 写入/遮蔽/解析语义 → ProjectRepository 持久化（ADR-0003）→ 测试补齐；
-4. 验收对照 `docs/spec/phase1-requirements.md` AC-1…AC-10（AC-9 已完成）；实现前先读 `docs/spec/data-model.md` 与 AGENTS.md §5 列出的对应研究小节。
+4. 验收对照 `docs/spec/phase1-requirements.md` AC-1…AC-10（AC-9 已完成）；实现前先读 `docs/spec/data-model.md`、`CODE_STANDARD.md` 与 AGENTS.md §5 列出的对应研究小节。
 
 Phase 1.1 完成后再规划 1.2（预计为持久化/转换器收尾或按实现期实际情况拆分）。

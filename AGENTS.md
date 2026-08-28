@@ -51,6 +51,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 .
 ├── README.md            # 面向所有人的项目介绍
 ├── AGENTS.md            # 本文件：Agent 开发指南
+├── CODE_STANDARD.md     # 代码规范（写任何代码前先读）
 ├── LICENSE              # 许可证（当前 TBD）
 ├── docs/                # 项目文档
 │   ├── roadmap.md       # 详细路线图（各阶段目标/交付物/验收标准/风险）
@@ -71,6 +72,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 ## 5. 文档位置
 
 - **当前状态（不知道做什么先读这个）**：`docs/status/current.md` —— 由每个开发会话结束时更新
+- **代码规范（写代码前必读）**：`CODE_STANDARD.md` —— 命名（含领域词汇表）、分层、类型、错误处理、数值代码、跨平台、测试风格
 - 开发循环细则（Phase/Subphase/Slice、review、GitHub、Agent 交接）：`docs/workflow.md`
 - 路线图：`docs/roadmap.md`
 - 架构设计：`docs/architecture.md`
@@ -86,7 +88,8 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 **会话进入协议**：
 
 1. 顺序阅读：本文件 → `docs/status/current.md` → 相关 Phase/Subphase 文档（roadmap 对应节、subphase Issue 或 plan、spec）→ 检查仓库（`git log --oneline -15`、未提交改动）。
-2. 执行 status 文件中的 "Next Recommended Action"；若 status 与仓库实际状态矛盾，以仓库为准并先修正 status。
+2. 涉及写代码的任务：动手前再读 `CODE_STANDARD.md` 并延续改动点附近代码的既有模式（规范与附近代码冲突时按 CODE_STANDARD.md §1 处理）。
+3. 执行 status 文件中的 "Next Recommended Action"；若 status 与仓库实际状态矛盾，以仓库为准并先修正 status。
 
 **开发循环**：
 

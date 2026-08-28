@@ -120,6 +120,7 @@ Phase 0 已完成：仓库结构、全部基础文档、Git 初始化与 GitHub 
 ## 文档索引
 
 - [AGENTS.md](AGENTS.md) — 面向 Coding Agent 的项目指南
+- [CODE_STANDARD.md](CODE_STANDARD.md) — 代码规范（写代码前必读）
 - [docs/status/current.md](docs/status/current.md) — 当前状态与下一步（不知道做什么先读）
 - [docs/workflow.md](docs/workflow.md) — 开发循环说明书（Phase / Subphase / Slice）
 - [docs/roadmap.md](docs/roadmap.md) — 详细路线图

@@ -97,6 +97,7 @@ main（稳定） ← 工作分支 feat/p<phase>.<sub>-<topic> / fix/<topic> / do
 - 脚本：`scripts/`（环境安装、数据转换等辅助脚本）
 - 资源：`resources/`（图标、UI 文件）
 - 示例：`examples/`（不含大型视频；小型示例资产单独设计白名单）
+- 代码风格与命名规范：`CODE_STANDARD.md`（根目录；写代码前必读）
 
 ## 5. 测试与验证要求
 
