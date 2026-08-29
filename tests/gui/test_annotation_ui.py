@@ -125,18 +125,65 @@ def test_delete_track_clears_markers_and_selection(
     assert session.project.observations == ()
 
 
-def test_markers_follow_frame_navigation(
+def test_markers_trail_across_frames_with_current_highlight(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # 拖尾语义：显示该 Track 全部 active 点；当前帧实心、其余空心
+    window = _opened_with_track(qtbot, synthetic_video_path)
+    window._onAnnotationClicked(_inside_point(window, 20.0, 15.0))
+    qtbot.waitUntil(lambda: window.videoView.marker_count() == 1)
+    assert window.videoView.marker_views()[0].is_current_frame
+
+    window.frameSpinBox.setValue(2)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 2 / 4")
+    qtbot.waitUntil(
+        lambda: not window.videoView.marker_views()[0].is_current_frame
+    )
+
+    assert window.videoView.marker_count() == 1  # 帧 0 的点仍以空心环显示
+
+
+def test_click_outside_image_is_ignored(
     qtbot: QtBot, synthetic_video_path: Path
 ) -> None:
     window = _opened_with_track(qtbot, synthetic_video_path)
-    window._onAnnotationClicked(QPoint(40, 30))
-    window.frameSpinBox.setValue(2)
-    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 2 / 4")
+
+    window._onAnnotationClicked(QPoint(10000, 10000))
 
     session = window._annotation_session
     assert session is not None
-    # 帧 2 无标记：overlay 清空（当前 Track 只有一个帧 0 的点）
+    assert session.manual_points(session.tracks[0].track_id) == ()
     assert window.videoView.marker_count() == 0
+
+
+def test_track_actions_without_video_are_noop(qtbot: QtBot) -> None:
+    window = MainWindow(
+        VideoSession(OpenCVVideoReader()), ProjectRepository()
+    )
+    qtbot.addWidget(window)
+
+    window.addTrackButton.click()
+    window._onAnnotationClicked(QPoint(10, 10))
+
+    assert window._annotation_session is None
+    assert window.trackList.count() == 0
+
+
+def test_click_while_frame_in_flight_is_rejected(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # 回归（独立 review B2）：跳帧请求在途时点击不得落点，
+    # 避免把旧帧图像上的坐标写进新帧
+    window = _opened_with_track(qtbot, synthetic_video_path)
+
+    window.frameSpinBox.setValue(4)  # 触发在途解码请求
+    assert window._has_pending_request
+    window._onAnnotationClicked(_inside_point(window, 20.0, 15.0))
+
+    session = window._annotation_session
+    assert session is not None
+    assert session.manual_points(session.tracks[0].track_id) == ()
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 4 / 4")
 
 
 def test_real_mouse_click_in_annotation_mode_marks_point(

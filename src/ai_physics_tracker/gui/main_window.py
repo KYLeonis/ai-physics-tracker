@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from uuid import UUID
 
-from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -25,6 +25,7 @@ from ai_physics_tracker.application.playback import AsyncVideoSession
 from ai_physics_tracker.application.project_session import (
     ProjectRepositoryPort,
     ProjectSession,
+    ProjectSessionError,
 )
 from ai_physics_tracker.application.video import DecodedFrame, VideoError
 from ai_physics_tracker.application.video_session import VideoSession
@@ -68,6 +69,9 @@ class MainWindow(QMainWindow):
         self._delivery_generation = 0
         # 连续步进的基准：以最后请求帧号计算，避免解码延迟吞掉快速连点
         self._last_requested_frame: int | None = None
+        # 已呈现帧号：标注落帧与 overlay 高亮的唯一事实来源（data-model.md
+        # §5.5 标注点打在当前帧；_last_requested_frame 领先于显示，不可用）
+        self._presented_frame_index: int | None = None
         # 播放倍速：interval = 1000 / (fps_nominal * rate)（显示节奏，非时间语义）
         self._playback_rate = 1.0
         # 标注会话：openVideo 成功后创建并登记当前视频（2.4 起提供项目 UI）
@@ -411,23 +415,27 @@ class MainWindow(QMainWindow):
         if self._selected_track_id is not None:
             self.trackList.setCurrentRow(-1)
 
-    def _onAnnotationClicked(self, view_pos) -> None:
+    def _onAnnotationClicked(self, view_pos: QPoint) -> None:
         if self._annotation_session is None or self._selected_track_id is None:
+            return
+        if self._presented_frame_index is None:
+            return
+        if self._has_pending_request:
+            # 显示帧仍在途：此刻屏幕上的图像不是落帧目标，拒绝以免把
+            # 坐标写到用户从未见过的帧（独立 review B2）
+            self.statusBar().showMessage("Waiting for frame; mark ignored")
             return
         pixel = self.videoView.mapScreenToPixel(view_pos)
         if pixel is None:
             return  # 点击落在图像外（data-model.md §6.1：不钳位、不造值）
-        frame_index = self._last_requested_frame
-        if frame_index is None:
-            snapshot = self._async.snapshot()
-            if snapshot is None:
-                return
-            frame_index = snapshot.current_frame.frame_index
         try:
             self._annotation_session.mark_point(
-                self._selected_track_id, frame_index, pixel[0], pixel[1]
+                self._selected_track_id,
+                self._presented_frame_index,
+                pixel[0],
+                pixel[1],
             )
-        except Exception as error:
+        except (ProjectSessionError, ValueError) as error:
             logger.error("mark point failed", exc_info=True)
             self.statusBar().showMessage(f"Mark failed: {error}")
             return
@@ -459,13 +467,15 @@ class MainWindow(QMainWindow):
         if track is None:
             self.videoView.set_markers([])
             return
-        frame_index = self._last_requested_frame or 0
+        if self._presented_frame_index is None:
+            self.videoView.set_markers([])
+            return
         markers = [
             MarkerView(
                 pixel_x=point.pixel_x,
                 pixel_y=point.pixel_y,
                 color=track.color,
-                is_current_frame=point.frame_index == frame_index,
+                is_current_frame=point.frame_index == self._presented_frame_index,
             )
             for point in self._annotation_session.manual_points(track.track_id)
         ]
@@ -491,6 +501,7 @@ class MainWindow(QMainWindow):
         self.timeLabel.setText(f"Time: {time_s:.3f} s nominal")
         self.previousButton.setEnabled(frame.frame_index > 0)
         self.nextButton.setEnabled(frame.frame_index < self._frame_count - 1)
+        self._presented_frame_index = frame.frame_index
         self._refreshMarkers()
 
     def _step(self, delta: int) -> None:
@@ -547,6 +558,7 @@ class MainWindow(QMainWindow):
         self._annotation_session = None
         self._annotation_video_id = None
         self._selected_track_id = None
+        self._presented_frame_index = None
         self.trackList.clear()
         self.videoView.set_markers([])
         self.videoView.set_annotation_mode(False)

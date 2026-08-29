@@ -182,7 +182,8 @@ class ProjectSession:
             pixel_x=pixel_x,
             pixel_y=pixel_y,
             source="manual",
-            visibility="unknown",
+            # data-model.md §3.5：manual 缺省 visible（用户亲眼所见落点）
+            visibility="visible",
             status="active",
             created_at=now,
             modified_at=now,

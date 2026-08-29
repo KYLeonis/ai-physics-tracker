@@ -77,6 +77,7 @@ def test_mark_point_freezes_time_via_timeline_and_manual_semantics(
     assert point.source == "manual"
     assert point.confidence is None
     assert point.status == "active"
+    assert point.visibility == "visible"  # data-model.md §3.5 manual 缺省
     assert point.time_s == pytest.approx(0.2, abs=1e-12)  # 2 / 10 fps
     assert session.project.observations == (point,)
 

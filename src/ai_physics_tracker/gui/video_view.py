@@ -62,6 +62,7 @@ class VideoView(QGraphicsView):
         self._pixmap_item: QGraphicsPixmapItem | None = None
         self._placeholder_item: QGraphicsTextItem | None = None
         self._marker_items: list[QGraphicsEllipseItem] = []
+        self._marker_views: list[MarkerView] = []
         self._annotation_mode = False
         self._fit_pending = True
         self.setMinimumSize(320, 240)
@@ -249,15 +250,15 @@ class VideoView(QGraphicsView):
         for item in self._marker_items:
             self._scene.removeItem(item)
         self._marker_items = []
+        self._marker_views = []
+        self._marker_views = list(markers)
         for marker in markers:
             color = QColor(marker.color)
             radius = MARKER_DIAMETER_PX / 2.0
-            item = QGraphicsEllipseItem(
-                marker.pixel_x - radius,
-                marker.pixel_y - radius,
-                MARKER_DIAMETER_PX,
-                MARKER_DIAMETER_PX,
-            )
+            # rect 以 item 原点为中心；ItemIgnoresTransformations 的绘制
+            # 锚点是原点，必须用 setPos 定位，否则偏移 (1-zoom)×pixel
+            item = QGraphicsEllipseItem(-radius, -radius, MARKER_DIAMETER_PX, MARKER_DIAMETER_PX)
+            item.setPos(marker.pixel_x, marker.pixel_y)
             # 屏幕固定大小：忽略 view transform（ItemIgnoresTransformations）
             item.setFlag(
                 QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True
@@ -276,6 +277,11 @@ class VideoView(QGraphicsView):
 
     def marker_count(self) -> int:
         return len(self._marker_items)
+
+    def marker_views(self) -> list[MarkerView]:
+        """当前 overlay 的标记视图快照（测试与语义断言用）。"""
+
+        return list(self._marker_views)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if (
