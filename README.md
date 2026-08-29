@@ -80,12 +80,14 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:   Phase 1 — Project & Data Foundation（已完成，暂停）
+Current Phase:   Phase 2 — Video Analysis MVP（Subphase 2.1）
 Last Completed:  Phase 1 — Project & Data Foundation ✅（2026-08-29）
-Next Phase:      Phase 2 — Video Analysis MVP（等待用户指令）
+Current Subphase: Phase 2.1 — Desktop Video Foundation
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
+
+Phase 2.1 已形成可运行桌面增量：PySide6 主窗口可打开视频、显示首帧、上一/下一和按帧号跳转；连续播放、缩放与标注将在后续 Subphase 完成。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
@@ -95,7 +97,7 @@ Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTran
 | --- | --- | --- |
 | Phase 0 | Project Initialization | ✅ 已完成（2026-08-27） |
 | Phase 1 | Project & Data Foundation | ✅ 已完成（2026-08-29） |
-| Phase 2 | Video Analysis MVP | ⬜ 下一阶段，等待指令 |
+| Phase 2 | Video Analysis MVP | 🔄 Subphase 2.1 |
 | Phase 3 | Calibration & Physics Engine | ⬜ |
 | Phase 4 | Deep Learning Tracking | ⬜ |
 | Phase 5 | AI-assisted Annotation & Refinement | ⬜ |

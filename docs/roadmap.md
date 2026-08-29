@@ -4,7 +4,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近完成：**Phase 1 — Project & Data Foundation（✅ 2026-08-29）**
-- 当前阶段：**Phase 1 已收尾；Phase 2 等待用户指令后启动**
+- 当前阶段：**Phase 2 — Video Analysis MVP（🔄 Subphase 2.1）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -52,7 +52,7 @@
 
 ---
 
-## Phase 2 — Video Analysis MVP ⬜
+## Phase 2 — Video Analysis MVP 🔄
 
 **目标**：第一版可使用的桌面应用，完成基本人工视频测量。
 

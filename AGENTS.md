@@ -17,7 +17,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | --- | --- | --- |
 | Phase 0 | Project Initialization | 仓库、文档、Git 初始化（✅ 已完成） |
 | Phase 1 | Project & Data Foundation | Project / Video / Track / Annotation / Calibration 数据体系（✅ 已完成） |
-| Phase 2 | Video Analysis MVP | 可用的 GUI + 视频播放 + 手工标记 + 项目保存（下一阶段，等待指令） |
+| Phase 2 | Video Analysis MVP | 可用的 GUI + 视频播放 + 手工标记 + 项目保存（**当前阶段：2.1**） |
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表 |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪 |
 | Phase 5 | AI-assisted Annotation & Refinement | 代表帧选取、困难帧发现、快速修正与再训练 |
@@ -78,6 +78,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - 架构设计：`docs/architecture.md`
 - 开发环境与工作流：`docs/development.md`
 - Phase 1 数据体系规范（**实现前必读**）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md`（持久化与项目目录）、`docs/spec/phase1-requirements.md`（Phase 1 需求与验收标准）
+- Phase 2 视频/GUI 规范：`docs/spec/phase2-requirements.md`；技术栈与分层决策见 ADR-0005
 - 模板：`docs/templates/`（subphase 计划、review）
 - 实现参考与前期调研（开源生态地图）：`docs/research/open-source-project-map.md` —— 实现任何模块前先读其对应小节；各项目源码级细节见 `docs/research/raw/`，仓库快照与校验规则见 `docs/research/README.md`
 - 架构决策记录（ADR）：`docs/decisions/NNNN-*.md`（模板见 `docs/decisions/0001-record-architecture-decisions.md`）
