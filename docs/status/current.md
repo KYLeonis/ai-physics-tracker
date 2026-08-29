@@ -13,11 +13,11 @@
 
 ## Current Subphase
 
-**2.1 — Desktop Video Foundation** 🔄 进行中（Issue #2，分支 `feat/p2.1-video-foundation`）
+**2.1 — Desktop Video Foundation** ✅ 已完成（Issue #2 已关闭，merge `7da0af1` → main，CI 双平台全绿）。Phase 2 下一个 subphase 待启动。
 
 ## Current Slice
 
-**Slice 5 — verification / independent review / handoff** 🔄（本地 70 tests；macOS GUI 手动验收通过；等待 CI）
+无（2.1 已收尾，等待 Phase 2.2 指令）
 
 ## Current Goal
 
@@ -25,7 +25,8 @@
 
 ## Recently Completed
 
-- **Phase 2.1 本地实现**（2026-08-29）：ADR-0005；PySide6/OpenCV headless 依赖；Qt-free VideoReader/VideoSession；桌面入口、视频显示、前后步进/跳转；运行时合成视频与 Qt offscreen 测试；Luna-max 独立 review 无 Blocker
+- **Phase 2.1 — Desktop Video Foundation**（2026-08-29）：ADR-0005；PySide6/OpenCV headless/NumPy 2.4.6 依赖；Qt-free VideoReader/VideoSession；桌面入口、视频显示、前后步进/帧号跳转；本地 70 tests + CI macOS/Windows Python 3.11 全绿（run 33256154612）；Luna-max 独立 review 无 Blocker；Issue #2 已关闭，merge `7da0af1`
+  - 过程订正：初版锁定 `numpy==2.5.2` 无 Python 3.11 wheel，CI 安装阶段双平台失败；`47758ae` 改锁 2.4.6（3.11/3.12 兼容最新版），ADR-0005/development.md 同步
 - **Phase 1 — Project & Data Foundation**（2026-08-29）：src-layout + 锁定依赖；Project/Video/Timeline/Track/TrackPoint/Calibration/DerivedData；TrackStore first-wins/manual last-wins/superseded 恢复语义；可逆标定与 stale 传播；schema v1 JSON repository、迁移守卫、原子保存/滚动备份、Save As、external locator/relink；56 项 pytest 本地与 GitHub Actions macOS/Windows Python 3.11 全绿；独立 review 最终通过
 - **ADR-0004**（2026-08-29）：外部视频使用 `file_path = null` + 绝对 `original_path`，项目内视频使用 Windows-safe 相对路径；部分取代 ADR-0003 的 locator 条款
 - **代码规范建立**（2026-08-28）：`CODE_STANDARD.md`（根目录）——领域词汇表命名、分层依赖、typing、错误处理语义、数值代码纪律（时间/坐标/容差）、跨平台规则、测试风格、反模式与示例；已加入 Agent 进入协议（AGENTS.md §6 / workflow.md §11）
@@ -52,4 +53,4 @@
 
 ## Next Recommended Action
 
-获得用户 push 授权后推送 `feat/p2.1-video-foundation`，运行 macOS/Windows Python 3.11 + Qt offscreen CI。CI 全绿后更新 Issue #2 Result、合并 main；若 MJPEG writer 在任一平台不可用，先修测试 fixture 而不跳过。
+Phase 2.2 候选主题（按 roadmap Phase 2 交付物顺序）：① 连续播放/暂停 + 时间轴（含 VFR 显式拒绝的 UI 呈现）；② 视频画面缩放/平移；③ 手工标记（点选添加轨迹点）。等待用户选择或调整范围划分后，按 `docs/workflow.md` §3 建 Issue + mini-plan 启动。
