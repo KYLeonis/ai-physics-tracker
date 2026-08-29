@@ -17,7 +17,7 @@
 
 ## Current Slice
 
-**Slice 1 — requirements / ADR / dependency lock** 🔄
+**Slice 5 — verification / independent review / handoff** 🔄（本地 70 tests；macOS GUI 手动验收通过；等待 CI）
 
 ## Current Goal
 
@@ -25,6 +25,7 @@
 
 ## Recently Completed
 
+- **Phase 2.1 本地实现**（2026-08-29）：ADR-0005；PySide6/OpenCV headless 依赖；Qt-free VideoReader/VideoSession；桌面入口、视频显示、前后步进/跳转；运行时合成视频与 Qt offscreen 测试；Luna-max 独立 review 无 Blocker
 - **Phase 1 — Project & Data Foundation**（2026-08-29）：src-layout + 锁定依赖；Project/Video/Timeline/Track/TrackPoint/Calibration/DerivedData；TrackStore first-wins/manual last-wins/superseded 恢复语义；可逆标定与 stale 传播；schema v1 JSON repository、迁移守卫、原子保存/滚动备份、Save As、external locator/relink；56 项 pytest 本地与 GitHub Actions macOS/Windows Python 3.11 全绿；独立 review 最终通过
 - **ADR-0004**（2026-08-29）：外部视频使用 `file_path = null` + 绝对 `original_path`，项目内视频使用 Windows-safe 相对路径；部分取代 ADR-0003 的 locator 条款
 - **代码规范建立**（2026-08-28）：`CODE_STANDARD.md`（根目录）——领域词汇表命名、分层依赖、typing、错误处理语义、数值代码纪律（时间/坐标/容差）、跨平台规则、测试风格、反模式与示例；已加入 Agent 进入协议（AGENTS.md §6 / workflow.md §11）
@@ -51,4 +52,4 @@
 
 ## Next Recommended Action
 
-完成 Slice 1 后实现 Qt-free VideoReader contract 与 OpenCV backend；先用运行时合成视频验证 0-based 随机读帧、RGB 颜色和关闭语义，再接 GUI。
+获得用户 push 授权后推送 `feat/p2.1-video-foundation`，运行 macOS/Windows Python 3.11 + Qt offscreen CI。CI 全绿后更新 Issue #2 Result、合并 main；若 MJPEG writer 在任一平台不可用，先修测试 fixture 而不跳过。

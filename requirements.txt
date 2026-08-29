@@ -1,4 +1,4 @@
-# Reproducible local/CI test environment. Runtime dependencies are currently empty.
+# Reproducible local/CI environment with locked runtime and test dependencies.
 -e .
 iniconfig==2.3.0
 numpy==2.5.2
