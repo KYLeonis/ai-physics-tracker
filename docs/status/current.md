@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-29
+- 最后更新：2026-08-29（Phase 2.2 收尾）
 
 ---
 
@@ -13,18 +13,20 @@
 
 ## Current Subphase
 
-**2.1 — Desktop Video Foundation** ✅ 已完成（Issue #2 已关闭，merge `7da0af1` → main，CI 双平台全绿）。Phase 2 下一个 subphase 待启动。
+**2.2 — Playback & Viewport** ✅ 已完成（Issue #3 已关闭，分支 `feat/p2.2-playback-viewport` 待合并）。Phase 2 下一个 subphase 待启动。
 
 ## Current Slice
 
-无（2.1 已收尾，等待 Phase 2.2 指令）
+无（2.2 已收尾）
 
 ## Current Goal
 
-从命令行启动桌面窗口，打开 CFR 视频并完成首帧显示、上一/下一与帧号跳转；保持 GUI/application/OpenCV 分层。
+播放/暂停、时间轴 scrub/commit、缩放/平移与 screen→pixel 逆映射，解码后台线程化。
 
 ## Recently Completed
 
+- **Phase 2.2 — Playback & Viewport**（2026-08-29）：AsyncVideoSession（单线程串行 reader、latest-wins 解码合并、跨视频代际隔离）；播放控制（QTimer 节流、末帧自动暂停、空格/按钮）；时间轴 scrub/commit；VideoView 重写为 QGraphicsView（Ctrl+滚轮锚定缩放、拖拽平移、Fit/100%、`mapScreenToPixel` ±0.5px）；View 菜单缩放入口；本地 92 tests + 独立 review（1 Blocker：代际隔离 + UX 加固已修复）
+- **Phase 2.1 — Desktop Video Foundation**（2026-08-29）：ADR-0005；PySide6/OpenCV headless/NumPy 2.4.6 依赖；Qt-free VideoReader/VideoSession；桌面入口、视频显示、前后步进/帧号跳转；本地 70 tests + CI macOS/Windows Python 3.11 全绿（run 33256154612）；Luna-max 独立 review 无 Blocker；Issue #2 已关闭，merge `7da0af1`
 - **注释语言规范**（2026-08-29）：CODE_STANDARD.md §12 规定注释/docstring 一律中文（标识符、spec 引用、API 名保留英文）；存量 34 个文件的英文 docstring/注释全部改写为中文，AST 对比确认代码逻辑零改动，70 tests 全绿（commit `1b5e303`）
 
 - **Phase 2.1 — Desktop Video Foundation**（2026-08-29）：ADR-0005；PySide6/OpenCV headless/NumPy 2.4.6 依赖；Qt-free VideoReader/VideoSession；桌面入口、视频显示、前后步进/帧号跳转；本地 70 tests + CI macOS/Windows Python 3.11 全绿（run 33256154612）；Luna-max 独立 review 无 Blocker；Issue #2 已关闭，merge `7da0af1`
