@@ -1,4 +1,4 @@
-"""Composition root for `python -m ai_physics_tracker`."""
+"""`python -m ai_physics_tracker` 的组合根。"""
 
 from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.gui.app import run

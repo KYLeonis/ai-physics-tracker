@@ -1,9 +1,9 @@
-"""Persistence error hierarchy with user-recoverable context."""
+"""持久化错误层级，携带用户可恢复的上下文信息。"""
 
 
 class ProjectFormatError(Exception):
-    """Base error for unreadable or unsupported project data."""
+    """项目数据无法读取或不受支持时的基础错误。"""
 
 
 class UnsupportedSchemaVersionError(ProjectFormatError):
-    """Raised when a project was created by a newer application version."""
+    """项目由更新版本的应用创建时抛出。"""

@@ -1,4 +1,4 @@
-"""Track identity and immutable raw observation value objects."""
+"""Track 标识与不可变原始观测值对象。"""
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -15,7 +15,7 @@ _STATUSES = {"active", "superseded"}
 
 @dataclass(frozen=True)
 class Track:
-    """Identity metadata for one physical point in one video."""
+    """单个视频中一个物理点的标识元数据。"""
 
     track_id: UUID
     video_id: UUID
@@ -41,7 +41,7 @@ class Track:
 
 @dataclass(frozen=True)
 class TrackPoint:
-    """Single-frame raw pixel observation with provenance."""
+    """单帧原始像素观测，携带来源信息。"""
 
     point_id: UUID
     track_id: UUID

@@ -1,4 +1,4 @@
-"""Qt-free VideoSession navigation and cleanup tests."""
+"""与 Qt 无关的 VideoSession 导航与清理测试。"""
 
 from pathlib import Path
 

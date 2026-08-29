@@ -1,4 +1,4 @@
-"""Cross-platform test configuration and runtime-generated video fixtures."""
+"""跨平台测试配置与运行时生成的视频 fixture。"""
 
 import os
 from pathlib import Path
@@ -12,7 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 @pytest.fixture
 def synthetic_video_path(tmp_path: Path) -> Path:
-    """Create a tiny CFR MJPEG video without committing media fixtures."""
+    """生成一个微型 CFR MJPEG 视频，避免向仓库提交媒体 fixture。"""
 
     path = tmp_path / "synthetic.avi"
     size = (64, 48)

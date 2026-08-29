@@ -1,4 +1,4 @@
-"""Qt offscreen tests for the Phase 2.1 desktop shell."""
+"""Phase 2.1 桌面外壳的 Qt offscreen 测试。"""
 
 from pathlib import Path
 

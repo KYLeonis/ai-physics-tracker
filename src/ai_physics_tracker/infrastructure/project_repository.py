@@ -1,4 +1,4 @@
-"""Filesystem repository for portable schema-versioned project directories."""
+"""面向可移植、带 schema 版本项目目录的文件系统仓储。"""
 
 from collections.abc import Callable
 from dataclasses import replace
@@ -28,12 +28,12 @@ _MIGRATIONS: dict[int, Migration] = {}
 
 
 class ProjectRepository:
-    """Create, load, save, and relocate project aggregates on local filesystems."""
+    """在本地文件系统上创建、加载、保存与迁移项目聚合。"""
 
     def create(
         self, project_root: Path, name: str, description: str | None = None
     ) -> Project:
-        """Create the portable project directory and persist its initial manifest."""
+        """创建可移植的项目目录并持久化初始 manifest。"""
 
         project_root.mkdir(parents=True, exist_ok=False)
         for relative in (
@@ -46,7 +46,7 @@ class ProjectRepository:
         return self.save(project_root, create_project(name, description))
 
     def load(self, project_root: Path) -> Project:
-        """Load a Project, rejecting corruption and unsupported schema versions."""
+        """加载 Project，拒绝损坏数据与不支持的 schema 版本。"""
 
         project_file = project_root / PROJECT_FILE_NAME
         if not project_file.is_file():
@@ -76,7 +76,7 @@ class ProjectRepository:
             ) from error
 
     def save(self, project_root: Path, project: Project) -> Project:
-        """Atomically save a Project and roll the previous manifest to one backup."""
+        """原子保存 Project，并将上一个 manifest 轮转为一篇备份。"""
 
         if not project_root.is_dir():
             raise FileNotFoundError(f"project directory not found: {project_root}")
@@ -95,7 +95,7 @@ class ProjectRepository:
     def save_as(
         self, source_root: Path, destination_root: Path, project: Project
     ) -> Project:
-        """Copy the portable project unit, then atomically save the supplied state."""
+        """复制可移植项目单元，再原子保存传入的状态。"""
 
         if not source_root.is_dir():
             raise FileNotFoundError(f"source project directory not found: {source_root}")
@@ -108,11 +108,11 @@ class ProjectRepository:
 
     @staticmethod
     def close(project: Project) -> None:
-        """End a lifecycle session; no-op because the repository retains no handles."""
+        """结束一次生命周期会话；仓储不保留句柄，因此是 no-op。"""
 
     @staticmethod
     def resolve_video_path(project_root: Path, video: Video) -> Path | None:
-        """Resolve project-managed first, then external; return None for relink."""
+        """先解析项目托管路径，再解析外部路径；返回 None 表示需要 relink。"""
 
         if video.file_path is not None:
             managed = project_root.joinpath(*video.file_path.parts)
@@ -132,7 +132,7 @@ class ProjectRepository:
 
     @staticmethod
     def relative_video_path(project_root: Path, video_path: Path) -> PurePosixPath:
-        """Encode a copied project-managed video; external videos use original_path."""
+        """编码已复制入项目的托管视频；外部视频使用 original_path。"""
 
         try:
             relative = video_path.resolve().relative_to(project_root.resolve())
@@ -161,8 +161,8 @@ def _migrate_payload(payload: dict[str, object]) -> dict[str, object]:
                 f"no migration path from schema version {version} "
                 f"to {CURRENT_SCHEMA_VERSION}"
             )
-        # Migration functions are added from schema v2 onward. Keeping the loop here
-        # makes the guard explicit without inventing a pre-v1 format.
+        # 迁移函数从 schema v2 起才存在。此处保留循环是为了显式表达守卫
+        # 逻辑，而不是虚构出一个 pre-v1 格式。
         migrated = migration(migrated)
         version += 1
     return migrated
@@ -182,9 +182,8 @@ def _atomic_write_manifest(project_root: Path, serialized: str) -> None:
         try:
             os.replace(backup_tmp, backup_file)
         except OSError:
-            # The primary was committed but backup publication failed. Restore the
-            # prior primary from the still-intact staging file so callers never see
-            # a failed save with a changed primary/backup pair.
+            # 主文件已提交，但备份发布失败。从仍完好的暂存文件恢复旧的主文件，
+            # 保证调用方永远不会看到主/备不一致的“保存失败”状态。
             os.replace(backup_tmp, project_file)
             raise
 

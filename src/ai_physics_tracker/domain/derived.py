@@ -1,4 +1,4 @@
-"""Derived-data provenance values and invalidation helpers."""
+"""派生数据的溯源值对象与失效标记辅助函数。"""
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -9,7 +9,7 @@ from ai_physics_tracker.domain.types import JsonObject, require_aware_datetime
 
 @dataclass(frozen=True)
 class DerivedInput:
-    """Raw observation selection used to produce a derived series."""
+    """生成派生序列时所依据的原始观测选择条件。"""
 
     track_id: UUID
     source_filter: str | None = None
@@ -23,7 +23,7 @@ class DerivedInput:
 
 @dataclass(frozen=True)
 class DerivedData:
-    """Reproducible derived series; Phase 1 stores but does not compute it."""
+    """可复现的派生序列；Phase 1 只存储，不计算。"""
 
     derived_id: UUID
     track_id: UUID
@@ -59,7 +59,7 @@ class DerivedData:
 def mark_calibrations_stale(
     derived: tuple[DerivedData, ...], calibration_ids: set[UUID]
 ) -> tuple[DerivedData, ...]:
-    """Invalidate only series whose calibration provenance changed."""
+    """仅将标定溯源发生变化的派生序列标记为 stale。"""
 
     return tuple(
         replace(item, status="stale")
@@ -72,7 +72,7 @@ def mark_calibrations_stale(
 def mark_tracks_stale(
     derived: tuple[DerivedData, ...], track_ids: set[UUID]
 ) -> tuple[DerivedData, ...]:
-    """Invalidate series whose raw/timing inputs changed."""
+    """将原始观测或时间输入发生变化的派生序列标记为 stale。"""
 
     return tuple(
         replace(item, status="stale")

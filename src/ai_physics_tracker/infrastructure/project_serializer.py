@@ -1,4 +1,4 @@
-"""Schema-v1 JSON mapping isolated from the domain model."""
+"""schema v1 的 JSON 映射，与领域模型隔离。"""
 
 from dataclasses import replace
 from datetime import datetime
@@ -18,7 +18,7 @@ CURRENT_SCHEMA_VERSION = 1
 
 
 def project_to_payload(project: Project) -> dict[str, object]:
-    """Serialize a Project while faithfully merging unknown schema-v1 keys."""
+    """序列化 Project，并原样合并 schema v1 的未知键。"""
 
     payload: dict[str, object] = {"schema_version": CURRENT_SCHEMA_VERSION}
     payload.update(
@@ -57,7 +57,7 @@ def project_to_payload(project: Project) -> dict[str, object]:
 
 
 def project_from_payload(payload: dict[str, object]) -> Project:
-    """Deserialize current-schema data and preserve unknown keys at every object."""
+    """反序列化当前 schema 数据，并在每个对象上保留未知键。"""
 
     known = {
         "schema_version",

@@ -1,4 +1,4 @@
-"""Project persistence integration tests for AC-1/2/3/8."""
+"""项目持久化集成测试（AC-1/2/3/8）。"""
 
 from dataclasses import replace
 from datetime import UTC, datetime

@@ -1,4 +1,4 @@
-"""TrackStore overwrite and correction tests for AC-5."""
+"""TrackStore 覆盖与修正测试（AC-5）。"""
 
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4

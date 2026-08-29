@@ -1,4 +1,4 @@
-"""Calibration value object and invertible pixel/world transform."""
+"""标定值对象与可逆的 pixel/world 坐标变换。"""
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -12,7 +12,7 @@ _UNIT_TO_M = {"m": 1.0, "cm": 0.01, "mm": 0.001}
 
 @dataclass(frozen=True)
 class Calibration:
-    """Line-scale calibration for one video."""
+    """单个视频的线段比例标定。"""
 
     calibration_id: UUID
     video_id: UUID
@@ -58,7 +58,7 @@ class Calibration:
 
 @dataclass(frozen=True)
 class CalibrationTransform:
-    """Pure invertible transform defined by data-model.md §6.2."""
+    """data-model.md §6.2 定义的纯可逆变换。"""
 
     calibration: Calibration
     height_px: int
@@ -69,7 +69,7 @@ class CalibrationTransform:
 
     @property
     def pixels_per_unit(self) -> float:
-        """Return the line-scale ratio in pixels per calibration unit."""
+        """返回线段比例，单位为像素/标定单位。"""
 
         first = self.calibration.scale_end_1_px
         second = self.calibration.scale_end_2_px
@@ -77,12 +77,12 @@ class CalibrationTransform:
 
     @property
     def origin_px(self) -> tuple[float, float]:
-        """Use the image lower-left corner when no explicit origin is stored."""
+        """未显式存储原点时，使用图像左下角。"""
 
         return self.calibration.origin_px or (0.0, float(self.height_px))
 
     def pixel_to_world(self, point_px: tuple[float, float]) -> tuple[float, float]:
-        """Convert pixel coordinates to the calibration's declared unit."""
+        """将像素坐标换算为标定声明单位下的世界坐标。"""
 
         origin_x, origin_y = self.origin_px
         scale = self.pixels_per_unit
@@ -95,7 +95,7 @@ class CalibrationTransform:
         )
 
     def world_to_pixel(self, point_world: tuple[float, float]) -> tuple[float, float]:
-        """Apply the exact inverse of :meth:`pixel_to_world`."""
+        """应用 :meth:`pixel_to_world` 的精确逆变换。"""
 
         angle = radians(self.calibration.rotation_deg)
         unrotated_x = cos(angle) * point_world[0] + sin(angle) * point_world[1]
@@ -108,7 +108,7 @@ class CalibrationTransform:
         )
 
     def world_to_si(self, point_world: tuple[float, float]) -> tuple[float, float]:
-        """Convert a world point from the declared unit to metres."""
+        """将世界坐标点从声明单位换算为米。"""
 
         factor = _UNIT_TO_M[self.calibration.unit]
         return point_world[0] * factor, point_world[1] * factor

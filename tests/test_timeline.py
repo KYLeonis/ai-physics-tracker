@@ -1,4 +1,4 @@
-"""Timeline contract tests for phase1-requirements AC-4."""
+"""Timeline 契约测试（phase1-requirements AC-4）。"""
 
 from uuid import uuid4
 

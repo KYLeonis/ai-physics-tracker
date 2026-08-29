@@ -1,4 +1,4 @@
-"""Project aggregate, creation helpers, and cross-object validation."""
+"""Project 聚合根、创建辅助函数与跨对象校验。"""
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -24,7 +24,7 @@ from ai_physics_tracker.domain.video import Video
 
 @dataclass(frozen=True)
 class Registries:
-    """Open string registries persisted with each project."""
+    """随项目一起持久化的开放字符串注册表。"""
 
     sources: tuple[str, ...] = ("manual", "template")
     units: tuple[str, ...] = ("m", "cm", "mm", "px")
@@ -53,7 +53,7 @@ class Registries:
 
 @dataclass(frozen=True)
 class Project:
-    """Persistent aggregate root for one experiment analysis session."""
+    """单次实验分析会话的持久化聚合根。"""
 
     project_id: UUID
     name: str
@@ -80,7 +80,7 @@ class Project:
 
 
 def create_project(name: str, description: str | None = None) -> Project:
-    """Create an empty valid project with generated identity and UTC timestamps."""
+    """创建一个有效空项目，自动生成标识与 UTC 时间戳。"""
 
     now = utc_now()
     return Project(
@@ -93,7 +93,7 @@ def create_project(name: str, description: str | None = None) -> Project:
 
 
 def add_video(project: Project, video: Video, timeline: Timeline) -> Project:
-    """Register CFR video metadata and its Timeline as one atomic domain update."""
+    """将 CFR 视频元数据与其 Timeline 作为一次原子领域更新注册。"""
 
     if video.vfr_suspected:
         raise ValueError("VFR video is not supported; transcode it to CFR before analysis")
@@ -122,7 +122,7 @@ def relink_video(
     file_path: PurePosixPath | None,
     original_path: str | None,
 ) -> Project:
-    """Update one video locator without touching observations."""
+    """更新一个视频的定位器，不触碰任何观测数据。"""
 
     found = False
     videos: list[Video] = []
@@ -146,7 +146,7 @@ def relink_video(
 def update_timeline(
     project: Project, timeline: Timeline, *, recalculate_times: bool = False
 ) -> Project:
-    """Update timing and either flag or explicitly recalculate frozen times."""
+    """更新时间参数，并按选择标记 time_mismatch 或显式重算冻结时间。"""
 
     existing = next(
         (item for item in project.timelines if item.video_id == timeline.video_id), None
@@ -213,7 +213,7 @@ def update_timeline(
 def set_active_calibration(
     project: Project, video_id: UUID, calibration_id: UUID | None
 ) -> Project:
-    """Set or clear one video's active calibration and invalidate prior interpretation."""
+    """设置或清除一个视频的 active 标定，并使先前的解释结果失效。"""
 
     video_ids = {video.video_id for video in project.videos}
     if video_id not in video_ids:
@@ -232,9 +232,8 @@ def set_active_calibration(
         if calibration is None or calibration.video_id != video_id:
             raise ValueError("active calibration must exist and belong to the video")
         active[video_id] = calibration_id
-    # Switching interpretation invalidates data produced with the previous
-    # calibration. Data already produced with the newly selected calibration
-    # remains valid (data-model.md §6.3).
+    # 切换解释基准会使旧标定产出的数据失效；用新选标定已经产出的数据
+    # 仍然有效（data-model.md §6.3）。
     changed_ids = {previous} if previous is not None else set()
     return replace(
         project,
@@ -244,7 +243,7 @@ def set_active_calibration(
 
 
 def add_calibration(project: Project, calibration: Calibration) -> Project:
-    """Add a uniquely identified Calibration for a registered video."""
+    """为已注册视频添加 calibration_id 唯一的 Calibration。"""
 
     if calibration.video_id not in {video.video_id for video in project.videos}:
         raise ValueError("calibration must reference a registered video")
@@ -257,7 +256,7 @@ def add_calibration(project: Project, calibration: Calibration) -> Project:
 
 
 def replace_calibration(project: Project, calibration: Calibration) -> Project:
-    """Replace calibration parameters without mutating raw observations."""
+    """替换标定参数，不改动任何原始观测。"""
 
     found = False
     calibrations: list[Calibration] = []
@@ -279,7 +278,7 @@ def replace_calibration(project: Project, calibration: Calibration) -> Project:
 
 
 def delete_track(project: Project, track_id: UUID) -> Project:
-    """Cascade a confirmed Track deletion to observations and derived data."""
+    """将确认删除的 Track 级联到观测与派生数据。"""
 
     if not any(track.track_id == track_id for track in project.tracks):
         raise ValueError(f"unknown track_id: {track_id}")
@@ -294,7 +293,7 @@ def delete_track(project: Project, track_id: UUID) -> Project:
 
 
 def delete_calibration(project: Project, calibration_id: UUID) -> Project:
-    """Delete a calibration; clearing an active one invalidates its derived data."""
+    """删除标定；若删除的是 active 标定则使其派生数据失效。"""
 
     calibration = next(
         (item for item in project.calibrations if item.calibration_id == calibration_id),
@@ -318,7 +317,7 @@ def delete_calibration(project: Project, calibration_id: UUID) -> Project:
 
 
 def validate_project(project: Project) -> None:
-    """Validate aggregate references and project-wide uniqueness invariants."""
+    """校验聚合引用与项目级唯一性不变量。"""
 
     video_ids = [video.video_id for video in project.videos]
     if len(set(video_ids)) != len(video_ids):

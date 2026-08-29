@@ -1,4 +1,4 @@
-"""Timeline value object and the only frame/time conversion functions."""
+"""Timeline 值对象与全项目唯一的 frame/time 换算函数。"""
 
 from dataclasses import dataclass, field
 from math import floor, isfinite
@@ -11,7 +11,7 @@ TIME_COMPARISON_TOLERANCE_S = 1e-9
 
 @dataclass(frozen=True)
 class Timeline:
-    """CFR timing contract for one source video."""
+    """单个源视频的 CFR（恒定帧率）时间契约。"""
 
     video_id: UUID
     fps_nominal: float
@@ -30,7 +30,7 @@ class Timeline:
 
 
 def frame_to_time(frame_index: int, timeline: Timeline) -> float:
-    """Convert a 0-based source frame to absolute source-video seconds."""
+    """将 0-based 源帧号换算为源视频绝对秒数。"""
 
     if frame_index < 0:
         raise ValueError("frame_index must be non-negative")
@@ -38,7 +38,7 @@ def frame_to_time(frame_index: int, timeline: Timeline) -> float:
 
 
 def time_to_frame(time_s: float, timeline: Timeline, frame_count: int) -> int:
-    """Convert seconds using deterministic half-up rounding and clamp to the video."""
+    """将秒数换算为帧号，使用确定性的 half-up 舍入并钳位到视频范围。"""
 
     if not isfinite(time_s):
         raise ValueError("time_s must be finite")
@@ -49,20 +49,20 @@ def time_to_frame(time_s: float, timeline: Timeline, frame_count: int) -> int:
 
 
 def clamp_to_working_zone(frame_index: int, timeline: Timeline) -> int:
-    """Clamp a frame for UI seek/step without changing its time basis."""
+    """为 UI 跳转/步进钳位帧号，不改变其时间基准。"""
 
     in_frame, out_frame = timeline.working_zone
     return min(max(frame_index, in_frame), out_frame)
 
 
 def step_frame(frame_index: int, delta: int, timeline: Timeline) -> int:
-    """Move by an integer frame count and clamp to the working zone."""
+    """按整数帧数步进并钳位到 working_zone。"""
 
     return clamp_to_working_zone(frame_index + delta, timeline)
 
 
 def has_time_mismatch(frame_index: int, time_s: float, timeline: Timeline) -> bool:
-    """Check the persisted-time tolerance from data-model.md §5.7."""
+    """按 data-model.md §5.7 的容差检查持久化时间是否与帧号一致。"""
 
     expected = frame_to_time(frame_index, timeline)
     tolerance = 0.5 / timeline.fps_nominal + 1e-6

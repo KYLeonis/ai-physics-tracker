@@ -1,4 +1,4 @@
-"""Video metadata value object; frame pixels are deliberately excluded."""
+"""Video 元数据值对象；刻意不包含帧像素数据。"""
 
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath, PureWindowsPath
@@ -19,7 +19,7 @@ _WINDOWS_RESERVED_NAMES = {
 
 @dataclass(frozen=True)
 class Video:
-    """Metadata plus either a managed relative or external absolute locator."""
+    """视频元数据，附带项目托管相对路径或外部绝对路径之一的定位器。"""
 
     video_id: UUID
     file_path: PurePosixPath | None
@@ -54,7 +54,7 @@ class Video:
 
 
 def _is_absolute_path(value: str) -> bool:
-    """Recognize POSIX and Windows absolute locators on either host platform."""
+    """在任意宿主平台上识别 POSIX 与 Windows 两种风格的绝对路径。"""
 
     return PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute()
 

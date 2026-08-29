@@ -1,4 +1,4 @@
-"""Qt-free single-video browsing session and Timeline navigation."""
+"""与 Qt 无关的单视频浏览会话与 Timeline 导航。"""
 
 from pathlib import Path
 from uuid import uuid4
@@ -19,7 +19,7 @@ from ai_physics_tracker.domain.timeline import (
 
 
 class VideoSession:
-    """Own one reader and coordinate current frame with a domain Timeline."""
+    """持有一个读取器，并用领域 Timeline 协调当前帧。"""
 
     def __init__(self, reader: VideoReader) -> None:
         self._reader = reader
@@ -61,7 +61,7 @@ class VideoSession:
         return frame_to_time(self.current_frame.frame_index, self.timeline)
 
     def open(self, path: Path) -> DecodedFrame:
-        """Open a video and decode frame 0 as one all-or-closed operation."""
+        """打开视频并解码第 0 帧，要么全部成功、要么保持关闭状态。"""
 
         self.close()
         try:
@@ -82,7 +82,7 @@ class VideoSession:
         return frame
 
     def go_to_frame(self, frame_index: int) -> DecodedFrame:
-        """Clamp to the working zone, decode, then commit the new current frame."""
+        """先钳位到 working_zone，解码成功后再提交新当前帧。"""
 
         target = clamp_to_working_zone(frame_index, self.timeline)
         frame = self._read_frame(target)
@@ -90,13 +90,13 @@ class VideoSession:
         return frame
 
     def step(self, delta: int) -> DecodedFrame:
-        """Move by an integer frame delta and clamp to the working zone."""
+        """按整数帧差步进并钳位到 working_zone。"""
 
         target = step_frame(self.current_frame.frame_index, delta, self.timeline)
         return self.go_to_frame(target)
 
     def close(self) -> None:
-        """Release the reader and clear all session state."""
+        """释放读取器并清空全部会话状态。"""
 
         self._reader.close()
         self._path = None

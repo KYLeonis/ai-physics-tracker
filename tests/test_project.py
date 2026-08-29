@@ -1,4 +1,4 @@
-"""Project aggregate registration and cross-reference validation tests."""
+"""Project 聚合注册与交叉引用校验测试。"""
 
 from dataclasses import replace
 from pathlib import PurePosixPath

@@ -1,4 +1,4 @@
-"""OpenCV adapter tests using a runtime-generated CFR video."""
+"""使用运行时生成的 CFR 视频测试 OpenCV 适配器。"""
 
 from pathlib import Path
 

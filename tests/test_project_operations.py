@@ -1,4 +1,4 @@
-"""Cross-object project operations not owned by TrackStore."""
+"""不属于 TrackStore 的跨对象项目操作测试。"""
 
 from dataclasses import replace
 from datetime import UTC, datetime

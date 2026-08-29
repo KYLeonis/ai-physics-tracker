@@ -1,4 +1,4 @@
-"""Phase 2 desktop shell for opening and stepping through one video."""
+"""Phase 2 桌面外壳：打开并逐帧浏览一个视频。"""
 
 from pathlib import Path
 
@@ -22,7 +22,7 @@ from ai_physics_tracker.gui.video_view import VideoView
 
 
 class MainWindow(QMainWindow):
-    """Thin Qt shell around a Qt-free VideoSession."""
+    """包裹无 Qt 依赖 VideoSession 的薄 Qt 外壳。"""
 
     def __init__(
         self,
@@ -75,7 +75,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Ready")
 
     def openVideo(self, path: Path, *, show_error: bool = True) -> bool:
-        """Open a path for UI or tests and refresh all presentation state."""
+        """供 UI 与测试调用的打开入口，打开后刷新全部展示状态。"""
 
         try:
             self._session.open(path)

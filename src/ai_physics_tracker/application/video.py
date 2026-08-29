@@ -1,4 +1,4 @@
-"""Application-layer video port and stable RGB frame values."""
+"""应用层视频端口与稳定的 RGB 帧值对象。"""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,20 +11,20 @@ TimingStatus = Literal["unknown", "cfr", "vfr_suspected"]
 
 
 class VideoError(Exception):
-    """Base error for user-visible video operations."""
+    """用户可见视频操作的基础错误。"""
 
 
 class VideoOpenError(VideoError):
-    """Raised when a video cannot be opened or has invalid metadata."""
+    """视频无法打开或元数据非法时抛出。"""
 
 
 class VideoFrameError(VideoError):
-    """Raised when a requested frame cannot be decoded."""
+    """请求的帧无法解码时抛出。"""
 
 
 @dataclass(frozen=True)
 class VideoStreamInfo:
-    """Decoder metadata that is not yet a persistable domain Video."""
+    """解码器元数据，尚不是可持久化的领域 Video。"""
 
     width_px: int
     height_px: int
@@ -44,7 +44,7 @@ class VideoStreamInfo:
 
 @dataclass(frozen=True)
 class DecodedFrame:
-    """One 0-based video frame as contiguous RGB uint8 pixels."""
+    """一个 0-based 视频帧，像素为连续内存的 RGB uint8。"""
 
     frame_index: int
     pixels_rgb: npt.NDArray[np.uint8]
@@ -62,31 +62,31 @@ class DecodedFrame:
 
 
 class VideoReader(Protocol):
-    """Minimal synchronous reader contract for Phase 2.1."""
+    """Phase 2.1 的最小同步读取器契约。"""
 
     @property
     def is_open(self) -> bool:
-        """Whether this reader currently owns an open video resource."""
+        """此读取器当前是否持有已打开的视频资源。"""
 
         ...
 
     @property
     def info(self) -> VideoStreamInfo:
-        """Metadata for the currently open video."""
+        """当前已打开视频的元数据。"""
 
         ...
 
     def open(self, path: Path) -> VideoStreamInfo:
-        """Open a video, closing any previously owned resource."""
+        """打开视频，并先释放此前持有的资源。"""
 
         ...
 
     def read_frame(self, frame_index: int) -> DecodedFrame:
-        """Decode an exact 0-based frame or raise VideoFrameError."""
+        """解码指定的 0-based 帧，失败时抛出 VideoFrameError。"""
 
         ...
 
     def close(self) -> None:
-        """Release all decoder/file resources; safe to call repeatedly."""
+        """释放全部解码器/文件资源；可重复调用。"""
 
         ...

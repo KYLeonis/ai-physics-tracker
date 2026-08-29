@@ -1,4 +1,4 @@
-"""Aspect-preserving RGB video frame presentation widget."""
+"""保持宽高比的 RGB 视频帧展示 widget。"""
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage, QPixmap, QResizeEvent
@@ -8,7 +8,7 @@ from ai_physics_tracker.application.video import DecodedFrame
 
 
 class VideoView(QLabel):
-    """Display detached RGB frames without owning decoder state."""
+    """展示解耦的 RGB 帧，自身不持有解码器状态。"""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -20,7 +20,7 @@ class VideoView(QLabel):
         self.setText("Open a video to begin")
 
     def setFrame(self, frame: DecodedFrame) -> None:
-        """Detach NumPy memory into a QImage and display it."""
+        """将 NumPy 内存复制为独立的 QImage 并显示，不与源缓冲共享。"""
 
         pixels = frame.pixels_rgb
         height_px, width_px, _ = pixels.shape
@@ -36,7 +36,7 @@ class VideoView(QLabel):
         self._updateScaledPixmap()
 
     def clearFrame(self) -> None:
-        """Remove the current image and restore the empty-state message."""
+        """移除当前图像并恢复空状态提示文案。"""
 
         self._source_pixmap = None
         self.clear()

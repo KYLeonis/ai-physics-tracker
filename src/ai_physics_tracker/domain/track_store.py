@@ -1,4 +1,4 @@
-"""Observation storage semantics independent of the persistence backend."""
+"""与持久化后端无关的观测存储语义。"""
 
 from dataclasses import dataclass, replace
 from uuid import UUID
@@ -9,7 +9,7 @@ from ai_physics_tracker.domain.types import utc_now
 
 @dataclass(frozen=True)
 class BatchWriteResult:
-    """Normal first-wins outcome for one engine batch."""
+    """单次引擎批次写入的正常 first-wins 结果。"""
 
     inserted: int
     skipped: int
@@ -20,7 +20,7 @@ def resolve_effective_point(
     track_id: UUID,
     frame_index: int,
 ) -> TrackPoint | None:
-    """Resolve manual first, otherwise the newest active engine observation."""
+    """生效值解析：manual 优先，否则取最新的 active 引擎观测。"""
 
     active = [
         point
@@ -38,7 +38,7 @@ def resolve_effective_point(
 
 
 class TrackStore:
-    """Mutable service implementing Track and TrackPoint write rules."""
+    """实现 Track 与 TrackPoint 写入规则的可变服务。"""
 
     def __init__(
         self,
@@ -59,18 +59,18 @@ class TrackStore:
 
     @property
     def tracks(self) -> tuple[Track, ...]:
-        """Return an immutable snapshot of track identities."""
+        """返回 track 标识的不可变快照。"""
 
         return tuple(self._tracks)
 
     @property
     def observations(self) -> tuple[TrackPoint, ...]:
-        """Return an immutable snapshot of all observations."""
+        """返回全部观测的不可变快照。"""
 
         return tuple(self._observations)
 
     def add_track(self, track: Track) -> None:
-        """Add a uniquely identified and named Track."""
+        """添加 track_id 与名称均唯一的 Track。"""
 
         if any(item.track_id == track.track_id for item in self._tracks):
             raise ValueError(f"track_id already exists: {track.track_id}")
@@ -79,7 +79,7 @@ class TrackStore:
         self._tracks.append(track)
 
     def rename_track(self, track_id: UUID, name: str) -> None:
-        """Rename one Track while preserving project-wide uniqueness."""
+        """重命名 Track，同时保持项目内名称唯一。"""
 
         if not name.strip():
             raise ValueError("track name must not be blank")
@@ -92,7 +92,7 @@ class TrackStore:
         raise ValueError(f"unknown track_id: {track_id}")
 
     def delete_track(self, track_id: UUID) -> None:
-        """Delete a Track and cascade to its observations."""
+        """删除 Track，并级联删除其全部观测。"""
 
         if not any(track.track_id == track_id for track in self._tracks):
             raise ValueError(f"unknown track_id: {track_id}")
@@ -102,7 +102,7 @@ class TrackStore:
         ]
 
     def add_manual_point(self, point: TrackPoint) -> None:
-        """Apply manual last-wins and retain superseded engine values."""
+        """按 manual last-wins 写入手动点，被取代的引擎值保留为 superseded。"""
 
         self._require_known_track(point.track_id)
         if point.source != "manual" or point.status != "active":
@@ -143,7 +143,7 @@ class TrackStore:
         self._observations = updated
 
     def add_engine_points(self, points: tuple[TrackPoint, ...]) -> BatchWriteResult:
-        """Insert engine observations with first-wins frame semantics."""
+        """按 first-wins 帧语义插入引擎观测。"""
 
         existing_ids = {point.point_id for point in self._observations}
         incoming_ids = [point.point_id for point in points]
@@ -173,7 +173,7 @@ class TrackStore:
         return BatchWriteResult(inserted=inserted, skipped=skipped)
 
     def delete_manual_point(self, point_id: UUID) -> None:
-        """Hard-delete a manual point and reactivate only points it superseded."""
+        """硬删除一个手动点，仅恢复被它取代的那些观测。"""
 
         target = next(
             (point for point in self._observations if point.point_id == point_id), None
@@ -201,7 +201,7 @@ class TrackStore:
         self._observations = restored
 
     def clear_engine_run(self, source_detail: str | None) -> int:
-        """Remove one engine run group, including the explicit legacy null group."""
+        """删除一个引擎运行组（含显式的 legacy null 组）。"""
 
         if source_detail == "":
             raise ValueError("source_detail must be non-blank or None")
@@ -223,7 +223,7 @@ class TrackStore:
         frame_index: int | None = None,
         source_detail: str | None = None,
     ) -> tuple[TrackPoint, ...]:
-        """Return observations matching the supplied filters."""
+        """返回满足给定过滤条件的观测。"""
 
         return tuple(
             point

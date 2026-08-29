@@ -1,4 +1,4 @@
-"""Regression checks for Phase 2 dependency direction."""
+"""Phase 2 依赖方向的回归检查。"""
 
 from pathlib import Path
 

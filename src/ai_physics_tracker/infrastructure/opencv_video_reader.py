@@ -1,4 +1,4 @@
-"""OpenCV adapter implementing the application VideoReader port."""
+"""实现应用层 VideoReader 端口的 OpenCV 适配器。"""
 
 import logging
 from math import isfinite
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpenCVVideoReader:
-    """Synchronous random-access reader with explicit file ownership."""
+    """显式持有文件资源的同步随机访问读取器。"""
 
     def __init__(self) -> None:
         self._capture: cv2.VideoCapture | None = None
@@ -36,7 +36,7 @@ class OpenCVVideoReader:
         return self._info
 
     def open(self, path: Path) -> VideoStreamInfo:
-        """Open a local file and validate metadata required by Timeline."""
+        """打开本地文件并校验 Timeline 所需的元数据。"""
 
         self.close()
         if not path.is_file():
@@ -82,7 +82,7 @@ class OpenCVVideoReader:
         return info
 
     def read_frame(self, frame_index: int) -> DecodedFrame:
-        """Seek to and decode an exact 0-based frame, converting BGR to RGB."""
+        """seek 并解码指定的 0-based 帧，同时将 BGR 转为 RGB。"""
 
         if not self.is_open or self._capture is None:
             raise VideoFrameError("cannot read frame because no video is open")
@@ -111,7 +111,7 @@ class OpenCVVideoReader:
         return DecodedFrame(frame_index=frame_index, pixels_rgb=pixels_rgb)
 
     def close(self) -> None:
-        """Release OpenCV and clear metadata; idempotent for GUI cleanup paths."""
+        """释放 OpenCV 资源并清空元数据；对 GUI 清理路径保持幂等。"""
 
         if self._capture is not None:
             self._capture.release()

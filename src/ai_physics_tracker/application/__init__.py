@@ -1,4 +1,4 @@
-"""Qt-free application services coordinating domain and infrastructure ports."""
+"""与 Qt 无关的应用服务，协调领域层与基础设施端口。"""
 
 from ai_physics_tracker.application.video import (
     DecodedFrame,

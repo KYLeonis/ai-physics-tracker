@@ -1,4 +1,4 @@
-"""Calibration transform and invalidation tests for AC-6/AC-7."""
+"""标定变换与失效标记测试（AC-6/AC-7）。"""
 
 from dataclasses import replace
 from datetime import UTC, datetime

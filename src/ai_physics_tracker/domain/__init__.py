@@ -1,4 +1,4 @@
-"""Qt-free domain model and services."""
+"""与 Qt 无关的领域模型与服务。"""
 
 from ai_physics_tracker.domain.calibration import Calibration, CalibrationTransform
 from ai_physics_tracker.domain.derived import DerivedData, DerivedInput
