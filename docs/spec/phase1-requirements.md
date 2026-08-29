@@ -30,7 +30,7 @@ Phase 1 建立**统一数据体系**：手工跟踪与 AI 跟踪共享同一套�
 创建/命名/删除 Track；手工加点（last-wins）、引擎批量写入（first-wins，报告写入/跳过数）、手工修正遮蔽引擎点（superseded + superseded_by 链）、生效值解析纯函数、删除语义（data-model.md §4.4）。confidence/visibility/quality_flags 按 §4.5 语义写入。
 
 ### R5 标定与坐标变换
-创建/校验/编辑 Calibration（退化输入拒绝）；`CalibrationTransform` 纯函数（前向/逆向/往返不变量）；标定编辑 → 世界系 DerivedData 置 stale 的传播（data-model.md §6.3）。
+创建/校验/编辑 Calibration（退化输入拒绝）；按视频维护 active calibration；`CalibrationTransform` 纯函数（前向/逆向/往返不变量）；标定编辑 → 世界系 DerivedData 置 stale 的传播（data-model.md §6.3）。
 
 ### R6 持久化
 save/load 往返相等（对象图逐字段一致）；UTF-8；目录整体移动（模拟：换根目录加载）后路径解析成功；备份文件滚动。

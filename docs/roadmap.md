@@ -4,7 +4,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近完成：**Phase 0 — Project Initialization（✅ 2026-08-27）**
-- 当前阶段：**Phase 1 — Project & Data Foundation（⬜ 待启动）**
+- 当前阶段：**Phase 1 — Project & Data Foundation（🔄 进行中）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Phase 1 — Project & Data Foundation ⬜
+## Phase 1 — Project & Data Foundation 🔄
 
 **目标**：建立统一的数据体系，使手工跟踪与 AI 跟踪共享同一套数据结构。
 
 **Deliverables**
 - `src/` 包结构与核心数据模型：Project、Video metadata、Timeline/frame info、Track、TrackPoint、Annotation、Calibration、CoordinateSystem
-- 项目持久化（保存/加载，格式待定：JSON 或 SQLite，见 ADR）
+- 项目持久化（JSON 清单优先混合方案，见 ADR-0003）
 - 原始跟踪数据与处理后数据的分层管理设计
 - 核心数据结构单元测试（pytest）
 

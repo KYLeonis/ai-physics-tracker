@@ -44,7 +44,7 @@
 Project
  ├── 1 ── * Video ──── 1 ── 1 Timeline        （Timeline 每视频一份，持久化于 Project）
  ├── 1 ── * Track ──── * ── 1 Video
- ├── 1 ── * Calibration ── * ── 1 Video       （active_calibration_id 指向当前生效者）
+ ├── 1 ── * Calibration ── * ── 1 Video       （按 video 映射当前生效者）
  ├── 1 ── * TrackPoint ── * ── 1 Track        （观测是独立集合，按 track 归组）
  ├── 1 ── * DerivedData ── * ── 1 Track       （并引用 Calibration 与输入层）
  └── Annotation ≙ TrackPoint 中 source=manual 的语义角色（无独立表）
@@ -76,10 +76,11 @@ Project
 | `description` | str \| null | null | |
 | `created_at` / `modified_at` | datetime | 必填 | modified_at 每次保存更新 |
 | `videos` | list[Video] | 可空 | 登记顺序即列表顺序 |
+| `timelines` | list[Timeline] | 可空 | 每个 Video 恰好一份，以 `video_id` 关联 |
 | `tracks` | list[Track] | 可空 | |
 | `observations` | list[TrackPoint] | 可空 | 全部观测的扁平集合（按 track 归组展示；存储形态见 project-format.md） |
 | `calibrations` | list[Calibration] | 可空 | |
-| `active_calibration_id` | uuid \| null | null | 当前生效标定；null = 未标定（像素即最终坐标） |
+| `active_calibration_by_video` | map[uuid, uuid] | 可空 | `video_id → calibration_id`；缺少某 video_id = 该视频未标定 |
 | `derived` | list[DerivedData] | 可空 | |
 | `registries` | object | 必填 | `sources`、`units`、`quality_flags` 的注册表（§4.5） |
 | `ui_state` | object | 可空 | GUI 布局等非逻辑状态；逻辑层必须**原样保留、原样写回**，永不解析 |
@@ -155,7 +156,8 @@ Project
 
 ### 3.7 Calibration
 
-每个标定归属一个视频；一个视频可有多个标定方案，Project 通过 `active_calibration_id` 指定生效者。
+每个标定归属一个视频；一个视频可有多个标定方案，Project 通过
+`active_calibration_by_video` 为每个视频分别指定生效者。
 
 | 字段 | 类型 | 约束/缺省 | 说明 |
 | --- | --- | --- | --- |
@@ -356,9 +358,9 @@ time_to_frame(t) = round(t × fps_nominal)               # 一次乘法 + 就近
 规则：
 
 1. 观测写入只接受像素坐标；GUI 层负责 screen→pixel 的逆映射后再入存储。
-2. 像素→物理的完整链路（A3 验收问题）：`p_px（TrackPoint）→ p_px − origin_px → S(s,−s) → R(θ) → p_world`，其中 `s = pixels_per_unit` 现算自标定（§6.2）；链路实现为纯函数，无隐藏状态。
-3. 世界系固定 **y 向上**（物理惯例），Y 翻转内建于变换的 S 算子，不是用户选项（TrackLab `S(s,−s)` 模式）。x/y 互换、Z 轴等远期需求走 additive 扩展。
-4. 未标定时（`active_calibration_id = null`），系统不产生世界坐标；图表可显示像素坐标并明确标注单位为 px。
+2. 像素→物理的完整链路（A3 验收问题）：`p_px（TrackPoint）→ p_px − origin_px → S(1/s,−1/s) → R(θ) → p_world`，其中 `s = pixels_per_unit` 现算自标定（§6.2）；链路实现为纯函数，无隐藏状态。
+3. 世界系固定 **y 向上**（物理惯例），Y 翻转内建于正向变换的 `S(1/s,−1/s)` 算子，不是用户选项；TrackLab 的 `S(s,−s)` 是其反向 world→pixel 变换。x/y 互换、Z 轴等远期需求走 additive 扩展。
+4. 某视频未出现在 `active_calibration_by_video` 时，系统不为该视频产生世界坐标；图表可显示像素坐标并明确标注单位为 px。
 
 > 与 TrackLab 的差异说明：TrackLab 持久化的是模型（世界）坐标，因此标定变更后需要 `retransformTrackPoints` 把旧坐标经像素空间钉回新变换。我们**直接持久化像素坐标**，标定变更天然无需重变换观测——这是"raw 永远像素"原则的直接收益。
 
@@ -368,15 +370,19 @@ time_to_frame(t) = round(t × fps_nominal)               # 一次乘法 + 就近
 
 ```text
 s = ‖e2 − e1‖ / L                （pixels_per_unit，> 0）
-p_world = R(θ) · diag(s, −s) · (p_px − o_px)      # 像素 → 世界
-p_px    = o_px + diag(1/s, −1/s) · R(−θ) · p_world  # 世界 → 像素（逆变换）
+p_world = R(θ) · diag(1/s, −1/s) · (p_px − o_px)  # 像素 → 世界
+p_px    = o_px + diag(s, −s) · R(−θ) · p_world    # 世界 → 像素（逆变换）
 R(θ) = [[cosθ, −sinθ], [sinθ, cosθ]]              # θ 已换算为弧度
 ```
+
+`rotation_deg` 表示对完成比例换算与 Y 翻转后的坐标向量施加的旋转；在
+Y-up 世界系中逆时针为正。它描述的是**坐标值的主动旋转**，不是旋转坐标轴后
+重新表达同一向量。
 
 约定与验证示例（作为单元测试规格，Phase 1 实现必须全过）：
 
 1. **比例尺**：端点 (0,0)–(100,0)，L = 50 mm → s = 2 px/mm；
-2. **Y 翻转**：o = (10, 20)，θ = 0，像素 (10, 30)（原点下方）→ 世界 (0, 20)（y 为正，向上）；
+2. **Y 翻转**：沿用规格 1 的 `s = 2 px/mm`，o = (10, 20)，θ = 0，像素 (10, 30)（原点下方）→ 世界 (0, −5) mm；像素 (10, 10)（原点上方）→ 世界 (0, +5) mm；
 3. **旋转**：θ = 90°，原点右侧的像素点映射到世界 +y；
 4. **往返不变量**：对任意合法标定与采样点，`inverse(forward(p)) == p`（浮点容差 1e-9 相对误差）；
 5. **退化拒绝**：端点重合或 `known_length ≤ 0` → 创建/更新时抛校验错误。**故意不采用 TrackLab 的"退化返回 identity"回退**——物理测量中静默退化为恒等变换会伪装成有效数据；错误必须显式。

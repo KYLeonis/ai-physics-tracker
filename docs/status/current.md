@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-28
+- 最后更新：2026-08-29
 
 ---
 
@@ -13,12 +13,11 @@
 
 ## Current Subphase
 
-**1.0 — Phase 1 Spec & Requirements** ✅ 已完成（2026-08-28，A1–A6 全部交付，software-spec-plan.md v2 转 Closed）
-下一个：**1.1 — 数据模型核心实现**（编号已预留在本文件历史中，Issue 待建）
+**1.1 — 数据模型核心实现** 🔄 进行中（Issue #1，分支 `feat/p1.1-data-model`）
 
 ## Current Slice
 
-无（subphase 1.0 已收尾；1.1 的 Slice 划分在其 mini-plan 中确定）
+**Slice 1 — spec 修订与 package/test/CI 骨架** 🔄
 
 ## Current Goal
 
