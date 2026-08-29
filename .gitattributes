@@ -1,0 +1,10 @@
+* text=auto
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.h5 binary
+*.hdf5 binary
+*.pt binary
+*.pth binary
