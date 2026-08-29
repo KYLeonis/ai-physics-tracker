@@ -112,3 +112,30 @@ def test_clear_frame_resets_to_placeholder(qtbot: QtBot) -> None:
 
     assert not view.hasFrame()
     assert view.mapScreenToPixel(QPointF(10.0, 10.0)) is None
+
+
+def test_pinch_scale_factor_accumulates_continuously(qtbot: QtBot) -> None:
+    # pinch 连续因子直接相乘（无档位感），并受 MIN/MAX 钳位
+    view = _shown_view(qtbot)
+    view.zoomOriginal()
+
+    for _ in range(10):
+        view._applyPinchScale(1.05)
+    assert abs(view.currentScale() - 1.05**10) < 1e-9
+
+    for _ in range(200):
+        view._applyPinchScale(1.5)
+    assert view.currentScale() <= MAX_SCALE + 1e-9
+
+    for _ in range(300):
+        view._applyPinchScale(0.5)
+    assert view.currentScale() >= MIN_SCALE - 1e-9
+
+
+def test_pinch_without_frame_is_noop(qtbot: QtBot) -> None:
+    view = VideoView()
+    qtbot.addWidget(view)
+
+    view._applyPinchScale(2.0)
+
+    assert view.currentScale() == 1.0

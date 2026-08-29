@@ -6,7 +6,7 @@ mapToScene，越界返回 None（data-model.md §6.1：逆映射发生在 GUI
 边界，落点前钳位并验证图像范围）。
 """
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import (
     QImage,
     QMouseEvent,
@@ -52,6 +52,8 @@ class VideoView(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        # 触摸屏 pinch 手势走 QGestureEvent 路径（macOS 触摸板走 NativeGesture）
+        self.grabGesture(Qt.GestureType.PinchGesture)
         self.setStyleSheet("background-color: #181818; border: none;")
         self.setPlaceholder("Open a video to begin")
 
@@ -162,16 +164,46 @@ class VideoView(QGraphicsView):
         self.scaleChanged.emit(self.currentScale())
 
     def wheelEvent(self, event: QWheelEvent) -> None:
-        # 滚轮/触摸板双指滑动直接缩放（AnchorUnderMouse 以光标为锚）；
-        # 平移由拖拽与滚动条承担——查看器语义，标注时常用
-        if event.angleDelta().y() != 0:
-            if event.angleDelta().y() > 0:
-                self.zoomIn()
-            else:
-                self.zoomOut()
-            event.accept()
-            return
+        # 滚轮/双指滑动 = 滚动视图（平移）；缩放由 pinch 手势、
+        # 快捷键与菜单承担（Human Review 结论：滑动缩放不符合直觉）
         super().wheelEvent(event)
+
+    def viewportEvent(self, event: QEvent) -> bool:
+        # 触摸板 pinch（macOS NativeGesture）与触摸屏 pinch（QGestureEvent）
+        # 都到达 viewport；统一转成连续缩放
+        if event.type() == QEvent.Type.NativeGesture:
+            gesture = event  # QNativeGestureEvent
+            if gesture.gestureType() == Qt.NativeGestureType.PinchGesture:
+                factor = gesture.value()
+                if factor > 0 and factor != 1.0:
+                    self._applyPinchScale(factor)
+                    event.accept()
+                    return True
+        elif event.type() == QEvent.Type.Gesture:
+            gesture_event = event  # QGestureEvent
+            pinch = gesture_event.gesture(Qt.GestureType.PinchGesture)
+            if pinch is not None:
+                factor = float(pinch.scaleFactor())
+                if factor > 0 and factor != 1.0:
+                    self._applyPinchScale(factor)
+                    gesture_event.accept()
+                    return True
+        return super().viewportEvent(event)
+
+    def _applyPinchScale(self, factor: float) -> None:
+        """按 pinch 连续因子缩放（锚定光标），越界钳位。
+
+        手势事件带平滑因子（如 1.02），直接相乘累积，无档位感。
+        """
+
+        if self._pixmap_item is None:
+            return
+        new_scale = self.currentScale() * factor
+        if new_scale < MIN_SCALE or new_scale > MAX_SCALE:
+            return
+        self._fit_pending = False
+        self.scale(factor, factor)
+        self.scaleChanged.emit(self.currentScale())
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         # 双击回到 fit 模式（常见查看器惯例）
