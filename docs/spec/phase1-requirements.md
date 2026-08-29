@@ -1,6 +1,6 @@
 # Phase 1 需求与验收标准（Project & Data Foundation）
 
-- 日期：2026-08-28 · 状态：**Accepted**（作为 Phase 1 开发与验收依据）
+- 日期：2026-08-28 · 状态：**Completed**（2026-08-29，AC-1…AC-10 全部通过）
 - 来源：`docs/research/software-spec-plan.md` 行动项 A6；上游依据 `docs/roadmap.md` Phase 1
 - 输入：`docs/spec/data-model.md`（A1/A2/A3/A5 结论）、`docs/spec/project-format.md` + [ADR-0003](../decisions/0003-project-persistence-format.md)（A4 结论）、DLC CollectedData 格式（project map §3.4 / raw note）
 - 与 roadmap 的关系：本文档是 roadmap Phase 1 验收标准的**细化**，逐条可勾选判定；两者如有矛盾以本文档为准并回改 roadmap
@@ -45,16 +45,16 @@ roadmap 验收项"手工标注数据结构可无损转换为 DeepLabCut 标注�
 
 | # | 验收标准 | 判定方式 | 状态 |
 | --- | --- | --- | --- |
-| AC-1 | 能以编程方式创建项目、添加视频元数据与轨迹数据并持久化/恢复 | pytest 集成测试：create → add video/track/points/calibration → save → 从新路径 load → 对象图逐字段相等 | [ ] |
-| AC-2 | 项目目录可移动 | 同一测试在临时目录 A 保存、目录改名为 B 后加载成功；项目内相对路径继续解析，外部 locator 不存在时返回 relink 状态 | [ ] |
-| AC-3 | schema 守卫 | 测试：构造 `schema_version = 999` 文件 → 加载被明确拒绝且给出提示语义 | [ ] |
-| AC-4 | 时间换算契约 | data-model.md §5 全部规则成测：0-based、`frame/fps`、就近取整确定性、29.97 fps、无增量累积（抽查大帧号误差 < 1µs）、working zone 不改时间基准（§5.4 场景：zone=[100,500] 时第 100 帧导出 time = 100/fps） | [ ] |
-| AC-5 | 覆盖与修正语义 | 测试：引擎批量写入遇已有帧跳过（first-wins）；手工修正后引擎点 superseded 且**原值保留可查**；manual 删除后引擎点恢复 active（data-model.md §4.2/4.4） | [ ] |
-| AC-6 | 标定变换正确性 | data-model.md §6.2 六条规格逐条成测（比例尺/Y 翻转/旋转/往返不变量/退化拒绝/单位换算） | [ ] |
-| AC-7 | 标定失效传播 | 测试：编辑标定后 raw 观测逐字段不变；世界系派生置 stale | [ ] |
-| AC-8 | 原子保存 | 测试：保存过程模拟中断（临时文件残留）→ 原文件完好；成功保存后备份文件为上一版内容 | [ ] |
+| AC-1 | 能以编程方式创建项目、添加视频元数据与轨迹数据并持久化/恢复 | pytest 集成测试：create → add video/track/points/calibration → save → 从新路径 load → 对象图逐字段相等 | [x] |
+| AC-2 | 项目目录可移动 | 同一测试在临时目录 A 保存、目录改名为 B 后加载成功；项目内相对路径继续解析，外部 locator 不存在时返回 relink 状态 | [x] |
+| AC-3 | schema 守卫 | 测试：构造 `schema_version = 999` 文件 → 加载被明确拒绝且给出提示语义 | [x] |
+| AC-4 | 时间换算契约 | data-model.md §5 全部规则成测：0-based、`frame/fps`、就近取整确定性、29.97 fps、无增量累积（抽查大帧号误差 < 1µs）、working zone 不改时间基准（§5.4 场景：zone=[100,500] 时第 100 帧导出 time = 100/fps） | [x] |
+| AC-5 | 覆盖与修正语义 | 测试：引擎批量写入遇已有帧跳过（first-wins）；手工修正后引擎点 superseded 且**原值保留可查**；manual 删除后引擎点恢复 active（data-model.md §4.2/4.4） | [x] |
+| AC-6 | 标定变换正确性 | data-model.md §6.2 六条规格逐条成测（比例尺/Y 翻转/旋转/往返不变量/退化拒绝/单位换算） | [x] |
+| AC-7 | 标定失效传播 | 测试：编辑标定后 raw 观测逐字段不变；世界系派生置 stale | [x] |
+| AC-8 | 原子保存 | 测试：保存过程模拟中断（临时文件残留）→ 原文件完好；成功保存后备份文件为上一版内容 | [x] |
 | AC-9 | DLC 无损转换设计文档 | 本文档 §4 存在且经评审（round-trip 保真范围明确、列映射完整） | [x] |
-| AC-10 | 核心模型单元测试通过 | §5 测试矩阵全绿（本地 macOS + CI 双平台，CI 为实施期顺手任务） | [ ] |
+| AC-10 | 核心模型单元测试通过 | §5 测试矩阵全绿（本地 macOS + CI 双平台，CI 为实施期顺手任务） | [x] |
 
 > roadmap 原始三条验收标准的对应：第 1 条 → AC-1/2；第 2 条 → AC-9（§4）；第 3 条 → AC-10。
 
@@ -116,7 +116,7 @@ GUI / 视频解码与探测 / 引擎适配器 / 任务系统 / 运动学计算�
 
 ## 7. 完成定义（Definition of Done）
 
-- [ ] AC-1…AC-10 全部勾选（AC-9 已完成）；
-- [ ] `src/` + `tests/` 按 R1–R8 落地，pytest 全绿；
-- [ ] `pyproject.toml`（src-layout，`requires-python = ">=3.11,<3.13"`）与 `requirements.txt` 就位；
-- [ ] 按 AGENTS.md §11 完成文档同步与 push。
+- [x] AC-1…AC-10 全部勾选；
+- [x] `src/` + `tests/` 按 R1–R8 落地，pytest 全绿；
+- [x] `pyproject.toml`（src-layout，`requires-python = ">=3.11,<3.13"`）与 `requirements.txt` 就位；
+- [x] 按 AGENTS.md §11 完成文档同步与 push。

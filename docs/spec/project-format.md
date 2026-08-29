@@ -107,9 +107,9 @@ MyExperiment/                        # 目录名 = 项目可移植单元；避�
 
 ## 6. 验收标准（对应 PLAN A4）
 
-- [ ] 目标目录结构为 `MyExperiment/ + project.json + data/…`；
-- [ ] 整目录复制/移动（mac ↔ Windows）后清单可打开：项目内资源由相对路径解析；外部视频失联时进入 relink（§3）；
-- [ ] 万级观测读写方式有明确结论与数据（§5）；
-- [ ] schema 带 `schema_version` 且升级策略成文（§4）；
-- [ ] 视频/模型等大文件只引用不复制入清单（§1/§2）；
-- [ ] Phase 1 需求文档（phase1-requirements.md）引用本文件作为持久化验收依据。
+- [x] 目标目录结构为 `MyExperiment/ + project.json + data/…`；
+- [x] 整目录复制/移动（mac ↔ Windows）后清单可打开：项目内资源由相对路径解析；外部视频失联时进入 relink（§3）；
+- [x] 万级观测读写方式有明确结论与数据（§5）；
+- [x] schema 带 `schema_version` 且升级策略成文（§4）；
+- [x] 视频/模型等大文件只引用不复制入清单（§1/§2）；
+- [x] Phase 1 需求文档（phase1-requirements.md）引用本文件作为持久化验收依据。
