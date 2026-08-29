@@ -151,9 +151,20 @@ class VideoView(QGraphicsView):
     def zoomOut(self) -> None:
         self._zoomBy(1.0 / ZOOM_STEP)
 
+    def zoomTo(self, scale: float) -> None:
+        """缩放到指定倍率（如 1.0 = 100%、2.0 = 200%），越界钳位。"""
+
+        clamped = max(MIN_SCALE, min(MAX_SCALE, scale))
+        self._fit_pending = False
+        self.resetTransform()
+        self.scale(clamped, clamped)
+        self._centerOnSceneCenter()
+        self.scaleChanged.emit(self.currentScale())
+
     def wheelEvent(self, event: QWheelEvent) -> None:
-        # Ctrl+滚轮以光标为锚缩放（AnchorUnderMouse）；普通滚轮交给基类滚动
-        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+        # 滚轮/触摸板双指滑动直接缩放（AnchorUnderMouse 以光标为锚）；
+        # 平移由拖拽与滚动条承担——查看器语义，标注时常用
+        if event.angleDelta().y() != 0:
             if event.angleDelta().y() > 0:
                 self.zoomIn()
             else:

@@ -137,3 +137,33 @@ def test_view_menu_exposes_zoom_actions(qtbot: QtBot) -> None:
     menu_titles = [action.text() for action in window.menuBar().actions()]
 
     assert "View" in menu_titles
+
+
+def test_playback_rate_changes_timer_interval(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    window = _opened_window(qtbot, synthetic_video_path)
+
+    window.startPlayback()
+    qtbot.waitUntil(lambda: window._playTimer.isActive())
+    original_interval = window._playTimer.interval()
+
+    window.setPlaybackRate(2.0)
+    doubled_interval = window._playTimer.interval()
+
+    window.stopPlayback()
+    assert window.playbackRate == 2.0
+    # 10 fps × 2 倍速 → 间隔减半（合成视频 fps=10）
+    assert original_interval == 100
+    assert doubled_interval == 50
+
+
+def test_speed_menu_is_exclusive_and_defaults_to_original(
+    qtbot: QtBot,
+) -> None:
+    window = MainWindow(VideoSession(OpenCVVideoReader()))
+    qtbot.addWidget(window)
+
+    checked = [rate for rate, action in window._speedActions.items() if action.isChecked()]
+
+    assert checked == [1.0]

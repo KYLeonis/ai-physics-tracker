@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -59,6 +59,8 @@ class MainWindow(QMainWindow):
         self._delivery_generation = 0
         # 连续步进的基准：以最后请求帧号计算，避免解码延迟吞掉快速连点
         self._last_requested_frame: int | None = None
+        # 播放倍速：interval = 1000 / (fps_nominal * rate)（显示节奏，非时间语义）
+        self._playback_rate = 1.0
 
         self.videoView = VideoView(self)
         self.previousButton = QPushButton("Previous frame", self)
@@ -123,12 +125,39 @@ class MainWindow(QMainWindow):
         zoomOriginalAction = QAction("Original size (100%)", self)
         zoomOriginalAction.setShortcut(QKeySequence("Ctrl+1"))
         zoomOriginalAction.triggered.connect(self.videoView.zoomOriginal)
+        zoom200Action = QAction("Zoom to 200%", self)
+        zoom200Action.setShortcut(QKeySequence("Ctrl+2"))
+        zoom200Action.triggered.connect(lambda: self.videoView.zoomTo(2.0))
+        zoom400Action = QAction("Zoom to 400%", self)
+        zoom400Action.setShortcut(QKeySequence("Ctrl+3"))
+        zoom400Action.triggered.connect(lambda: self.videoView.zoomTo(4.0))
         viewMenu = self.menuBar().addMenu("View")
         viewMenu.addAction(zoomInAction)
         viewMenu.addAction(zoomOutAction)
         viewMenu.addSeparator()
         viewMenu.addAction(zoomFitAction)
         viewMenu.addAction(zoomOriginalAction)
+        viewMenu.addAction(zoom200Action)
+        viewMenu.addAction(zoom400Action)
+
+        self._speedActions: dict[float, QAction] = {}
+        speedGroup = QActionGroup(self)
+        for rate, label in (
+            (0.25, "0.25×"),
+            (0.5, "0.5×"),
+            (1.0, "1× (original)"),
+            (2.0, "2×"),
+            (4.0, "4×"),
+        ):
+            speedAction = QAction(label, self)
+            speedAction.setCheckable(True)
+            speedAction.setChecked(rate == 1.0)
+            speedAction.setActionGroup(speedGroup)
+            speedAction.triggered.connect(lambda _=False, r=rate: self.setPlaybackRate(r))
+            self._speedActions[rate] = speedAction
+        playbackMenu = self.menuBar().addMenu("Playback")
+        for rate in (0.25, 0.5, 1.0, 2.0, 4.0):
+            playbackMenu.addAction(self._speedActions[rate])
 
         playShortcut = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
         playShortcut.activated.connect(self.togglePlayback)
@@ -148,6 +177,27 @@ class MainWindow(QMainWindow):
     @property
     def isPlaying(self) -> bool:
         return self._is_playing
+
+    @property
+    def playbackRate(self) -> float:
+        return self._playback_rate
+
+    def setPlaybackRate(self, rate: float) -> None:
+        """设置播放倍速并即时生效；非正值忽略。"""
+
+        if rate <= 0:
+            return
+        self._playback_rate = rate
+        if self._is_playing:
+            self._restartPlayTimer()
+
+    def _restartPlayTimer(self) -> None:
+        snapshot = self._async.snapshot()
+        if snapshot is None:
+            return
+        fps = snapshot.timeline.fps_nominal
+        interval_ms = max(1, round(1000.0 / (fps * self._playback_rate)))
+        self._playTimer.start(interval_ms)
 
     def openVideo(self, path: Path, *, show_error: bool = True) -> bool:
         """打开视频并初始化全部展示状态；失败时保持关闭态。"""
@@ -207,11 +257,9 @@ class MainWindow(QMainWindow):
         if snapshot.current_frame.frame_index >= self._frame_count - 1:
             # 播放到末尾后再次播放：从头开始，避免静止在末帧
             self._requestFrame(0)
-        fps = snapshot.timeline.fps_nominal
-        interval_ms = max(1, round(1000.0 / fps))
         self._is_playing = True
         self.playButton.setText("Pause")
-        self._playTimer.start(interval_ms)
+        self._restartPlayTimer()
         self._playTick()
 
     def stopPlayback(self) -> None:
