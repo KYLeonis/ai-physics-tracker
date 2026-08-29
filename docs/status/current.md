@@ -17,7 +17,7 @@
 
 ## Current Slice
 
-**Slice 6 — 集成验收与独立 review 修复** 🔄（跨盘符 schema 修订已批准，进入最终复审）
+**Slice 6 — 集成验收与独立 review** 🔄（本地 56 tests passed；独立 review 最终 Verdict：通过；等待 push 触发双平台 CI）
 
 ## Current Goal
 
@@ -47,4 +47,4 @@ Phase 1.1：按 `docs/spec/phase1-requirements.md` 落地数据模型核心（sr
 
 ## Next Recommended Action
 
-复跑 pytest 并完成独立复审；随后获授权后 push 分支触发 macOS/Windows CI。CI 全绿后完成 Issue #1、Phase 1 验收文档同步与 `--no-ff` 集成。
+获得用户明确授权后 push `feat/p1.1-data-model` 触发 macOS/Windows CI。CI 全绿后完成 Issue #1、Phase 1 验收文档同步与 `--no-ff` 集成；集成后的 `main` push 同样需用户授权。
