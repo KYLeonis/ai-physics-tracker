@@ -25,7 +25,7 @@ Phase 2 要交付第一版桌面视频分析应用。Phase 1 只有 Qt-free 领�
 1. GUI 使用 **PySide6 Qt Widgets**。Phase 2.1 锁定
    `PySide6-Essentials==6.11.2`；需要额外 Qt 模块时再显式增加 Addons。
 2. 视频后端锁定 `opencv-python-headless==4.14.0.94`，并直接锁定
-   `numpy==2.5.2`。选择 headless 是为了避免 OpenCV 自带 GUI/Qt 插件与 PySide6
+   `numpy==2.4.6`。选择 headless 是为了避免 OpenCV 自带 GUI/Qt 插件与 PySide6
    重复；项目中禁止 `cv2.imshow`。
 3. GUI 测试使用 `pytest-qt==4.5.0`，CI 设置 `QT_QPA_PLATFORM=offscreen`。
 4. 分层边界：

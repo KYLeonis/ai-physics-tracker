@@ -61,7 +61,7 @@
 | Tracking | DeepLabCut 3.x（PyTorch 引擎） | `pip install "deeplabcut[gui]"` 可作为参考安装 |
 | GUI | PySide6-Essentials 6.11.2（Qt Widgets） | Phase 2 确认，见 ADR-0005 |
 | Video | opencv-python-headless 4.14.0.94；FFmpeg 边界后续补充 | OpenCV 不提供 GUI，避免与 PySide6 Qt 插件冲突 |
-| Array | NumPy 2.5.2 | 解码帧的 RGB 数组边界 |
+| Array | NumPy 2.4.6 | 支持项目 Python 3.11–3.12；解码帧的 RGB 数组边界 |
 | Sci Comp | NumPy、SciPy、Pandas | |
 | Plotting | PyQtGraph（交互）、Matplotlib（导出） | Phase 3 前最终确认 |
 | 包管理 | venv/conda + pip，`requirements.txt` / `pyproject.toml` | Phase 1 起锁定 |

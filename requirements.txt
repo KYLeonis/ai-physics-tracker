@@ -1,7 +1,7 @@
 # Reproducible local/CI environment with locked runtime and test dependencies.
 -e .
 iniconfig==2.3.0
-numpy==2.5.2
+numpy==2.4.6
 opencv-python-headless==4.14.0.94
 packaging==26.3
 pluggy==1.6.0
