@@ -280,7 +280,10 @@ def test_primary_replace_failure_after_backup_publish_keeps_original_consistent(
     project_root = tmp_path / "project"
     initial = repository.create(project_root, "stable")
     project_file = project_root / "project.json"
-    original = project_file.read_text(encoding="utf-8")
+    repository.save(project_root, replace(initial, name="version two"))
+    primary_before = project_file.read_text(encoding="utf-8")
+    backup_file = project_root / "project.backup.json"
+    backup_before = backup_file.read_text(encoding="utf-8")
     real_replace = os.replace
 
     def fail_primary_replace(source: Path, destination: Path) -> None:
@@ -292,10 +295,52 @@ def test_primary_replace_failure_after_backup_publish_keeps_original_consistent(
     with pytest.raises(OSError, match="primary replacement failure"):
         repository.save(project_root, replace(initial, name="not committed"))
 
-    assert project_file.read_text(encoding="utf-8") == original
-    assert (project_root / "project.backup.json").read_text(
-        encoding="utf-8"
-    ) == original
+    assert project_file.read_text(encoding="utf-8") == primary_before
+    assert backup_file.read_text(encoding="utf-8") == backup_before
+
+
+def test_backup_publish_failure_rolls_primary_and_existing_backup_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    initial = repository.create(project_root, "version one")
+    version_two = repository.save(project_root, replace(initial, name="version two"))
+    project_file = project_root / "project.json"
+    backup_file = project_root / "project.backup.json"
+    primary_before = project_file.read_text(encoding="utf-8")
+    backup_before = backup_file.read_text(encoding="utf-8")
+    real_replace = os.replace
+
+    def fail_backup_replace(source: Path, destination: Path) -> None:
+        if destination == backup_file:
+            raise OSError("simulated backup replacement failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(os, "replace", fail_backup_replace)
+    with pytest.raises(OSError, match="backup replacement failure"):
+        repository.save(project_root, replace(version_two, name="version three"))
+
+    assert project_file.read_text(encoding="utf-8") == primary_before
+    assert backup_file.read_text(encoding="utf-8") == backup_before
+
+
+def test_save_rejects_same_video_registered_as_managed_and_external(
+    tmp_path: Path,
+) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    project = repository.create(project_root, "duplicates")
+    managed_path = project_root / "videos" / "a.mp4"
+    first = Video(uuid4(), PurePosixPath("videos/a.mp4"), "a", 10, 10, 30.0, 10)
+    second = Video(
+        uuid4(), None, "same a", 10, 10, 30.0, 10, original_path=str(managed_path)
+    )
+    project = add_video(project, first, Timeline(first.video_id, 30.0, (0, 9)))
+    project = add_video(project, second, Timeline(second.video_id, 30.0, (0, 9)))
+
+    with pytest.raises(ValueError, match="same filesystem locator"):
+        repository.save(project_root, project)
 
 
 def test_load_rejects_observation_outside_video_frame_range(tmp_path: Path) -> None:

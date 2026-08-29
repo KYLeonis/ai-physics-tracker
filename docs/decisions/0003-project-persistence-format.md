@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-08-28)
+Accepted (2026-08-28) — external video locator clause in Decision 4 amended by ADR-0004
 
 ## Context
 

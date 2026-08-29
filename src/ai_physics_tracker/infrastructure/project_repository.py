@@ -57,7 +57,9 @@ class ProjectRepository:
                 raise ValueError("root JSON value must be an object")
             payload = cast(dict[str, object], raw)
             migrated = _migrate_payload(payload)
-            return project_from_payload(migrated)
+            project = project_from_payload(migrated)
+            _validate_resolved_video_locators(project_root, project)
+            return project
         except UnsupportedSchemaVersionError:
             raise
         except ProjectFormatError as error:
@@ -79,6 +81,7 @@ class ProjectRepository:
         if not project_root.is_dir():
             raise FileNotFoundError(f"project directory not found: {project_root}")
         updated = replace(project, modified_at=utc_now())
+        _validate_resolved_video_locators(project_root, updated)
         payload = project_to_payload(updated)
         serialized = json.dumps(
             payload,
@@ -113,6 +116,12 @@ class ProjectRepository:
 
         if video.file_path is not None:
             managed = project_root.joinpath(*video.file_path.parts)
+            root_resolved = project_root.resolve()
+            managed_resolved = managed.resolve()
+            try:
+                managed_resolved.relative_to(root_resolved)
+            except ValueError:
+                return None
             if managed.exists():
                 return managed
         if video.original_path is not None:
@@ -168,5 +177,31 @@ def _atomic_write_manifest(project_root: Path, serialized: str) -> None:
     project_tmp.write_text(serialized, encoding="utf-8")
     if project_file.exists():
         shutil.copyfile(project_file, backup_tmp)
-        os.replace(backup_tmp, backup_file)
     os.replace(project_tmp, project_file)
+    if backup_tmp.exists():
+        try:
+            os.replace(backup_tmp, backup_file)
+        except OSError:
+            # The primary was committed but backup publication failed. Restore the
+            # prior primary from the still-intact staging file so callers never see
+            # a failed save with a changed primary/backup pair.
+            os.replace(backup_tmp, project_file)
+            raise
+
+
+def _validate_resolved_video_locators(project_root: Path, project: Project) -> None:
+    resolved: set[str] = set()
+    for video in project.videos:
+        candidate: Path | None = None
+        if video.file_path is not None:
+            candidate = project_root.joinpath(*video.file_path.parts)
+        elif video.original_path is not None:
+            external = Path(video.original_path)
+            if external.is_absolute():
+                candidate = external
+        if candidate is None:
+            continue
+        key = os.path.normcase(str(candidate.resolve()))
+        if key in resolved:
+            raise ValueError("multiple videos resolve to the same filesystem locator")
+        resolved.add(key)

@@ -103,3 +103,4 @@ DLC 模型（dlc-models, PyTorch engine）
 - [0001 — 记录架构决策的方式](decisions/0001-record-architecture-decisions.md)
 - [0002 — 选择 Python 3.11](decisions/0002-choose-python-3.11.md)
 - [0003 — 项目持久化采用 JSON 清单优先的混合方案](decisions/0003-project-persistence-format.md)
+- [0004 — 外部视频使用可空项目路径与绝对 locator](decisions/0004-external-video-locator.md)

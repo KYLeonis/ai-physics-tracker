@@ -1,6 +1,6 @@
 # 项目格式规范（Project Format Spec）— 持久化与项目目录
 
-- 日期：2026-08-28 · 状态：**Accepted**（决策正文见 [ADR-0003](../decisions/0003-project-persistence-format.md)）
+- 日期：2026-08-28 · 状态：**Accepted**（主体决策见 [ADR-0003](../decisions/0003-project-persistence-format.md)；外部视频 locator 修订见 [ADR-0004](../decisions/0004-external-video-locator.md)）
 - 来源：`docs/research/software-spec-plan.md` 行动项 A4（持久化与项目格式，含跨平台路径规则）
 - 输入：raw notes（kinovea `.kva` sidecar、deeplabcut 项目目录、sleap `.slp` 单文件、pose2sim 分阶段目录）、`docs/development.md` §1.1、`docs/spec/data-model.md`、补充业界 schema 版本迁移惯例调研
 - 性质：本文件定义**存储形态**；数据对象与语义见 `data-model.md`

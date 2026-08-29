@@ -92,9 +92,19 @@ def test_video_rejects_missing_or_relative_external_locator() -> None:
         replace(base, file_path=None, original_path="relative/video.mp4")
 
 
-@pytest.mark.parametrize("path", ["../outside.mp4", r"videos\a.mp4"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../outside.mp4",
+        r"videos\a.mp4",
+        "C:/Windows/system.ini",
+        "videos/CON.mp4",
+        "videos/a:b.mp4",
+        "videos/trailing.",
+    ],
+)
 def test_project_managed_video_path_cannot_escape_or_use_windows_separators(
     path: str,
 ) -> None:
-    with pytest.raises(ValueError, match="stay inside the project"):
+    with pytest.raises(ValueError, match="inside the project|Windows-safe"):
         _video(path=path)
