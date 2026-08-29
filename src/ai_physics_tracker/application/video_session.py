@@ -6,6 +6,7 @@ from uuid import uuid4
 from ai_physics_tracker.application.video import (
     DecodedFrame,
     VideoError,
+    VideoFrameError,
     VideoReader,
     VideoStreamInfo,
 )
@@ -70,7 +71,7 @@ class VideoSession:
                 fps_nominal=info.fps_container,
                 working_zone=(0, info.frame_count - 1),
             )
-            frame = self._reader.read_frame(0)
+            frame = self._read_frame(0)
         except Exception:
             self._reader.close()
             raise
@@ -84,7 +85,7 @@ class VideoSession:
         """Clamp to the working zone, decode, then commit the new current frame."""
 
         target = clamp_to_working_zone(frame_index, self.timeline)
-        frame = self._reader.read_frame(target)
+        frame = self._read_frame(target)
         self._current_frame = frame
         return frame
 
@@ -102,3 +103,11 @@ class VideoSession:
         self._info = None
         self._timeline = None
         self._current_frame = None
+
+    def _read_frame(self, frame_index: int) -> DecodedFrame:
+        frame = self._reader.read_frame(frame_index)
+        if frame.frame_index != frame_index:
+            raise VideoFrameError(
+                f"reader returned frame {frame.frame_index} for requested frame {frame_index}"
+            )
+        return frame

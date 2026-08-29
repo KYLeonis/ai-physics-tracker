@@ -56,9 +56,9 @@ class DecodedFrame:
             raise ValueError("pixels_rgb must have uint8 dtype")
         if self.pixels_rgb.ndim != 3 or self.pixels_rgb.shape[2] != 3:
             raise ValueError("pixels_rgb must have shape (height, width, 3)")
-        if not self.pixels_rgb.flags.c_contiguous:
-            raise ValueError("pixels_rgb must be C-contiguous")
-        self.pixels_rgb.setflags(write=False)
+        owned_pixels = np.array(self.pixels_rgb, dtype=np.uint8, copy=True, order="C")
+        owned_pixels.setflags(write=False)
+        object.__setattr__(self, "pixels_rgb", owned_pixels)
 
 
 class VideoReader(Protocol):

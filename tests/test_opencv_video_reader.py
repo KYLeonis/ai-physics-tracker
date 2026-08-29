@@ -17,6 +17,8 @@ def test_reader_opens_metadata_and_decodes_zero_based_rgb_frames(
     info = reader.open(synthetic_video_path)
     first = reader.read_frame(0)
     second = reader.read_frame(1)
+    last = reader.read_frame(4)
+    first_again = reader.read_frame(0)
 
     assert (info.width_px, info.height_px) == (64, 48)
     assert info.frame_count == 5
@@ -31,6 +33,8 @@ def test_reader_opens_metadata_and_decodes_zero_based_rgb_frames(
         np.array([0, 255, 0]), abs=5
     )
     assert not first.pixels_rgb.flags.writeable
+    assert last.frame_index == 4
+    assert first_again.frame_index == 0
 
 
 def test_reader_rejects_out_of_range_frames(synthetic_video_path: Path) -> None:

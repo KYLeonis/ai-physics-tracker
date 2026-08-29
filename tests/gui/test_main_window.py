@@ -2,9 +2,16 @@
 
 from pathlib import Path
 
+import numpy as np
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMessageBox
 from pytestqt.qtbot import QtBot
 
+from ai_physics_tracker.application.video import (
+    DecodedFrame,
+    VideoFrameError,
+    VideoStreamInfo,
+)
 from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.gui.main_window import MainWindow
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
@@ -39,6 +46,11 @@ def test_main_window_opens_video_and_navigates_frames(
     assert window.frameLabel.text() == "Frame: 4 / 4"
     assert not window.nextButton.isEnabled()
 
+    window.close()
+    renamed = synthetic_video_path.with_name("gui-closed.avi")
+    synthetic_video_path.rename(renamed)
+    assert renamed.is_file()
+
 
 def test_main_window_reports_invalid_path_without_dialog(qtbot: QtBot, tmp_path: Path) -> None:
     window = _window()
@@ -47,3 +59,33 @@ def test_main_window_reports_invalid_path_without_dialog(qtbot: QtBot, tmp_path:
     assert not window.openVideo(tmp_path / "missing.mp4", show_error=False)
     assert window.frameLabel.text() == "Frame: —"
     assert "not found" in window.statusBar().currentMessage()
+
+
+def test_failed_jump_restores_spinbox_to_current_frame(
+    qtbot: QtBot, monkeypatch
+) -> None:
+    class FailingReader:
+        is_open = False
+        info = VideoStreamInfo(8, 6, 10.0, 3, "fake", "cfr")
+
+        def open(self, path: Path) -> VideoStreamInfo:
+            self.is_open = True
+            return self.info
+
+        def read_frame(self, frame_index: int) -> DecodedFrame:
+            if frame_index == 2:
+                raise VideoFrameError("synthetic decode failure")
+            return DecodedFrame(frame_index, np.zeros((6, 8, 3), dtype=np.uint8))
+
+        def close(self) -> None:
+            self.is_open = False
+
+    window = MainWindow(VideoSession(FailingReader()))
+    qtbot.addWidget(window)
+    monkeypatch.setattr(QMessageBox, "critical", lambda *args: QMessageBox.Ok)
+    assert window.openVideo(Path("fake.video"), show_error=False)
+
+    window.frameSpinBox.setValue(2)
+
+    assert window.frameSpinBox.value() == 0
+    assert window.frameLabel.text() == "Frame: 0 / 2"

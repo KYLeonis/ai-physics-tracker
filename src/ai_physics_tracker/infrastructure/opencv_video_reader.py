@@ -95,6 +95,16 @@ class OpenCVVideoReader:
         success, pixels_bgr = self._capture.read()
         if not success or pixels_bgr is None:
             raise VideoFrameError(f"OpenCV could not decode frame {frame_index}")
+        next_frame_position = float(self._capture.get(cv2.CAP_PROP_POS_FRAMES))
+        if (
+            isfinite(next_frame_position)
+            and next_frame_position >= 1.0
+            and abs(next_frame_position - (frame_index + 1)) > 0.5
+        ):
+            raise VideoFrameError(
+                f"OpenCV seek mismatch for frame {frame_index}: "
+                f"decoder advanced to {next_frame_position:.3f}"
+            )
         pixels_rgb = np.ascontiguousarray(
             cv2.cvtColor(pixels_bgr, cv2.COLOR_BGR2RGB), dtype=np.uint8
         )

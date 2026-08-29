@@ -123,6 +123,7 @@ class MainWindow(QMainWindow):
         try:
             self._session.go_to_frame(frame_index)
         except VideoError as error:
+            self._refreshFrame()
             QMessageBox.critical(self, "Unable to read frame", str(error))
             return
         self._refreshFrame()

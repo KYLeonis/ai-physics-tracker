@@ -5,7 +5,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from ai_physics_tracker.application.video import DecodedFrame, VideoStreamInfo
+from ai_physics_tracker.application.video import (
+    DecodedFrame,
+    VideoFrameError,
+    VideoStreamInfo,
+)
 from ai_physics_tracker.application.video_session import VideoSession
 
 
@@ -70,3 +74,29 @@ def test_session_switch_and_close_release_reader() -> None:
 
     assert not session.is_open
     assert reader.close_calls == 3
+
+
+def test_session_rejects_reader_returning_the_wrong_frame_index() -> None:
+    class WrongFrameReader(FakeVideoReader):
+        def read_frame(self, frame_index: int) -> DecodedFrame:
+            returned_index = frame_index if frame_index == 0 else frame_index - 1
+            pixels = np.zeros((6, 8, 3), dtype=np.uint8)
+            return DecodedFrame(returned_index, pixels)
+
+    session = VideoSession(WrongFrameReader())
+    session.open(Path("video.fake"))
+
+    with pytest.raises(VideoFrameError, match="returned frame 0.*requested frame 1"):
+        session.go_to_frame(1)
+
+    assert session.current_frame.frame_index == 0
+
+
+def test_decoded_frame_owns_pixels_independently_of_input_alias() -> None:
+    source = np.zeros((2, 3, 3), dtype=np.uint8)
+    frame = DecodedFrame(0, source)
+
+    source[:] = 255
+
+    assert np.all(frame.pixels_rgb == 0)
+    assert not frame.pixels_rgb.flags.writeable
