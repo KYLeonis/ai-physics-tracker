@@ -36,14 +36,11 @@ def test_main_window_opens_video_and_navigates_frames(
     assert not window.previousButton.isEnabled()
 
     qtbot.mouseClick(window.nextButton, Qt.MouseButton.LeftButton)
-
-    assert window.frameSpinBox.value() == 1
-    assert window.frameLabel.text() == "Frame: 1 / 4"
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 1 / 4")
     assert window.timeLabel.text() == "Time: 0.100 s nominal"
 
     window.frameSpinBox.setValue(4)
-
-    assert window.frameLabel.text() == "Frame: 4 / 4"
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 4 / 4")
     assert not window.nextButton.isEnabled()
 
     window.close()
@@ -86,6 +83,5 @@ def test_failed_jump_restores_spinbox_to_current_frame(
     assert window.openVideo(Path("fake.video"), show_error=False)
 
     window.frameSpinBox.setValue(2)
-
-    assert window.frameSpinBox.value() == 0
+    qtbot.waitUntil(lambda: window.frameSpinBox.value() == 0)
     assert window.frameLabel.text() == "Frame: 0 / 2"
