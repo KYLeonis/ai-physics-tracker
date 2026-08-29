@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
         self.timelineSlider = QSlider(Qt.Orientation.Horizontal, self)
         self.frameLabel = QLabel("Frame: —", self)
         self.timeLabel = QLabel("Time: —", self)
+        self.zoomLabel = QLabel("Zoom: —", self)
 
         self.frameSpinBox.setPrefix("Go to: ")
         self.frameSpinBox.setMinimum(0)
@@ -89,6 +90,7 @@ class MainWindow(QMainWindow):
         controls.addStretch(1)
         controls.addWidget(self.frameLabel)
         controls.addWidget(self.timeLabel)
+        controls.addWidget(self.zoomLabel)
 
         layout = QVBoxLayout()
         layout.addWidget(self.videoView, 1)
@@ -116,6 +118,7 @@ class MainWindow(QMainWindow):
         self.timelineSlider.sliderReleased.connect(self._scrubCommitted)
         self.frameDelivered.connect(self._onFrameDelivered)
         self.decodeFailed.connect(self._onDecodeFailed)
+        self.videoView.scaleChanged.connect(self._onScaleChanged)
         self.statusBar().showMessage("Ready")
 
     @property
@@ -226,6 +229,9 @@ class MainWindow(QMainWindow):
         snapshot = self._async.snapshot()
         if snapshot is not None:
             self._presentFrame(snapshot.current_frame)
+
+    def _onScaleChanged(self, scale: float) -> None:
+        self.zoomLabel.setText(f"Zoom: {scale * 100:.0f}%")
 
     def _presentFrame(self, frame: DecodedFrame) -> None:
         self.videoView.setFrame(frame)

@@ -29,7 +29,7 @@ def test_main_window_opens_video_and_navigates_frames(
     window.show()
 
     assert window.openVideo(synthetic_video_path, show_error=False)
-    assert window.videoView.pixmap() is not None
+    assert window.videoView.hasFrame()
     assert window.frameSpinBox.value() == 0
     assert window.frameLabel.text() == "Frame: 0 / 4"
     assert window.timeLabel.text() == "Time: 0.000 s nominal"
