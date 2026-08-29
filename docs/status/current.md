@@ -9,21 +9,19 @@
 
 ## Current Phase
 
-**Phase 1 — Project & Data Foundation** ✅ 已完成（2026-08-29）
-
-Phase 2 尚未启动；按阶段收尾规则暂停，等待用户下一条指令。
+**Phase 2 — Video Analysis MVP** 🔄 进行中
 
 ## Current Subphase
 
-**1.1 — 数据模型核心实现** ✅ 已完成（Issue #1，2026-08-29）
+**2.1 — Desktop Video Foundation** 🔄 进行中（Issue #2，分支 `feat/p2.1-video-foundation`）
 
 ## Current Slice
 
-无（Phase 1 已收尾）
+**Slice 1 — requirements / ADR / dependency lock** 🔄
 
 ## Current Goal
 
-Phase 1 目标已达成；保持 `main` 稳定，等待用户决定是否启动 Phase 2。
+从命令行启动桌面窗口，打开 CFR 视频并完成首帧显示、上一/下一与帧号跳转；保持 GUI/application/OpenCV 分层。
 
 ## Recently Completed
 
@@ -44,6 +42,7 @@ Phase 1 目标已达成；保持 `main` 稳定，等待用户决定是否启动 
 - Python 3.11（ADR-0002）
 - 持久化格式：**JSON 清单优先混合方案**（ADR-0003）——`project.json` 单文件 + 引擎输出外置 `data/engines/`，`schema_version` + 迁移链，原子写入 + 滚动备份
 - 外部视频 locator：`file_path = null` + 绝对 `original_path`；项目内视频使用 Windows-safe 相对路径（ADR-0004，部分取代 ADR-0003 Decision 4）
+- Phase 2 GUI/视频栈：PySide6-Essentials 6.11.2 + OpenCV headless 4.14.0.94 + NumPy 2.5.2；Qt-free application contract（ADR-0005）
 - 数据模型核心结论（`docs/spec/data-model.md`）：帧号 0-based、CFR（VFR 显式拒绝）、raw 只存像素坐标、手工修正遮蔽 AI 预测不覆盖（superseded 链）、confidence 与 visibility 分立、source 开放注册表、标定变更仅派生层失效、裁剪不重置时间基准
 - Phase 1 前的设计只到字段级建议，**不写 Python class**（自 Phase 1.1 起）
 - 数值微分/平滑方法 → Phase 3 前出 ADR
@@ -52,4 +51,4 @@ Phase 1 目标已达成；保持 `main` 稳定，等待用户决定是否启动 
 
 ## Next Recommended Action
 
-停止开发，等待用户指令。若启动 Phase 2，先按会话进入协议读取本文件、roadmap Phase 2、相关研究小节与现有代码，再为第一个 Phase 2 Subphase 写 mini-plan；不要直接开始 GUI 实现。
+完成 Slice 1 后实现 Qt-free VideoReader contract 与 OpenCV backend；先用运行时合成视频验证 0-based 随机读帧、RGB 颜色和关闭语义，再接 GUI。

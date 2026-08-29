@@ -59,8 +59,9 @@
 | Python | **3.11** | 见下方依据；DeepLabCut 3.x 支持 3.10–3.12 |
 | AI Framework | PyTorch（2.x，最新稳定版） | 先装 PyTorch 再装 deeplabcut |
 | Tracking | DeepLabCut 3.x（PyTorch 引擎） | `pip install "deeplabcut[gui]"` 可作为参考安装 |
-| GUI | PySide6（最新稳定 6.x） | Phase 2 前最终确认并记 ADR |
-| Video | OpenCV（opencv-python）、FFmpeg | |
+| GUI | PySide6-Essentials 6.11.2（Qt Widgets） | Phase 2 确认，见 ADR-0005 |
+| Video | opencv-python-headless 4.14.0.94；FFmpeg 边界后续补充 | OpenCV 不提供 GUI，避免与 PySide6 Qt 插件冲突 |
+| Array | NumPy 2.5.2 | 解码帧的 RGB 数组边界 |
 | Sci Comp | NumPy、SciPy、Pandas | |
 | Plotting | PyQtGraph（交互）、Matplotlib（导出） | Phase 3 前最终确认 |
 | 包管理 | venv/conda + pip，`requirements.txt` / `pyproject.toml` | Phase 1 起锁定 |
@@ -104,7 +105,7 @@ main（稳定） ← 工作分支 feat/p<phase>.<sub>-<topic> / fix/<topic> / do
 - 核心数据结构与物理计算必须有单元测试（pytest）
 - 数值计算测试用已知解析解的合成数据（匀速、匀加速、单摆小角度）
 - GUI 手动验收；逻辑层尽量与 GUI 剥离以便自动化测试
-- Phase 1 起使用 pytest；本地运行 `python -m pytest`。GitHub Actions 在 `macos-latest` 与 `windows-latest` 上使用 Python 3.11 运行同一测试矩阵。
+- Phase 1 起使用 pytest；Phase 2 GUI 测试增加 pytest-qt 4.5.0。本地运行 `python -m pytest`。GitHub Actions 在 `macos-latest` 与 `windows-latest` 上使用 Python 3.11、`QT_QPA_PLATFORM=offscreen` 运行同一测试矩阵。
 
 ## 6. 文档维护
 

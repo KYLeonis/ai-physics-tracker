@@ -80,7 +80,7 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:   Phase 1 — Project & Data Foundation（已完成，暂停）
+Current Phase:   Phase 2 — Video Analysis MVP（Subphase 2.1）
 Last Completed:  Phase 1 — Project & Data Foundation ✅（2026-08-29）
 Next Phase:      Phase 2 — Video Analysis MVP（等待用户指令）
 ```
@@ -95,7 +95,7 @@ Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTran
 | --- | --- | --- |
 | Phase 0 | Project Initialization | ✅ 已完成（2026-08-27） |
 | Phase 1 | Project & Data Foundation | ✅ 已完成（2026-08-29） |
-| Phase 2 | Video Analysis MVP | ⬜ 下一阶段，等待指令 |
+| Phase 2 | Video Analysis MVP | 🔄 Subphase 2.1 |
 | Phase 3 | Calibration & Physics Engine | ⬜ |
 | Phase 4 | Deep Learning Tracking | ⬜ |
 | Phase 5 | AI-assisted Annotation & Refinement | ⬜ |
