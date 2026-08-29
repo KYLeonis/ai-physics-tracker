@@ -122,6 +122,7 @@ Explore → 需要时 Plan（subphase mini-plan）→ 以 Slice 小步实现
 - Phase 1 起引入 pytest；核心数据结构（project/track/annotation/calibration）与物理计算（坐标转换、微分、平滑）必须有单元测试。
 - 涉及数值计算的模块测试需使用已知解析解的合成数据（如匀速/匀加速/单摆小角度）。
 - GUI 功能以手动验收为主，逻辑尽量从 GUI 层剥离以便测试。
+- **GUI 交互的 Human Review**：交付增量包含用户可感知的交互行为（新增交互模式、播放/缩放手感、视觉效果等自动化测试无法判定体验的场景）时，Agent 必须在合并/收尾前发起 Human Review：给出从零启动命令（macOS 已有 `.venv` 时直接给最短命令）、逐条测试步骤（操作 → 预期）、需要用户回答的封闭式问题，然后**停止并等待用户亲自测试的反馈**。不得用 computer-use 或截图自检替代真人测试（节省 token；体验质量只有用户能判定）；offscreen 自动化测试照常执行，Human Review 是其上的补充关卡。细则见 `docs/workflow.md` §5.1。
 - Phase 1 领域模型与持久化已有 pytest 覆盖；验证命令为 `python -m pytest`，GitHub Actions 使用 macOS/Windows Python 3.11 双平台运行。
 
 ## 8. Git 工作方式
