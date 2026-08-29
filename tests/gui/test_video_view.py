@@ -139,3 +139,33 @@ def test_pinch_without_frame_is_noop(qtbot: QtBot) -> None:
     view._applyPinchScale(2.0)
 
     assert view.currentScale() == 1.0
+
+
+def test_native_gesture_zoom_event_scales_via_filter(qtbot: QtBot) -> None:
+    # macOS 触摸板 pinch: QNativeGestureEvent(ZoomNativeGesture) → viewport
+    # eventFilter → 连续缩放。系统路径为 sendSpontaneousEvent→notify_helper
+    # →filters（PySide6 未暴露该投递 API），故此处直接调 eventFilter 验证
+    # 处理逻辑（枚举匹配 + factor 应用）；投递链路由真机手动验收覆盖。
+    from PySide6.QtCore import QPointF, Qt
+    from PySide6.QtGui import QNativeGestureEvent, QPointingDevice
+
+    view = _shown_view(qtbot)
+    view.zoomOriginal()
+    device = QPointingDevice.primaryPointingDevice()
+    assert device is not None
+
+    for _ in range(3):
+        gesture = QNativeGestureEvent(
+            Qt.NativeGestureType.ZoomNativeGesture,
+            device,
+            2,
+            QPointF(50, 50),
+            QPointF(50, 50),
+            QPointF(60, 60),
+            1.1,
+            QPointF(0, 0),
+        )
+        handled = view.eventFilter(view.viewport(), gesture)
+        assert handled is True
+
+    assert abs(view.currentScale() - 1.1**3) < 1e-9
