@@ -191,6 +191,7 @@ def _atomic_write_manifest(project_root: Path, serialized: str) -> None:
 
 def _validate_resolved_video_locators(project_root: Path, project: Project) -> None:
     resolved: set[str] = set()
+    candidates: list[Path] = []
     for video in project.videos:
         candidate: Path | None = None
         if video.file_path is not None:
@@ -201,7 +202,13 @@ def _validate_resolved_video_locators(project_root: Path, project: Project) -> N
                 candidate = external
         if candidate is None:
             continue
+        if candidate.exists() and any(
+            existing.exists() and os.path.samefile(candidate, existing)
+            for existing in candidates
+        ):
+            raise ValueError("multiple videos resolve to the same filesystem locator")
         key = os.path.normcase(str(candidate.resolve()))
         if key in resolved:
             raise ValueError("multiple videos resolve to the same filesystem locator")
         resolved.add(key)
+        candidates.append(candidate)

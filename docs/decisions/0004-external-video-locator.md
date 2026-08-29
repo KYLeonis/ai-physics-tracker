@@ -4,7 +4,7 @@
 
 Accepted (2026-08-29)
 
-Amends ADR-0003 Decision 4：项目管理的数据路径继续使用相对路径，但外部视频的
+Supersedes the external-video clause of ADR-0003 Decision 4：项目管理的数据路径继续使用相对路径，但外部视频的
 `original_path` 不再只是提示缓存；当 `file_path = null` 时，它是实际 locator。
 
 ## Context

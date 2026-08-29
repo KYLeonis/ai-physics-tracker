@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted (2026-08-28) — external video locator clause in Decision 4 amended by ADR-0004
+Superseded in part by ADR-0004 (2026-08-29). All decisions except the external
+video locator clause in Decision 4 remain Accepted (2026-08-28).
 
 ## Context
 

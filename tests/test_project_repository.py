@@ -343,6 +343,25 @@ def test_save_rejects_same_video_registered_as_managed_and_external(
         repository.save(project_root, project)
 
 
+def test_save_rejects_distinct_paths_to_the_same_existing_file(tmp_path: Path) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    project = repository.create(project_root, "hard-link duplicate")
+    managed_path = project_root / "videos" / "a.mp4"
+    managed_path.write_bytes(b"fixture")
+    external_alias = tmp_path / "alias.mp4"
+    os.link(managed_path, external_alias)
+    first = Video(uuid4(), PurePosixPath("videos/a.mp4"), "a", 10, 10, 30.0, 10)
+    second = Video(
+        uuid4(), None, "alias", 10, 10, 30.0, 10, original_path=str(external_alias)
+    )
+    project = add_video(project, first, Timeline(first.video_id, 30.0, (0, 9)))
+    project = add_video(project, second, Timeline(second.video_id, 30.0, (0, 9)))
+
+    with pytest.raises(ValueError, match="same filesystem locator"):
+        repository.save(project_root, project)
+
+
 def test_load_rejects_observation_outside_video_frame_range(tmp_path: Path) -> None:
     repository = ProjectRepository()
     project_root = tmp_path / "project"
