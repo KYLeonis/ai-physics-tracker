@@ -55,6 +55,18 @@ def test_engine_batch_is_first_wins_and_reports_skips() -> None:
     assert store.observations == (first, second)
 
 
+def test_invalid_engine_batch_is_atomic() -> None:
+    track = _track()
+    valid = _point(track.track_id, 1, source="template", source_detail="run-1")
+    invalid = _point(uuid4(), 2, source="template", source_detail="run-1")
+    store = TrackStore((track,))
+
+    with pytest.raises(ValueError, match="unknown track_id"):
+        store.add_engine_points((valid, invalid))
+
+    assert store.observations == ()
+
+
 def test_manual_correction_supersedes_engine_and_delete_restores_original() -> None:
     track = _track()
     engine = _point(track.track_id, 4, source="template", pixel_x=11.5)
@@ -107,6 +119,15 @@ def test_engine_point_cannot_be_deleted_individually() -> None:
 
     with pytest.raises(ValueError, match="cannot be deleted individually"):
         store.delete_manual_point(engine.point_id)
+
+
+def test_null_source_detail_engine_group_can_be_cleared_as_a_unit() -> None:
+    track = _track()
+    engine = _point(track.track_id, 1, source="template")
+    store = TrackStore((track,), (engine,))
+
+    assert store.clear_engine_run(None) == 1
+    assert store.observations == ()
 
 
 def test_delete_track_cascades_observations() -> None:

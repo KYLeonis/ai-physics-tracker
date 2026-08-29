@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from math import isclose
 from pathlib import PurePosixPath
 from uuid import UUID, uuid4
 
@@ -146,7 +147,13 @@ def update_timeline(
         timeline if item.video_id == timeline.video_id else item
         for item in project.timelines
     )
-    if timeline.fps_nominal == existing.fps_nominal:
+    fps_changed = not isclose(
+        timeline.fps_nominal,
+        existing.fps_nominal,
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    )
+    if not fps_changed and not recalculate_times:
         return replace(project, timelines=timelines)
 
     affected_track_ids = {
@@ -177,7 +184,11 @@ def update_timeline(
                 )
             )
         else:
-            observations.append(point)
+            observations.append(
+                replace(point, quality_flags=flags, modified_at=now)
+                if flags != point.quality_flags
+                else point
+            )
     return replace(
         project,
         timelines=timelines,
@@ -195,6 +206,8 @@ def set_active_calibration(
     if video_id not in video_ids:
         raise ValueError(f"unknown video_id: {video_id}")
     previous = project.active_calibration_by_video.get(video_id)
+    if previous == calibration_id:
+        return project
     active = dict(project.active_calibration_by_video)
     if calibration_id is None:
         active.pop(video_id, None)
@@ -313,11 +326,38 @@ def validate_project(project: Project) -> None:
         raise ValueError("track names must be project-unique")
     if any(track.video_id not in videos_by_id for track in project.tracks):
         raise ValueError("every track must reference a registered video")
+    tracks_by_id = {track.track_id: track for track in project.tracks}
     track_id_set = set(track_ids)
+    point_ids = [point.point_id for point in project.observations]
+    if len(set(point_ids)) != len(point_ids):
+        raise ValueError("point_id values must be unique")
     if any(point.track_id not in track_id_set for point in project.observations):
         raise ValueError("every observation must reference a registered track")
     if any(point.source not in project.registries.sources for point in project.observations):
         raise ValueError("every observation source must be registered")
+    registered_flags = set(project.registries.quality_flags)
+    if any(
+        any(flag not in registered_flags for flag in point.quality_flags)
+        for point in project.observations
+    ):
+        raise ValueError("every observation quality flag must be registered")
+    for point in project.observations:
+        track = tracks_by_id[point.track_id]
+        video = videos_by_id[track.video_id]
+        if point.frame_index >= video.frame_count:
+            raise ValueError("observation frame_index exceeds its video frame_count")
+    points_by_id = {point.point_id: point for point in project.observations}
+    for point in project.observations:
+        if point.superseded_by is None:
+            continue
+        replacement = points_by_id.get(point.superseded_by)
+        if replacement is None:
+            raise ValueError("superseded_by must reference an existing observation")
+        if (
+            replacement.track_id != point.track_id
+            or replacement.frame_index != point.frame_index
+        ):
+            raise ValueError("superseded_by must stay within the same track and frame")
     calibration_by_id = {item.calibration_id: item for item in project.calibrations}
     if len(calibration_by_id) != len(project.calibrations):
         raise ValueError("calibration_id values must be unique")

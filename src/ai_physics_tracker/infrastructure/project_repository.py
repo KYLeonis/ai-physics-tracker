@@ -154,6 +154,5 @@ def _atomic_write_manifest(project_root: Path, serialized: str) -> None:
     project_tmp.write_text(serialized, encoding="utf-8")
     if project_file.exists():
         shutil.copyfile(project_file, backup_tmp)
-    os.replace(project_tmp, project_file)
-    if backup_tmp.exists():
         os.replace(backup_tmp, backup_file)
+    os.replace(project_tmp, project_file)

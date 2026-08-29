@@ -145,14 +145,20 @@ class TrackStore:
     def add_engine_points(self, points: tuple[TrackPoint, ...]) -> BatchWriteResult:
         """Insert engine observations with first-wins frame semantics."""
 
-        inserted = 0
-        skipped = 0
+        existing_ids = {point.point_id for point in self._observations}
+        incoming_ids = [point.point_id for point in points]
+        if len(set(incoming_ids)) != len(incoming_ids):
+            raise ValueError("engine batch point_id values must be unique")
+        if any(point_id in existing_ids for point_id in incoming_ids):
+            raise ValueError("engine batch point_id already exists")
         for point in points:
             self._require_known_track(point.track_id)
             if point.source == "manual" or point.status != "active":
                 raise ValueError("engine batch requires active non-manual points")
-            if any(item.point_id == point.point_id for item in self._observations):
-                raise ValueError(f"point_id already exists: {point.point_id}")
+
+        inserted = 0
+        skipped = 0
+        for point in points:
             has_active = any(
                 existing.track_id == point.track_id
                 and existing.frame_index == point.frame_index
@@ -194,11 +200,11 @@ class TrackStore:
                 restored.append(point)
         self._observations = restored
 
-    def clear_engine_run(self, source_detail: str) -> int:
-        """Remove an engine run as a unit and return the number removed."""
+    def clear_engine_run(self, source_detail: str | None) -> int:
+        """Remove one engine run group, including the explicit legacy null group."""
 
-        if not source_detail:
-            raise ValueError("source_detail must identify a run")
+        if source_detail == "":
+            raise ValueError("source_detail must be non-blank or None")
         before = len(self._observations)
         removed_ids = {
             point.point_id

@@ -199,6 +199,57 @@ def test_interrupted_atomic_replace_leaves_original_manifest_intact(
     assert (project_root / "project.json.tmp").exists()
 
 
+def test_primary_replace_failure_after_backup_publish_keeps_original_consistent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    initial = repository.create(project_root, "stable")
+    project_file = project_root / "project.json"
+    original = project_file.read_text(encoding="utf-8")
+    real_replace = os.replace
+
+    def fail_primary_replace(source: Path, destination: Path) -> None:
+        if destination == project_file:
+            raise OSError("simulated primary replacement failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(os, "replace", fail_primary_replace)
+    with pytest.raises(OSError, match="primary replacement failure"):
+        repository.save(project_root, replace(initial, name="not committed"))
+
+    assert project_file.read_text(encoding="utf-8") == original
+    assert (project_root / "project.backup.json").read_text(
+        encoding="utf-8"
+    ) == original
+
+
+def test_load_rejects_observation_outside_video_frame_range(tmp_path: Path) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    _populated_project(repository, project_root)
+    project_file = project_root / "project.json"
+    payload = json.loads(project_file.read_text(encoding="utf-8"))
+    payload["observations"][0]["frame_index"] = payload["videos"][0]["frame_count"]
+    project_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ProjectFormatError, match="frame_count"):
+        repository.load(project_root)
+
+
+def test_load_rejects_duplicate_observation_ids(tmp_path: Path) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    _populated_project(repository, project_root)
+    project_file = project_root / "project.json"
+    payload = json.loads(project_file.read_text(encoding="utf-8"))
+    payload["observations"].append(dict(payload["observations"][0]))
+    project_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ProjectFormatError, match="point_id values must be unique"):
+        repository.load(project_root)
+
+
 def test_corrupt_json_reports_backup_recovery_path(tmp_path: Path) -> None:
     repository = ProjectRepository()
     project_root = tmp_path / "project"

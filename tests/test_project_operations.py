@@ -83,6 +83,41 @@ def test_fps_change_preserves_frozen_time_and_marks_mismatch_until_recalculated(
     assert "time_mismatch" not in recalculated.observations[0].quality_flags
 
 
+def test_explicit_recalculation_repairs_time_even_when_fps_value_is_unchanged() -> None:
+    project, point = _project_with_observation()
+    video_id = project.videos[0].video_id
+    mismatched = replace(
+        point,
+        time_s=99.0,
+        quality_flags=("time_mismatch",),
+    )
+    project = replace(project, observations=(mismatched,))
+
+    repaired = update_timeline(
+        project,
+        Timeline(video_id, 30.0, (0, 299)),
+        recalculate_times=True,
+    )
+
+    assert repaired.observations[0].time_s == pytest.approx(1.0, abs=1e-12)
+    assert repaired.observations[0].quality_flags == ()
+
+
+def test_matching_frozen_time_clears_stale_mismatch_flag_after_fps_change() -> None:
+    project, point = _project_with_observation()
+    video_id = project.videos[0].video_id
+    point_at_new_fps = replace(
+        point,
+        time_s=0.5,
+        quality_flags=("time_mismatch",),
+    )
+    project = replace(project, observations=(point_at_new_fps,))
+
+    changed = update_timeline(project, Timeline(video_id, 60.0, (0, 299)))
+
+    assert changed.observations[0].quality_flags == ()
+
+
 def test_delete_track_cascades_observations_and_derived_data() -> None:
     project, _ = _project_with_observation()
 
