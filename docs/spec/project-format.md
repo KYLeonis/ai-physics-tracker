@@ -1,6 +1,6 @@
 # 项目格式规范（Project Format Spec）— 持久化与项目目录
 
-- 日期：2026-08-28 · 状态：**Accepted**（决策正文见 [ADR-0003](../decisions/0003-project-persistence-format.md)）
+- 日期：2026-08-28 · 状态：**Accepted**（主体决策见 [ADR-0003](../decisions/0003-project-persistence-format.md)；外部视频 locator 修订见 [ADR-0004](../decisions/0004-external-video-locator.md)）
 - 来源：`docs/research/software-spec-plan.md` 行动项 A4（持久化与项目格式，含跨平台路径规则）
 - 输入：raw notes（kinovea `.kva` sidecar、deeplabcut 项目目录、sleap `.slp` 单文件、pose2sim 分阶段目录）、`docs/development.md` §1.1、`docs/spec/data-model.md`、补充业界 schema 版本迁移惯例调研
 - 性质：本文件定义**存储形态**；数据对象与语义见 `data-model.md`
@@ -49,20 +49,21 @@ MyExperiment/                        # 目录名 = 项目可移植单元；避�
 └── models/                          # 本项目训练/引用的模型（Phase 4 起；大文件，gitignore）
 ```
 
-- 视频默认**只引用不复制**（`file_path` 可指向项目外）；"复制进项目"是用户可选项，用于打包归档。
-- 整个目录复制/移动到另一台机器（mac ↔ Windows）后项目必须可直接打开——这是格式验收标准（§6）。
+- 视频默认**只引用不复制**：外部视频以 `file_path = null` + 绝对 `original_path` 定位；"复制进项目"后改用相对 `file_path`，用于可移动归档。
+- 整个目录复制/移动到另一台机器（mac ↔ Windows）后清单必须可直接打开；项目内视频继续解析成功，外部视频若原 locator 不存在则进入 relink。这是格式验收标准（§6）。
 - 目录内文件均为常规文件：不使用 symlink（development.md §1.1 规则 7）。
 
 ---
 
 ## 3. 路径规则（跨平台）
 
-1. `project.json` 内一切路径以**相对项目根**存储，分隔符统一 `/`（posix 风格），实现用 `pathlib.PurePosixPath` 存储、`Path` 解析（Windows 自动适配）。
-2. `videos[].original_path` 是唯一允许的绝对路径，仅作重连提示，绝不参与解析。
-3. 解析顺序：相对路径基于项目根解析 → 存在则用；不存在 → 按 `original_path` 与文件名在最近已知位置提示用户重连（relink）→ 重连成功只更新 `file_path`，不触碰任何观测数据。
-4. 编码：`project.json` 及一切导出文件显式 UTF-8（development.md §1.1 规则 2）。
-5. 项目目录名/轨迹名等用户可输入的名称在落盘为文件/目录时过滤 Windows 保留名与非法字符 `<>:"/\|?*`（development.md §1.1 规则 5）；`project.json` 内部字段不受此限。
-6. 路径长度：实现保留对项目根总长的警告（MAX_PATH 260），尤其 Phase 4 的 DLC 子目录层级深。
+1. `project.json` 中项目管理的路径以**相对项目根**存储，分隔符统一 `/`（posix 风格），实现用 `pathlib.PurePosixPath` 存储、`Path` 解析（Windows 自动适配）。
+2. `videos[].original_path` 是唯一允许的绝对路径：`file_path = null` 时它是外部视频的实际 locator；`file_path` 非 null 时它是 fallback/relink 提示。
+3. 解析顺序：非 null `file_path` 基于项目根解析且存在 → 使用；否则 `original_path` 在当前平台存在 → 使用；仍不存在 → 提示用户 relink。relink 外部视频更新 `original_path` 并保持 `file_path = null`；复制进项目后才写相对 `file_path`。两种操作均不触碰观测数据。
+4. Windows 跨盘符（如项目 `C:`、视频 `D:`）不存在相对路径，必须走外部 locator 形态；不得把底层 `relpath` 错误暴露给用户。
+5. 编码：`project.json` 及一切导出文件显式 UTF-8（development.md §1.1 规则 2）。
+6. 项目目录名/轨迹名等用户可输入的名称在落盘为文件/目录时过滤 Windows 保留名与非法字符 `<>:"/\|?*`（development.md §1.1 规则 5）；`project.json` 内部字段不受此限。
+7. 路径长度：实现保留对项目根总长的警告（MAX_PATH 260），尤其 Phase 4 的 DLC 子目录层级深。
 
 ---
 
@@ -106,9 +107,9 @@ MyExperiment/                        # 目录名 = 项目可移植单元；避�
 
 ## 6. 验收标准（对应 PLAN A4）
 
-- [ ] 目标目录结构为 `MyExperiment/ + project.json + data/…`；
-- [ ] 整目录复制/移动（mac ↔ Windows）后项目可打开：路径解析只依赖相对路径（§3）；
-- [ ] 万级观测读写方式有明确结论与数据（§5）；
-- [ ] schema 带 `schema_version` 且升级策略成文（§4）；
-- [ ] 视频/模型等大文件只引用不复制入清单（§1/§2）；
-- [ ] Phase 1 需求文档（phase1-requirements.md）引用本文件作为持久化验收依据。
+- [x] 目标目录结构为 `MyExperiment/ + project.json + data/…`；
+- [x] 整目录复制/移动（mac ↔ Windows）后清单可打开：项目内资源由相对路径解析；外部视频失联时进入 relink（§3）；
+- [x] 万级观测读写方式有明确结论与数据（§5）；
+- [x] schema 带 `schema_version` 且升级策略成文（§4）；
+- [x] 视频/模型等大文件只引用不复制入清单（§1/§2）；
+- [x] Phase 1 需求文档（phase1-requirements.md）引用本文件作为持久化验收依据。

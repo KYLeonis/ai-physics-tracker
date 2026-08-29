@@ -80,11 +80,12 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:   Phase 1 — Project & Data Foundation（待启动）
-Last Completed:  Phase 0 — Project Initialization ✅（2026-08-27）
+Current Phase:   Phase 1 — Project & Data Foundation（已完成，暂停）
+Last Completed:  Phase 1 — Project & Data Foundation ✅（2026-08-29）
+Next Phase:      Phase 2 — Video Analysis MVP（等待用户指令）
 ```
 
-Phase 0 已完成：仓库结构、全部基础文档、Git 初始化与 GitHub 远程推送均已就绪。目前尚无可运行代码——第一版核心数据体系将在 Phase 1 中建立。
+Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
@@ -93,8 +94,8 @@ Phase 0 已完成：仓库结构、全部基础文档、Git 初始化与 GitHub 
 | 阶段 | 名称 | 状态 |
 | --- | --- | --- |
 | Phase 0 | Project Initialization | ✅ 已完成（2026-08-27） |
-| Phase 1 | Project & Data Foundation | ⬜ 当前阶段 |
-| Phase 2 | Video Analysis MVP | ⬜ |
+| Phase 1 | Project & Data Foundation | ✅ 已完成（2026-08-29） |
+| Phase 2 | Video Analysis MVP | ⬜ 下一阶段，等待指令 |
 | Phase 3 | Calibration & Physics Engine | ⬜ |
 | Phase 4 | Deep Learning Tracking | ⬜ |
 | Phase 5 | AI-assisted Annotation & Refinement | ⬜ |
@@ -114,7 +115,8 @@ Phase 0 已完成：仓库结构、全部基础文档、Git 初始化与 GitHub 
 ## 当前项目状态
 
 - ✅ 仓库结构、基础文档、Git 初始化、GitHub 远程推送（[KYLeonis/ai-physics-tracker](https://github.com/KYLeonis/ai-physics-tracker)，Private）
-- ⬜ 无可运行代码、无测试、无依赖锁定（属预期状态，Phase 1 起建立）
+- ✅ src-layout 核心包、锁定测试依赖与 56 项 pytest 测试；GitHub Actions 覆盖 macOS/Windows Python 3.11
+- ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引

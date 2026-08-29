@@ -43,13 +43,13 @@ AI Physics Tracker 是一个单机桌面应用，内部由四层组成：
 | 概念 | 说明 |
 | --- | --- |
 | Project | 一次实验分析会话：引用视频、标定、轨迹集合、模型引用 |
-| VideoMetadata | 文件路径、帧率、总帧数、分辨率、时长 |
-| Timeline | 帧号 ↔ 时间的映射、帧率约定（从 0 或 1 计数） |
+| Video | 文件路径、帧率、总帧数、分辨率等元数据；不包含帧像素 |
+| Timeline | 帧号 ↔ 时间的映射、0-based 帧约定与 working zone |
 | Track | 一个跟踪目标在全部帧上的轨迹数据序列 |
 | TrackPoint | 单帧单目标观测：像素坐标 + confidence + 来源（manual/ai） |
 | Annotation | 用户手工标注（是 TrackPoint 的一种来源，同时是 AI 训练数据） |
 | Calibration | 比例尺（像素↔物理长度）、坐标原点、轴方向/旋转 |
-| ProcessedData | 由原始 Track 经平滑/插值/异常值处理后得到的派生数据，原始数据永不覆盖 |
+| DerivedData | 由原始 Track 经标定/平滑/微分等得到的派生数据，原始数据永不覆盖 |
 
 关键约定：**原始跟踪数据只增不改**；所有处理（平滑、微分、拟合）产生的派生数据分层存放，保证可回溯、可重新处理（对应导出需求中的"保留原始跟踪数据"）。
 
@@ -103,3 +103,4 @@ DLC 模型（dlc-models, PyTorch engine）
 - [0001 — 记录架构决策的方式](decisions/0001-record-architecture-decisions.md)
 - [0002 — 选择 Python 3.11](decisions/0002-choose-python-3.11.md)
 - [0003 — 项目持久化采用 JSON 清单优先的混合方案](decisions/0003-project-persistence-format.md)
+- [0004 — 外部视频使用可空项目路径与绝对 locator](decisions/0004-external-video-locator.md)

@@ -16,8 +16,8 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | 阶段 | 名称 | 一句话目标 |
 | --- | --- | --- |
 | Phase 0 | Project Initialization | 仓库、文档、Git 初始化（✅ 已完成） |
-| Phase 1 | Project & Data Foundation | Project / Video / Track / Annotation / Calibration 数据体系（**当前阶段**） |
-| Phase 2 | Video Analysis MVP | 可用的 GUI + 视频播放 + 手工标记 + 项目保存 |
+| Phase 1 | Project & Data Foundation | Project / Video / Track / Annotation / Calibration 数据体系（✅ 已完成） |
+| Phase 2 | Video Analysis MVP | 可用的 GUI + 视频播放 + 手工标记 + 项目保存（下一阶段，等待指令） |
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表 |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪 |
 | Phase 5 | AI-assisted Annotation & Refinement | 代表帧选取、困难帧发现、快速修正与再训练 |
@@ -121,7 +121,7 @@ Explore → 需要时 Plan（subphase mini-plan）→ 以 Slice 小步实现
 - Phase 1 起引入 pytest；核心数据结构（project/track/annotation/calibration）与物理计算（坐标转换、微分、平滑）必须有单元测试。
 - 涉及数值计算的模块测试需使用已知解析解的合成数据（如匀速/匀加速/单摆小角度）。
 - GUI 功能以手动验收为主，逻辑尽量从 GUI 层剥离以便测试。
-- 当前阶段（Phase 0）无代码，无需测试。
+- Phase 1 领域模型与持久化已有 pytest 覆盖；验证命令为 `python -m pytest`，GitHub Actions 使用 macOS/Windows Python 3.11 双平台运行。
 
 ## 8. Git 工作方式
 

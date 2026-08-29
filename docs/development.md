@@ -104,7 +104,7 @@ main（稳定） ← 工作分支 feat/p<phase>.<sub>-<topic> / fix/<topic> / do
 - 核心数据结构与物理计算必须有单元测试（pytest）
 - 数值计算测试用已知解析解的合成数据（匀速、匀加速、单摆小角度）
 - GUI 手动验收；逻辑层尽量与 GUI 剥离以便自动化测试
-- 当前 Phase 0 无代码，无测试
+- Phase 1 起使用 pytest；本地运行 `python -m pytest`。GitHub Actions 在 `macos-latest` 与 `windows-latest` 上使用 Python 3.11 运行同一测试矩阵。
 
 ## 6. 文档维护
 
