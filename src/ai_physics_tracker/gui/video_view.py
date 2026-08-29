@@ -6,7 +6,7 @@ mapToScene，越界返回 None（data-model.md §6.1：逆映射发生在 GUI
 边界，落点前钳位并验证图像范围）。
 """
 
-from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import (
     QImage,
     QMouseEvent,
@@ -52,11 +52,10 @@ class VideoView(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        # 触摸屏 pinch 手势走 QGestureEvent 路径（macOS 触摸板走 NativeGesture）
+        # 触摸板/触摸屏 pinch 由 Qt 合成为 QGestureEvent 发给 grab 了
+        # 该手势的 widget（scripts/diagnose_pinch.py 实测直达 VideoView；
+        # NativeGesture 路径到 viewport 即止，不向上传播，不可依赖）
         self.grabGesture(Qt.GestureType.PinchGesture)
-        # NativeGesture 由系统直接投递给 viewport widget，不经过
-        # QAbstractScrollArea.viewportEvent 的转发列表，必须在 filter 拦截
-        self.viewport().installEventFilter(self)
         self.setStyleSheet("background-color: #181818; border: none;")
         self.setPlaceholder("Open a video to begin")
 
@@ -171,22 +170,20 @@ class VideoView(QGraphicsView):
         # 快捷键与菜单承担（Human Review 结论：滑动缩放不符合直觉）
         super().wheelEvent(event)
 
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        # macOS 触摸板 pinch（QNativeGestureEvent，ZoomNativeGesture 类型）
-        # 发往 viewport；QAbstractScrollArea.viewportEvent 不转发此类型，
-        # 只能在 filter 拦截
-        if obj is self.viewport() and event.type() == QEvent.Type.NativeGesture:
+    def event(self, event: QEvent) -> bool:
+        # 手势事件的汇聚点（scripts/diagnose_pinch.py 实测的事件流）：
+        # - macOS 触摸板捏合：NativeGesture(QZoomNativeGesture) 先到
+        #   viewport、未处理时传播到本 widget 的 event()；
+        # - 触摸屏/合成手势：QGestureEvent(Pinch) 由 grabGesture 直接
+        #   发给本 widget。两条路径都在这里处理。
+        if event.type() == QEvent.Type.NativeGesture:
             gesture = event  # QNativeGestureEvent
             if gesture.gestureType() == Qt.NativeGestureType.ZoomNativeGesture:
                 factor = gesture.value()
                 if factor > 0 and factor != 1.0:
                     self._applyPinchScale(factor)
                     return True
-        return super().eventFilter(obj, event)
-
-    def viewportEvent(self, event: QEvent) -> bool:
-        # 触摸屏 pinch（QGestureEvent）路径；macOS 触摸板见 eventFilter
-        if event.type() == QEvent.Type.Gesture:
+        elif event.type() == QEvent.Type.Gesture:
             gesture_event = event  # QGestureEvent
             pinch = gesture_event.gesture(Qt.GestureType.PinchGesture)
             if pinch is not None:
@@ -195,7 +192,7 @@ class VideoView(QGraphicsView):
                     self._applyPinchScale(factor)
                     gesture_event.accept()
                     return True
-        return super().viewportEvent(event)
+        return super().event(event)
 
     def _applyPinchScale(self, factor: float) -> None:
         """按 pinch 连续因子缩放（锚定光标），越界钳位。
