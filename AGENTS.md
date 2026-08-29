@@ -114,7 +114,7 @@ Explore → 需要时 Plan（subphase mini-plan）→ 以 Slice 小步实现
 
 **会话退出协议**（每次会话结束必须完整执行）：
 
-1. 运行验证（测试 / 验收标准核对）；2. 向用户总结变更；3. 更新 `docs/status/current.md`（必做）；4. 同步相关文档；5. 记录决策（必要时 ADR）；6. 按规则提交（subphase/phase 收尾须 push）；7. 在 status 中写出确切的"下一步建议动作"。
+1. 运行验证（测试 / 验收标准核对）；2. 向用户总结变更（交付可运行增量时，附运行方式与新功能体验步骤，细则见 `docs/workflow.md` §8.1）；3. 更新 `docs/status/current.md`（必做）；4. 同步相关文档；5. 记录决策（必要时 ADR）；6. 按规则提交（subphase/phase 收尾须 push）；7. 在 status 中写出确切的"下一步建议动作"。
 
 ## 7. 测试和验证要求
 
@@ -165,6 +165,7 @@ test: add pendulum synthetic data tests for kinematics
 
 1. 打开 `docs/roadmap.md` 中当前 Phase 的验收标准清单。
 2. 逐项真实验证后将 `[ ]` 改为 `[x]`；无法完成的项目保留 `[ ]` 并在下方用一行文字说明原因与后续处理方式。
+3. 收尾总结须附**交付说明**：阶段成果如何从零运行（环境要求 + 完整命令序列）、新增功能如何体验（具体操作步骤与预期结果）；无可运行变化时免附（细则见 `docs/workflow.md` §8.1）。
 
 ### 第二步：同步文档
 
