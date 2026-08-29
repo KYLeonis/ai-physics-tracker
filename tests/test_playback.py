@@ -181,8 +181,8 @@ def test_close_stops_worker_and_no_callbacks_after() -> None:
     session.close()
 
     assert not session._worker.is_alive()
+    # close() 已 join worker，此后请求被丢弃且不可能有回调
     session.request_frame(2)
-    time.sleep(0.1)
     assert callbacks.frames == []
     # VideoSession.open 先预防性 close 一次，AsyncVideoSession.close 再一次
     assert reader.close_calls == 2

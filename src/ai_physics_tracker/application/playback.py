@@ -47,7 +47,9 @@ class AsyncVideoSession:
     - `request_frame()` 只保留最新未处理的帧号（覆盖旧请求）：播放与 scrub
       高频提交时，中间帧在解码开始前即被丢弃，这正是 phase2-requirements.md
       §2 R3 的"latest-request coalescing / 过期解码请求可丢弃"；
-    - `snapshot()` 在锁内一次取全当前状态，供 GUI 线程安全读取。
+    - `snapshot()` 提供当前状态的最终一致读取（见其 docstring）；
+    - 会话已停止或正在关闭时 `request_frame()` 静默丢弃请求且**不产生
+      任何回调**——调用方不得依赖回调来清自身的在途标志。
     """
 
     def __init__(
@@ -88,7 +90,10 @@ class AsyncVideoSession:
         return future
 
     def request_frame(self, frame_index: int) -> None:
-        """提交解码请求；覆盖尚未开始的旧请求（latest-wins）。"""
+        """提交解码请求；覆盖尚未开始的旧请求（latest-wins）。
+
+        会话已停止或正在关闭时请求被静默丢弃，不产生回调。
+        """
 
         with self._wakeup:
             if self._stopped or self._pending_close:

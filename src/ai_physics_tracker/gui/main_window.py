@@ -35,8 +35,8 @@ class MainWindow(QMainWindow):
     时间语义，时间显示始终经 Timeline 换算）。
     """
 
-    frameDelivered = Signal(object)
-    decodeFailed = Signal(str)
+    frameDelivered = Signal(object, int)
+    decodeFailed = Signal(str, int)
 
     def __init__(
         self,
@@ -54,6 +54,11 @@ class MainWindow(QMainWindow):
         self._has_pending_request = False
         self._frame_count = 0
         self._timeline: Timeline | None = None
+        # 交付代际：openVideo 递增；worker 回调发射时捕获当前代际，
+        # GUI 侧丢弃跨代际的迟到交付（旧视频的在途帧不得污染新视频展示）
+        self._delivery_generation = 0
+        # 连续步进的基准：以最后请求帧号计算，避免解码延迟吞掉快速连点
+        self._last_requested_frame: int | None = None
 
         self.videoView = VideoView(self)
         self.previousButton = QPushButton("Previous frame", self)
@@ -106,6 +111,25 @@ class MainWindow(QMainWindow):
         fileMenu = self.menuBar().addMenu("File")
         fileMenu.addAction(openAction)
 
+        zoomInAction = QAction("Zoom in", self)
+        zoomInAction.setShortcut(QKeySequence("Ctrl++"))
+        zoomInAction.triggered.connect(self.videoView.zoomIn)
+        zoomOutAction = QAction("Zoom out", self)
+        zoomOutAction.setShortcut(QKeySequence("Ctrl+-"))
+        zoomOutAction.triggered.connect(self.videoView.zoomOut)
+        zoomFitAction = QAction("Fit to window", self)
+        zoomFitAction.setShortcut(QKeySequence("Ctrl+0"))
+        zoomFitAction.triggered.connect(self.videoView.zoomFit)
+        zoomOriginalAction = QAction("Original size (100%)", self)
+        zoomOriginalAction.setShortcut(QKeySequence("Ctrl+1"))
+        zoomOriginalAction.triggered.connect(self.videoView.zoomOriginal)
+        viewMenu = self.menuBar().addMenu("View")
+        viewMenu.addAction(zoomInAction)
+        viewMenu.addAction(zoomOutAction)
+        viewMenu.addSeparator()
+        viewMenu.addAction(zoomFitAction)
+        viewMenu.addAction(zoomOriginalAction)
+
         playShortcut = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
         playShortcut.activated.connect(self.togglePlayback)
 
@@ -129,6 +153,9 @@ class MainWindow(QMainWindow):
         """打开视频并初始化全部展示状态；失败时保持关闭态。"""
 
         self.stopPlayback()
+        self._delivery_generation += 1
+        self._has_pending_request = False
+        self._last_requested_frame = None
         self._resetPresentation()
         try:
             snapshot = self._async.open(path).result(timeout=10.0)
@@ -136,6 +163,13 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(str(error))
             if show_error:
                 QMessageBox.critical(self, "Unable to open video", str(error))
+            return False
+        except TimeoutError:
+            # worker 仍在打开中；不再等待，提示用户稍后重试
+            message = "Opening video timed out; the file may be very large."
+            self.statusBar().showMessage(message)
+            if show_error:
+                QMessageBox.critical(self, "Unable to open video", message)
             return False
         except Exception as error:
             logger.error("unexpected open failure", exc_info=True)
@@ -192,11 +226,12 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def _emitFrameDelivered(self, frame: DecodedFrame) -> None:
-        # worker 线程上下文：Qt signal emit 线程安全，slot 排队回 GUI 线程
-        self.frameDelivered.emit(frame)
+        # worker 线程上下文：Qt signal emit 线程安全，slot 排队回 GUI 线程；
+        # 代际随交付携带，跨代际的迟到交付在 slot 内丢弃
+        self.frameDelivered.emit(frame, self._delivery_generation)
 
     def _emitDecodeFailed(self, error: VideoError) -> None:
-        self.decodeFailed.emit(str(error))
+        self.decodeFailed.emit(str(error), self._delivery_generation)
 
     def _playTick(self) -> None:
         # 解码慢于帧率时节流：等上一请求交付后再发下一个（不堆积请求）；
@@ -214,15 +249,21 @@ class MainWindow(QMainWindow):
 
     def _requestFrame(self, frame_index: int) -> None:
         self._has_pending_request = True
+        self._last_requested_frame = frame_index
         self._async.request_frame(frame_index)
 
-    def _onFrameDelivered(self, frame: DecodedFrame) -> None:
+    def _onFrameDelivered(self, frame: DecodedFrame, generation: int) -> None:
+        if generation != self._delivery_generation:
+            return
         self._has_pending_request = False
+        self._last_requested_frame = frame.frame_index
         self._presentFrame(frame)
         if self._is_playing and frame.frame_index >= self._frame_count - 1:
             self.stopPlayback()
 
-    def _onDecodeFailed(self, message: str) -> None:
+    def _onDecodeFailed(self, message: str, generation: int) -> None:
+        if generation != self._delivery_generation:
+            return
         self._has_pending_request = False
         self.stopPlayback()
         self.statusBar().showMessage(message)
@@ -238,11 +279,14 @@ class MainWindow(QMainWindow):
         blocker = QSignalBlocker(self.frameSpinBox)
         self.frameSpinBox.setValue(frame.frame_index)
         del blocker
-        blocker = QSignalBlocker(self.timelineSlider)
-        self.timelineSlider.setValue(frame.frame_index)
-        del blocker
+        # 拖动滑块期间不回写位置，避免在途交付把滑块从用户手中拽走
+        if not self.timelineSlider.isSliderDown():
+            blocker = QSignalBlocker(self.timelineSlider)
+            self.timelineSlider.setValue(frame.frame_index)
+            del blocker
         self.frameLabel.setText(f"Frame: {frame.frame_index} / {self._frame_count - 1}")
-        assert self._timeline is not None
+        if self._timeline is None:
+            return
         time_s = frame_to_time(frame.frame_index, self._timeline)
         self.timeLabel.setText(f"Time: {time_s:.3f} s nominal")
         self.previousButton.setEnabled(frame.frame_index > 0)
@@ -253,8 +297,13 @@ class MainWindow(QMainWindow):
         if snapshot is None:
             return
         self.stopPlayback()
-        target = snapshot.current_frame.frame_index + delta
-        self._requestFrame(max(0, min(target, self._frame_count - 1)))
+        # 以最后请求帧号为基准：快速连点时解码延迟不会吞掉第二次步进
+        if self._last_requested_frame is not None:
+            base = self._last_requested_frame
+        else:
+            base = snapshot.current_frame.frame_index
+        target = max(0, min(base + delta, self._frame_count - 1))
+        self._requestFrame(target)
 
     def _goToFrame(self, frame_index: int) -> None:
         if self._async.snapshot() is None:
@@ -266,7 +315,7 @@ class MainWindow(QMainWindow):
         self.stopPlayback()
 
     def _scrubPreview(self, frame_index: int) -> None:
-        # 拖动中的预览请求经 latest-wins 合并，只有最终停留位置会被解码
+        # 高频拖动下的预览请求经 latest-wins 节流，最终停留位置必被解码
         self._requestFrame(frame_index)
 
     def _scrubCommitted(self) -> None:

@@ -101,3 +101,39 @@ def test_manual_step_pauses_active_playback(
     qtbot.mouseClick(window.nextButton, Qt.MouseButton.LeftButton)
 
     assert not window.isPlaying
+
+
+def test_rapid_double_step_advences_two_frames(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # 回归：解码延迟不得吞掉快速连点（步进以最后请求帧号为基准）
+    window = _opened_window(qtbot, synthetic_video_path)
+
+    qtbot.mouseClick(window.nextButton, Qt.MouseButton.LeftButton)
+    qtbot.mouseClick(window.nextButton, Qt.MouseButton.LeftButton)
+
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 2 / 4")
+
+
+def test_stale_delivery_from_previous_video_is_dropped(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # 回归 B1：打开新视频时，旧视频在途帧的迟到交付必须被代际隔离丢弃
+    window = _opened_window(qtbot, synthetic_video_path)
+    stale_frame = window._async.snapshot().current_frame
+
+    assert window.openVideo(synthetic_video_path, show_error=False)
+    stale_generation = window._delivery_generation - 1
+    window.frameDelivered.emit(stale_frame, stale_generation)
+
+    assert window.frameLabel.text() == "Frame: 0 / 4"
+    assert window.timelineSlider.value() == 0
+
+
+def test_view_menu_exposes_zoom_actions(qtbot: QtBot) -> None:
+    window = MainWindow(VideoSession(OpenCVVideoReader()))
+    qtbot.addWidget(window)
+
+    menu_titles = [action.text() for action in window.menuBar().actions()]
+
+    assert "View" in menu_titles

@@ -28,6 +28,8 @@ from ai_physics_tracker.application.video import DecodedFrame
 MIN_SCALE = 0.05
 MAX_SCALE = 32.0
 ZOOM_STEP = 1.25
+# fit 时为滚动条边缘保留的像素余量，避免临界尺寸下出现滚动条
+FIT_MARGIN_PX = 2.0
 
 
 class VideoView(QGraphicsView):
@@ -128,9 +130,8 @@ class VideoView(QGraphicsView):
             return
         self.resetTransform()
         viewport_size = self.viewport().size()
-        margin = 2.0
-        scale_x = (viewport_size.width() - margin) / rect.width()
-        scale_y = (viewport_size.height() - margin) / rect.height()
+        scale_x = (viewport_size.width() - FIT_MARGIN_PX) / rect.width()
+        scale_y = (viewport_size.height() - FIT_MARGIN_PX) / rect.height()
         scale = max(MIN_SCALE, min(scale_x, scale_y))
         self.scale(scale, scale)
         self._centerOnSceneCenter()
