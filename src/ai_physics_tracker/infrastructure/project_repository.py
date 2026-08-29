@@ -108,17 +108,31 @@ class ProjectRepository:
         """End a lifecycle session; no-op because the repository retains no handles."""
 
     @staticmethod
-    def resolve_video_path(project_root: Path, video: Video) -> Path:
-        """Resolve a stored POSIX relative reference under the current project root."""
+    def resolve_video_path(project_root: Path, video: Video) -> Path | None:
+        """Resolve project-managed first, then external; return None for relink."""
 
-        return project_root.joinpath(*video.file_path.parts)
+        if video.file_path is not None:
+            managed = project_root.joinpath(*video.file_path.parts)
+            if managed.exists():
+                return managed
+        if video.original_path is not None:
+            external = Path(video.original_path)
+            if external.exists():
+                return external
+        return None
 
     @staticmethod
     def relative_video_path(project_root: Path, video_path: Path) -> PurePosixPath:
-        """Encode a path relative to the project root using POSIX separators."""
+        """Encode a copied project-managed video; external videos use original_path."""
 
-        relative = os.path.relpath(video_path, project_root)
-        return PurePosixPath(Path(relative).as_posix())
+        try:
+            relative = video_path.resolve().relative_to(project_root.resolve())
+        except ValueError as error:
+            raise ValueError(
+                "video is outside the project; store it as an external original_path "
+                "or copy it into the project first"
+            ) from error
+        return PurePosixPath(relative.as_posix())
 
 
 def _migrate_payload(payload: dict[str, object]) -> dict[str, object]:

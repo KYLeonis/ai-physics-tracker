@@ -150,7 +150,9 @@ def _video_to_payload(video: Video) -> dict[str, object]:
         video.extra_fields,
         {
             "video_id": str(video.video_id),
-            "file_path": video.file_path.as_posix(),
+            "file_path": video.file_path.as_posix()
+            if video.file_path is not None
+            else None,
             "original_path": video.original_path,
             "display_name": video.display_name,
             "width_px": video.width_px,
@@ -180,7 +182,9 @@ def _video_from_payload(payload: dict[str, object]) -> Video:
     }
     return Video(
         video_id=UUID(_string(payload, "video_id")),
-        file_path=PurePosixPath(_string(payload, "file_path")),
+        file_path=None
+        if payload.get("file_path") is None
+        else PurePosixPath(_string(payload, "file_path")),
         original_path=_optional_string(payload.get("original_path")),
         display_name=_string(payload, "display_name"),
         width_px=_integer(payload, "width_px"),

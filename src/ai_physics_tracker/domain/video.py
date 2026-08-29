@@ -1,7 +1,7 @@
 """Video metadata value object; frame pixels are deliberately excluded."""
 
 from dataclasses import dataclass, field
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 from uuid import UUID
 
 from ai_physics_tracker.domain.types import JsonObject
@@ -9,10 +9,10 @@ from ai_physics_tracker.domain.types import JsonObject
 
 @dataclass(frozen=True)
 class Video:
-    """Metadata and portable project-relative reference for one video."""
+    """Metadata plus either a managed relative or external absolute locator."""
 
     video_id: UUID
-    file_path: PurePosixPath
+    file_path: PurePosixPath | None
     display_name: str
     width_px: int
     height_px: int
@@ -25,8 +25,18 @@ class Video:
     extra_fields: JsonObject = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
-        if self.file_path.is_absolute():
+        if self.file_path is not None and self.file_path.is_absolute():
             raise ValueError("file_path must be relative to the project root")
+        if self.file_path is not None and (
+            not self.file_path.parts
+            or ".." in self.file_path.parts
+            or "\\" in self.file_path.as_posix()
+        ):
+            raise ValueError("file_path must stay inside the project using POSIX separators")
+        if self.file_path is None and self.original_path is None:
+            raise ValueError("external video requires an absolute original_path")
+        if self.original_path is not None and not _is_absolute_path(self.original_path):
+            raise ValueError("original_path must be absolute when provided")
         if not self.display_name.strip():
             raise ValueError("display_name must not be blank")
         if self.width_px <= 0 or self.height_px <= 0:
@@ -35,3 +45,9 @@ class Video:
             raise ValueError("fps_container must be positive")
         if self.frame_count <= 0:
             raise ValueError("frame_count must be positive")
+
+
+def _is_absolute_path(value: str) -> bool:
+    """Recognize POSIX and Windows absolute locators on either host platform."""
+
+    return PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute()

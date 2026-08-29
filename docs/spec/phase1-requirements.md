@@ -21,7 +21,7 @@ Phase 1 建立**统一数据体系**：手工跟踪与 AI 跟踪共享同一套�
 创建（目录 + `project.json` 骨架）、打开、保存、另存、关闭。保存走原子替换 + 滚动备份（project-format.md §5）；schema 版本守卫：高于支持版本明确拒绝，低于走迁移链（当前无历史版本，守卫逻辑先落地）。
 
 ### R2 视频登记
-以编程方式构造 `Video` 元数据并加入项目（Phase 1 **不解码视频**，探测属 Phase 2）；相对路径解析、`original_path` 提示、缺失时 relink 流程（project-format.md §3）；重复登记检测（按相对路径）。
+以编程方式构造 `Video` 元数据并加入项目（Phase 1 **不解码视频**，探测属 Phase 2）；项目内相对路径与外部绝对 locator 解析、缺失时 relink 流程（project-format.md §3）；重复登记检测（按实际 locator）。
 
 ### R3 Timeline 与时间换算
 `fps_nominal` / `working_zone` 管理；`frame_to_time` / `time_to_frame` / 步进钳位；观测 `time_s` 冻结与加载一致性校验（data-model.md §5）。VFR 视频在登记接口层显式拒绝（`vfr_suspected` → 拒绝进入分析）。
@@ -46,7 +46,7 @@ roadmap 验收项"手工标注数据结构可无损转换为 DeepLabCut 标注�
 | # | 验收标准 | 判定方式 | 状态 |
 | --- | --- | --- | --- |
 | AC-1 | 能以编程方式创建项目、添加视频元数据与轨迹数据并持久化/恢复 | pytest 集成测试：create → add video/track/points/calibration → save → 从新路径 load → 对象图逐字段相等 | [ ] |
-| AC-2 | 项目目录可移动 | 同一测试在临时目录 A 保存、目录改名为 B 后加载成功（相对路径解析） | [ ] |
+| AC-2 | 项目目录可移动 | 同一测试在临时目录 A 保存、目录改名为 B 后加载成功；项目内相对路径继续解析，外部 locator 不存在时返回 relink 状态 | [ ] |
 | AC-3 | schema 守卫 | 测试：构造 `schema_version = 999` 文件 → 加载被明确拒绝且给出提示语义 | [ ] |
 | AC-4 | 时间换算契约 | data-model.md §5 全部规则成测：0-based、`frame/fps`、就近取整确定性、29.97 fps、无增量累积（抽查大帧号误差 < 1µs）、working zone 不改时间基准（§5.4 场景：zone=[100,500] 时第 100 帧导出 time = 100/fps） | [ ] |
 | AC-5 | 覆盖与修正语义 | 测试：引擎批量写入遇已有帧跳过（first-wins）；手工修正后引擎点 superseded 且**原值保留可查**；manual 删除后引擎点恢复 active（data-model.md §4.2/4.4） | [ ] |

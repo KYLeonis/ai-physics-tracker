@@ -90,8 +90,8 @@ Project
 | 字段 | 类型 | 约束/缺省 | 说明 |
 | --- | --- | --- | --- |
 | `video_id` | uuid | 必填 | |
-| `file_path` | str | 必填 | **相对项目根的相对路径**（posix 风格 `/` 分隔，见 project-format.md §3）；视频不复制、不入库 |
-| `original_path` | str \| null | null | 登记时的绝对路径，仅作重连提示/缓存，不参与解析 |
+| `file_path` | str \| null | null | 视频位于项目内时，保存**相对项目根的相对路径**（posix 风格 `/` 分隔）；外部视频为 null |
+| `original_path` | str \| null | 与 `file_path` 至少一个非 null | 外部视频的绝对 locator；项目内视频可保留登记前原路径作 fallback/relink 提示 |
 | `display_name` | str | 必填 | 默认取文件名 |
 | `width_px` / `height_px` | int | > 0 | 像素坐标系的范围依据 |
 | `fps_container` | float | > 0 | 容器/探测报告的名义帧率（OpenCV/ffprobe 所得），**仅供参考** |

@@ -101,8 +101,11 @@ def add_video(project: Project, video: Video, timeline: Timeline) -> Project:
         raise ValueError("timeline.video_id must match video.video_id")
     if any(item.video_id == video.video_id for item in project.videos):
         raise ValueError(f"video_id is already registered: {video.video_id}")
-    if any(item.file_path == video.file_path for item in project.videos):
-        raise ValueError(f"video path is already registered: {video.file_path}")
+    if any(
+        _video_reference_key(item) == _video_reference_key(video)
+        for item in project.videos
+    ):
+        raise ValueError("video locator is already registered")
     if timeline.working_zone[1] >= video.frame_count:
         raise ValueError("timeline working_zone exceeds video frame_count")
     return replace(
@@ -112,16 +115,26 @@ def add_video(project: Project, video: Video, timeline: Timeline) -> Project:
     )
 
 
-def relink_video(project: Project, video_id: UUID, file_path: PurePosixPath) -> Project:
-    """Update only a video's portable path; observations remain untouched."""
+def relink_video(
+    project: Project,
+    video_id: UUID,
+    *,
+    file_path: PurePosixPath | None,
+    original_path: str | None,
+) -> Project:
+    """Update one video locator without touching observations."""
 
-    if file_path.is_absolute():
-        raise ValueError("relinked file_path must remain project-relative")
     found = False
     videos: list[Video] = []
     for video in project.videos:
         if video.video_id == video_id:
-            videos.append(replace(video, file_path=file_path))
+            videos.append(
+                replace(
+                    video,
+                    file_path=file_path,
+                    original_path=original_path,
+                )
+            )
             found = True
         else:
             videos.append(video)
@@ -310,8 +323,10 @@ def validate_project(project: Project) -> None:
     video_ids = [video.video_id for video in project.videos]
     if len(set(video_ids)) != len(video_ids):
         raise ValueError("video_id values must be unique")
-    if len({video.file_path for video in project.videos}) != len(project.videos):
-        raise ValueError("video file_path values must be unique")
+    if len({_video_reference_key(video) for video in project.videos}) != len(
+        project.videos
+    ):
+        raise ValueError("video locators must be unique")
     timelines = {timeline.video_id: timeline for timeline in project.timelines}
     if len(timelines) != len(project.timelines) or set(timelines) != set(video_ids):
         raise ValueError("each video must have exactly one Timeline")
@@ -371,3 +386,11 @@ def validate_project(project: Project) -> None:
             raise ValueError("active calibration must belong to its mapped video")
     if any(item.track_id not in track_id_set for item in project.derived):
         raise ValueError("every DerivedData item must reference a registered track")
+
+
+def _video_reference_key(video: Video) -> tuple[str, str]:
+    if video.file_path is not None:
+        return "project", video.file_path.as_posix().casefold()
+    if video.original_path is None:
+        raise ValueError("video must define a managed or external locator")
+    return "external", video.original_path.replace("\\", "/").casefold()

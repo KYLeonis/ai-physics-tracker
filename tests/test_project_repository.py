@@ -116,6 +116,80 @@ def test_create_save_move_and_load_round_trip(tmp_path: Path) -> None:
     assert (moved_root / "data" / "derived").is_dir()
 
 
+def test_external_cross_drive_locator_round_trips_and_requests_relink(
+    tmp_path: Path,
+) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    project = repository.create(project_root, "external")
+    video = Video(
+        uuid4(),
+        None,
+        "pendulum.mp4",
+        1920,
+        1080,
+        30.0,
+        300,
+        original_path=r"D:\Experiments\pendulum.mp4",
+    )
+    project = add_video(project, video, Timeline(video.video_id, 30.0, (0, 299)))
+
+    saved = repository.save(project_root, project)
+    loaded = repository.load(project_root)
+
+    assert loaded == saved
+    assert loaded.videos[0].file_path is None
+    assert repository.resolve_video_path(project_root, loaded.videos[0]) is None
+
+
+def test_external_locator_resolves_when_absolute_file_exists(tmp_path: Path) -> None:
+    repository = ProjectRepository()
+    external = tmp_path / "external.mp4"
+    external.write_bytes(b"fixture")
+    video = Video(
+        uuid4(),
+        None,
+        "external.mp4",
+        100,
+        100,
+        30.0,
+        10,
+        original_path=str(external),
+    )
+
+    assert repository.resolve_video_path(tmp_path / "project", video) == external
+
+
+def test_missing_managed_video_falls_back_to_existing_original_path(
+    tmp_path: Path,
+) -> None:
+    repository = ProjectRepository()
+    external = tmp_path / "fallback.mp4"
+    external.write_bytes(b"fixture")
+    video = Video(
+        uuid4(),
+        PurePosixPath("videos/missing.mp4"),
+        "missing.mp4",
+        100,
+        100,
+        30.0,
+        10,
+        original_path=str(external),
+    )
+
+    assert repository.resolve_video_path(tmp_path / "project", video) == external
+
+
+def test_project_relative_path_rejects_files_outside_project(tmp_path: Path) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    external = tmp_path / "external.mp4"
+
+    with pytest.raises(ValueError, match="outside the project"):
+        repository.relative_video_path(project_root, external)
+
+
 def test_schema_newer_than_supported_is_rejected_explicitly(tmp_path: Path) -> None:
     repository = ProjectRepository()
     project_root = tmp_path / "project"

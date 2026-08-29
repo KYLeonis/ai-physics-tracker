@@ -17,7 +17,7 @@
 
 ## Current Slice
 
-**Slice 6 — 集成验收与独立 review 修复** 🔄（本地 41 tests passed；等待跨盘符视频引用格式决策）
+**Slice 6 — 集成验收与独立 review 修复** 🔄（跨盘符 schema 修订已批准，进入最终复审）
 
 ## Current Goal
 
@@ -43,10 +43,8 @@ Phase 1.1：按 `docs/spec/phase1-requirements.md` 落地数据模型核心（sr
 - Phase 1 前的设计只到字段级建议，**不写 Python class**（自 Phase 1.1 起）
 - 数值微分/平滑方法 → Phase 3 前出 ADR
 
-**Blockers**：
-
-- Windows 跨盘符外部视频无法表示为“项目根相对 `file_path`”：例如项目在 `C:`、视频在 `D:` 时 `relpath` 无定义。需在 schema v1 封板前决定：允许 `file_path = null` 并以 `original_path` 作为 external locator（推荐），或强制跨盘符视频复制进项目。Issue #1 独立 review 将其列为 Blocker。
+**Blockers**：无。Windows 跨盘符外部视频改用 `file_path = null` + 绝对 `original_path`（2026-08-29 用户批准）；项目内视频仍用相对路径。
 
 ## Next Recommended Action
 
-确认并实现跨盘符视频引用策略；随后复跑 pytest、补独立 review、获授权后 push 分支触发 macOS/Windows CI。CI 全绿后完成 Issue #1、Phase 1 验收文档同步与 `--no-ff` 集成。
+复跑 pytest 并完成独立复审；随后获授权后 push 分支触发 macOS/Windows CI。CI 全绿后完成 Issue #1、Phase 1 验收文档同步与 `--no-ff` 集成。
