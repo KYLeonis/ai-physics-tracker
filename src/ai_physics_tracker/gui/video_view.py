@@ -8,20 +8,25 @@ mapToScene，越界返回 None（data-model.md §6.1：逆映射发生在 GUI
 
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import (
+    QColor,
     QImage,
     QMouseEvent,
     QPainter,
+    QPen,
     QPixmap,
     QResizeEvent,
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
+    QGraphicsEllipseItem,
+    QGraphicsItem,
     QGraphicsPixmapItem,
     QGraphicsScene,
     QGraphicsTextItem,
     QGraphicsView,
     QWidget,
 )
+from dataclasses import dataclass
 
 from ai_physics_tracker.application.video import DecodedFrame
 
@@ -30,12 +35,25 @@ MAX_SCALE = 32.0
 ZOOM_STEP = 1.25
 # fit 时为滚动条边缘保留的像素余量，避免临界尺寸下出现滚动条
 FIT_MARGIN_PX = 2.0
+# 标注点的屏幕直径（ItemIgnoresTransformations：不随缩放变化）
+MARKER_DIAMETER_PX = 9.0
+
+
+@dataclass(frozen=True)
+class MarkerView:
+    """overlay 标注点的视图模型（gui 层，不携带领域对象）。"""
+
+    pixel_x: float
+    pixel_y: float
+    color: str
+    is_current_frame: bool = False
 
 
 class VideoView(QGraphicsView):
     """展示解耦的 RGB 帧；fit 模式自动适配，自由缩放后保持用户缩放。"""
 
     scaleChanged = Signal(float)
+    annotationClicked = Signal(QPoint)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -43,6 +61,8 @@ class VideoView(QGraphicsView):
         self.setScene(self._scene)
         self._pixmap_item: QGraphicsPixmapItem | None = None
         self._placeholder_item: QGraphicsTextItem | None = None
+        self._marker_items: list[QGraphicsEllipseItem] = []
+        self._annotation_mode = False
         self._fit_pending = True
         self.setMinimumSize(320, 240)
         self.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -209,9 +229,72 @@ class VideoView(QGraphicsView):
         self.scale(factor, factor)
         self.scaleChanged.emit(self.currentScale())
 
+    def set_annotation_mode(self, enabled: bool) -> None:
+        """标注模式：左键点击落点（发 annotationClicked），禁用拖拽平移。"""
+
+        self._annotation_mode = enabled
+        if enabled:
+            self.setDragMode(QGraphicsView.DragMode.NoDrag)
+            self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        else:
+            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+            self.viewport().unsetCursor()
+
+    def is_annotation_mode(self) -> bool:
+        return self._annotation_mode
+
+    def set_markers(self, markers: list[MarkerView]) -> None:
+        """整批替换 overlay 标注点（锚定图像像素、屏幕固定大小）。"""
+
+        for item in self._marker_items:
+            self._scene.removeItem(item)
+        self._marker_items = []
+        for marker in markers:
+            color = QColor(marker.color)
+            radius = MARKER_DIAMETER_PX / 2.0
+            item = QGraphicsEllipseItem(
+                marker.pixel_x - radius,
+                marker.pixel_y - radius,
+                MARKER_DIAMETER_PX,
+                MARKER_DIAMETER_PX,
+            )
+            # 屏幕固定大小：忽略 view transform（ItemIgnoresTransformations）
+            item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True
+            )
+            pen = QPen(color)
+            if marker.is_current_frame:
+                pen.setWidthF(2.5)
+                item.setBrush(color)
+            else:
+                pen.setWidthF(1.2)
+                item.setBrush(Qt.BrushStyle.NoBrush)
+            item.setPen(pen)
+            item.setZValue(10.0)
+            self._scene.addItem(item)
+            self._marker_items.append(item)
+
+    def marker_count(self) -> int:
+        return len(self._marker_items)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if (
+            self._annotation_mode
+            and event.button() == Qt.MouseButton.LeftButton
+            and self._pixmap_item is not None
+        ):
+            self.annotationClicked.emit(event.position().toPoint())
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
-        # 双击回到 fit 模式（常见查看器惯例）
-        if event.button() == Qt.MouseButton.LeftButton and self._pixmap_item:
+        # 双击回到 fit 模式（浏览模式专属；标注模式下双击会连点两个标记）
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self._pixmap_item
+            and not self._annotation_mode
+        ):
             self.zoomFit()
             event.accept()
             return

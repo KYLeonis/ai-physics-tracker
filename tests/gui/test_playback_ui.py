@@ -12,12 +12,13 @@ from pytestqt.qtbot import QtBot
 from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.gui.main_window import MainWindow
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
+from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
 LAST_FRAME_LABEL = "Frame: 4 / 4"
 
 
 def _opened_window(qtbot: QtBot, synthetic_video_path: Path) -> MainWindow:
-    window = MainWindow(VideoSession(OpenCVVideoReader()))
+    window = MainWindow(VideoSession(OpenCVVideoReader()), ProjectRepository())
     qtbot.addWidget(window)
     window.show()
     assert window.openVideo(synthetic_video_path, show_error=False)
@@ -131,7 +132,7 @@ def test_stale_delivery_from_previous_video_is_dropped(
 
 
 def test_view_menu_exposes_zoom_actions(qtbot: QtBot) -> None:
-    window = MainWindow(VideoSession(OpenCVVideoReader()))
+    window = MainWindow(VideoSession(OpenCVVideoReader()), ProjectRepository())
     qtbot.addWidget(window)
 
     menu_titles = [action.text() for action in window.menuBar().actions()]
@@ -161,7 +162,7 @@ def test_playback_rate_changes_timer_interval(
 def test_speed_menu_is_exclusive_and_defaults_to_original(
     qtbot: QtBot,
 ) -> None:
-    window = MainWindow(VideoSession(OpenCVVideoReader()))
+    window = MainWindow(VideoSession(OpenCVVideoReader()), ProjectRepository())
     qtbot.addWidget(window)
 
     checked = [rate for rate, action in window._speedActions.items() if action.isChecked()]

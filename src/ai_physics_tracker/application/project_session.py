@@ -9,6 +9,7 @@ TrackStore 语义落地后同步生成新的 Project 快照；dirty 状态驱动
 import logging
 from dataclasses import replace
 from pathlib import Path
+from typing import Protocol
 from uuid import UUID, uuid4
 
 from ai_physics_tracker.application.video import VideoStreamInfo
@@ -25,9 +26,16 @@ from ai_physics_tracker.domain.track_store import (
 )
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.domain.video import Video
-from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
 logger = logging.getLogger(__name__)
+
+
+class ProjectRepositoryPort(Protocol):
+    """持久化端口的最低契约；由 infrastructure 实现、组合根注入。"""
+
+    def save(self, project_root: Path, project: Project) -> Project: ...
+
+    def load(self, project_root: Path) -> Project: ...
 
 # 自动分配的 Track 颜色轮转调色板（#RRGGBB，domain/track.py 校验格式）
 TRACK_COLOR_PALETTE = (
@@ -53,7 +61,7 @@ class ProjectSession:
 
     def __init__(
         self,
-        repository: ProjectRepository,
+        repository: ProjectRepositoryPort,
         project: Project,
         project_root: Path | None = None,
     ) -> None:
@@ -66,7 +74,7 @@ class ProjectSession:
     @classmethod
     def start(
         cls,
-        repository: ProjectRepository,
+        repository: ProjectRepositoryPort,
         name: str = "Untitled session",
     ) -> "ProjectSession":
         """创建一个内存中的新项目（无根目录，保存前需先落盘到目录）。"""
