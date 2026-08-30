@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 2.3 收尾）（Phase 2.2 收尾）
+- 最后更新：2026-08-30（Phase 2.4 Plan）
 
 ---
 
@@ -13,21 +13,22 @@
 
 ## Current Subphase
 
-**2.3 — Manual Annotation** ✅ 已完成（Issue #4 已关闭，merge `3967f6a`/`38eaa39`，CI 双平台全绿，Human Review 2 轮通过）。Phase 2 下一个 subphase（2.4 Project Workflow & Phase Close）待启动。
+**2.4 — Project Workflow & Phase Close** 📝 Plan 待确认；本地草案见 [phase-2.4-plan.md](phase-2.4-plan.md)。尚未创建工作分支或关联 Issue，未开始实现。
+
+上一 Subphase 2.3 已完成（Issue #4 已关闭，merge `3967f6a`/`38eaa39`，CI 双平台全绿，Human Review 2 轮通过）。
 
 ## Current Slice
 
-无（2.3 已收尾，等待 Human Review 确认后合并）
+无实现 Slice；正在确认 2.4 mini-plan。
 
 ## Current Goal
 
-播放/暂停、时间轴 scrub/commit、缩放/平移与 screen→pixel 逆映射，解码后台线程化。
+完成项目生命周期、未保存修改保护、持久化 Timeline 恢复、视频 relink 与 CFR/VFR 验证的规划；批准后再实现。Phase 2 最终收尾必须通过用户 Human Review（含 Windows 真机）。
 
 ## Recently Completed
 
 - **Phase 2.3 — Manual Annotation**（2026-08-30）：ProjectSession（application，ProjectRepositoryPort 协议 + 组合根注入）；Track 面板（创建/删除/选择、自动命名与调色板）；标注模式（选中即标记、Esc/列表空白退出，D1=A/D2=确认）；点击落点（mapScreenToPixel、呈现帧为唯一落帧来源、在途拒绝）；overlay 拖尾显示（当前帧实心高亮、屏幕固定大小、全缩放锚定）；manual 语义（time_s 冻结、visibility=visible、同帧 last-wins 硬删旧点）；独立 review 4 Blocker 全部修复（visibility、落帧时序、marker 锚点、空转测试）；**HR 反馈修复**：十字光标稳定（item 级 cursor，修 QGraphicsScene hover 覆盖）、快照式 Undo/Redo（按钮+⌘Z/⇧⌘Z、完整恢复被 last-wins 替换的旧点、撤销删除后恢复选择、save 清栈）；本地 124 tests
 - **Phase 2.2 — Playback & Viewport**（2026-08-29）：AsyncVideoSession（单线程串行 reader、latest-wins 解码合并、跨视频代际隔离）；播放控制（QTimer 节流、末帧自动暂停、空格/按钮、0.25–4× 倍速）；时间轴 scrub/commit；VideoView 重写为 QGraphicsView（pinch 手势缩放、拖拽平移、Fit/100%/200%/400% 档位、`mapScreenToPixel` ±0.5px）；**顺序解码 fast path（1080p H.264 从 33.3ms/帧降至 11.8ms/帧，根因修复卡顿）**；解码支持矩阵实测入库（development.md）；Human Review 5 轮通过（含 pinch 手势投递修复、`scripts/diagnose_pinch.py` 探针），本地 100 tests + CI 全绿
-- **Phase 2.1 — Desktop Video Foundation**（2026-08-29）：ADR-0005；PySide6/OpenCV headless/NumPy 2.4.6 依赖；Qt-free VideoReader/VideoSession；桌面入口、视频显示、前后步进/帧号跳转；本地 70 tests + CI macOS/Windows Python 3.11 全绿（run 33256154612）；Luna-max 独立 review 无 Blocker；Issue #2 已关闭，merge `7da0af1`
 - **注释语言规范**（2026-08-29）：CODE_STANDARD.md §12 规定注释/docstring 一律中文（标识符、spec 引用、API 名保留英文）；存量 34 个文件的英文 docstring/注释全部改写为中文，AST 对比确认代码逻辑零改动，70 tests 全绿（commit `1b5e303`）
 
 - **Phase 2.1 — Desktop Video Foundation**（2026-08-29）：ADR-0005；PySide6/OpenCV headless/NumPy 2.4.6 依赖；Qt-free VideoReader/VideoSession；桌面入口、视频显示、前后步进/帧号跳转；本地 70 tests + CI macOS/Windows Python 3.11 全绿（run 33256154612）；Luna-max 独立 review 无 Blocker；Issue #2 已关闭，merge `7da0af1`
@@ -54,8 +55,10 @@
 - Phase 1 前的设计只到字段级建议，**不写 Python class**（自 Phase 1.1 起）
 - 数值微分/平滑方法 → Phase 3 前出 ADR
 
-**Blockers**：无。
+**规划待确认项**：时序探测工具的引入与 Windows/CI 取得方式。reader 当前恒报 unknown，而视频登记未消费该状态；不能把它当作已完成的 CFR 验证。建议 FFprobe（本机已存在），详见计划。
+
+**本轮验证**：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → 124 passed；只修改规划/状态文档，不修改应用代码。
 
 ## Next Recommended Action
 
-Phase 2.2 候选主题（按 roadmap Phase 2 交付物顺序）：① 连续播放/暂停 + 时间轴（含 VFR 显式拒绝的 UI 呈现）；② 视频画面缩放/平移；③ 手工标记（点选添加轨迹点）。等待用户选择或调整范围划分后，按 `docs/workflow.md` §3 建 Issue + mini-plan 启动。
+请用户确认 [Phase 2.4 mini-plan](phase-2.4-plan.md) 的范围及 FFprobe/CI 方案；确认后查询并创建或复用 Issue，再建 `feat/p2.4-project-workflow` 分支，从失败安全的项目生命周期契约开始。独立 review 用 Luna-max；GUI 自动化通过后必须停下来等待用户亲测，不能用 computer-use 替代。尚未授权本轮 push。

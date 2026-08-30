@@ -4,7 +4,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近完成：**Phase 2.3 — Manual Annotation（✅ 2026-08-30）**
-- 当前阶段：**Phase 2 — Video Analysis MVP（🔄 Subphase 2.3 ✅，等待 2.4 指令）**
+- 当前阶段：**Phase 2 — Video Analysis MVP（🔄 Subphase 2.4 Plan，等待计划确认）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---

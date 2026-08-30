@@ -61,22 +61,24 @@ TrackPoint；使用 `frame_to_time` 冻结时间，调用 TrackStore manual last
 
 ## 4. Subphase 划分
 
-### 2.1 Desktop Video Foundation（当前）
+### 2.1 Desktop Video Foundation（已完成）
 
 桌面入口、同步 VideoReader、首帧显示、上一/下一/跳转。暂不连续播放、缩放、标记、
 项目保存 UI。
 
-### 2.2 Playback & Viewport
+### 2.2 Playback & Viewport（已完成）
 
 播放/暂停、后台解码、latest-request coalescing、scrub/commit、缩放和平移。
 
-### 2.3 Manual Annotation
+### 2.3 Manual Annotation（已完成）
 
 Track 选择/创建、screen→pixel、manual TrackPoint、overlay、Project 快照同步。
 
-### 2.4 Project Workflow & Phase Close
+### 2.4 Project Workflow & Phase Close（当前：Plan）
 
 新建/打开/保存/另存/relink/dirty 提示，MP4/H.264 Windows 真机验收，Phase 2 收尾。
+
+计划草案见 [Phase 2.4 mini-plan](../status/phase-2.4-plan.md)；未获确认前不开始实现。
 
 ## 5. Phase 2.1 Acceptance Criteria
 
