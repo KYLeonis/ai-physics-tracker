@@ -95,6 +95,43 @@ def make_session(
     )
 
 
+def test_identified_deliveries_distinguish_repeated_frame_requests() -> None:
+    reader = ControlledFakeReader()
+    results = []
+    callbacks = Callbacks()
+    session = AsyncVideoSession(VideoSession(reader), callbacks.on_frame, callbacks.on_error,
+                                on_result=results.append)
+    try:
+        session.open(Path("video.fake")).result(timeout=5)
+        reader.manual_gate = True
+        first = session.request_frame(1)
+        assert wait_until(lambda: 1 in reader.decoded_frames)
+        second = session.request_frame(1)
+        reader.release.set()
+        assert wait_until(lambda: len(results) == 2)
+        assert first != second
+        assert [result.request_id for result in results] == [first, second]
+        assert [result.frame.frame_index for result in results] == [1, 1]
+        assert callbacks.frames == []
+    finally:
+        reader.release.set()
+        session.close()
+
+
+def test_identified_failure_carries_the_request_id_and_target() -> None:
+    results = []
+    session = AsyncVideoSession(VideoSession(ControlledFakeReader()), lambda _: None,
+                                lambda _: None, on_result=results.append)
+    try:
+        request_id = session.request_frame(4)
+        assert wait_until(lambda: len(results) == 1)
+        assert results[0].request_id == request_id
+        assert results[0].requested_frame_index == 4
+        assert results[0].frame is None and isinstance(results[0].error, VideoError)
+    finally:
+        session.close()
+
+
 def test_open_future_returns_first_frame_snapshot() -> None:
     reader = ControlledFakeReader()
     callbacks = Callbacks()
