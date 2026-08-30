@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 2 — Video Analysis MVP（✅ 2026-08-30）**
-- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.0 Spec & Requirements）**
+- 最近完成：**Subphase 3.2 — Kinematics Engine（✅ 2026-08-30）**
+- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.3 Interactive Charts，计划待确认）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
