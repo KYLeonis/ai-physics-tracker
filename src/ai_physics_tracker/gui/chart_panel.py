@@ -192,21 +192,29 @@ class ChartPanel(QDockWidget):
         self.positionSource = QComboBox()
         self.positionSource.addItems(["Measured position", "Smoothed position"])
         self.positionSource.setToolTip("Position charts only; velocity and acceleration use the recorded SG pipeline.")
+        # QToolTip 中文在部分平台渲染为乱码（HR 反馈），提示统一用英文
         self.sgHelp = self._make_help_label(
-            "Savitzky-Golay 平滑窗口（单位：帧）。\n"
-            "作用：对标注点做局部多项式平滑，抑制手抖/拖影带来的噪声。\n"
-            "调大 → 曲线更平滑，但会抹平快速变化、增大边界失真；调小（最小 3）→ 接近原始数据。\n"
-            "必须为奇数且不超过最长连续标注段；有缺测时按连续段分别取窗口。"
+            "Savitzky-Golay smoothing window, in frames.\n"
+            "What it does: smooths annotated points with a local polynomial fit, "
+            "suppressing hand-tremor and tracking noise.\n"
+            "Larger -> smoother curve, but fast motion is flattened and edges distort "
+            "more; smaller (min 3) -> close to the raw data.\n"
+            "Must be odd and no longer than the longest continuous segment; gaps are "
+            "never filled across."
         )
         self.orderHelp = self._make_help_label(
-            "局部多项式拟合的阶数。\n"
-            "2 ≈ 二次多项式，适合匀速/匀加速运动（物理实验常用默认值）。\n"
-            "调高 → 更贴合复杂轨迹，但会放大标注噪声；必须小于 SG 窗口长度。"
+            "Polynomial order of the local fit.\n"
+            "2 = quadratic, matches constant-velocity / constant-acceleration motion "
+            "(the usual physics default).\n"
+            "Higher -> follows complex trajectories more closely but amplifies marking "
+            "noise; must stay below the SG window length."
         )
         self.sourceHelp = self._make_help_label(
-            "位置类图表（x-t / y-t / x-y）显示哪个位置：\n"
-            "Measured position = 原始标注点；Smoothed position = 平滑后的点。\n"
-            "速度/加速度图表始终由同一条平滑管线计算，不受此选择影响。"
+            "Which position the position charts (x-t / y-t / x-y) show:\n"
+            "Measured position = the raw annotated points; Smoothed position = after "
+            "smoothing.\n"
+            "Velocity and acceleration charts always come from the same smoothing "
+            "pipeline and ignore this switch."
         )
         self.recomputeButton = QPushButton("Recompute checked tracks")
         self.cancelButton = QPushButton("Cancel calculation")
