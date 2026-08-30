@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:   Phase 3 — Calibration & Physics Engine
-Last Completed:  Phase 2 — Video Analysis MVP ✅（2026-08-30，Windows 真机验收延后）
-Current Subphase: 规划中（3.0 spec / 3.1 启动待定）
+Current Phase:   Phase 3 — Calibration & Physics Engine 🔄
+Last Completed:  Subphase 3.1 — Calibration UI ✅（2026-08-30）
+Current Subphase: 3.2 — Kinematics Engine 规划中
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -100,8 +100,8 @@ Phase 2.1–2.4 已形成桌面视频浏览、异步播放、缩放/平移、手
 | --- | --- | --- |
 | Phase 0 | Project Initialization | ✅ 已完成（2026-08-27） |
 | Phase 1 | Project & Data Foundation | ✅ 已完成（2026-08-29） |
-| Phase 2 | Video Analysis MVP | ✅ 2026-08-30（Windows 真机验收延后） |
-| Phase 3 | Calibration & Physics Engine | 🔄 规划中 |
+| Phase 2 | Video Analysis MVP | ✅ 已完成（2026-08-30，Windows 真机验收延后） |
+| Phase 3 | Calibration & Physics Engine | 🔄 进行中 |
 | Phase 4 | Deep Learning Tracking | ⬜ |
 | Phase 5 | AI-assisted Annotation & Refinement | ⬜ |
 | Phase 6 | Advanced Physics Analysis | ⬜ |
