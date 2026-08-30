@@ -16,7 +16,15 @@ from uuid import UUID, uuid4
 
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
-from ai_physics_tracker.domain.calibration import Calibration
+from ai_physics_tracker.domain.calibration import Calibration, CalibrationTransform
+from ai_physics_tracker.domain.kinematics import (
+    batch_pixel_to_world,
+    dense_to_sparse_records,
+    derive_unit,
+    differentiate_savgol,
+    expand_to_dense_grid,
+    smooth_savgol,
+)
 from ai_physics_tracker.domain.project import (
     Project,
     add_calibration as add_domain_calibration,
@@ -29,7 +37,7 @@ from ai_physics_tracker.domain.project import (
     replace_calibration as replace_domain_calibration,
     set_active_calibration as set_domain_active_calibration,
 )
-from ai_physics_tracker.domain.derived import DerivedData, mark_tracks_stale
+from ai_physics_tracker.domain.derived import DerivedData, DerivedInput, mark_tracks_stale
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.track_store import (
@@ -501,6 +509,256 @@ class ProjectSession:
         self._commit_project(updated_project)
 
     replace_calibration = update_calibration
+
+    def compute_kinematics(
+        self,
+        track_id: UUID,
+        *,
+        window_length: int = 7,
+        polyorder: int = 2,
+    ) -> tuple[DerivedData, ...]:
+        """对指定 Track 执行运动学计算管线（坐标变换、SG 平滑与一/二阶微分）。
+
+        重算触发方式为应用层暴露 `recompute_kinematics`/`compute_kinematics` 接口，
+        由上层 GUI 层按需调用。
+
+        Args:
+            track_id: 目标 Track 的 UUID。
+            window_length: Savitzky-Golay 滤波窗口长度（必须为正奇数，默认 7）。
+            polyorder: Savitzky-Golay 多项式拟合阶数（默认 2）。
+
+        Returns:
+            生成的 (world_position, smoothed_position, velocity, acceleration)
+            四条 DerivedData 元组。
+        """
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        timeline = next(
+            (item for item in self._project.timelines if item.video_id == track.video_id),
+            None,
+        )
+        if timeline is None:
+            raise ProjectSessionError(f"no timeline registered for video of track {track.name}")
+
+        video = next(
+            (item for item in self._project.videos if item.video_id == track.video_id),
+            None,
+        )
+        if video is None:
+            raise ProjectSessionError(f"no video registered for track {track.name}")
+
+        delta = 1.0 / timeline.fps_nominal
+        points = self.manual_points(track_id)
+
+        try:
+            frames, px_x, px_y = expand_to_dense_grid(
+                points, frame_range=timeline.working_zone
+            )
+
+            active_cal = self.active_calibration(track.video_id)
+            if active_cal is not None:
+                transform = CalibrationTransform(
+                    calibration=active_cal, height_px=video.height_px
+                )
+                pos_x, pos_y = batch_pixel_to_world(px_x, px_y, transform)
+                pos_unit = active_cal.unit
+                cal_ref = active_cal.calibration_id
+                cal_step = [
+                    {
+                        "step": "calibration_transform",
+                        "params": {"calibration_id": str(active_cal.calibration_id)},
+                    }
+                ]
+            else:
+                pos_x, pos_y = px_x.copy(), px_y.copy()
+                pos_unit = "px"
+                cal_ref = None
+                cal_step = []
+
+            smooth_x = smooth_savgol(
+                pos_x, window_length=window_length, polyorder=polyorder
+            )
+            smooth_y = smooth_savgol(
+                pos_y, window_length=window_length, polyorder=polyorder
+            )
+            vx = differentiate_savgol(
+                pos_x,
+                window_length=window_length,
+                polyorder=polyorder,
+                deriv=1,
+                delta=delta,
+            )
+            vy = differentiate_savgol(
+                pos_y,
+                window_length=window_length,
+                polyorder=polyorder,
+                deriv=1,
+                delta=delta,
+            )
+            ax = differentiate_savgol(
+                pos_x,
+                window_length=window_length,
+                polyorder=polyorder,
+                deriv=2,
+                delta=delta,
+            )
+            ay = differentiate_savgol(
+                pos_y,
+                window_length=window_length,
+                polyorder=polyorder,
+                deriv=2,
+                delta=delta,
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+
+        now = utc_now()
+        derived_input = DerivedInput(
+            track_id=track_id, source_filter="manual", include_superseded=False
+        )
+        produced_by = "ai_physics_tracker.kinematics.v1"
+
+        pos_frames, pos_values = dense_to_sparse_records(frames, pos_x, pos_y)
+        smooth_frames, smooth_values = dense_to_sparse_records(frames, smooth_x, smooth_y)
+        vel_frames, vel_values = dense_to_sparse_records(frames, vx, vy)
+        acc_frames, acc_values = dense_to_sparse_records(frames, ax, ay)
+
+        d_pos = DerivedData(
+            derived_id=uuid4(),
+            track_id=track_id,
+            kind="world_position",
+            input=derived_input,
+            pipeline=tuple(cal_step),
+            frames=pos_frames,
+            values=pos_values,
+            payload_ref=None,
+            unit=pos_unit,
+            produced_by=produced_by,
+            created_at=now,
+            status="valid",
+            calibration_ref=cal_ref,
+        )
+
+        d_smooth = DerivedData(
+            derived_id=uuid4(),
+            track_id=track_id,
+            kind="smoothed_position",
+            input=derived_input,
+            pipeline=(
+                *cal_step,
+                {
+                    "step": "savitzky_golay",
+                    "params": {
+                        "window_length": window_length,
+                        "polyorder": polyorder,
+                        "deriv": 0,
+                        "mode": "interp",
+                    },
+                },
+            ),
+            frames=smooth_frames,
+            values=smooth_values,
+            payload_ref=None,
+            unit=pos_unit,
+            produced_by=produced_by,
+            created_at=now,
+            status="valid",
+            calibration_ref=cal_ref,
+        )
+
+        d_vel = DerivedData(
+            derived_id=uuid4(),
+            track_id=track_id,
+            kind="velocity",
+            input=derived_input,
+            pipeline=(
+                *cal_step,
+                {
+                    "step": "savitzky_golay",
+                    "params": {
+                        "window_length": window_length,
+                        "polyorder": polyorder,
+                        "deriv": 1,
+                        "delta": delta,
+                        "mode": "interp",
+                    },
+                },
+            ),
+            frames=vel_frames,
+            values=vel_values,
+            payload_ref=None,
+            unit=derive_unit(pos_unit, 1),
+            produced_by=produced_by,
+            created_at=now,
+            status="valid",
+            calibration_ref=cal_ref,
+        )
+
+        d_acc = DerivedData(
+            derived_id=uuid4(),
+            track_id=track_id,
+            kind="acceleration",
+            input=derived_input,
+            pipeline=(
+                *cal_step,
+                {
+                    "step": "savitzky_golay",
+                    "params": {
+                        "window_length": window_length,
+                        "polyorder": polyorder,
+                        "deriv": 2,
+                        "delta": delta,
+                        "mode": "interp",
+                    },
+                },
+            ),
+            frames=acc_frames,
+            values=acc_values,
+            payload_ref=None,
+            unit=derive_unit(pos_unit, 2),
+            produced_by=produced_by,
+            created_at=now,
+            status="valid",
+            calibration_ref=cal_ref,
+        )
+
+        new_items = (d_pos, d_smooth, d_vel, d_acc)
+        new_kinds = {item.kind for item in new_items}
+        kept_derived = [
+            d
+            for d in self._project.derived
+            if not (d.track_id == track_id and d.kind in new_kinds)
+        ]
+        updated_derived = tuple(kept_derived) + new_items
+
+        self._commit_store(self._store, updated_derived)
+        logger.info(
+            "computed kinematics for track=%s (cal=%s, valid_points=%d)",
+            track.name,
+            cal_ref,
+            len(pos_frames),
+        )
+        return new_items
+
+    recompute_kinematics = compute_kinematics
+
+    def clear_derived(self, track_id: UUID) -> None:
+        """清除指定 Track 的全部 DerivedData。"""
+        updated_derived = tuple(
+            item for item in self._project.derived if item.track_id != track_id
+        )
+        self._commit_store(self._store, updated_derived)
+
+    def derived_data(self, track_id: UUID, kind: str) -> DerivedData | None:
+        """查询指定 Track 的指定类型派生数据。"""
+        matches = [
+            item
+            for item in self._project.derived
+            if item.track_id == track_id and item.kind == kind
+        ]
+        return matches[-1] if matches else None
 
     def _next_calibration_name(self) -> str:
         index = len(self._project.calibrations) + 1

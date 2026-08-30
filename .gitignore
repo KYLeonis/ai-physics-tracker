@@ -194,3 +194,4 @@ coverage.xml
 # ---------- Research-only upstream snapshots ----------
 # Shallow/partial clones used to verify the open-source project map.
 docs/research/.upstream/
+experiment/
