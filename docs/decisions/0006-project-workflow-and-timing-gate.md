@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-08-30，用户确认 Phase 2.4 计划)
+Partially superseded by ADR-0007 (2026-08-30；Decision 1/4/5，其余保持 Accepted)
 
 ## Context
 

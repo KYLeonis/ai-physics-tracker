@@ -89,6 +89,9 @@ Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTran
 
 Phase 2.1–2.3 已形成桌面视频浏览、异步播放、缩放/平移、手工标记与 Undo/Redo；2.4 正在集成项目保存/恢复、重连和时序验证，尚未通过最终 Human Review，不视为 Phase 2 已完成。
 
+2.4 本地增量采用首帧预览 + 后台时序验证；近似恒定帧率须明确接受所显示误差才能标记，
+不会静默当作 CFR。策略和限制见 [ADR-0007](docs/decisions/0007-responsive-preview-and-explicit-timing-approximation.md)。
+
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
 ## Roadmap

@@ -120,7 +120,7 @@ class ProjectActions(QObject):
             self._load(lambda service, cancel: service.relink(candidate, video_id, Path(selected), cancel))
 
     def _load(self, prepare: Callable) -> None:
-        token, service = self.window.candidateService()
+        token, service = self.window.candidateService(deferTiming=True)
         def accept(prepared: PreparedProject) -> None:
             if prepared.warning:
                 answer = QMessageBox.question(self.window, "Verify video identity", prepared.warning,
@@ -128,7 +128,7 @@ class ProjectActions(QObject):
                 if answer != QMessageBox.StandardButton.Yes:
                     self.executor.submit(prepared.close)
                     return
-            self.window.adoptPrepared(prepared, token)
+            self.window.adoptPrepared(prepared, token, service)
         self._run(lambda cancel: prepare(service, cancel), accept, cancellable=True)
 
     def save(self, after: Callable[[], None] | None = None) -> None:
@@ -183,7 +183,7 @@ class ProjectActions(QObject):
         self.window.centralWidget().setEnabled(False)
         for action in self.actions:
             action.setEnabled(False)
-        self._progress = QProgressDialog("Preparing project / validating video timing…",
+        self._progress = QProgressDialog("Opening project / checking media identity…" if cancellable else "Saving project…",
                                         "Cancel" if cancellable else "", 0, 0, self.window)
         self._progress.setWindowModality(Qt.WindowModality.WindowModal)
         if cancellable:

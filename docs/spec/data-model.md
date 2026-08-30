@@ -313,6 +313,13 @@ time_to_frame(t) = round(t × fps_nominal)               # 一次乘法 + 就近
 
 ### 5.3 VFR 策略
 
+Phase 2.4 补充（[ADR-0007](../decisions/0007-responsive-preview-and-explicit-timing-approximation.md)）：
+保留下述 Phase 1 默认拒绝规则与领域 `add_video` 守卫。应用层可登记只读媒体引用，
+并对完整时间索引中满足保守误差上限的 `near_cfr` 提供显式、单次会话的近似测量确认。
+这不是自动 VFR 支持；`Video.vfr_suspected` 仍为 true。新 manual 点的 `source_detail`
+以 JSON 字符串记录 `timing_method=near_cfr_user_accepted_v1`、`fps_nominal`、
+`max_grid_error_s`、`max_interval_error_s`，旧点、Timeline 与 schema 不变。
+
 - 登记视频时若探测发现容器 `avg_frame_rate ≠ r_frame_rate` 或时间戳不规则迹象，置 `vfr_suspected = true`。
 - **Phase 1 明确策略：只支持 CFR；对 `vfr_suspected` 的视频拒绝进入分析并提示用户转码为 CFR**（提示语建议 ffmpeg 命令模板）。此结论即使未来改变，也只是放宽校验 + 启用"逐帧真实时间戳"路径——数据模型已通过"观测冻结 time_s"为此留位（TrackLab time 权威制、Kinovea `AverageTimeStampsPerFrame` 的教训均已吸收）。
 

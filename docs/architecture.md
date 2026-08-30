@@ -36,6 +36,12 @@ AI Physics Tracker 是一个单机桌面应用，内部由四层组成：
 - **适配器隔离**：DeepLabCut/PyTorch 通过适配层接入，未来可替换为其他视觉模型（ONNX/OpenVINO 等）而不影响上层。
 - **长任务后台化**：训练、推理、视频导出全部为可取消的后台任务，GUI 保持响应。
 
+Phase 2.4 项目候选提交见 [ADR-0006](decisions/0006-project-workflow-and-timing-gate.md)；
+首帧预览/后台时序验证与显式近似测量见
+[ADR-0007](decisions/0007-responsive-preview-and-explicit-timing-approximation.md)。
+`ProjectMediaService` 产生只读验证请求/结果，`TimingActions` 按固定加载代际在 GUI
+线程合并验证状态，不让后台任务替换用户正在编辑的 Project 快照。
+
 ## 2. 核心数据体系（Phase 1 起细化）
 
 统一数据模型将围绕以下概念组织（示意，非最终接口）：

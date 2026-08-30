@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 2.4 Human Review 反馈：长预加载与 Add track 禁用，已只读定位原因）
+- 最后更新：2026-08-30（Phase 2.4 Human Review 反馈修复：已授权实现到下一轮 HR）
 
 ---
 
@@ -13,13 +13,13 @@
 
 ## Current Subphase
 
-**2.4 — Project Workflow & Phase Close** 🔄 Human Review 未通过（预加载耗时与测量门禁体验），等待修复方案；[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)，分支 `feat/p2.4-project-workflow`；计划见 [phase-2.4-plan.md](phase-2.4-plan.md)。用户已确认原范围、FFprobe 与 CI 修改，尚未授权 push。
+**2.4 — Project Workflow & Phase Close** 🔄 Human Review 反馈修复/验证中；[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)，分支 `feat/p2.4-project-workflow`；计划见 [phase-2.4-plan.md](phase-2.4-plan.md)。用户已授权修复到下一轮 HR，尚未授权 push。
 
 上一 Subphase 2.3 已完成（Issue #4 已关闭，merge `3967f6a`/`38eaa39`，CI 双平台全绿，Human Review 2 轮通过）。
 
 ## Current Slice
 
-Slice 6：原 173 tests 与独立复审通过；收到真人反馈后执行只读诊断，尚未修改应用代码。
+Slice 6：首帧预览/后台验证已接通，正在完成 packet 快路径、near-CFR 显式确认及独立回归/复审。
 
 ## Current Goal
 
@@ -73,6 +73,6 @@ Slice 6：原 173 tests 与独立复审通过；收到真人反馈后执行只�
 
 ## Next Recommended Action
 
-向用户说明诊断与修复取舍：先解耦首屏与验证、评估适用容器/编码的完整 packet PTS 快路径；
-单独确认近似恒定帧率测量的误差预算，不能静默把 VFR 判定放宽。用户请求修复/确认策略后，
-补回归、实现并再次 Human Review；之后才处理 push/双平台 CI/合并。保留用户 `experiment/`，不纳入 Git。
+完成 ADR-0007 修复的全回归与独立复审，记录 P001 只读复测结果、本地提交，
+发起下一轮 Human Review 后停止。通过后才处理 push 授权/双平台 CI/合并。
+保留用户 `experiment/` 与 `.github/workflows/README.md`，不纳入 Git。

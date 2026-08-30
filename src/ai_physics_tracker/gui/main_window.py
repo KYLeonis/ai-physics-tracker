@@ -34,6 +34,7 @@ from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.application.project_media import ProjectMediaService, PreparedProject, workflow_state
 from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.project_actions import ProjectActions
+from ai_physics_tracker.gui.timing_actions import TimingActions
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.gui.video_view import MarkerView, VideoView
 
@@ -88,6 +89,10 @@ class MainWindow(QMainWindow):
 
         self.videoView = VideoView(self)
         self.videoSelector = QComboBox(self)
+        self.timingLabel = QLabel("No video selected", self)
+        self.timingLabel.setWordWrap(True)
+        self.timingButton = QPushButton("Use approximate timing…", self)
+        self.timingButton.hide()
         self.previousButton = QPushButton("Previous frame", self)
         self.nextButton = QPushButton("Next frame", self)
         self.playButton = QPushButton("Play", self)
@@ -151,6 +156,8 @@ class MainWindow(QMainWindow):
 
         videoColumn = QVBoxLayout()
         videoColumn.addWidget(self.videoSelector)
+        videoColumn.addWidget(self.timingLabel)
+        videoColumn.addWidget(self.timingButton)
         videoColumn.addWidget(self.videoView, 1)
         videoColumn.addWidget(self.timelineSlider)
         videoColumn.addLayout(controls)
@@ -165,6 +172,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         self.projectActions = ProjectActions(self)
+        self.timingActions = TimingActions(self)
         self.videoSelector.currentIndexChanged.connect(self.projectActions.selectVideo)
 
         zoomInAction = QAction("Zoom in", self)
@@ -272,11 +280,12 @@ class MainWindow(QMainWindow):
             lambda frame: self.frameDelivered.emit(frame, token),
             lambda error: self.decodeFailed.emit(str(error), token))
 
-    def candidateService(self) -> tuple[int, ProjectMediaService]:
+    def candidateService(self, *, deferTiming: bool = False) -> tuple[int, ProjectMediaService]:
         self._generation_counter += 1
         token = self._generation_counter
         service = ProjectMediaService(self._annotation_repository,
-                                     lambda: self._makeDecoder(token), self._timing_probe)
+                                     lambda: self._makeDecoder(token), self._timing_probe,
+                                     defer_timing=deferTiming)
         return token, service
 
     def openVideo(self, path: Path, *, show_error: bool = True) -> bool:
@@ -293,8 +302,9 @@ class MainWindow(QMainWindow):
         self.adoptPrepared(prepared, token)
         return True
 
-    def adoptPrepared(self, prepared: PreparedProject, token: int) -> None:
-        """候选已验证后一次性提交；旧解码器异步释放，迟到回调丢弃。"""
+    def adoptPrepared(self, prepared: PreparedProject, token: int,
+                      service: ProjectMediaService | None = None) -> None:
+        """首帧/身份准备成功后提交预览；时序可后台继续，旧解码器异步释放。"""
 
         self.stopPlayback()
         old_decoder = self._async
@@ -339,6 +349,7 @@ class MainWindow(QMainWindow):
         self.projectActions.refresh()
         self.statusBar().showMessage(prepared.timing.reason +
             ("" if self._measurement_allowed else " — browsing only; new measurements disabled"))
+        self.timingActions.adopt(prepared, token, service)
 
     def adoptEmptyProject(self) -> None:
         from ai_physics_tracker.application.video_timing import TimingReport
@@ -395,6 +406,7 @@ class MainWindow(QMainWindow):
         self._generation_counter += 1
         self._delivery_generation = self._generation_counter
         self.stopPlayback()
+        self.timingActions.shutdown()
         self._async.close()
         self.projectActions.shutdown()
         super().closeEvent(event)

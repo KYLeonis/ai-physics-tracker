@@ -7,6 +7,7 @@ TrackStore 语义落地后同步生成新的 Project 快照；dirty 状态驱动
 """
 
 import logging
+import json
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
@@ -14,7 +15,7 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from ai_physics_tracker.application.video import VideoStreamInfo
-from ai_physics_tracker.application.video_timing import TimingReport
+from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
 from ai_physics_tracker.domain.project import (
     Project,
     add_video,
@@ -87,6 +88,7 @@ class ProjectSession:
         self._project_root = project_root
         self._store = TrackStore(project.tracks, project.observations)
         self._verified_videos: set[UUID] = set()
+        self._approximate_timing: dict[UUID, str] = {}
         self._undo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...], tuple[DerivedData, ...]]] = []
         self._redo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...], tuple[DerivedData, ...]]] = []
 
@@ -149,7 +151,7 @@ class ProjectSession:
             frame_count=info.frame_count,
             container_format=info.container_format,
             sha256=sha256,
-            vfr_suspected=info.timing_status == "vfr_suspected",
+            vfr_suspected=info.timing_status in ("vfr_suspected", "near_cfr"),
         )
         timeline = Timeline(
             video_id=video_id,
@@ -219,6 +221,7 @@ class ProjectSession:
             pixel_x=pixel_x,
             pixel_y=pixel_y,
             source="manual",
+            source_detail=self._approximate_timing.get(track.video_id),
             # data-model.md §3.5：manual 缺省 visible（用户亲眼所见落点）
             visibility="visible",
             status="active",
@@ -296,6 +299,7 @@ class ProjectSession:
         candidate = ProjectSession(self._repository, deepcopy(self._project), self._project_root)
         candidate._saved_project = deepcopy(self._saved_project)
         candidate._verified_videos = set(self._verified_videos)
+        candidate._approximate_timing = dict(self._approximate_timing)
         candidate._undo_stack = list(self._undo_stack)
         candidate._redo_stack = list(self._redo_stack)
         return candidate
@@ -318,14 +322,41 @@ class ProjectSession:
         self._project = relink_video(self._project, video_id, file_path=None,
                                     original_path=str(path.resolve()))
         self._verified_videos.discard(video_id)
+        self._approximate_timing.pop(video_id, None)
 
     def confirm_video_timing(self, video_id: UUID, report: TimingReport) -> None:
         """应用在本次文件探测完成后授予测量能力；该集合不持久化。"""
 
+        self._approximate_timing.pop(video_id, None)
         if report.status == "cfr":
             self._verified_videos.add(video_id)
         else:
             self._verified_videos.discard(video_id)
+
+    def record_media_validation(self, video_id: UUID, report: TimingReport, sha256: str | None) -> None:
+        """GUI 线程合并验证结果，不替换用户在探测期间操作的项目快照。"""
+
+        videos = tuple(replace(video, sha256=sha256 or video.sha256,
+                               vfr_suspected=(video.vfr_suspected if report.status == "unknown"
+                                              else report.status in ("near_cfr", "vfr_suspected")))
+                       if video.video_id == video_id else video for video in self._project.videos)
+        self._project = replace(self._project, videos=videos)
+        self.confirm_video_timing(video_id, report)
+
+    def accept_approximate_timing(self, video_id: UUID, report: TimingReport) -> None:
+        """仅在 UI 明确确认后调用；仍在应用层再次检查完整性与当前时间轴误差。"""
+
+        video = next(item for item in self._project.videos if item.video_id == video_id)
+        timeline = next(item for item in self._project.timelines if item.video_id == video_id)
+        errors = approximation_errors(report, timeline.fps_nominal)
+        if errors is None or report.frame_count != video.frame_count:
+            raise ProjectSessionError("timing approximation exceeds the allowed error budget")
+        self._approximate_timing[video_id] = json.dumps({
+            "timing_method": "near_cfr_user_accepted_v1",
+            "fps_nominal": timeline.fps_nominal,
+            "max_grid_error_s": errors[0], "max_interval_error_s": errors[1],
+        }, sort_keys=True)
+        self._verified_videos.add(video_id)
 
     def video_path(self, video: Video) -> Path | None:
         """缺媒体为可恢复状态；只解析，不自动修改 locator。"""

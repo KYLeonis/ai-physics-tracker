@@ -119,9 +119,16 @@ main（稳定） ← 工作分支 feat/p<phase>.<sub>-<topic> / fix/<topic> / do
 
 ### Phase 2.4 FFprobe 工具
 
-应用保留 OpenCV 解码；额外使用 FFprobe 完整逐帧扫描验证 CFR。PATH 中有 FFprobe
+应用保留 OpenCV 解码；额外使用 FFprobe 完整时间索引验证 CFR。适用的 MP4/MOV
+H.264/HEVC 走完整 packet PTS 快路径，其他媒体回退完整帧扫描。PATH 中有 FFprobe
 即可使用；也可仅对一次启动指定 `AI_PHYSICS_FFPROBE` 的绝对路径，不改系统配置。
 缺工具或验证失败仍可浏览/恢复数据，但不能新增测量。现有项目数据不会被重算或删除。
+
+新视频首帧就绪后即可播放/跳帧/缩放，顶部常驻显示后台验证状态，可取消或重试。
+验证通过 CFR 后自动启用 Add track；若显示 near-CFR，选择 `Use approximate timing…`
+查看当前 Timeline FPS、全片网格误差和间隔误差，再明确 Yes 才允许测量。默认 No；
+unknown/超预算 VFR 不提供近似绕过。该确认不跨重开复用，新点保存近似来源说明。
+上限为 min(1 ms, 帧周期 1%)，**不保证速度/加速度精度**，见 ADR-0007。
 
 CI 通过 `scripts/setup_ffprobe.py` 下载固定 `eugeneware/ffmpeg-static` release
 `b6.1.1` 的平台资产并校验 SHA-256。该 tag 不等于各平台工具的版本号；本地验证的

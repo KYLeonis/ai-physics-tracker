@@ -1,9 +1,10 @@
-"""项目候选加载：后台验证成功前不改写活动会话。"""
+"""项目候选加载与两阶段验证：首帧/身份先准备，时序结果另交 GUI 合并。"""
 
 from concurrent.futures import CancelledError, TimeoutError, Future
 from dataclasses import dataclass, replace
 import hashlib
 from math import isclose
+from os import stat_result
 from pathlib import Path
 from threading import Event
 from time import monotonic
@@ -27,10 +28,28 @@ class PreparedProject:
     snapshot: PlaybackSnapshot | None
     timing: TimingReport
     warning: str = ""
+    validation: "PendingValidation | None" = None
 
     def close(self) -> None:
         if self.decoder is not None:
             self.decoder.close()
+
+
+@dataclass(frozen=True)
+class PendingValidation:
+    """只读后台请求，不持有活动 ProjectSession 或 decoder。"""
+
+    path: Path
+    snapshot: PlaybackSnapshot
+    fingerprint: stat_result
+
+
+@dataclass(frozen=True)
+class ValidatedMedia:
+    """后台只读验证的不可变结果；不携带可替换的项目快照。"""
+
+    timing: TimingReport
+    sha256: str | None
 
 
 def workflow_state(session: ProjectSession) -> JsonObject:
@@ -46,10 +65,12 @@ class ProjectMediaService:
     """加载/重连的纯应用编排；decoder 与 probe 都通过端口注入。"""
 
     def __init__(self, repository: ProjectRepositoryPort,
-                 decoder_factory: Callable[[], AsyncVideoSession], probe: VideoTimingProbe) -> None:
+                 decoder_factory: Callable[[], AsyncVideoSession], probe: VideoTimingProbe,
+                 *, defer_timing: bool = False) -> None:
         self.repository = repository
         self.decoder_factory = decoder_factory
         self.probe = probe
+        self.defer_timing = defer_timing
 
     def open_video(self, path: Path, cancel: Event) -> PreparedProject:
         path = path.resolve()
@@ -58,7 +79,8 @@ class ProjectMediaService:
         decoder = self.decoder_factory()
         try:
             snapshot = self._wait_open(decoder.open(path), cancel)
-            report = self._probe(path, snapshot, cancel)
+            report = (TimingReport("unknown", "Validating video timing in background")
+                      if self.defer_timing else self._probe(path, snapshot, cancel))
             if report.status == "cfr":
                 digest = self._hash(path, cancel)
                 video, timeline = session.register_external_video(
@@ -70,7 +92,8 @@ class ProjectMediaService:
             video_id = video.video_id
             snapshot = self._wait_open(decoder.open(path, timeline), cancel)
             self._verify_unchanged(path, fingerprint)
-            return PreparedProject(session, video_id, decoder, snapshot, report)
+            validation = PendingValidation(path, snapshot, fingerprint) if self.defer_timing else None
+            return PreparedProject(session, video_id, decoder, snapshot, report, validation=validation)
         except Exception:
             decoder.close()
             raise
@@ -105,10 +128,12 @@ class ProjectMediaService:
         try:
             snapshot = self._wait_open(decoder.open(path, timeline, frame_index), cancel)
             self._validate_media(video, path, snapshot, cancel)
-            report = self._probe(path, snapshot, cancel)
+            report = (TimingReport("unknown", "Validating video timing in background")
+                      if self.defer_timing else self._probe(path, snapshot, cancel))
             self._verify_unchanged(path, fingerprint)
             session.confirm_video_timing(video_id, report)
-            return PreparedProject(session, video_id, decoder, snapshot, report)
+            validation = PendingValidation(path, snapshot, fingerprint) if self.defer_timing else None
+            return PreparedProject(session, video_id, decoder, snapshot, report, validation=validation)
         except Exception:
             decoder.close()
             raise
@@ -125,14 +150,25 @@ class ProjectMediaService:
             prepared.warning = "No saved file hash: matching metadata does not prove video identity. Confirm this is the original video."
         return prepared
 
+    def validate(self, request: PendingValidation, cancel: Event) -> ValidatedMedia:
+        """首帧接管后的只读验证；完成后由 GUI 按固定代际合并，不能触碰活动会话。"""
+
+        self._verify_unchanged(request.path, request.fingerprint)
+        report = self._probe(request.path, request.snapshot, cancel)
+        digest = self._hash(request.path, cancel) if report.status in ("cfr", "near_cfr") else None
+        self._verify_unchanged(request.path, request.fingerprint)
+        if cancel.is_set():
+            raise CancelledError()
+        return ValidatedMedia(report, digest)
+
     def _probe(self, path: Path, snapshot: PlaybackSnapshot, cancel: Event) -> TimingReport:
         report = self.probe.probe(path, cancel)
         if cancel.is_set():
             raise CancelledError()
-        if report.status == "cfr" and (
+        if report.status in ("cfr", "near_cfr") and (
             report.frame_count != snapshot.info.frame_count
-            or report.fps_measured is None
-            or not isclose(report.fps_measured, snapshot.info.fps_container,
+            or (report.fps_reference or report.fps_measured) is None
+            or not isclose(report.fps_reference or report.fps_measured, snapshot.info.fps_container,
                            rel_tol=1e-3, abs_tol=1e-6)
         ):
             return TimingReport("unknown", "FFprobe and decoder timing/count disagree")
@@ -170,7 +206,7 @@ class ProjectMediaService:
         return digest.hexdigest()
 
     @staticmethod
-    def _verify_unchanged(path: Path, before) -> None:
+    def _verify_unchanged(path: Path, before: stat_result | None) -> None:
         if before is None:
             return
         after = path.stat()

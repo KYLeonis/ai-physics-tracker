@@ -126,6 +126,50 @@ def _cfr_report() -> TimingReport:
     return TimingReport("cfr", "static CFR test result", frame_count=5, fps_measured=10.0)
 
 
+def test_deferred_preview_does_not_probe_or_mutate_session_during_validation(synthetic_video_path):
+    probe = _StaticTimingProbe(_cfr_report())
+    service = ProjectMediaService(ProjectRepository(), _DecoderFactory(), probe, defer_timing=True)
+    prepared = service.open_video(synthetic_video_path, Event())
+    try:
+        assert prepared.snapshot.current_frame.frame_index == 0
+        assert prepared.timing.status == "unknown"
+        assert probe.paths == []
+        before = prepared.session.project
+        result = service.validate(prepared.validation, Event())
+        assert result.timing.status == "cfr"
+        assert result.sha256 is not None
+        assert prepared.session.project == before
+        assert prepared.session.project.videos[0].sha256 is None
+    finally:
+        prepared.close()
+
+
+def test_background_validation_rejects_media_changed_after_preview(synthetic_video_path):
+    service = ProjectMediaService(ProjectRepository(), _DecoderFactory(),
+                                  _StaticTimingProbe(_cfr_report()), defer_timing=True)
+    prepared = service.open_video(synthetic_video_path, Event())
+    prepared.close()
+    # 只改测试生成的视频，且先释放 reader，兼容 Windows 文件锁。
+    with synthetic_video_path.open("ab") as stream:
+        stream.write(b"changed")
+    with pytest.raises(ProjectSessionError, match="changed during preparation"):
+        service.validate(prepared.validation, Event())
+
+
+def test_quantized_short_cfr_uses_verified_reference_rate_not_endpoint_estimate(tmp_path):
+    path = tmp_path / "quantized.fake"
+    path.touch()
+    probe = _StaticTimingProbe(TimingReport("cfr", "quantized test", frame_count=2,
+        fps_measured=1 / 0.042, fps_reference=24.0, max_grid_error_s=1 / 3000,
+        max_interval_error_s=1 / 3000))
+    factory = _ImmediateDecoderFactory(VideoStreamInfo(64, 48, 24.0, 2, "fake"))
+    prepared = ProjectMediaService(ProjectRepository(), factory, probe).open_video(path, Event())
+    try:
+        assert prepared.timing.status == "cfr"
+    finally:
+        prepared.close()
+
+
 def _probe_for_real_video(path: Path) -> VideoTimingProbe:
     """真实集成路径必须有 FFprobe，不能静默降级成替身。"""
 
