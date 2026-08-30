@@ -14,6 +14,7 @@ dependencies = [
     "opencv-python-headless==4.14.0.94",
     "PySide6-Essentials==6.11.2",
     "scipy>=1.14,<2.0",
+    "pyqtgraph>=0.13,<0.14",
 ]
 
 [project.optional-dependencies]

@@ -78,7 +78,7 @@
 | Video | opencv-python-headless 4.14.0.94；FFmpeg 边界后续补充 | OpenCV 不提供 GUI，避免与 PySide6 Qt 插件冲突 |
 | Array | NumPy 2.4.6 | 支持项目 Python 3.11–3.12；解码帧的 RGB 数组边界 |
 | Sci Comp | NumPy、SciPy、Pandas | |
-| Plotting | PyQtGraph（交互）、Matplotlib（导出） | Phase 3 前最终确认 |
+| Plotting | PyQtGraph 0.13.7（交互）、Matplotlib（Phase 8 导出） | Phase 3.3 / ADR-0009 |
 | 包管理 | venv/conda + pip，`requirements.txt` / `pyproject.toml` | Phase 1 起锁定 |
 
 ### Python 3.11 选择依据（ADR-0002）
@@ -116,6 +116,13 @@ main（稳定） ← 工作分支 feat/p<phase>.<sub>-<topic> / fix/<topic> / do
 - 代码风格与命名规范：`CODE_STANDARD.md`（根目录；写代码前必读）
 
 ## 5. 测试与验证要求
+
+### Phase 3.3 图表依赖
+
+`requirements.txt` 锁定 PyQtGraph 0.13.7 / SciPy 1.17.1。在项目虚拟环境运行
+`python -m pip install -r requirements.txt` 对齐依赖，不安装第二套 Qt 绑定。
+本地已验证 Python 3.12.13 + PySide6-Essentials 6.11.2 + NumPy 2.4.6 的
+PlotWidget/InfiniteLine/offscreen smoke；Python 3.11 双平台仍以 Actions 实际结果为准。
 
 ### Phase 2.4 FFprobe 工具
 

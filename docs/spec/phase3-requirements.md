@@ -80,7 +80,7 @@ Phase 3 为项目增加**物理实验分析能力**：用户可在视频上设�
 ### R4 运动学计算引擎 — 坐标变换
 
 1. **批量像素→物理坐标转换**：取当前视频 active calibration + 某 Track 的全部 active 手工标注点，批量调用 `CalibrationTransform.pixel_to_world`，生成 `kind=world_position` 的 DerivedData
-2. **无标定时的行为**：无 active calibration 时不产生物理坐标派生数据；图表可显示像素坐标并标注单位为 px
+2. **无标定时的行为**：不产生物理意义的世界坐标；兼容 3.2 已有 `world_position(unit=px, calibration_ref=None)` 记录，图表明确标注像素位置（ADR-0009），不迁移旧数据。
 3. **DerivedData 填充**：完整记录 pipeline（`[{step: "calibration_transform", params: {calibration_id: ...}}]`）、`calibration_ref`、`frames`、`values`、`unit`
 
 ### R5 运动学计算引擎 — 平滑与微分
@@ -229,7 +229,7 @@ DLC2Kinematics 未传 `delta`（默认 1.0），导致导数单位为"每帧"而
 对含 NaN 的时间序列施加 SG 滤波时：
 
 1. 按 NaN 边界分割为多个连续有效段
-2. 每段独立施加滤波器（段长度 < `window_length` 时跳过该段，保持 NaN）
+2. 每段独立施加滤波器；按 Accepted ADR-0008 D4，短段缩短至合法奇数窗口，不足 `polyorder+1` 的段保持 NaN（不跨段补值）。
 3. 重新组装为完整序列（NaN 位置保留）
 
 此模式借鉴 Pose2Sim/Sports2D 的实践，避免滤波器跨越缺测段产生虚假平滑值。

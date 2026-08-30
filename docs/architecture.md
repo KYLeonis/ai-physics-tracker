@@ -85,6 +85,8 @@ DLC 模型（dlc-models, PyTorch engine）
 - NaN 处理：缺测帧展开为 NaN，按连续有效段分割独立滤波（ADR-0008 §D4）
 - 可视化：交互图表使用 PyQtGraph（与视频帧时间同步联动），科学出图导出使用 Matplotlib（Phase 8）
 - Phase 3 需求规范：[phase3-requirements.md](spec/phase3-requirements.md)
+- 图表数据适配与后台批次提交：[ADR-0009](decisions/0009-interactive-charts-and-analysis-transactions.md)。
+  图表面板独立于 MainWindow，计算结果只在输入/代际匹配时合并，不替换活动 Project。
 
 ## 5. 持久化与文件布局（Phase 1 已定，见 ADR-0003）
 

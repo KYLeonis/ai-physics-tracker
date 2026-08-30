@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 3.3 Interactive Charts
 
-- Issue：待用户确认本计划后创建或复用对应 Issue；当前不修改 GitHub。
-- 计划工作分支：`feat/p3.3-interactive-charts`（确认后创建）。
-- 日期 / 状态：2026-08-30 · **Draft — 等待用户确认，未开始实现**。
+- Issue：[#9](https://github.com/KYLeonis/ai-physics-tracker/issues/9)。
+- 工作分支：`feat/p3.3-interactive-charts`。
+- 日期 / 状态：2026-08-30 · **In Progress — 用户已确认计划与项目内依赖变更**。
 - 仓库基线：`main` / `e49132a`；3.2 已由 `3d3ad90` 合并，无需再次合并。
 - 规划验证：本地 **260 passed**，`pip check` 通过；这是已有代码基线，不是 3.3 验收。
 
@@ -122,7 +122,7 @@
 
 ## Slices
 
-- [ ] Slice 1：确认 PyQtGraph 方案并记录 ADR-0009；同步依赖/开发文档，锁定环境，
+- [x] Slice 1：确认 PyQtGraph 方案并记录 ADR-0009；同步依赖/开发文档，锁定环境，
   运行真实 PlotWidget + InfiniteLine smoke test，不改变 CI 配置。
 - [ ] Slice 2：补齐派生数据查询/选择与 Qt-free 图表数据适配，确定 kind/列/单位契约，
   实现缺测断线、working-zone 过滤与数值状态测试；补首次标定 stale 回归。
@@ -161,7 +161,7 @@ Qt-free 数据适配与绘图控件分离，不再把图表和后台任务堆入
 - 既有 Actions 是 macOS/Windows Python 3.11 矩阵，不默认更改 YAML；本机 Python 3.12
   通过不等于 Windows 已通过。Phase 2 已延后的 Windows 真人验收继续单独记录。
 
-### 实现后 Human Review（本轮仅规划，不启动验收）
+### 实现后 Human Review（自动化与复审通过后发起）
 
 启动方式仍为仓库内 `.venv/bin/python -m ai_physics_tracker`（依赖按确认后的锁文件安装）。
 
@@ -175,8 +175,8 @@ Qt-free 数据适配与绘图控件分离，不再把图表和后台任务堆入
 
 ## 授权边界与 Result
 
-- 本次仅写计划和状态文档并做本地文档提交；不改 `src/`、测试实现、依赖或 CI，不 push。
-- 待确认：本计划范围，以及引入 PyQtGraph 0.13.7、在项目 `.venv` 对齐锁定依赖。
+- 用户已确认计划及项目内依赖变更；实施到 Human Review。本轮不改 CI、不 push。
+- 已确认：本计划范围，以及引入 PyQtGraph 0.13.7、在项目 `.venv` 对齐锁定依赖。
   代价是多一项绘图库依赖与 Qt/NumPy 兼容验证；若 smoke 不通过，停下来报告，不擅自改版本范围。
 - 确认后：建立 Issue/工作分支 → Slice 1 验证依赖 → 逐 Slice 实现/测试 → 独立 review → HR。
   原视频和原始标注不迁移，实施中可停止或调整未完成 Slice；不会以破坏性 Git 操作回退。
