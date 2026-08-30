@@ -13,17 +13,17 @@
 
 ## Current Subphase
 
-**2.4 — Project Workflow & Phase Close** 📝 Plan 待确认；本地草案见 [phase-2.4-plan.md](phase-2.4-plan.md)。尚未创建工作分支或关联 Issue，未开始实现。
+**2.4 — Project Workflow & Phase Close** 🔄 实现中；[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)，分支 `feat/p2.4-project-workflow`；计划见 [phase-2.4-plan.md](phase-2.4-plan.md)。用户已确认范围、FFprobe 与 CI 修改，尚未授权 push。
 
 上一 Subphase 2.3 已完成（Issue #4 已关闭，merge `3967f6a`/`38eaa39`，CI 双平台全绿，Human Review 2 轮通过）。
 
 ## Current Slice
 
-无实现 Slice；正在确认 2.4 mini-plan。
+Slice 1–5：失败安全的首存/另存、候选项目加载、GUI 与 FFprobe 接入；正在完善集成回归。
 
 ## Current Goal
 
-完成项目生命周期、未保存修改保护、持久化 Timeline 恢复、视频 relink 与 CFR/VFR 验证的规划；批准后再实现。Phase 2 最终收尾必须通过用户 Human Review（含 Windows 真机）。
+实现项目生命周期、未保存修改保护、持久化 Timeline 恢复、视频 relink 与 CFR/VFR 验证。Phase 2 最终收尾必须通过用户 Human Review（含 Windows 真机）。
 
 ## Recently Completed
 
@@ -55,10 +55,10 @@
 - Phase 1 前的设计只到字段级建议，**不写 Python class**（自 Phase 1.1 起）
 - 数值微分/平滑方法 → Phase 3 前出 ADR
 
-**规划待确认项**：时序探测工具的引入与 Windows/CI 取得方式。reader 当前恒报 unknown，而视频登记未消费该状态；不能把它当作已完成的 CFR 验证。建议 FFprobe（本机已存在），详见计划。
+**本轮决策**：ADR-0006 确定候选项目提交与 FFprobe 时序关卡；CI 工具使用固定 ffmpeg-static b6.1.1 及 SHA-256 校验，不改系统 PATH。
 
-**本轮验证**：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → 124 passed；只修改规划/状态文档，不修改应用代码。
+**验证状态**：规划基线 124 tests；实现测试持续增加，最终数字与 review/HR 结果在交付前更新。尚未进行远端 CI 或 Human Review。
 
 ## Next Recommended Action
 
-请用户确认 [Phase 2.4 mini-plan](phase-2.4-plan.md) 的范围及 FFprobe/CI 方案；确认后查询并创建或复用 Issue，再建 `feat/p2.4-project-workflow` 分支，从失败安全的项目生命周期契约开始。独立 review 用 Luna-max；GUI 自动化通过后必须停下来等待用户亲测，不能用 computer-use 替代。尚未授权本轮 push。
+完成集成测试与 Luna-max 独立 review 后发起 Human Review，停下来等用户亲测；不能用 computer-use 替代。不自动 push、合并或关闭 Issue。

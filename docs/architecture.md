@@ -105,3 +105,4 @@ DLC 模型（dlc-models, PyTorch engine）
 - [0003 — 项目持久化采用 JSON 清单优先的混合方案](decisions/0003-project-persistence-format.md)
 - [0004 — 外部视频使用可空项目路径与绝对 locator](decisions/0004-external-video-locator.md)
 - [0005 — Phase 2 采用 PySide6 Qt Widgets 与 OpenCV headless 视频适配器](decisions/0005-phase2-gui-video-stack.md)
+- [0006 — 项目工作流采用候选提交与 FFprobe 时序关卡](decisions/0006-project-workflow-and-timing-gate.md)

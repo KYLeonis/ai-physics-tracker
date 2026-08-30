@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 2.4 Project Workflow & Phase Close
 
-- Issue：待确认计划后查询并创建或复用；本轮不访问 GitHub 凭据、不创建 Issue。
-- 分支：拟用 `feat/p2.4-project-workflow`，尚未创建。
-- 日期 / 状态：2026-08-30 · **Draft — 等待用户批准，不开始实现**
+- Issue：[#5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)。
+- 分支：`feat/p2.4-project-workflow`。
+- 日期 / 状态：2026-08-30 · **In Progress — 用户已确认计划、FFprobe 与 CI 方案**
 - 仓库基线：`main` / `a2dc642`；2.3 已合并并记录 Human Review 通过。
 - 本地验证：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **124 passed**。
 - Luna-max 定点盘点：ProjectSession/Repository 相关测试 **29 passed**；仅审计现有接口，非实现验收。
@@ -58,7 +58,7 @@
 6. 保存记录已呈现帧，不用领先于画面的请求帧号。旧 worker 的迟到回调必须携带与原请求
    绑定的会话标识，不能用回调发生时的可变“当前代际”冒充归属。
 
-## 拟采用的行为（待确认）
+## 已确认的行为
 
 - **首次保存**：选择新的目标项目目录；完整保存当前内存 Project。成功后才绑定根目录，
   失败/取消保留原会话。只操作这次明确创建的暂存目标，不触碰已有项目。
@@ -114,7 +114,7 @@ P24-10 未完成前不把 Phase 2 标成 Completed。HEVC 按已有解码矩阵�
 - [ ] Slice 5：接入时序探测和 analysis gate；测试 CFR/VFR/unknown、取消和缺工具。
 - [ ] Slice 6：端到端回归与 CI，Luna-max 独立 review，Human Review，Issue/Phase 2 收尾。
 
-每个 Slice 自带测试，不等到 Slice 6 才验证。除本轮规划外，以上均未执行。
+每个 Slice 自带测试，不等到 Slice 6 才验证；未勾选项不得视为完成。
 
 ## Verification
 
@@ -138,15 +138,15 @@ P24-10 未完成前不把 Phase 2 标成 Completed。HEVC 按已有解码矩阵�
 
 届时只问各条“是否符合预期（是/否）”，不以 computer-use、截图或 offscreen 代替反馈。
 
-## 待批准与授权边界
+## 授权边界
 
 - 本轮默认不改 schema 版本；`ui_state` 内兼容追加应用字段时仍保留未知键。
-- 需批准把 FFprobe 作为外部时序探测工具：本机已有 `/opt/homebrew/bin/ffprobe`，但这
+- 已批准把 FFprobe 作为外部时序探测工具：本机已有 `/opt/homebrew/bin/ffprobe`，但这
   不代表 Windows 环境已有。建议明确工具发现/路径选择；缺工具时浏览可用、新增测量禁用。
-- 需批准开发/CI 中 FFprobe 的可复现取得方式；不自动安装全局依赖、不改系统 PATH，
+- 已批准开发/CI 中 FFprobe 的可复现取得方式；不自动安装全局依赖、不改系统 PATH，
   不提前发布打包产物。若选择不同工具或必须改格式，另停下来讨论。
-- 修改 CI、git push、媒体删除/覆盖均不由“批准本地计划”默认授权。
-- 计划批准后创建/复用 GitHub Issue，再建工作分支；未经确认不实现、不安装依赖。
+- CI 修改已获本次确认；git push、媒体删除/覆盖未获授权。
+- Issue/工作分支已建立；Human Review 和 CI 尚未完成。
 
 ## Result（收尾时填写）
 

@@ -74,11 +74,11 @@ TrackPoint；使用 `frame_to_time` 冻结时间，调用 TrackStore manual last
 
 Track 选择/创建、screen→pixel、manual TrackPoint、overlay、Project 快照同步。
 
-### 2.4 Project Workflow & Phase Close（当前：Plan）
+### 2.4 Project Workflow & Phase Close（当前：实现/验证）
 
 新建/打开/保存/另存/relink/dirty 提示，MP4/H.264 Windows 真机验收，Phase 2 收尾。
 
-计划草案见 [Phase 2.4 mini-plan](../status/phase-2.4-plan.md)；未获确认前不开始实现。
+已确认计划见 [Phase 2.4 mini-plan](../status/phase-2.4-plan.md)；自动化验证不替代 Human Review。
 
 ## 5. Phase 2.1 Acceptance Criteria
 
