@@ -1,6 +1,7 @@
 """项目菜单失败保护与真实持久化恢复的 Qt 回归。"""
 
 from pathlib import Path
+from dataclasses import replace
 
 import pytest
 from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -48,6 +49,26 @@ def test_first_save_reopen_restores_points_frame_and_paused_state(opened, qtbot,
     assert not window.isPlaying
     assert not window.videoView.is_annotation_mode()
     assert window.videoView.marker_count() == 1
+
+
+def test_reopen_uses_saved_fps_zone_and_does_not_request_clamped_old_spinbox(opened, qtbot, tmp_path):
+    session = opened._annotation_session.detached()
+    timeline = replace(session.project.timelines[0], fps_nominal=20.0, working_zone=(1, 3))
+    session._project = replace(session.project, timelines=(timeline,))
+    session.update_view_state({"version": 1, "video_id": str(timeline.video_id), "frame_index": 2})
+    root = tmp_path / "different-timeline"
+    session.save_as(root)
+    opened.frameSpinBox.setValue(4)
+    qtbot.waitUntil(lambda: opened._presented_frame_index == 4)
+
+    opened.projectActions._load(lambda service, cancel: service.open_project(root, cancel))
+    qtbot.waitUntil(lambda: not opened.projectActions.busy)
+    qtbot.wait(50)
+
+    assert opened._timeline == timeline
+    assert opened._presented_frame_index == 2
+    assert opened.timeLabel.text() == "Time: 0.100 s nominal"
+    assert (opened.frameSpinBox.minimum(), opened.frameSpinBox.maximum()) == (1, 3)
 
 
 def test_cancel_new_preserves_project_and_history(opened, monkeypatch):

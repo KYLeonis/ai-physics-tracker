@@ -21,6 +21,7 @@ from ai_physics_tracker.domain.project import (
     create_project,
     relink_video,
     delete_track,
+    register_video_reference,
 )
 from ai_physics_tracker.domain.derived import DerivedData, mark_tracks_stale
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
@@ -127,6 +128,15 @@ class ProjectSession:
 
         if info.timing_status != "cfr":
             raise ProjectSessionError("video timing is not verified CFR; browsing only")
+        video, timeline = self.register_preview_video(path, info, sha256=sha256)
+        self._verified_videos.add(video.video_id)
+        return video, timeline
+
+    def register_preview_video(
+        self, path: Path, info: VideoStreamInfo, *, sha256: str | None = None
+    ) -> tuple[Video, Timeline]:
+        """保存只读浏览引用，不授予新增测量能力，也不伪称 CFR。"""
+
         video_id = uuid4()
         video = Video(
             video_id=video_id,
@@ -139,14 +149,14 @@ class ProjectSession:
             frame_count=info.frame_count,
             container_format=info.container_format,
             sha256=sha256,
+            vfr_suspected=info.timing_status == "vfr_suspected",
         )
         timeline = Timeline(
             video_id=video_id,
             fps_nominal=info.fps_container,
             working_zone=(0, info.frame_count - 1),
         )
-        self._project = add_video(self._project, video, timeline)
-        self._verified_videos.add(video_id)
+        self._project = register_video_reference(self._project, video, timeline)
         return video, timeline
 
     def add_track(self, video_id: UUID, name: str | None = None) -> Track:
@@ -295,6 +305,8 @@ class ProjectSession:
 
         ui_state = deepcopy(self._project.ui_state)
         existing = ui_state.get("workflow", {})
+        if isinstance(existing, dict) and existing.get("version", 1) != 1:
+            return  # 未来版本命名空间保留，不用当前 UI 状态降级覆盖。
         workflow = dict(existing) if isinstance(existing, dict) else {}
         workflow.update(state)
         ui_state["workflow"] = workflow

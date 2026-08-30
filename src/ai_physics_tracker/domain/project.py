@@ -97,6 +97,12 @@ def add_video(project: Project, video: Video, timeline: Timeline) -> Project:
 
     if video.vfr_suspected:
         raise ValueError("VFR video is not supported; transcode it to CFR before analysis")
+    return register_video_reference(project, video, timeline)
+
+
+def register_video_reference(project: Project, video: Video, timeline: Timeline) -> Project:
+    """只登记媒体引用；分析能力由应用会话的本次时序验证授权。"""
+
     if timeline.video_id != video.video_id:
         raise ValueError("timeline.video_id must match video.video_id")
     if any(item.video_id == video.video_id for item in project.videos):

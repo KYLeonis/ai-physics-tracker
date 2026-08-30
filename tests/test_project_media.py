@@ -342,24 +342,37 @@ def test_successful_relink_preserves_raw_ids_and_marks_candidate_dirty(
     assert not session.is_dirty
 
 
-def test_unknown_open_is_browsing_only_without_analysis_video(
-    synthetic_video_path: Path,
+@pytest.mark.parametrize("timing_status", ["unknown", "vfr_suspected"])
+def test_unknown_open_preserves_browsing_reference_without_measurement_permission(
+    synthetic_video_path: Path, tmp_path: Path, timing_status: str,
 ) -> None:
     repository = ProjectRepository()
     factory = _DecoderFactory()
-    probe = _StaticTimingProbe(TimingReport("unknown", "probe unavailable"))
+    probe = _StaticTimingProbe(TimingReport(timing_status, "browsing only"))
     service = ProjectMediaService(repository, factory, probe)
 
     prepared = service.open_video(synthetic_video_path, Event())
     try:
-        assert prepared.video_id is None
-        assert prepared.timing.status == "unknown"
+        assert prepared.video_id is not None
+        assert prepared.timing.status == timing_status
         assert prepared.snapshot is not None
         assert prepared.snapshot.current_frame.frame_index == 0
-        assert prepared.session.project.videos == ()
-        assert prepared.session.project.timelines == ()
+        assert len(prepared.session.project.videos) == 1
+        track = prepared.session.add_track(prepared.video_id)
+        with pytest.raises(ProjectSessionError, match="not verified CFR"):
+            prepared.session.mark_point(track.track_id, 1, 2.0, 3.0)
+        root = tmp_path / "unknown-project"
+        prepared.session.save_as(root)
+        reopened = service.open_project(root, Event())
+        try:
+            assert reopened.video_id == prepared.video_id
+            assert reopened.snapshot is not None
+            assert reopened.timing.status == timing_status
+        finally:
+            reopened.close()
+        assert len(prepared.session.project.timelines) == 1
         assert not prepared.session.is_dirty
-        assert probe.paths == [synthetic_video_path.resolve()]
+        assert probe.paths == [synthetic_video_path.resolve(), synthetic_video_path.resolve()]
     finally:
         prepared.close()
 

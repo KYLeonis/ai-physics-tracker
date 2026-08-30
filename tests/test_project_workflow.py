@@ -22,6 +22,17 @@ from ai_physics_tracker.infrastructure.errors import ProjectFormatError
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
 
+def test_future_workflow_namespace_is_not_downgraded() -> None:
+    project = replace(create_project("future"), ui_state={
+        "workflow": {"version": 99, "frame_index": 42, "future": [1, 2]},
+        "plugin": {"x": True},
+    })
+    session = ProjectSession(ProjectRepository(), project)
+    session.update_view_state({"version": 1, "frame_index": 1})
+    assert session.project.ui_state == project.ui_state
+    assert not session.is_dirty
+
+
 def _video_info(
     fps_container: float = 10.0,
     frame_count: int = 6,

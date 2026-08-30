@@ -26,6 +26,9 @@
 `VideoCapture` 只出现在 infrastructure。无法可靠确认 CFR 时标记 timing unknown，
 不得静默登记为可分析项目；VFR suspected 明确拒绝并提示转码。
 
+2.4 区分“保存媒体引用”与“授权分析”：unknown/VFR 的浏览引用可以保存并重开，
+但不授予新增测量能力。既有项目的 raw 点不删除、不改写；CFR 验证只在当前文件会话有效。
+
 ### R3 导航与播放
 
 帧号/时间换算只经 Phase 1 `Timeline` 函数。逐帧为整数步进；播放/暂停不阻塞 GUI；

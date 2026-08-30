@@ -59,14 +59,16 @@ class ProjectMediaService:
         try:
             snapshot = self._wait_open(decoder.open(path), cancel)
             report = self._probe(path, snapshot, cancel)
-            video_id = None
             if report.status == "cfr":
                 digest = self._hash(path, cancel)
                 video, timeline = session.register_external_video(
                     path, replace(snapshot.info, timing_status="cfr"), sha256=digest
                 )
-                video_id = video.video_id
-                snapshot = self._wait_open(decoder.open(path, timeline), cancel)
+            else:
+                video, timeline = session.register_preview_video(
+                    path, replace(snapshot.info, timing_status=report.status))
+            video_id = video.video_id
+            snapshot = self._wait_open(decoder.open(path, timeline), cancel)
             self._verify_unchanged(path, fingerprint)
             return PreparedProject(session, video_id, decoder, snapshot, report)
         except Exception:
