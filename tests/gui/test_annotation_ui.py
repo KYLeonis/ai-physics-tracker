@@ -241,3 +241,45 @@ def test_undo_after_track_deletion_restores_track(
     assert window.videoView.marker_count() == 1
     # 选择随撤销恢复（track 重新出现并保持选中）
     assert window._selected_track_id is not None
+
+
+def test_multiselection_overlays_all_selected_tracks(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # HR 反馈：同时选中 Track 1 与 Track 2 → overlay 同时显示两条轨迹的点
+    window = _opened_with_track(qtbot, synthetic_video_path)
+    window.addTrackButton.click()  # 新 Track 成为唯一选中并是标注目标
+    assert window._selected_track_id == window.trackList.currentItem().data(
+        Qt.ItemDataRole.UserRole
+    )
+
+    # 在新 Track 上落一个点，然后重新选中两条轨迹
+    window._onAnnotationClicked(_inside_point(window, 20.0, 15.0))
+    qtbot.waitUntil(lambda: window.videoView.marker_count() == 1)
+    window.trackList.item(0).setSelected(True)
+    window._onTrackSelectionChanged()
+
+    # Track 2 的 1 点 + Track 1 的 0 点 = overlay 1 个
+    assert window.videoView.marker_count() == 1
+    # 标注目标仍是 currentItem（Track 2）。切到帧 1 再落点：
+    # 不同帧不触发 last-wins，overlay 显示跨帧的 2 个点
+    window.frameSpinBox.setValue(1)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 1 / 4")
+    window._onAnnotationClicked(_inside_point(window, 40.0, 30.0))
+    qtbot.waitUntil(lambda: window.videoView.marker_count() == 2)
+    session = window._annotation_session
+    assert session is not None
+    assert len(session.manual_points(session.tracks[0].track_id)) == 0
+    assert len(session.manual_points(session.tracks[1].track_id)) == 2
+
+
+def test_deselect_all_exits_annotation_target(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # 回归：clearSelection 后 currentItem 残留不得复活旧标注目标
+    window = _opened_with_track(qtbot, synthetic_video_path)
+    window.trackList.clearSelection()
+    window._onTrackSelectionChanged()
+
+    assert window._selected_track_id is None
+    assert not window.videoView.is_annotation_mode()

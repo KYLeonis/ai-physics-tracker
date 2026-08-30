@@ -160,6 +160,19 @@ class ChartPanel(QDockWidget):
     timeRequested = Signal(float)
     frameRequested = Signal(int)
 
+    def _make_help_label(self, text: str) -> QLabel:
+        """参数旁的 "?" 提示：hover 显示解释与调参效果。"""
+
+        label = QLabel("?")
+        label.setToolTip(text)
+        label.setToolTipDuration(20000)
+        label.setStyleSheet(
+            "color: #888; border: 1px solid #bbb; border-radius: 7px;"
+            "min-width: 14px; max-width: 14px; min-height: 14px; max-height: 14px;"
+            "qproperty-alignment: AlignCenter;"
+        )
+        return label
+
     def __init__(self, parent: QWidget) -> None:
         super().__init__("Kinematics charts", parent)
         self.setObjectName("kinematicsCharts")
@@ -179,14 +192,32 @@ class ChartPanel(QDockWidget):
         self.positionSource = QComboBox()
         self.positionSource.addItems(["Measured position", "Smoothed position"])
         self.positionSource.setToolTip("Position charts only; velocity and acceleration use the recorded SG pipeline.")
+        self.sgHelp = self._make_help_label(
+            "Savitzky-Golay 平滑窗口（单位：帧）。\n"
+            "作用：对标注点做局部多项式平滑，抑制手抖/拖影带来的噪声。\n"
+            "调大 → 曲线更平滑，但会抹平快速变化、增大边界失真；调小（最小 3）→ 接近原始数据。\n"
+            "必须为奇数且不超过最长连续标注段；有缺测时按连续段分别取窗口。"
+        )
+        self.orderHelp = self._make_help_label(
+            "局部多项式拟合的阶数。\n"
+            "2 ≈ 二次多项式，适合匀速/匀加速运动（物理实验常用默认值）。\n"
+            "调高 → 更贴合复杂轨迹，但会放大标注噪声；必须小于 SG 窗口长度。"
+        )
+        self.sourceHelp = self._make_help_label(
+            "位置类图表（x-t / y-t / x-y）显示哪个位置：\n"
+            "Measured position = 原始标注点；Smoothed position = 平滑后的点。\n"
+            "速度/加速度图表始终由同一条平滑管线计算，不受此选择影响。"
+        )
         self.recomputeButton = QPushButton("Recompute checked tracks")
         self.cancelButton = QPushButton("Cancel calculation")
         self.cancelButton.setEnabled(False)
         self.fitButton = QPushButton("Fit chart")
         settings = QHBoxLayout()
-        for widget in (QLabel("SG window (frames)"), self.windowLength, QLabel("Order"),
-                       self.polyorder, self.positionSource):
+        for widget in (QLabel("SG window (frames)"), self.sgHelp, self.windowLength,
+                       QLabel("Order"), self.orderHelp, self.polyorder,
+                       self.positionSource, self.sourceHelp):
             settings.addWidget(widget)
+        settings.addStretch(1)
         buttons = QHBoxLayout()
         for widget in (self.recomputeButton, self.cancelButton, self.fitButton):
             buttons.addWidget(widget)

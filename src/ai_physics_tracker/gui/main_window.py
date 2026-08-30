@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QAbstractItemView,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
@@ -116,6 +117,11 @@ class MainWindow(QMainWindow):
         self.zoomLabel = QLabel("Zoom: —", self)
 
         self.trackList = QListWidget(self)
+        # 多选：overlay 同时显示所有选中轨迹的标注点（各用各自颜色）；
+        # 标注落点目标 = 最后点击的项（currentItem，Qt 多选语义）
+        self.trackList.setSelectionMode(
+            QAbstractItemView.SelectionMode.MultiSelection
+        )
         self.trackDataLabel = QLabel("Stored observations: 0", self)
         self.addTrackButton = QPushButton("Add track", self)
         self.deleteTrackButton = QPushButton("Delete track", self)
@@ -607,9 +613,14 @@ class MainWindow(QMainWindow):
             return
         track = self._annotation_session.add_track(self._annotation_video_id)
         self._refreshTrackList()
+        # 新 Track 成为唯一选中并立即成为标注目标；既有选中保留会让
+        # "建完就标"的新点落到旧 Track 上（多选模式下 setCurrentRow 不清选区）
+        self.trackList.clearSelection()
         for row in range(self.trackList.count()):
             if self.trackList.item(row).data(Qt.ItemDataRole.UserRole) == track.track_id:
                 self.trackList.setCurrentRow(row)
+                self.trackList.item(row).setSelected(True)
+                break
         self._refreshHistoryButtons()
 
     def _deleteSelectedTrack(self) -> None:
@@ -624,12 +635,17 @@ class MainWindow(QMainWindow):
         self._refreshHistoryButtons()
 
     def _onTrackSelectionChanged(self) -> None:
-        # 基于 selectedItems 而非 currentItem：clearSelection/点击列表空白后
-        # currentItem 仍保留旧项（Qt 语义），据此判定无法实现 D2 退出路径
+        # 多选语义：标注目标 = 选中集中的 currentItem（最后点击项）；currentItem
+        # 已被 toggle 取消选中时回落到任一剩余选中项；选中为空必须得到 None
+        # （clearSelection 后 Qt 仍保留 currentItem，不能让它复活旧目标）
         selected = self.trackList.selectedItems()
-        track_id = (
-            selected[0].data(Qt.ItemDataRole.UserRole) if selected else None
-        )
+        current = self.trackList.currentItem()
+        if current is not None and current in selected:
+            track_id = current.data(Qt.ItemDataRole.UserRole)
+        elif selected:
+            track_id = selected[0].data(Qt.ItemDataRole.UserRole)
+        else:
+            track_id = None
         self._selected_track_id = track_id
         self.selectedTrackChanged.emit(track_id)
         self.deleteTrackButton.setEnabled(track_id is not None)
@@ -944,32 +960,27 @@ class MainWindow(QMainWindow):
         if self._annotation_session is None:
             return
         self.trackDataLabel.setText(f"Stored observations: {len(self._annotation_session.project.observations)}")
-        if self._selected_track_id is None:
+        selected = self.trackList.selectedItems()
+        if not selected or self._presented_frame_index is None:
             self.videoView.set_markers([])
             return
-        track = next(
-            (
-                item
-                for item in self._annotation_session.tracks
-                if item.track_id == self._selected_track_id
-            ),
-            None,
-        )
-        if track is None:
-            self.videoView.set_markers([])
-            return
-        if self._presented_frame_index is None:
-            self.videoView.set_markers([])
-            return
-        markers = [
-            MarkerView(
-                pixel_x=point.pixel_x,
-                pixel_y=point.pixel_y,
-                color=track.color,
-                is_current_frame=point.frame_index == self._presented_frame_index,
+        tracks_by_id = {
+            track.track_id: track for track in self._annotation_session.tracks
+        }
+        markers: list[MarkerView] = []
+        for item in selected:
+            track = tracks_by_id.get(item.data(Qt.ItemDataRole.UserRole))
+            if track is None:
+                continue
+            markers.extend(
+                MarkerView(
+                    pixel_x=point.pixel_x,
+                    pixel_y=point.pixel_y,
+                    color=track.color,
+                    is_current_frame=point.frame_index == self._presented_frame_index,
+                )
+                for point in self._annotation_session.manual_points(track.track_id)
             )
-            for point in self._annotation_session.manual_points(track.track_id)
-        ]
         self.videoView.set_markers(markers)
 
     def _onScaleChanged(self, scale: float) -> None:
