@@ -202,3 +202,41 @@ def test_real_mouse_click_in_annotation_mode_marks_point(
     assert len(points) == 1
     assert abs(points[0].pixel_x - 32.0) <= 1.5
     assert abs(points[0].pixel_y - 24.0) <= 1.5
+
+
+def test_undo_redo_buttons_drive_annotation_state(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    window = _opened_with_track(qtbot, synthetic_video_path)
+    window._onAnnotationClicked(_inside_point(window, 20.0, 15.0))
+    qtbot.waitUntil(lambda: window.videoView.marker_count() == 1)
+    assert window.undoButton.isEnabled()
+    assert not window.redoButton.isEnabled()
+
+    window.undoButton.click()
+
+    assert window.videoView.marker_count() == 0
+    # add_track 本身也可撤销：一次 undo 后按钮仍可用
+    assert window.undoButton.isEnabled()
+    assert window.redoButton.isEnabled()
+
+    window.redoButton.click()
+
+    assert window.videoView.marker_count() == 1
+
+
+def test_undo_after_track_deletion_restores_track(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    window = _opened_with_track(qtbot, synthetic_video_path)
+    window._onAnnotationClicked(_inside_point(window, 20.0, 15.0))
+    qtbot.waitUntil(lambda: window.videoView.marker_count() == 1)
+    window.deleteTrackButton.click()
+    assert window.trackList.count() == 0
+
+    window.undoButton.click()
+
+    assert window.trackList.count() == 1
+    assert window.videoView.marker_count() == 1
+    # 选择随撤销恢复（track 重新出现并保持选中）
+    assert window._selected_track_id is not None

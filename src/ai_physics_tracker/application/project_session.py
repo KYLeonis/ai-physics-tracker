@@ -37,6 +37,9 @@ class ProjectRepositoryPort(Protocol):
 
     def load(self, project_root: Path) -> Project: ...
 
+# 撤销栈深度上限（快照为不可变元组的引用组合，成本极低）
+UNDO_STACK_LIMIT = 50
+
 # 自动分配的 Track 颜色轮转调色板（#RRGGBB，domain/track.py 校验格式）
 TRACK_COLOR_PALETTE = (
     "#e6194b",
@@ -70,6 +73,8 @@ class ProjectSession:
         self._project_root = project_root
         self._store = TrackStore(project.tracks, project.observations)
         self._is_dirty = False
+        self._undo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...]]] = []
+        self._redo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...]]] = []
 
     @classmethod
     def start(
@@ -137,6 +142,7 @@ class ProjectSession:
             color=color,
             created_at=utc_now(),
         )
+        self._push_undo_snapshot()
         self._store.add_track(track)
         self._sync_store_to_project()
         return track
@@ -144,6 +150,7 @@ class ProjectSession:
     def remove_track(self, track_id: UUID) -> None:
         """删除 Track 并级联删除其观测。"""
 
+        self._push_undo_snapshot()
         self._store.delete_track(track_id)
         self._sync_store_to_project()
 
@@ -188,6 +195,7 @@ class ProjectSession:
             created_at=now,
             modified_at=now,
         )
+        self._push_undo_snapshot()
         self._store.add_manual_point(point)
         self._sync_store_to_project()
         logger.info(
@@ -226,7 +234,50 @@ class ProjectSession:
             )
         self._project = self._repository.save(self._project_root, self._project)
         self._is_dirty = False
+        # 保存点是安全边界：跨保存的回溯会让 dirty 语义混乱
+        self._undo_stack.clear()
+        self._redo_stack.clear()
         return self._project
+
+    @property
+    def can_undo(self) -> bool:
+        return bool(self._undo_stack)
+
+    @property
+    def can_redo(self) -> bool:
+        return bool(self._redo_stack)
+
+    def undo(self) -> bool:
+        """撤销最近一次写操作（含"替换后恢复旧点"）；无可撤销时返回 False。"""
+
+        if not self._undo_stack:
+            return False
+        self._redo_stack.append(self._current_data_snapshot())
+        tracks, observations = self._undo_stack.pop()
+        self._store = TrackStore(tracks, observations)
+        self._sync_store_to_project()
+        return True
+
+    def redo(self) -> bool:
+        """重做被撤销的操作；无可重做时返回 False。"""
+
+        if not self._redo_stack:
+            return False
+        self._undo_stack.append(self._current_data_snapshot())
+        tracks, observations = self._redo_stack.pop()
+        self._store = TrackStore(tracks, observations)
+        self._sync_store_to_project()
+        return True
+
+    def _current_data_snapshot(
+        self,
+    ) -> tuple[tuple[Track, ...], tuple[TrackPoint, ...]]:
+        return (self._store.tracks, self._store.observations)
+
+    def _push_undo_snapshot(self) -> None:
+        self._undo_stack.append(self._current_data_snapshot())
+        del self._undo_stack[:-UNDO_STACK_LIMIT]
+        self._redo_stack.clear()
 
     def _next_track_name(self) -> str:
         index = len(self._store.tracks) + 1
