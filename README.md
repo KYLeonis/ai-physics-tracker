@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:   Phase 3 — Calibration & Physics Engine 🔄
-Last Completed:  Subphase 3.1 — Calibration UI ✅（2026-08-30）
-Current Subphase: 3.2 — Kinematics Engine 规划中
+Last Completed:  Subphase 3.2 — Kinematics Engine ✅（2026-08-30）
+Current Subphase: 3.3 — Charting UI 规划中
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
