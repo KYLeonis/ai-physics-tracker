@@ -124,6 +124,12 @@ main（稳定） ← 工作分支 feat/p<phase>.<sub>-<topic> / fix/<topic> / do
 本地已验证 Python 3.12.13 + PySide6-Essentials 6.11.2 + NumPy 2.4.6 的
 PlotWidget/InfiniteLine/offscreen smoke；Python 3.11 双平台仍以 Actions 实际结果为准。
 
+图表默认位于窗口底部；关闭后通过 View → Kinematics charts 恢复。
+在图表列表勾选轨迹，点击 Recompute checked tracks 后切换五种图表；
+Measured/Smoothed position 只切换位置图，速度/加速度沿用记录的 SG 参数。
+青色线是已呈现帧，橙色 seek 线是请求目标；点击图表导航会解除视频标注模式，
+需要继续标注时重新点击视频侧 Track。详见 `docs/status/phase-3.3-plan.md` 的验收步骤。
+
 ### Phase 2.4 FFprobe 工具
 
 应用保留 OpenCV 解码；额外使用 FFprobe 完整时间索引验证 CFR。适用的 MP4/MOV

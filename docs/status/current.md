@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 3.3 已确认，依赖验证完成，正在实现）
+- 最后更新：2026-08-30（Phase 3.3 本地实现/复审通过，等待 Human Review）
 
 ---
 
@@ -13,7 +13,7 @@
 
 ## Current Subphase
 
-**3.3 — Interactive Charts / Charting UI**：**In Progress，用户已确认**。
+**3.3 — Interactive Charts / Charting UI**：**等待 Human Review / 远端 CI，未收尾**。
 计划见 [phase-3.3-plan.md](phase-3.3-plan.md)，[Issue #9](https://github.com/KYLeonis/ai-physics-tracker/issues/9)，
 工作分支 `feat/p3.3-interactive-charts`。PyQtGraph 0.13.7 与锁定 SciPy 1.17.1 已安装，smoke 通过。
 
@@ -22,7 +22,7 @@
 
 ## Current Slice
 
-Slice 2–5：图表数据适配、批次重算与 GUI 集成；完成自动化和独立复审后发起 Human Review。
+Slice 1–5 本地完成；Slice 6：297 tests 与交叉独立复审通过，已准备五条 Human Review 步骤。
 
 ## Current Goal
 
@@ -30,6 +30,11 @@ Slice 2–5：图表数据适配、批次重算与 GUI 集成；完成自动化�
 事务边界。按已确认计划实现并验证，交付后停在 Human Review；导出仍属 Phase 8。
 
 ## Recently Completed
+
+- **Phase 3.3 本地增量（待 HR/CI）**：五标签页 QDockWidget、多 Track 叠加、物理/像素
+  单位、缺测断线、呈现帧/目标帧双游标和 x-y 点选；SG 参数与后台批次重算、一次 Undo、
+  保存/切换/取消隔离；首次标定 stale 与旧缓存标定引用守卫；请求编号贯穿解码成功/失败，
+  修复旧结果覆盖新请求。功能提交 `79c4795` / `69c0864`，**297 passed**，复审通过。
 
 - **Phase 3.3 规划盘点**（2026-08-30）：读取 Phase 3 spec/ADR-0008 与图表参考；
   Luna-max 只读核对应用/GUI 接口；形成 mini-plan。规划时工作区干净，已有回归
@@ -48,19 +53,21 @@ Slice 2–5：图表数据适配、批次重算与 GUI 集成；完成自动化�
 **已定决策**
 
 - 运动学平滑与微分：Savitzky-Golay（ADR-0008），在 3.2 阶段已完整落实。
-- **重算触发**：本阶段为底层开放了 `compute_kinematics` 等 API，明确将在 3.3 阶段由 GUI 层统一提供刷新触发 UI。
+- **重算触发**：3.3 已提供 Recompute checked tracks，按 ADR-0009 在后台计算并原子提交；
+  默认 SG window=7 / polyorder=2，不在播放帧回调中重算。
 
 **3.3 已确认方案与当前事项**
 
 - PyQtGraph 0.13.7（spec 范围 >=0.13,<0.14）；项目依赖已安装并完成 Qt/NumPy smoke test。
-- 首次设置标定后，既有 px 派生数据未置 stale，纳入 3.3 集成修复。兼容已有
+- 首次设置标定后既有 px 派生数据未置 stale 的缺口已修复。兼容已有
   `world_position(px)` 命名，界面按实际单位/标定引用显示，不迁移原始数据。
-- 时序权限、后台批次提交和 GUI 已呈现帧通知需补齐；不在绘图层重做数值引擎。
+- 时序权限、后台批次提交和 GUI 已呈现帧通知已补齐；绘图层不重做数值引擎。
 - 本地 `.venv` 已按授权从 SciPy 1.18.1 对齐至锁定的 **1.17.1**；260 项原有回归再次通过。
   尚未验证远端 Windows Python 3.11。本轮不修改 CI。
-- Phase 2 Windows 真机验收按用户决定延后，继续保留后续事项，不影响本次规划。
+- Phase 2 Windows 真机验收按用户决定延后，继续保留后续事项；3.3 远端 CI 也尚待执行。
 
 ## Next Recommended Action
 
-完成图表/批次重算的集成、回归和独立复审，再向用户发起 Human Review 并停止。
-通过后才处理 3.3 的 CI/合并及 3.4；push、CI 配置修改仍需单独授权。
+等待用户按 [3.3 计划中的 Human Review](phase-3.3-plan.md) 亲测并逐项反馈，暂不继续开发。
+未通过则按反馈修复并重验；通过后申请 push 授权、运行双平台 CI，再合并/关闭 Issue #9，
+进入 3.4。push、CI 配置修改仍需单独授权，本轮未推送或修改 CI。
