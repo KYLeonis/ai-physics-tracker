@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 2.4 ADR-0007 修复已提交，等待下一轮 Human Review）
+- 最后更新：2026-08-30（Phase 2.4 Human Review 通过，已合并；Phase 2 收尾仅剩 Windows 真机验收）
 
 ---
 
@@ -13,7 +13,7 @@
 
 ## Current Subphase
 
-**2.4 — Project Workflow & Phase Close** 🔄 Human Review 反馈修复/验证中；[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)，分支 `feat/p2.4-project-workflow`；计划见 [phase-2.4-plan.md](phase-2.4-plan.md)。用户已授权修复到下一轮 HR，尚未授权 push。
+**2.4 — Project Workflow & Phase Close** ✅ 代码与 macOS Human Review 完成（[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5) 保持开放：仅剩 P24-10 Windows 真机验收）。**Phase 2 整体标记 Completed 前必须完成 P24-10**（计划原文约束）。
 
 上一 Subphase 2.3 已完成（Issue #4 已关闭，merge `3967f6a`/`38eaa39`，CI 双平台全绿，Human Review 2 轮通过）。
 
@@ -27,6 +27,7 @@ Slice 6：首帧预览/后台验证已接通，正在完成 packet 快路径、n
 
 ## Recently Completed
 
+- **Phase 2.4 — Project Workflow & Phase Close**（2026-08-30）：项目首存/另存/加载/重连与 Save/Discard/Cancel 保护；持久化 Timeline/ID 恢复；外部视频 relink 身份校验；FFprobe packet-PTS 快路径 + near_cfr 显式近似确认（ADR-0007，响应式预览：P001 类视频首帧秒开，后台验证，用户看到误差数字后授权标注，溯源写入 source_detail）；macOS Human Review 通过；223 tests
 - **Phase 2.4 本地增量（待 HR/CI）**：Project 首存/另存/加载/重连、Save/Discard/Cancel 保护；候选会话后台准备与取消；保留持久化 Timeline/ID、视图状态；dirty 与保存基线比较；unknown/VFR 媒体可保存浏览引用但不能新增测量；FFprobe 完整时间戳验证及固定来源工具取得脚本；Luna-max review 两个 Blocker（preview 丢引用、未来 workflow 版本降级）已修复。最新功能提交 `2a139ce`。
 - **Phase 2.3 — Manual Annotation**（2026-08-30）：ProjectSession（application，ProjectRepositoryPort 协议 + 组合根注入）；Track 面板（创建/删除/选择、自动命名与调色板）；标注模式（选中即标记、Esc/列表空白退出，D1=A/D2=确认）；点击落点（mapScreenToPixel、呈现帧为唯一落帧来源、在途拒绝）；overlay 拖尾显示（当前帧实心高亮、屏幕固定大小、全缩放锚定）；manual 语义（time_s 冻结、visibility=visible、同帧 last-wins 硬删旧点）；独立 review 4 Blocker 全部修复（visibility、落帧时序、marker 锚点、空转测试）；**HR 反馈修复**：十字光标稳定（item 级 cursor，修 QGraphicsScene hover 覆盖）、快照式 Undo/Redo（按钮+⌘Z/⇧⌘Z、完整恢复被 last-wins 替换的旧点、撤销删除后恢复选择、save 清栈）；本地 124 tests
 - **Phase 2.2 — Playback & Viewport**（2026-08-29）：AsyncVideoSession（单线程串行 reader、latest-wins 解码合并、跨视频代际隔离）；播放控制（QTimer 节流、末帧自动暂停、空格/按钮、0.25–4× 倍速）；时间轴 scrub/commit；VideoView 重写为 QGraphicsView（pinch 手势缩放、拖拽平移、Fit/100%/200%/400% 档位、`mapScreenToPixel` ±0.5px）；**顺序解码 fast path（1080p H.264 从 33.3ms/帧降至 11.8ms/帧，根因修复卡顿）**；解码支持矩阵实测入库（development.md）；Human Review 5 轮通过（含 pinch 手势投递修复、`scripts/diagnose_pinch.py` 探针），本地 100 tests + CI 全绿
@@ -73,6 +74,4 @@ Slice 6：首帧预览/后台验证已接通，正在完成 packet 快路径、n
 
 ## Next Recommended Action
 
-ADR-0007 修复已本地提交（`5a507e6`）：P001 等价 PTS 只读复测通过（旧规则 vfr_suspected → 新规则 near_cfr，误差 0.111ms 量级与诊断吻合；approximation_errors 对容器 fps Timeline 通过、整数 30fps 保守拒绝；真 VFR 仍拒绝）；主会话系统性自查无 Blocker（subagent 独立 review 因模型 provider 失效不可用，已记录）；223 tests 全绿。
-**下一步：等待用户 Human Review（真实视频标注/确认流程），通过后请求 push 授权 → 双平台 CI → 合并 → Phase 2 收尾。**
-保留用户 `experiment/` 与 `.github/workflows/README.md`，不纳入 Git。
+Phase 2.4 已合并（merge 后见 git log），CI 双平台全绿后 Issue #5 补 Result（P24-1…9 勾选）。**Phase 2 收尾的最后一步是 P24-10：在自有 NVIDIA GPU Windows 笔记本上做 MP4/H.264 全流程真机验收**（打开项目 → 标注 → 保存 → 重开 → relink + FFprobe Windows 执行确认）。完成后按 AGENTS.md §11 勾选 roadmap Phase 2 验收标准并把 Phase 2 标记 Completed。保留用户 `experiment/` 与 `.github/workflows/README.md`，不纳入 Git。
