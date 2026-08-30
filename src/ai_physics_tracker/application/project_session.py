@@ -16,13 +16,18 @@ from uuid import UUID, uuid4
 
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
+from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.project import (
     Project,
+    add_calibration as add_domain_calibration,
     add_video,
     create_project,
-    relink_video,
+    delete_calibration as delete_domain_calibration,
     delete_track,
     register_video_reference,
+    relink_video,
+    replace_calibration as replace_domain_calibration,
+    set_active_calibration as set_domain_active_calibration,
 )
 from ai_physics_tracker.domain.derived import DerivedData, mark_tracks_stale
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
@@ -89,8 +94,24 @@ class ProjectSession:
         self._store = TrackStore(project.tracks, project.observations)
         self._verified_videos: set[UUID] = set()
         self._approximate_timing: dict[UUID, str] = {}
-        self._undo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...], tuple[DerivedData, ...]]] = []
-        self._redo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...], tuple[DerivedData, ...]]] = []
+        self._undo_stack: list[
+            tuple[
+                tuple[Track, ...],
+                tuple[TrackPoint, ...],
+                tuple[Calibration, ...],
+                dict[UUID, UUID],
+                tuple[DerivedData, ...],
+            ]
+        ] = []
+        self._redo_stack: list[
+            tuple[
+                tuple[Track, ...],
+                tuple[TrackPoint, ...],
+                tuple[Calibration, ...],
+                dict[UUID, UUID],
+                tuple[DerivedData, ...],
+            ]
+        ] = []
 
     @classmethod
     def start(
@@ -122,6 +143,21 @@ class ProjectSession:
     @property
     def tracks(self) -> tuple[Track, ...]:
         return self._store.tracks
+
+    @property
+    def calibrations(self) -> tuple[Calibration, ...]:
+        return self._project.calibrations
+
+    def active_calibration(self, video_id: UUID) -> Calibration | None:
+        """返回指定视频当前生效的标定对象；未设置时返回 None。"""
+
+        cal_id = self._project.active_calibration_by_video.get(video_id)
+        if cal_id is None:
+            return None
+        return next(
+            (c for c in self._project.calibrations if c.calibration_id == cal_id),
+            None,
+        )
 
     def register_external_video(
         self, path: Path, info: VideoStreamInfo, *, sha256: str | None = None
@@ -366,6 +402,113 @@ class ProjectSession:
         path = Path(video.original_path) if video.original_path else None
         return path if path is not None and path.is_file() else None
 
+    def add_calibration(
+        self,
+        video_id: UUID | Calibration,
+        scale_end_1_px: tuple[float, float] | None = None,
+        scale_end_2_px: tuple[float, float] | None = None,
+        known_length: float | None = None,
+        unit: str = "m",
+        name: str | None = None,
+        origin_px: tuple[float, float] | None = None,
+        rotation_deg: float = 0.0,
+        notes: str | None = None,
+        set_active: bool = True,
+    ) -> Calibration:
+        """为已验证视频添加标定；创建 Calibration 对象并更新聚合快照。"""
+
+        if isinstance(video_id, Calibration):
+            cal = video_id
+            vid = cal.video_id
+        else:
+            vid = video_id
+            if vid not in self._verified_videos:
+                raise ProjectSessionError("video timing is not verified CFR; calibration disabled")
+            if scale_end_1_px is None or scale_end_2_px is None or known_length is None:
+                raise ProjectSessionError(
+                    "scale_end_1_px, scale_end_2_px, and known_length are required"
+                )
+            final_name = name.strip() if name and name.strip() else self._next_calibration_name()
+            try:
+                cal = Calibration(
+                    calibration_id=uuid4(),
+                    video_id=vid,
+                    name=final_name,
+                    scale_end_1_px=scale_end_1_px,
+                    scale_end_2_px=scale_end_2_px,
+                    known_length=known_length,
+                    unit=unit,
+                    created_at=utc_now(),
+                    origin_px=origin_px,
+                    rotation_deg=rotation_deg,
+                    notes=notes,
+                )
+            except ValueError as error:
+                raise ProjectSessionError(str(error)) from error
+
+        if vid not in self._verified_videos:
+            raise ProjectSessionError("video timing is not verified CFR; calibration disabled")
+
+        try:
+            updated_project = add_domain_calibration(self._project, cal)
+            if set_active:
+                updated_project = set_domain_active_calibration(
+                    updated_project, vid, cal.calibration_id
+                )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+
+        self._commit_project(updated_project)
+        logger.info(
+            "calibration added: video=%s id=%s name=%s length=%s %s",
+            vid,
+            cal.calibration_id,
+            cal.name,
+            cal.known_length,
+            cal.unit,
+        )
+        return cal
+
+    def remove_calibration(self, calibration_id: UUID) -> None:
+        """删除指定标定方案；若为 active 则级联失效。"""
+
+        try:
+            updated_project = delete_domain_calibration(self._project, calibration_id)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        self._commit_project(updated_project)
+
+    delete_calibration = remove_calibration
+
+    def set_active_calibration(self, video_id: UUID, calibration_id: UUID | None) -> None:
+        """切换或清除视频的 active 标定方案。"""
+
+        try:
+            updated_project = set_domain_active_calibration(
+                self._project, video_id, calibration_id
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        self._commit_project(updated_project)
+
+    def update_calibration(self, calibration: Calibration) -> None:
+        """替换已有标定的参数（如修改原点或旋转角）。"""
+
+        try:
+            updated_project = replace_domain_calibration(self._project, calibration)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        self._commit_project(updated_project)
+
+    replace_calibration = update_calibration
+
+    def _next_calibration_name(self) -> str:
+        index = len(self._project.calibrations) + 1
+        existing = {cal.name for cal in self._project.calibrations}
+        while f"Calibration {index}" in existing:
+            index += 1
+        return f"Calibration {index}"
+
     @property
     def can_undo(self) -> bool:
         return bool(self._undo_stack)
@@ -380,9 +523,16 @@ class ProjectSession:
         if not self._undo_stack:
             return False
         self._redo_stack.append(self._current_data_snapshot())
-        tracks, observations, derived = self._undo_stack.pop()
+        tracks, observations, calibrations, active_calibration_by_video, derived = self._undo_stack.pop()
         self._store = TrackStore(tracks, observations)
-        self._project = replace(self._project, tracks=tracks, observations=observations, derived=derived)
+        self._project = replace(
+            self._project,
+            tracks=tracks,
+            observations=observations,
+            calibrations=calibrations,
+            active_calibration_by_video=active_calibration_by_video,
+            derived=derived,
+        )
         return True
 
     def redo(self) -> bool:
@@ -391,15 +541,34 @@ class ProjectSession:
         if not self._redo_stack:
             return False
         self._undo_stack.append(self._current_data_snapshot())
-        tracks, observations, derived = self._redo_stack.pop()
+        tracks, observations, calibrations, active_calibration_by_video, derived = self._redo_stack.pop()
         self._store = TrackStore(tracks, observations)
-        self._project = replace(self._project, tracks=tracks, observations=observations, derived=derived)
+        self._project = replace(
+            self._project,
+            tracks=tracks,
+            observations=observations,
+            calibrations=calibrations,
+            active_calibration_by_video=active_calibration_by_video,
+            derived=derived,
+        )
         return True
 
     def _current_data_snapshot(
         self,
-    ) -> tuple[tuple[Track, ...], tuple[TrackPoint, ...], tuple[DerivedData, ...]]:
-        return (self._store.tracks, self._store.observations, self._project.derived)
+    ) -> tuple[
+        tuple[Track, ...],
+        tuple[TrackPoint, ...],
+        tuple[Calibration, ...],
+        dict[UUID, UUID],
+        tuple[DerivedData, ...],
+    ]:
+        return (
+            self._store.tracks,
+            self._store.observations,
+            self._project.calibrations,
+            dict(self._project.active_calibration_by_video),
+            self._project.derived,
+        )
 
     def _push_undo_snapshot(self) -> None:
         self._undo_stack.append(self._current_data_snapshot())
@@ -413,10 +582,20 @@ class ProjectSession:
             index += 1
         return f"Track {index}"
 
+    def _commit_project(self, project: Project, store: TrackStore | None = None) -> None:
+        self._push_undo_snapshot()
+        if store is not None:
+            self._store = store
+        else:
+            self._store = TrackStore(project.tracks, project.observations)
+        self._project = project
+
     def _commit_store(self, store: TrackStore, derived: tuple[DerivedData, ...]) -> None:
         # 先完成跨对象校验；失败不能污染原 store 或提前清 redo。
-        project = replace(self._project, tracks=store.tracks,
-                          observations=store.observations, derived=derived)
-        self._push_undo_snapshot()
-        self._store = store
-        self._project = project
+        project = replace(
+            self._project,
+            tracks=store.tracks,
+            observations=store.observations,
+            derived=derived,
+        )
+        self._commit_project(project, store)
