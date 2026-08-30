@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 2.4 本地实现与 review 通过，等待 Human Review）
+- 最后更新：2026-08-30（Phase 2.4 Human Review 反馈：长预加载与 Add track 禁用，已只读定位原因）
 
 ---
 
@@ -13,13 +13,13 @@
 
 ## Current Subphase
 
-**2.4 — Project Workflow & Phase Close** 🔄 本地实现与独立 review 通过，等待 Human Review/CI；[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)，分支 `feat/p2.4-project-workflow`；计划见 [phase-2.4-plan.md](phase-2.4-plan.md)。用户已确认范围、FFprobe 与 CI 修改，尚未授权 push。
+**2.4 — Project Workflow & Phase Close** 🔄 Human Review 未通过（预加载耗时与测量门禁体验），等待修复方案；[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)，分支 `feat/p2.4-project-workflow`；计划见 [phase-2.4-plan.md](phase-2.4-plan.md)。用户已确认原范围、FFprobe 与 CI 修改，尚未授权 push。
 
 上一 Subphase 2.3 已完成（Issue #4 已关闭，merge `3967f6a`/`38eaa39`，CI 双平台全绿，Human Review 2 轮通过）。
 
 ## Current Slice
 
-Slice 6：本地 173 tests 和 Luna-max 独立复审通过；停止等待用户亲测，不提前合并。
+Slice 6：原 173 tests 与独立复审通过；收到真人反馈后执行只读诊断，尚未修改应用代码。
 
 ## Current Goal
 
@@ -62,6 +62,17 @@ Slice 6：本地 173 tests 和 Luna-max 独立复审通过；停止等待用户�
 
 **用户未提交修改**：`.github/workflows/README.md`，本次未改动、未纳入提交。
 
+**Human Review 诊断（2026-08-30）**：当前打开的 `P001.mp4` 为 1920×1080 HEVC，
+约 110.88 s、3326 帧、250 MB。首帧 0.140 s；全部 packet PTS 扫描 0.264 s；当前
+`-show_frames` 全解码验证 91.906 s。完整帧 PTS 与排序后的 packet PTS 完全相同。
+时间基 1/90000，间隔 3000 ticks 共 3224 次、3010 ticks 共 101 次；当前 30 FPS + 1 tick
+容差规则返回 `vfr_suspected`，从而禁用 Add track。以容器平均 FPS 29.9969636 为参考，
+固定时间网格最大偏差约 0.17014 ms；与严格 30 FPS 比则累计偏差 11.2222 ms。
+结论：全量解码被放在首屏之前是长等待根因；按钮禁用是严格时序判定的结果，不是 Qt 点击失效。
+不能据此把视频称为严格 CFR，也不能直接放开按钮；需明确近似恒定帧率的误差预算/用户确认策略。
+
 ## Next Recommended Action
 
-等待用户完成 Human Review：最短命令 `.venv/bin/python -m ai_physics_tracker`；验证首存/重开、另存隔离、取消/失败保护、重连及 Windows MP4/H.264。反馈问题则修复重测；通过后另获 push 授权运行双平台 CI，再集成/关闭 Issue/核对 Phase 2 AC。不能用 computer-use 替代，不自动进入 Phase 3。
+向用户说明诊断与修复取舍：先解耦首屏与验证、评估适用容器/编码的完整 packet PTS 快路径；
+单独确认近似恒定帧率测量的误差预算，不能静默把 VFR 判定放宽。用户请求修复/确认策略后，
+补回归、实现并再次 Human Review；之后才处理 push/双平台 CI/合并。保留用户 `experiment/`，不纳入 Git。
