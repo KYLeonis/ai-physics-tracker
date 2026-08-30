@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 2.4 Human Review 反馈修复：已授权实现到下一轮 HR）
+- 最后更新：2026-08-30（Phase 2.4 ADR-0007 修复已提交，等待下一轮 Human Review）
 
 ---
 
@@ -73,6 +73,6 @@ Slice 6：首帧预览/后台验证已接通，正在完成 packet 快路径、n
 
 ## Next Recommended Action
 
-完成 ADR-0007 修复的全回归与独立复审，记录 P001 只读复测结果、本地提交，
-发起下一轮 Human Review 后停止。通过后才处理 push 授权/双平台 CI/合并。
+ADR-0007 修复已本地提交（`5a507e6`）：P001 等价 PTS 只读复测通过（旧规则 vfr_suspected → 新规则 near_cfr，误差 0.111ms 量级与诊断吻合；approximation_errors 对容器 fps Timeline 通过、整数 30fps 保守拒绝；真 VFR 仍拒绝）；主会话系统性自查无 Blocker（subagent 独立 review 因模型 provider 失效不可用，已记录）；223 tests 全绿。
+**下一步：等待用户 Human Review（真实视频标注/确认流程），通过后请求 push 授权 → 双平台 CI → 合并 → Phase 2 收尾。**
 保留用户 `experiment/` 与 `.github/workflows/README.md`，不纳入 Git。
