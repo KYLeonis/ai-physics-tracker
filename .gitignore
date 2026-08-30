@@ -28,6 +28,7 @@ MANIFEST
 
 # ---------- 虚拟环境 / 包管理 ----------
 .venv/
+.tools/
 venv/
 env/
 ENV/

@@ -27,5 +27,9 @@ jobs:
           cache: pip
       - name: Install test dependencies
         run: python -m pip install -r requirements.txt
+      - name: Install checksum-verified FFprobe
+        run: python scripts/setup_ffprobe.py --directory "${{ runner.temp }}/ffprobe" --github-path
+      - name: Verify FFprobe
+        run: ffprobe -version
       - name: Run tests
         run: python -m pytest
