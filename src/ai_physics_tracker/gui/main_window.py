@@ -93,6 +93,10 @@ class MainWindow(QMainWindow):
         self.addTrackButton = QPushButton("Add track", self)
         self.deleteTrackButton = QPushButton("Delete track", self)
         self.deleteTrackButton.setEnabled(False)
+        self.undoButton = QPushButton("↩ Undo", self)
+        self.redoButton = QPushButton("↪ Redo", self)
+        self.undoButton.setEnabled(False)
+        self.redoButton.setEnabled(False)
 
         self.frameSpinBox.setPrefix("Go to: ")
         self.frameSpinBox.setMinimum(0)
@@ -124,9 +128,13 @@ class MainWindow(QMainWindow):
         trackButtons = QHBoxLayout()
         trackButtons.addWidget(self.addTrackButton)
         trackButtons.addWidget(self.deleteTrackButton)
+        historyButtons = QHBoxLayout()
+        historyButtons.addWidget(self.undoButton)
+        historyButtons.addWidget(self.redoButton)
         trackPanel = QVBoxLayout()
         trackPanel.addWidget(self.trackList, 1)
         trackPanel.addLayout(trackButtons)
+        trackPanel.addLayout(historyButtons)
         trackSide = QWidget(self)
         trackSide.setLayout(trackPanel)
         trackSide.setMaximumWidth(220)
@@ -216,6 +224,12 @@ class MainWindow(QMainWindow):
         self.trackList.itemSelectionChanged.connect(self._onTrackSelectionChanged)
         annotationEscape = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
         annotationEscape.activated.connect(self._exitAnnotationMode)
+        undoShortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
+        undoShortcut.activated.connect(self._undo)
+        redoShortcut = QShortcut(QKeySequence.StandardKey.Redo, self)
+        redoShortcut.activated.connect(self._redo)
+        self.undoButton.clicked.connect(self._undo)
+        self.redoButton.clicked.connect(self._redo)
         self.statusBar().showMessage("Ready")
 
     @property
@@ -284,6 +298,7 @@ class MainWindow(QMainWindow):
         self._annotation_video_id = _video.video_id
         self._selected_track_id = None
         self._refreshTrackList()
+        self._refreshHistoryButtons()
         self.frameSpinBox.setMaximum(self._frame_count - 1)
         self.timelineSlider.setMaximum(self._frame_count - 1)
         for control in (
@@ -373,6 +388,38 @@ class MainWindow(QMainWindow):
         if snapshot is not None:
             self._presentFrame(snapshot.current_frame)
 
+    def _undo(self) -> None:
+        if self._annotation_session is None or not self._annotation_session.undo():
+            return
+        self._afterHistoryStep()
+
+    def _redo(self) -> None:
+        if self._annotation_session is None or not self._annotation_session.redo():
+            return
+        self._afterHistoryStep()
+
+    def _afterHistoryStep(self) -> None:
+        """撤销/重做后的状态收敛：选择有效性、面板与 overlay 同步。"""
+
+        assert self._annotation_session is not None
+        track_ids = {track.track_id for track in self._annotation_session.tracks}
+        if self._selected_track_id is not None and (
+            self._selected_track_id not in track_ids
+        ):
+            self.trackList.setCurrentRow(-1)  # 触发 _onTrackSelectionChanged
+        self._refreshTrackList()
+        # 选择失效或为空时自动选中第一行：撤销"删除 track"后恢复标注上下文
+        if self.trackList.currentRow() == -1 and self.trackList.count() > 0:
+            self.trackList.setCurrentRow(0)
+        self._refreshHistoryButtons()
+        self._refreshMarkers()
+        self.statusBar().showMessage("")
+
+    def _refreshHistoryButtons(self) -> None:
+        session = self._annotation_session
+        self.undoButton.setEnabled(session is not None and session.can_undo)
+        self.redoButton.setEnabled(session is not None and session.can_redo)
+
     def _addTrack(self) -> None:
         if self._annotation_session is None or self._annotation_video_id is None:
             return
@@ -440,6 +487,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Mark failed: {error}")
             return
         self._refreshMarkers()
+        self._refreshHistoryButtons()
 
     def _refreshTrackList(self) -> None:
         self.trackList.clear()
@@ -559,6 +607,7 @@ class MainWindow(QMainWindow):
         self._annotation_video_id = None
         self._selected_track_id = None
         self._presented_frame_index = None
+        self._refreshHistoryButtons()
         self.trackList.clear()
         self.videoView.set_markers([])
         self.videoView.set_annotation_mode(False)

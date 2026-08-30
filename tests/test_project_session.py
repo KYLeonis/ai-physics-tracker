@@ -148,3 +148,79 @@ def test_mark_point_unknown_track_reports_error(tmp_path: Path) -> None:
 
     with pytest.raises(ProjectSessionError):
         session.mark_point(uuid4(), 0, 1.0, 1.0)
+
+
+def test_undo_restores_point_replaced_by_last_wins(tmp_path: Path) -> None:
+    # last-wins 硬删旧 manual 点；undo 必须能恢复被替换的旧点
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+
+    session.mark_point(track.track_id, 1, 10.0, 10.0)
+    session.mark_point(track.track_id, 1, 42.0, 21.0)
+    assert len(session.project.observations) == 1
+
+    assert session.undo()
+
+    points = session.manual_points(track.track_id)
+    assert len(points) == 1
+    assert (points[0].pixel_x, points[0].pixel_y) == (10.0, 10.0)
+
+    assert session.redo()
+
+    points = session.manual_points(track.track_id)
+    assert (points[0].pixel_x, points[0].pixel_y) == (42.0, 21.0)
+
+
+def test_undo_add_track_and_delete_track(tmp_path: Path) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+
+    assert session.undo()
+    assert session.tracks == ()
+
+    assert session.redo()
+    assert session.tracks == (track,)
+
+    session.mark_point(track.track_id, 0, 5.0, 5.0)
+    session.remove_track(track.track_id)
+    assert session.tracks == ()
+
+    assert session.undo()  # 恢复删除
+    assert session.tracks == (track,)
+    assert len(session.project.observations) == 1
+
+
+def test_undo_stack_is_limited_and_save_clears_it(tmp_path: Path) -> None:
+    from ai_physics_tracker.application.project_session import UNDO_STACK_LIMIT
+
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+
+    for step in range(UNDO_STACK_LIMIT + 5):
+        session.mark_point(track.track_id, step % 5, 1.0, 1.0)  # 合成视频 5 帧
+
+    # 栈深限制：最早的 mark（add_track 之后）已不可撤销
+    for _ in range(UNDO_STACK_LIMIT):
+        assert session.undo()
+    assert not session.can_undo
+
+    session._project_root = tmp_path  # 测试注入根
+    session.save()
+    assert not session.can_undo and not session.can_redo
+
+
+def test_new_write_clears_redo_stack(tmp_path: Path) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+
+    session.mark_point(track.track_id, 0, 1.0, 1.0)
+    assert session.undo()
+    assert session.can_redo
+
+    session.mark_point(track.track_id, 1, 2.0, 2.0)  # 分支：旧 redo 作废
+
+    assert not session.can_redo

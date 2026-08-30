@@ -98,6 +98,8 @@ class VideoView(QGraphicsView):
             self._pixmap_item.setTransformationMode(
                 Qt.TransformationMode.SmoothTransformation
             )
+            if self._annotation_mode:
+                self._pixmap_item.setCursor(Qt.CursorShape.CrossCursor)
         else:
             self._pixmap_item.setPixmap(pixmap)
         self._removePlaceholder()
@@ -231,15 +233,27 @@ class VideoView(QGraphicsView):
         self.scaleChanged.emit(self.currentScale())
 
     def set_annotation_mode(self, enabled: bool) -> None:
-        """标注模式：左键点击落点（发 annotationClicked），禁用拖拽平移。"""
+        """标注模式：左键点击落点（发 annotationClicked），禁用拖拽平移。
+
+        十字光标设在图像/marker item 上：QGraphicsScene 的 hover 管理
+        会用 item 光标覆盖 viewport 光标，只设 viewport 会在移动鼠标时
+        被 scene 重置回箭头（Human Review 反馈的闪变 bug）。
+        """
 
         self._annotation_mode = enabled
+        shape = (
+            Qt.CursorShape.CrossCursor
+            if enabled
+            else Qt.CursorShape.ArrowCursor
+        )
         if enabled:
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
-            self.viewport().setCursor(Qt.CursorShape.CrossCursor)
         else:
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-            self.viewport().unsetCursor()
+        if self._pixmap_item is not None:
+            self._pixmap_item.setCursor(shape)
+        for item in self._marker_items:
+            item.setCursor(shape)
 
     def is_annotation_mode(self) -> bool:
         return self._annotation_mode
@@ -272,6 +286,8 @@ class VideoView(QGraphicsView):
                 item.setBrush(Qt.BrushStyle.NoBrush)
             item.setPen(pen)
             item.setZValue(10.0)
+            if self._annotation_mode:
+                item.setCursor(Qt.CursorShape.CrossCursor)
             self._scene.addItem(item)
             self._marker_items.append(item)
 
