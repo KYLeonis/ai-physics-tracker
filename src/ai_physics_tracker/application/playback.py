@@ -65,6 +65,8 @@ class AsyncVideoSession:
         self._wakeup = threading.Condition(self._lock)
         self._pending_frame: int | None = None
         self._pending_open: Path | None = None
+        self._pending_timeline: Timeline | None = None
+        self._pending_initial_frame = 0
         self._pending_open_future: Future[PlaybackSnapshot] | None = None
         self._pending_close = False
         self._stopped = False
@@ -73,7 +75,9 @@ class AsyncVideoSession:
         )
         self._worker.start()
 
-    def open(self, path: Path) -> "Future[PlaybackSnapshot]":
+    def open(
+        self, path: Path, timeline: Timeline | None = None, frame_index: int = 0
+    ) -> "Future[PlaybackSnapshot]":
         """请求在工作线程打开视频；Future 完成时带回首帧快照或异常。"""
 
         future: Future[PlaybackSnapshot] = Future()
@@ -85,6 +89,8 @@ class AsyncVideoSession:
                 future.set_exception(VideoError("another open/close is pending"))
                 return future
             self._pending_open = path
+            self._pending_timeline = timeline
+            self._pending_initial_frame = frame_index
             self._pending_open_future = future
             self._wakeup.notify_all()
         return future
@@ -149,6 +155,8 @@ class AsyncVideoSession:
                 ):
                     self._wakeup.wait()
                 path = self._pending_open
+                timeline = self._pending_timeline
+                initial_frame = self._pending_initial_frame
                 self._pending_open = None
                 open_future = self._pending_open_future
                 self._pending_open_future = None
@@ -156,22 +164,28 @@ class AsyncVideoSession:
                 self._pending_frame = None
                 closing = self._pending_close
             if closing:
+                if open_future is not None and not open_future.done():
+                    open_future.set_exception(VideoError("session closed before open"))
                 self._session.close()
                 self._stopped = True
                 self._pending_close = False
                 return
             if path is not None:
-                self._handle_open(path, open_future)
+                self._handle_open(path, open_future, timeline, initial_frame)
             elif frame_index is not None:
                 self._decode(frame_index)
 
     def _handle_open(
-        self, path: Path, future: Future[PlaybackSnapshot] | None
+        self, path: Path, future: Future[PlaybackSnapshot] | None,
+        timeline: Timeline | None = None, frame_index: int = 0,
     ) -> None:
         # open 走 Future 请求-响应通道；on_frame/on_error 只服务 request_frame
         # 的异步事件，避免 GUI 对同一操作收到双重通知。
         try:
-            self._session.open(path)
+            if timeline is None and frame_index == 0:
+                self._session.open(path)
+            else:
+                self._session.open(path, timeline, frame_index)
             snapshot = PlaybackSnapshot(
                 info=self._session.info,
                 timeline=self._session.timeline,
@@ -200,7 +214,8 @@ class AsyncVideoSession:
             self._emit_error(VideoError(str(error)))
             return
         try:
-            self._on_frame(frame)
+            if not self._pending_close and not self._stopped:
+                self._on_frame(frame)
         except Exception:
             logger.exception("on_frame callback raised for frame %d", frame.frame_index)
 
@@ -208,6 +223,7 @@ class AsyncVideoSession:
         if not isinstance(error, VideoError):
             error = VideoError(str(error))
         try:
-            self._on_error(error)
+            if not self._pending_close and not self._stopped:
+                self._on_error(error)
         except Exception:
             logger.exception("on_error callback raised")

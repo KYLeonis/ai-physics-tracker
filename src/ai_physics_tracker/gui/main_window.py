@@ -2,12 +2,14 @@
 
 import logging
 from pathlib import Path
+from threading import Event
+from typing import Callable
 from uuid import UUID
 
 from PySide6.QtCore import QPoint, QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QFileDialog,
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -29,6 +31,9 @@ from ai_physics_tracker.application.project_session import (
 )
 from ai_physics_tracker.application.video import DecodedFrame, VideoError
 from ai_physics_tracker.application.video_session import VideoSession
+from ai_physics_tracker.application.project_media import ProjectMediaService, PreparedProject, workflow_state
+from ai_physics_tracker.application.video_timing import VideoTimingProbe
+from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.gui.video_view import MarkerView, VideoView
 
@@ -48,18 +53,20 @@ class MainWindow(QMainWindow):
 
     def __init__(
         self,
-        session: VideoSession,
+        session_factory: Callable[[], VideoSession],
         annotation_repository: ProjectRepositoryPort,
+        timing_probe: VideoTimingProbe,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("AI Physics Tracker")
         self.resize(960, 720)
         self._annotation_repository = annotation_repository
-
-        self._async = AsyncVideoSession(
-            session, self._emitFrameDelivered, self._emitDecodeFailed
-        )
+        self._session_factory = session_factory
+        self._timing_probe = timing_probe
+        self._generation_counter = 0
+        self._async = self._makeDecoder(0)
+        self._measurement_allowed = False
         self._is_playing = False
         self._has_pending_request = False
         self._frame_count = 0
@@ -80,6 +87,7 @@ class MainWindow(QMainWindow):
         self._selected_track_id: UUID | None = None
 
         self.videoView = VideoView(self)
+        self.videoSelector = QComboBox(self)
         self.previousButton = QPushButton("Previous frame", self)
         self.nextButton = QPushButton("Next frame", self)
         self.playButton = QPushButton("Play", self)
@@ -90,6 +98,7 @@ class MainWindow(QMainWindow):
         self.zoomLabel = QLabel("Zoom: —", self)
 
         self.trackList = QListWidget(self)
+        self.trackDataLabel = QLabel("Stored observations: 0", self)
         self.addTrackButton = QPushButton("Add track", self)
         self.deleteTrackButton = QPushButton("Delete track", self)
         self.deleteTrackButton.setEnabled(False)
@@ -132,6 +141,7 @@ class MainWindow(QMainWindow):
         historyButtons.addWidget(self.undoButton)
         historyButtons.addWidget(self.redoButton)
         trackPanel = QVBoxLayout()
+        trackPanel.addWidget(self.trackDataLabel)
         trackPanel.addWidget(self.trackList, 1)
         trackPanel.addLayout(trackButtons)
         trackPanel.addLayout(historyButtons)
@@ -140,6 +150,7 @@ class MainWindow(QMainWindow):
         trackSide.setMaximumWidth(220)
 
         videoColumn = QVBoxLayout()
+        videoColumn.addWidget(self.videoSelector)
         videoColumn.addWidget(self.videoView, 1)
         videoColumn.addWidget(self.timelineSlider)
         videoColumn.addLayout(controls)
@@ -153,11 +164,8 @@ class MainWindow(QMainWindow):
         central.setLayout(mainRow)
         self.setCentralWidget(central)
 
-        openAction = QAction("Open video…", self)
-        openAction.setShortcut(QKeySequence.StandardKey.Open)
-        openAction.triggered.connect(self._chooseVideo)
-        fileMenu = self.menuBar().addMenu("File")
-        fileMenu.addAction(openAction)
+        self.projectActions = ProjectActions(self)
+        self.videoSelector.currentIndexChanged.connect(self.projectActions.selectVideo)
 
         zoomInAction = QAction("Zoom in", self)
         zoomInAction.setShortcut(QKeySequence("Ctrl++"))
@@ -222,6 +230,7 @@ class MainWindow(QMainWindow):
         self.addTrackButton.clicked.connect(self._addTrack)
         self.deleteTrackButton.clicked.connect(self._deleteSelectedTrack)
         self.trackList.itemSelectionChanged.connect(self._onTrackSelectionChanged)
+        self.trackList.itemClicked.connect(lambda _item: self._onTrackSelectionChanged())
         annotationEscape = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
         annotationEscape.activated.connect(self._exitAnnotationMode)
         undoShortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
@@ -257,61 +266,103 @@ class MainWindow(QMainWindow):
         interval_ms = max(1, round(1000.0 / (fps * self._playback_rate)))
         self._playTimer.start(interval_ms)
 
-    def openVideo(self, path: Path, *, show_error: bool = True) -> bool:
-        """打开视频并初始化全部展示状态；失败时保持关闭态。"""
+    def _makeDecoder(self, token: int) -> AsyncVideoSession:
+        # token 在创建时固定；旧 worker 发射迟到帧时不能冒充当前会话。
+        return AsyncVideoSession(self._session_factory(),
+            lambda frame: self.frameDelivered.emit(frame, token),
+            lambda error: self.decodeFailed.emit(str(error), token))
 
-        self.stopPlayback()
-        self._delivery_generation += 1
-        self._has_pending_request = False
-        self._last_requested_frame = None
-        self._resetPresentation()
-        # domain Video 的 original_path 要求绝对路径；对话框恒给绝对路径，
-        # 编程调用（测试/脚本）可能给相对路径，此处统一解析
-        path = path.resolve()
+    def candidateService(self) -> tuple[int, ProjectMediaService]:
+        self._generation_counter += 1
+        token = self._generation_counter
+        service = ProjectMediaService(self._annotation_repository,
+                                     lambda: self._makeDecoder(token), self._timing_probe)
+        return token, service
+
+    def openVideo(self, path: Path, *, show_error: bool = True) -> bool:
+        """同步的候选准备接口（测试/脚本）；用户菜单另经 dirty 保护与后台执行。"""
+
+        token, service = self.candidateService()
         try:
-            snapshot = self._async.open(path).result(timeout=10.0)
-        except VideoError as error:
+            prepared = service.open_video(path, Event())
+        except Exception as error:
             self.statusBar().showMessage(str(error))
             if show_error:
                 QMessageBox.critical(self, "Unable to open video", str(error))
             return False
-        except TimeoutError:
-            # worker 仍在打开中；不再等待，提示用户稍后重试
-            message = "Opening video timed out; the file may be very large."
-            self.statusBar().showMessage(message)
-            if show_error:
-                QMessageBox.critical(self, "Unable to open video", message)
-            return False
-        except Exception as error:
-            logger.error("unexpected open failure", exc_info=True)
-            message = f"Unexpected error while opening video: {error}"
-            self.statusBar().showMessage(message)
-            if show_error:
-                QMessageBox.critical(self, "Unable to open video", message)
-            return False
-        self._frame_count = snapshot.info.frame_count
-        self._timeline = snapshot.timeline
-        self._annotation_session = ProjectSession.start(self._annotation_repository)
-        _video, _project_timeline = self._annotation_session.register_external_video(
-            path, snapshot.info
-        )
-        self._annotation_video_id = _video.video_id
-        self._selected_track_id = None
-        self._refreshTrackList()
-        self._refreshHistoryButtons()
-        self.frameSpinBox.setMaximum(self._frame_count - 1)
-        self.timelineSlider.setMaximum(self._frame_count - 1)
-        for control in (
-            self.frameSpinBox,
-            self.previousButton,
-            self.nextButton,
-            self.playButton,
-            self.timelineSlider,
-        ):
-            control.setEnabled(True)
-        self.statusBar().showMessage(str(path))
-        self._presentFrame(snapshot.current_frame)
+        self.adoptPrepared(prepared, token)
         return True
+
+    def adoptPrepared(self, prepared: PreparedProject, token: int) -> None:
+        """候选已验证后一次性提交；旧解码器异步释放，迟到回调丢弃。"""
+
+        self.stopPlayback()
+        old_decoder = self._async
+        self._delivery_generation = token
+        self._async = prepared.decoder or self._makeDecoder(token)
+        self.projectActions.executor.submit(old_decoder.close)
+        self._has_pending_request = False
+        self._last_requested_frame = None
+        self._resetPresentation()
+        self._annotation_session = prepared.session
+        self._annotation_video_id = prepared.video_id
+        self._measurement_allowed = prepared.timing.status == "cfr" and prepared.video_id is not None
+        self.syncVideoSelector()
+        self._refreshTrackList()
+        if prepared.snapshot is not None:
+            snapshot = prepared.snapshot
+            self._frame_count = snapshot.info.frame_count
+            self._timeline = snapshot.timeline
+            low, high = self._timeline.working_zone
+            with QSignalBlocker(self.frameSpinBox), QSignalBlocker(self.timelineSlider):
+                self.frameSpinBox.setRange(low, high)
+                self.timelineSlider.setRange(low, high)
+            for control in (self.frameSpinBox, self.timelineSlider, self.previousButton,
+                            self.nextButton, self.playButton):
+                control.setEnabled(True)
+            self._presentFrame(snapshot.current_frame)
+            state = workflow_state(prepared.session)
+            self.videoView.restoreViewState(state.get("view", {}))
+            saved_track = state.get("selected_track_id")
+            with QSignalBlocker(self.trackList):
+                for row in range(self.trackList.count()):
+                    track_id = self.trackList.item(row).data(Qt.ItemDataRole.UserRole)
+                    if str(track_id) == saved_track:
+                        self.trackList.setCurrentRow(row)
+                        self._selected_track_id = track_id
+            self._refreshMarkers()
+        else:
+            self.videoView.setPlaceholder(prepared.timing.reason)
+        self.videoView.set_annotation_mode(False)
+        self.addTrackButton.setEnabled(self._measurement_allowed)
+        self._refreshHistoryButtons()
+        self.projectActions.refresh()
+        self.statusBar().showMessage(prepared.timing.reason +
+            ("" if self._measurement_allowed else " — browsing only; new measurements disabled"))
+
+    def adoptEmptyProject(self) -> None:
+        from ai_physics_tracker.application.video_timing import TimingReport
+        self._generation_counter += 1
+        self.adoptPrepared(PreparedProject(ProjectSession.start(self._annotation_repository),
+            None, None, None, TimingReport("unknown", "New project")), self._generation_counter)
+
+    def syncVideoSelector(self) -> None:
+        with QSignalBlocker(self.videoSelector):
+            self.videoSelector.clear()
+            if self._annotation_session is not None:
+                for video in self._annotation_session.project.videos:
+                    self.videoSelector.addItem(video.display_name, video.video_id)
+                index = self.videoSelector.findData(self._annotation_video_id)
+                self.videoSelector.setCurrentIndex(index)
+
+    def captureProjectView(self) -> dict:
+        state = dict(workflow_state(self._annotation_session)) if self._annotation_session else {}
+        state.update({"version": 1, "video_id": str(self._annotation_video_id) if self._annotation_video_id else None})
+        if self._presented_frame_index is not None:
+            state.update({"frame_index": self._presented_frame_index,
+                "selected_track_id": str(self._selected_track_id) if self._selected_track_id else None,
+                "view": self.videoView.captureViewState()})
+        return state
 
     def togglePlayback(self) -> None:
         if self._is_playing:
@@ -323,9 +374,9 @@ class MainWindow(QMainWindow):
         snapshot = self._async.snapshot()
         if snapshot is None:
             return
-        if snapshot.current_frame.frame_index >= self._frame_count - 1:
+        if snapshot.current_frame.frame_index >= self._timeline.working_zone[1]:
             # 播放到末尾后再次播放：从头开始，避免静止在末帧
-            self._requestFrame(0)
+            self._requestFrame(self._timeline.working_zone[0])
         self._is_playing = True
         self.playButton.setText("Pause")
         self._restartPlayTimer()
@@ -338,17 +389,15 @@ class MainWindow(QMainWindow):
         self.playButton.setText("Play")
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if not self.projectActions.requestWindowClose():
+            event.ignore()
+            return
+        self._generation_counter += 1
+        self._delivery_generation = self._generation_counter
         self.stopPlayback()
         self._async.close()
+        self.projectActions.shutdown()
         super().closeEvent(event)
-
-    def _emitFrameDelivered(self, frame: DecodedFrame) -> None:
-        # worker 线程上下文：Qt signal emit 线程安全，slot 排队回 GUI 线程；
-        # 代际随交付携带，跨代际的迟到交付在 slot 内丢弃
-        self.frameDelivered.emit(frame, self._delivery_generation)
-
-    def _emitDecodeFailed(self, error: VideoError) -> None:
-        self.decodeFailed.emit(str(error), self._delivery_generation)
 
     def _playTick(self) -> None:
         # 解码慢于帧率时节流：等上一请求交付后再发下一个（不堆积请求）；
@@ -359,7 +408,7 @@ class MainWindow(QMainWindow):
         if snapshot is None:
             self.stopPlayback()
             return
-        if snapshot.current_frame.frame_index >= self._frame_count - 1:
+        if snapshot.current_frame.frame_index >= self._timeline.working_zone[1]:
             self.stopPlayback()
             return
         self._requestFrame(snapshot.current_frame.frame_index + 1)
@@ -375,7 +424,7 @@ class MainWindow(QMainWindow):
         self._has_pending_request = False
         self._last_requested_frame = frame.frame_index
         self._presentFrame(frame)
-        if self._is_playing and frame.frame_index >= self._frame_count - 1:
+        if self._is_playing and frame.frame_index >= self._timeline.working_zone[1]:
             self.stopPlayback()
 
     def _onDecodeFailed(self, message: str, generation: int) -> None:
@@ -419,15 +468,18 @@ class MainWindow(QMainWindow):
         session = self._annotation_session
         self.undoButton.setEnabled(session is not None and session.can_undo)
         self.redoButton.setEnabled(session is not None and session.can_redo)
+        if hasattr(self, "projectActions"):
+            self.projectActions.refresh()
 
     def _addTrack(self) -> None:
-        if self._annotation_session is None or self._annotation_video_id is None:
+        if not self._measurement_allowed or self.projectActions.busy or self._annotation_session is None or self._annotation_video_id is None:
             return
         track = self._annotation_session.add_track(self._annotation_video_id)
         self._refreshTrackList()
         for row in range(self.trackList.count()):
             if self.trackList.item(row).data(Qt.ItemDataRole.UserRole) == track.track_id:
                 self.trackList.setCurrentRow(row)
+        self._refreshHistoryButtons()
 
     def _deleteSelectedTrack(self) -> None:
         if self._annotation_session is None or self._selected_track_id is None:
@@ -438,6 +490,7 @@ class MainWindow(QMainWindow):
         self.trackList.clearSelection()
         self._refreshTrackList()
         self._refreshMarkers()
+        self._refreshHistoryButtons()
 
     def _onTrackSelectionChanged(self) -> None:
         # 基于 selectedItems 而非 currentItem：clearSelection/点击列表空白后
@@ -448,7 +501,7 @@ class MainWindow(QMainWindow):
         )
         self._selected_track_id = track_id
         self.deleteTrackButton.setEnabled(track_id is not None)
-        self.videoView.set_annotation_mode(track_id is not None)
+        self.videoView.set_annotation_mode(track_id is not None and self._measurement_allowed and not self.projectActions.busy)
         if track_id is not None:
             self.statusBar().showMessage(
                 "Annotation mode: click the video to mark; Esc or click an empty "
@@ -463,6 +516,8 @@ class MainWindow(QMainWindow):
             self.trackList.setCurrentRow(-1)
 
     def _onAnnotationClicked(self, view_pos: QPoint) -> None:
+        if not self._measurement_allowed or self.projectActions.busy or not self.videoView.is_annotation_mode():
+            return
         if self._annotation_session is None or self._selected_track_id is None:
             return
         if self._presented_frame_index is None:
@@ -491,9 +546,13 @@ class MainWindow(QMainWindow):
 
     def _refreshTrackList(self) -> None:
         self.trackList.clear()
+        self.trackDataLabel.setText("Stored observations: 0")
         if self._annotation_session is None:
             return
+        self.trackDataLabel.setText(f"Stored observations: {len(self._annotation_session.project.observations)}")
         for track in self._annotation_session.tracks:
+            if track.video_id != self._annotation_video_id:
+                continue
             item = QListWidgetItem(track.name)
             item.setData(Qt.ItemDataRole.UserRole, track.track_id)
             self.trackList.addItem(item)
@@ -501,6 +560,7 @@ class MainWindow(QMainWindow):
     def _refreshMarkers(self) -> None:
         if self._annotation_session is None:
             return
+        self.trackDataLabel.setText(f"Stored observations: {len(self._annotation_session.project.observations)}")
         if self._selected_track_id is None:
             self.videoView.set_markers([])
             return
@@ -547,8 +607,8 @@ class MainWindow(QMainWindow):
             return
         time_s = frame_to_time(frame.frame_index, self._timeline)
         self.timeLabel.setText(f"Time: {time_s:.3f} s nominal")
-        self.previousButton.setEnabled(frame.frame_index > 0)
-        self.nextButton.setEnabled(frame.frame_index < self._frame_count - 1)
+        self.previousButton.setEnabled(frame.frame_index > self._timeline.working_zone[0])
+        self.nextButton.setEnabled(frame.frame_index < self._timeline.working_zone[1])
         self._presented_frame_index = frame.frame_index
         self._refreshMarkers()
 
@@ -562,7 +622,8 @@ class MainWindow(QMainWindow):
             base = self._last_requested_frame
         else:
             base = snapshot.current_frame.frame_index
-        target = max(0, min(base + delta, self._frame_count - 1))
+        low, high = self._timeline.working_zone
+        target = max(low, min(base + delta, high))
         self._requestFrame(target)
 
     def _goToFrame(self, frame_index: int) -> None:
@@ -582,17 +643,14 @@ class MainWindow(QMainWindow):
         self._requestFrame(self.timelineSlider.value())
 
     def _chooseVideo(self) -> None:
-        selected, _ = QFileDialog.getOpenFileName(
-            self,
-            "Open video",
-            "",
-            "Video files (*.mp4 *.avi *.mov *.mkv *.m4v);;All files (*)",
-        )
-        if selected:
-            self.openVideo(Path(selected))
+        self.projectActions.openVideo()
 
     def _resetPresentation(self) -> None:
         self.videoView.clearFrame()
+        self._timeline = None
+        self._frame_count = 0
+        self._measurement_allowed = False
+        self.addTrackButton.setEnabled(False)
         for control in (
             self.frameSpinBox,
             self.previousButton,

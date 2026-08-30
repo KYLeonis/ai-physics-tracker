@@ -14,11 +14,12 @@ from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.gui.main_window import MainWindow
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
+from ai_physics_tracker.infrastructure.ffprobe_timing import FFprobeTimingProbe
 
 
 def _window() -> MainWindow:
     return MainWindow(
-        VideoSession(OpenCVVideoReader()), ProjectRepository()
+        lambda: VideoSession(OpenCVVideoReader()), ProjectRepository(), FFprobeTimingProbe()
     )
 
 
@@ -158,7 +159,7 @@ def test_click_outside_image_is_ignored(
 
 def test_track_actions_without_video_are_noop(qtbot: QtBot) -> None:
     window = MainWindow(
-        VideoSession(OpenCVVideoReader()), ProjectRepository()
+        lambda: VideoSession(OpenCVVideoReader()), ProjectRepository(), FFprobeTimingProbe()
     )
     qtbot.addWidget(window)
 

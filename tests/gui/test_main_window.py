@@ -16,10 +16,11 @@ from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.gui.main_window import MainWindow
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
+from ai_physics_tracker.infrastructure.ffprobe_timing import FFprobeTimingProbe
 
 
 def _window() -> MainWindow:
-    return MainWindow(VideoSession(OpenCVVideoReader()), ProjectRepository())
+    return MainWindow(lambda: VideoSession(OpenCVVideoReader()), ProjectRepository(), FFprobeTimingProbe())
 
 
 def test_main_window_opens_video_and_navigates_frames(
@@ -78,7 +79,7 @@ def test_failed_jump_restores_spinbox_to_current_frame(
         def close(self) -> None:
             self.is_open = False
 
-    window = MainWindow(VideoSession(FailingReader()), ProjectRepository())
+    window = MainWindow(lambda: VideoSession(FailingReader()), ProjectRepository(), FFprobeTimingProbe())
     qtbot.addWidget(window)
     monkeypatch.setattr(QMessageBox, "critical", lambda *args: QMessageBox.Ok)
     assert window.openVideo(Path("fake.video"), show_error=False)
