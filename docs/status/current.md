@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 2.4 Plan）
+- 最后更新：2026-08-30（Phase 2.4 本地实现与 review 通过，等待 Human Review）
 
 ---
 
@@ -13,13 +13,13 @@
 
 ## Current Subphase
 
-**2.4 — Project Workflow & Phase Close** 🔄 实现中；[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)，分支 `feat/p2.4-project-workflow`；计划见 [phase-2.4-plan.md](phase-2.4-plan.md)。用户已确认范围、FFprobe 与 CI 修改，尚未授权 push。
+**2.4 — Project Workflow & Phase Close** 🔄 本地实现与独立 review 通过，等待 Human Review/CI；[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)，分支 `feat/p2.4-project-workflow`；计划见 [phase-2.4-plan.md](phase-2.4-plan.md)。用户已确认范围、FFprobe 与 CI 修改，尚未授权 push。
 
 上一 Subphase 2.3 已完成（Issue #4 已关闭，merge `3967f6a`/`38eaa39`，CI 双平台全绿，Human Review 2 轮通过）。
 
 ## Current Slice
 
-Slice 1–5：失败安全的首存/另存、候选项目加载、GUI 与 FFprobe 接入；正在完善集成回归。
+Slice 6：本地 173 tests 和 Luna-max 独立复审通过；停止等待用户亲测，不提前合并。
 
 ## Current Goal
 
@@ -27,6 +27,7 @@ Slice 1–5：失败安全的首存/另存、候选项目加载、GUI 与 FFprob
 
 ## Recently Completed
 
+- **Phase 2.4 本地增量（待 HR/CI）**：Project 首存/另存/加载/重连、Save/Discard/Cancel 保护；候选会话后台准备与取消；保留持久化 Timeline/ID、视图状态；dirty 与保存基线比较；unknown/VFR 媒体可保存浏览引用但不能新增测量；FFprobe 完整时间戳验证及固定来源工具取得脚本；Luna-max review 两个 Blocker（preview 丢引用、未来 workflow 版本降级）已修复。最新功能提交 `2a139ce`。
 - **Phase 2.3 — Manual Annotation**（2026-08-30）：ProjectSession（application，ProjectRepositoryPort 协议 + 组合根注入）；Track 面板（创建/删除/选择、自动命名与调色板）；标注模式（选中即标记、Esc/列表空白退出，D1=A/D2=确认）；点击落点（mapScreenToPixel、呈现帧为唯一落帧来源、在途拒绝）；overlay 拖尾显示（当前帧实心高亮、屏幕固定大小、全缩放锚定）；manual 语义（time_s 冻结、visibility=visible、同帧 last-wins 硬删旧点）；独立 review 4 Blocker 全部修复（visibility、落帧时序、marker 锚点、空转测试）；**HR 反馈修复**：十字光标稳定（item 级 cursor，修 QGraphicsScene hover 覆盖）、快照式 Undo/Redo（按钮+⌘Z/⇧⌘Z、完整恢复被 last-wins 替换的旧点、撤销删除后恢复选择、save 清栈）；本地 124 tests
 - **Phase 2.2 — Playback & Viewport**（2026-08-29）：AsyncVideoSession（单线程串行 reader、latest-wins 解码合并、跨视频代际隔离）；播放控制（QTimer 节流、末帧自动暂停、空格/按钮、0.25–4× 倍速）；时间轴 scrub/commit；VideoView 重写为 QGraphicsView（pinch 手势缩放、拖拽平移、Fit/100%/200%/400% 档位、`mapScreenToPixel` ±0.5px）；**顺序解码 fast path（1080p H.264 从 33.3ms/帧降至 11.8ms/帧，根因修复卡顿）**；解码支持矩阵实测入库（development.md）；Human Review 5 轮通过（含 pinch 手势投递修复、`scripts/diagnose_pinch.py` 探针），本地 100 tests + CI 全绿
 - **注释语言规范**（2026-08-29）：CODE_STANDARD.md §12 规定注释/docstring 一律中文（标识符、spec 引用、API 名保留英文）；存量 34 个文件的英文 docstring/注释全部改写为中文，AST 对比确认代码逻辑零改动，70 tests 全绿（commit `1b5e303`）
@@ -57,8 +58,10 @@ Slice 1–5：失败安全的首存/另存、候选项目加载、GUI 与 FFprob
 
 **本轮决策**：ADR-0006 确定候选项目提交与 FFprobe 时序关卡；CI 工具使用固定 ffmpeg-static b6.1.1 及 SHA-256 校验，不改系统 PATH。
 
-**验证状态**：规划基线 124 tests；实现测试持续增加，最终数字与 review/HR 结果在交付前更新。尚未进行远端 CI 或 Human Review。
+**验证状态**：规划基线 124 tests → 当前 **173 passed**；本机 FFprobe 和 CI 固定来源 macOS 二进制均验证；compileall/pip check/diff check 通过；Luna-max 最终 Verdict：通过。远端 CI、Windows 工具执行与 Human Review 尚未完成，不声称 Phase 2 已收尾。
+
+**用户未提交修改**：`.github/workflows/README.md`，本次未改动、未纳入提交。
 
 ## Next Recommended Action
 
-完成集成测试与 Luna-max 独立 review 后发起 Human Review，停下来等用户亲测；不能用 computer-use 替代。不自动 push、合并或关闭 Issue。
+等待用户完成 Human Review：最短命令 `.venv/bin/python -m ai_physics_tracker`；验证首存/重开、另存隔离、取消/失败保护、重连及 Windows MP4/H.264。反馈问题则修复重测；通过后另获 push 授权运行双平台 CI，再集成/关闭 Issue/核对 Phase 2 AC。不能用 computer-use 替代，不自动进入 Phase 3。

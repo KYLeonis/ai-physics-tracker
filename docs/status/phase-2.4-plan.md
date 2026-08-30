@@ -107,11 +107,11 @@ P24-10 未完成前不把 Phase 2 标成 Completed。HEVC 按已有解码矩阵�
 
 ## Slices
 
-- [ ] Slice 1：细化状态/失败契约，确认时序探测与工具交付方案；补 spec，必要时新增 ADR。
-- [ ] Slice 2：补首存/另存服务和 Repository 端口；验证无根目录会话、危险目标与失败不提交。
-- [ ] Slice 3：加载/恢复/重连应用流程；绑定持久化 Timeline，隔离旧异步结果，验证数据不丢失。
-- [ ] Slice 4：File 菜单、标题 dirty、统一未保存提示、视频选择与恢复 UI；保持 Qt 与 IO 分层。
-- [ ] Slice 5：接入时序探测和 analysis gate；测试 CFR/VFR/unknown、取消和缺工具。
+- [x] Slice 1：细化状态/失败契约，确认时序探测与工具交付方案；补 spec，必要时新增 ADR。
+- [x] Slice 2：补首存/另存服务和 Repository 端口；验证无根目录会话、危险目标与失败不提交。
+- [x] Slice 3：加载/恢复/重连应用流程；绑定持久化 Timeline，隔离旧异步结果，验证数据不丢失。
+- [x] Slice 4：File 菜单、标题 dirty、统一未保存提示、视频选择与恢复 UI；保持 Qt 与 IO 分层。
+- [x] Slice 5：接入时序探测和 analysis gate；测试 CFR/VFR/unknown、取消和缺工具。
 - [ ] Slice 6：端到端回归与 CI，Luna-max 独立 review，Human Review，Issue/Phase 2 收尾。
 
 每个 Slice 自带测试，不等到 Slice 6 才验证；未勾选项不得视为完成。
@@ -150,7 +150,12 @@ P24-10 未完成前不把 Phase 2 标成 Completed。HEVC 按已有解码矩阵�
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：未完成。
-- AC：未执行，只有规划前 124 项基线测试通过。
-- 独立 review / Human Review：待实现后发起。
-- 遗留：Windows 真机反馈、时序工具交付和 GitHub 操作授权未落实。
+- 完成日期 / 合并 commit：未收尾，尚未合并；最新功能提交 `2a139ce`。
+- 本地验证：173 tests passed；compileall/pip check/diff check 通过；固定来源 FFprobe 的
+  macOS 下载/摘要/实际执行通过。P24-9 的远端 CI、P24-10 的 Human Review 尚待完成。
+- 独立 review：Luna-max，两个持久化 Blocker 已修复并定点复查通过。
+- 实现订正：unknown/VFR 保存浏览媒体引用但不授予测量权限；未知 workflow 版本不降级。
+- 提交粒度：Slice 2–5 的互相关联应用/GUI 集成合为一次功能提交，测试仍逐步运行；
+  FFprobe/生命周期测试由 Luna-max 执行有界子任务，主模型负责架构与最终集成。
+- Human Review：已准备五条验收步骤，必须停止等用户亲测；不以自动化 UI 代替。
+- 遗留：Windows 真机反馈、远端 CI 与 git push 授权未落实。
