@@ -82,12 +82,15 @@ AI 训练 / 微调
 ```text
 Current Phase:   Phase 2 — Video Analysis MVP
 Last Completed:  Phase 2.3 — Manual Annotation ✅（2026-08-30）
-Current Subphase: Phase 2.4 — Project Workflow & Phase Close（Plan 待确认）
+Current Subphase: Phase 2.4 — Project Workflow & Phase Close（实现/验证中）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
 
-Phase 2.1–2.3 已形成桌面视频浏览、异步播放、缩放/平移、手工标记与 Undo/Redo；当前规划 2.4 的项目保存/恢复、重连及 Phase 2 验收，尚未开始实现。
+Phase 2.1–2.3 已形成桌面视频浏览、异步播放、缩放/平移、手工标记与 Undo/Redo；2.4 正在集成项目保存/恢复、重连和时序验证，尚未通过最终 Human Review，不视为 Phase 2 已完成。
+
+2.4 本地增量采用首帧预览 + 后台时序验证；近似恒定帧率须明确接受所显示误差才能标记，
+不会静默当作 CFR。策略和限制见 [ADR-0007](docs/decisions/0007-responsive-preview-and-explicit-timing-approximation.md)。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
@@ -97,7 +100,7 @@ Phase 2.1–2.3 已形成桌面视频浏览、异步播放、缩放/平移、手
 | --- | --- | --- |
 | Phase 0 | Project Initialization | ✅ 已完成（2026-08-27） |
 | Phase 1 | Project & Data Foundation | ✅ 已完成（2026-08-29） |
-| Phase 2 | Video Analysis MVP | 🔄 Subphase 2.4 Plan |
+| Phase 2 | Video Analysis MVP | 🔄 Subphase 2.4 实现/验证 |
 | Phase 3 | Calibration & Physics Engine | ⬜ |
 | Phase 4 | Deep Learning Tracking | ⬜ |
 | Phase 5 | AI-assisted Annotation & Refinement | ⬜ |

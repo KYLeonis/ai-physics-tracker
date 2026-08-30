@@ -117,6 +117,46 @@ main（稳定） ← 工作分支 feat/p<phase>.<sub>-<topic> / fix/<topic> / do
 
 ## 5. 测试与验证要求
 
+### Phase 2.4 FFprobe 工具
+
+应用保留 OpenCV 解码；额外使用 FFprobe 完整时间索引验证 CFR。适用的 MP4/MOV
+H.264/HEVC 走完整 packet PTS 快路径，其他媒体回退完整帧扫描。PATH 中有 FFprobe
+即可使用；也可仅对一次启动指定 `AI_PHYSICS_FFPROBE` 的绝对路径，不改系统配置。
+缺工具或验证失败仍可浏览/恢复数据，但不能新增测量。现有项目数据不会被重算或删除。
+
+新视频首帧就绪后即可播放/跳帧/缩放，顶部常驻显示后台验证状态，可取消或重试。
+验证通过 CFR 后自动启用 Add track；若显示 near-CFR，选择 `Use approximate timing…`
+查看当前 Timeline FPS、全片网格误差和间隔误差，再明确 Yes 才允许测量。默认 No；
+unknown/超预算 VFR 不提供近似绕过。该确认不跨重开复用，新点保存近似来源说明。
+上限为 min(1 ms, 帧周期 1%)，**不保证速度/加速度精度**，见 ADR-0007。
+
+CI 通过 `scripts/setup_ffprobe.py` 下载固定 `eugeneware/ffmpeg-static` release
+`b6.1.1` 的平台资产并校验 SHA-256。该 tag 不等于各平台工具的版本号；本地验证的
+darwin-arm64 资产实际报告 FFprobe 6.0。二进制只用作开发/CI，**不进入产品分发**，
+最终打包的许可/安全维护方案留 Phase 9 审核。
+
+macOS 已有环境的最短启动：
+
+```bash
+.venv/bin/python -m ai_physics_tracker
+```
+
+Windows 在仓库根目录从零启动（PowerShell，无需激活脚本或全局安装）：
+
+```powershell
+py -3.11 -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python scripts/setup_ffprobe.py --directory .tools/ffprobe
+$env:AI_PHYSICS_FFPROBE = (Resolve-Path .tools/ffprobe/ffprobe.exe).Path
+.venv\Scripts\python -m ai_physics_tracker
+```
+
+首次保存：File → Save，选择尚不存在的新项目目录名；重开时选择该目录中的
+`project.json`。Save As 不默认复制外部视频。视频丢失时选 Relink video，不要用
+Open video（新会话）替代重连。Unknown/VFR 的浏览与“已验证可测量”在状态栏区分。
+
+### 验证命令
+
 - 核心数据结构与物理计算必须有单元测试（pytest）
 - 数值计算测试用已知解析解的合成数据（匀速、匀加速、单摆小角度）
 - GUI 手动验收；逻辑层尽量与 GUI 剥离以便自动化测试

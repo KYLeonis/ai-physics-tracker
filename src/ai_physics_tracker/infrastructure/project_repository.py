@@ -4,8 +4,9 @@ from collections.abc import Callable
 from dataclasses import replace
 import json
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
+import tempfile
 from typing import cast
 
 from ai_physics_tracker.domain.project import Project, create_project
@@ -35,15 +36,14 @@ class ProjectRepository:
     ) -> Project:
         """创建可移植的项目目录并持久化初始 manifest。"""
 
-        project_root.mkdir(parents=True, exist_ok=False)
-        for relative in (
-            Path("videos"),
-            Path("data") / "engines",
-            Path("data") / "derived",
-            Path("models"),
-        ):
-            (project_root / relative).mkdir(parents=True)
-        return self.save(project_root, create_project(name, description))
+        return self.create_from_project(project_root, create_project(name, description))
+
+    def create_from_project(self, project_root: Path, project: Project) -> Project:
+        """首次保存当前快照，保留 ID；成功发布前不绑定调用方会话。"""
+
+        if any(video.file_path is not None for video in project.videos):
+            raise ValueError("first save requires external video references")
+        return self._publish_project(project_root, project)
 
     def load(self, project_root: Path) -> Project:
         """加载 Project，拒绝损坏数据与不支持的 schema 版本。"""
@@ -97,14 +97,49 @@ class ProjectRepository:
     ) -> Project:
         """复制可移植项目单元，再原子保存传入的状态。"""
 
+        source_root = source_root.resolve()
+        destination_root = destination_root.resolve()
         if not source_root.is_dir():
             raise FileNotFoundError(f"source project directory not found: {source_root}")
-        shutil.copytree(
-            source_root,
-            destination_root,
-            ignore=shutil.ignore_patterns("*.tmp"),
-        )
-        return self.save(destination_root, project)
+        if destination_root == source_root or source_root in destination_root.parents:
+            raise ValueError("save-as destination cannot be the source or its child")
+        return self._publish_project(destination_root, project, source_root)
+
+    def _publish_project(
+        self, destination: Path, project: Project, source_root: Path | None = None
+    ) -> Project:
+        """新目录先暂存再发布；失败保留明确的恢复路径，不自动删除文件。"""
+
+        destination = destination.resolve()
+        if (PureWindowsPath(destination.name).is_reserved()
+                or destination.name.endswith((".", " "))
+                or any(char in '<>:"\\|?*' for char in destination.name)):
+            raise ValueError("project directory name is not Windows-safe")
+        if destination.exists():
+            raise FileExistsError(f"project destination already exists: {destination}")
+        if not destination.parent.is_dir():
+            raise FileNotFoundError(f"destination parent not found: {destination.parent}")
+        _validate_resolved_video_locators(destination, project)
+        staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.pending-", dir=destination.parent))
+        try:
+            if source_root is not None:
+                if any(item.is_symlink() for item in source_root.rglob("*")):
+                    raise ValueError("project assets must not contain symlinks")
+                shutil.copytree(source_root, staging, dirs_exist_ok=True,
+                                ignore=shutil.ignore_patterns("*.tmp"))
+            else:
+                for relative in ("videos", "data/engines", "data/derived", "models"):
+                    (staging / relative).mkdir(parents=True)
+            saved = self.save(staging, project)
+            if destination.exists():
+                raise FileExistsError(f"project destination appeared during save: {destination}")
+            staging.rename(destination)
+            return saved
+        except Exception as error:
+            # 原项目与目标绑定均未提交；保留本次暂存产物供用户选择恢复/清理。
+            raise ProjectFormatError(
+                f"project publication failed: {error}; recovery staging: {staging}"
+            ) from error
 
     @staticmethod
     def close(project: Project) -> None:

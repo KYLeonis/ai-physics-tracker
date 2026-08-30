@@ -146,6 +146,36 @@ class VideoView(QGraphicsView):
 
         return self.transform().m11()
 
+    def captureViewState(self) -> dict:
+        """仅捕获视图上下文，不将播放/标注开关持久化。"""
+
+        if not self.hasFrame():
+            return {}
+        center = self.mapToScene(self.viewport().rect().center())
+        return {"fit": self._fit_pending, "scale": self.currentScale(),
+                "center": [center.x(), center.y()]}
+
+    def restoreViewState(self, state: object) -> None:
+        """未知或不合法 UI 值使用 Fit；不修复领域数据。"""
+
+        from math import isfinite
+        if not isinstance(state, dict) or state.get("fit", True):
+            self.zoomFit()
+            return
+        scale = state.get("scale")
+        if isinstance(scale, bool) or not isinstance(scale, (float, int)) or not isfinite(scale):
+            self.zoomFit()
+            return
+        self.zoomTo(scale)
+        center = state.get("center")
+        if isinstance(center, list) and len(center) == 2 and all(
+            not isinstance(value, bool) and isinstance(value, (int, float)) and isfinite(value)
+            for value in center
+        ):
+            rect = self.sceneRect()
+            self.centerOn(max(rect.left(), min(center[0], rect.right())),
+                          max(rect.top(), min(center[1], rect.bottom())))
+
     def zoomFit(self) -> None:
         """适配整个图像到视口，保持宽高比；进入/维持 fit 模式。"""
 

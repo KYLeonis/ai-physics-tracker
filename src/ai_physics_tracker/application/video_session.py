@@ -60,18 +60,22 @@ class VideoSession:
     def current_time_s(self) -> float:
         return frame_to_time(self.current_frame.frame_index, self.timeline)
 
-    def open(self, path: Path) -> DecodedFrame:
+    def open(
+        self, path: Path, timeline: Timeline | None = None, frame_index: int = 0
+    ) -> DecodedFrame:
         """打开视频并解码第 0 帧，要么全部成功、要么保持关闭状态。"""
 
         self.close()
         try:
             info = self._reader.open(path)
-            timeline = Timeline(
+            timeline = timeline or Timeline(
                 video_id=uuid4(),
                 fps_nominal=info.fps_container,
                 working_zone=(0, info.frame_count - 1),
             )
-            frame = self._read_frame(0)
+            if timeline.working_zone[1] >= info.frame_count:
+                raise VideoError("saved working zone exceeds the video frame count")
+            frame = self._read_frame(clamp_to_working_zone(frame_index, timeline))
         except Exception:
             self._reader.close()
             raise

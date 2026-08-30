@@ -26,6 +26,14 @@
 `VideoCapture` 只出现在 infrastructure。无法可靠确认 CFR 时标记 timing unknown，
 不得静默登记为可分析项目；VFR suspected 明确拒绝并提示转码。
 
+2.4 区分“保存媒体引用”与“授权分析”：unknown/VFR 的浏览引用可以保存并重开，
+但不授予新增测量能力。既有项目的 raw 点不删除、不改写；CFR 验证只在当前文件会话有效。
+
+Human Review 修订（ADR-0007）：先显示只读首帧、后台完成时序验证。独立 near_cfr
+结论只在全片网格/间隔误差均不超过 min(1 ms, 帧周期 1%) 时提供显式确认，确认后
+按已显示的 Timeline 近似测量；不是 CFR，也不对 unknown 或超预算 VFR 放行。
+近似授权不跨重开复用，新点 source_detail 记录误差和 FPS；已有点原样保留。
+
 ### R3 导航与播放
 
 帧号/时间换算只经 Phase 1 `Timeline` 函数。逐帧为整数步进；播放/暂停不阻塞 GUI；
@@ -74,11 +82,11 @@ TrackPoint；使用 `frame_to_time` 冻结时间，调用 TrackStore manual last
 
 Track 选择/创建、screen→pixel、manual TrackPoint、overlay、Project 快照同步。
 
-### 2.4 Project Workflow & Phase Close（当前：Plan）
+### 2.4 Project Workflow & Phase Close（当前：实现/验证）
 
 新建/打开/保存/另存/relink/dirty 提示，MP4/H.264 Windows 真机验收，Phase 2 收尾。
 
-计划草案见 [Phase 2.4 mini-plan](../status/phase-2.4-plan.md)；未获确认前不开始实现。
+已确认计划见 [Phase 2.4 mini-plan](../status/phase-2.4-plan.md)；自动化验证不替代 Human Review。
 
 ## 5. Phase 2.1 Acceptance Criteria
 

@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 2.4 Project Workflow & Phase Close
 
-- Issue：待确认计划后查询并创建或复用；本轮不访问 GitHub 凭据、不创建 Issue。
-- 分支：拟用 `feat/p2.4-project-workflow`，尚未创建。
-- 日期 / 状态：2026-08-30 · **Draft — 等待用户批准，不开始实现**
+- Issue：[#5](https://github.com/KYLeonis/ai-physics-tracker/issues/5)。
+- 分支：`feat/p2.4-project-workflow`。
+- 日期 / 状态：2026-08-30 · **In Progress — 用户已确认计划、FFprobe 与 CI 方案**
 - 仓库基线：`main` / `a2dc642`；2.3 已合并并记录 Human Review 通过。
 - 本地验证：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **124 passed**。
 - Luna-max 定点盘点：ProjectSession/Repository 相关测试 **29 passed**；仅审计现有接口，非实现验收。
@@ -58,7 +58,7 @@
 6. 保存记录已呈现帧，不用领先于画面的请求帧号。旧 worker 的迟到回调必须携带与原请求
    绑定的会话标识，不能用回调发生时的可变“当前代际”冒充归属。
 
-## 拟采用的行为（待确认）
+## 已确认的行为
 
 - **首次保存**：选择新的目标项目目录；完整保存当前内存 Project。成功后才绑定根目录，
   失败/取消保留原会话。只操作这次明确创建的暂存目标，不触碰已有项目。
@@ -75,6 +75,7 @@
 - **时序**：建议新增 FFprobe 探测端口，以逐帧时间信息验证 CFR；只比较平均 FPS 或少量
   抽样不能证明整个文件为 CFR。探测在后台可取消，错误/超时/缺工具保持 unknown。
   unknown/VFR 可以浏览和恢复已有数据，但禁用新增测量；不自动改写历史点。
+  HR 修订采用 ADR-0007：适用媒体走完整 packet PTS；near_cfr 是单独的有界、显式确认路径。
 
 ## Acceptance Criteria
 
@@ -87,7 +88,7 @@
 | P24-5 | 新会话加载清单后恢复全部持久化对象；播放器沿用保存的 Timeline，未知键保留 | 非默认 fps/working zone、多视频、未知 UI 键 round-trip |
 | P24-6 | 缺视频时项目数据仍在；取消/错误重连不改 locator，成功重连不改 raw 点和 ID | 缺失、错误尺寸/帧数/hash、正确重连测试 |
 | P24-7 | 切换/退出后旧解码结果不能覆盖新项目；资源明确释放 | 慢 reader、迟到回调、快速切换及 Windows 文件句柄测试 |
-| P24-8 | 确认 CFR 才允许新增测量；VFR/unknown/探测不可用不被当成 CFR | 合成固定/变间隔时间戳、真实 CFR fixture、超时/缺工具路径 |
+| P24-8 | CFR 自动授权；ADR-0007 有界 near_cfr 须明确确认；VFR/unknown/探测不可用不被当成 CFR | 完整时间戳、近似误差边界/确认、真实 CFR fixture、超时/缺工具路径 |
 | P24-9 | 本地回归与 macOS/Windows CI 全绿，没有为通过 CI 跳过关键测试 | pytest、compileall、pip check、Actions 日志 |
 | P24-10 | 用户亲测项目生命周期及 Windows MP4/H.264 全流程通过，之后逐项核对 Phase 2 AC | Human Review 反馈 + phase2-requirements/roadmap 证据 |
 
@@ -107,14 +108,14 @@ P24-10 未完成前不把 Phase 2 标成 Completed。HEVC 按已有解码矩阵�
 
 ## Slices
 
-- [ ] Slice 1：细化状态/失败契约，确认时序探测与工具交付方案；补 spec，必要时新增 ADR。
-- [ ] Slice 2：补首存/另存服务和 Repository 端口；验证无根目录会话、危险目标与失败不提交。
-- [ ] Slice 3：加载/恢复/重连应用流程；绑定持久化 Timeline，隔离旧异步结果，验证数据不丢失。
-- [ ] Slice 4：File 菜单、标题 dirty、统一未保存提示、视频选择与恢复 UI；保持 Qt 与 IO 分层。
-- [ ] Slice 5：接入时序探测和 analysis gate；测试 CFR/VFR/unknown、取消和缺工具。
+- [x] Slice 1：细化状态/失败契约，确认时序探测与工具交付方案；补 spec，必要时新增 ADR。
+- [x] Slice 2：补首存/另存服务和 Repository 端口；验证无根目录会话、危险目标与失败不提交。
+- [x] Slice 3：加载/恢复/重连应用流程；绑定持久化 Timeline，隔离旧异步结果，验证数据不丢失。
+- [x] Slice 4：File 菜单、标题 dirty、统一未保存提示、视频选择与恢复 UI；保持 Qt 与 IO 分层。
+- [x] Slice 5：接入时序探测和 analysis gate；测试 CFR/VFR/unknown、取消和缺工具。
 - [ ] Slice 6：端到端回归与 CI，Luna-max 独立 review，Human Review，Issue/Phase 2 收尾。
 
-每个 Slice 自带测试，不等到 Slice 6 才验证。除本轮规划外，以上均未执行。
+每个 Slice 自带测试，不等到 Slice 6 才验证；未勾选项不得视为完成。
 
 ## Verification
 
@@ -138,19 +139,63 @@ P24-10 未完成前不把 Phase 2 标成 Completed。HEVC 按已有解码矩阵�
 
 届时只问各条“是否符合预期（是/否）”，不以 computer-use、截图或 offscreen 代替反馈。
 
-## 待批准与授权边界
+### 下一轮 Human Review：预加载/测量门禁反馈修复
+
+先退出旧程序，再从仓库运行 `.venv/bin/python -m ai_physics_tracker`。
+
+1. File → Open video (new session) 打开 P001 → 很快看到首帧；可播放/跳帧，不再等待完整解码。
+2. 顶部 near-CFR → Use approximate timing → No：保持只读；再选择 Yes：Add track 可用。
+3. 添加 Track 并标两帧 → 保存到新的项目目录 → 关闭/Open project 重开：点与保存帧恢复、
+   初始暂停；再次明确确认近似时序后才能新增标记。
+4. 再加一个标记，File → New project → Cancel：原画面、轨迹及未保存修改仍保留。
+
+逐条反馈是/否；原 Phase 2 Windows 真机验收与 CI 仍是后续独立关卡。
+
+## 授权边界
 
 - 本轮默认不改 schema 版本；`ui_state` 内兼容追加应用字段时仍保留未知键。
-- 需批准把 FFprobe 作为外部时序探测工具：本机已有 `/opt/homebrew/bin/ffprobe`，但这
+- 已批准把 FFprobe 作为外部时序探测工具：本机已有 `/opt/homebrew/bin/ffprobe`，但这
   不代表 Windows 环境已有。建议明确工具发现/路径选择；缺工具时浏览可用、新增测量禁用。
-- 需批准开发/CI 中 FFprobe 的可复现取得方式；不自动安装全局依赖、不改系统 PATH，
+- 已批准开发/CI 中 FFprobe 的可复现取得方式；不自动安装全局依赖、不改系统 PATH，
   不提前发布打包产物。若选择不同工具或必须改格式，另停下来讨论。
-- 修改 CI、git push、媒体删除/覆盖均不由“批准本地计划”默认授权。
-- 计划批准后创建/复用 GitHub Issue，再建工作分支；未经确认不实现、不安装依赖。
+- CI 修改已获本次确认；git push、媒体删除/覆盖未获授权。
+- Issue/工作分支已建立；Human Review 和 CI 尚未完成。
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：未完成。
-- AC：未执行，只有规划前 124 项基线测试通过。
-- 独立 review / Human Review：待实现后发起。
-- 遗留：Windows 真机反馈、时序工具交付和 GitHub 操作授权未落实。
+### Human Review 修复计划（2026-08-30，用户授权执行到下一轮 HR）
+
+- 先按 ADR-0007 更新契约，再分离首帧预览/后台验证，增加完整 packet PTS 安全快路径。
+- 明示 near_cfr 的误差和确认；会话权限不持久化，观测来源记录近似语义。
+- 补慢探测、旧结果隔离、同意/拒绝/重开、超预算拒绝回归；真实 P001 仅只读验证。
+- 全回归、Luna-max 独立复审、本地提交后停止等待下一轮 HR；不 push/合并。
+
+修复验证（2026-08-30）：
+
+- `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q -o faulthandler_timeout=20`
+  → **223 passed**；compileall、pip check、diff check 通过。
+- 覆盖完整 packet 门禁/回退、严格 CFR 量化与丢帧、near-CFR 误差边界、首帧前不 probe、
+  验证中实际逐帧浏览、取消/重试、旧结果隔离、保存竞态、近似同意/拒绝/重开确认及来源持久化。
+- P001 只读应用层复测：首帧 0.1824 s，跳至第 30 帧 0.1924 s，后台验证含 SHA-256
+  0.4279 s。固定 CI 来源 FFprobe 6.0：探测 0.2654 s，完整预览 0.1645 s + 验证含
+  hash 0.3761 s；报告 near_cfr，网格偏差 0.170140977 ms、间隔偏差 0.107737021 ms。
+  近似确认后在内存构造标记并核对 source_detail；未写入真实实验项目或视频。
+- 另用临时生成的 90 帧、30000/1001 FPS、含 B 帧 H.264 MP4 对照：FFprobe 8.1.1 与
+  固定 6.0 的排序 packet PTS 均逐项等于完整解码 frame PTS，两个路径报告一致为 CFR。
+  测试媒体不入库；未因此给运行依赖/CI 增加 FFmpeg 编码器要求。
+- 上述为 macOS 本地证据，不代表远端 CI/Windows 通过，也不替代 Human Review。
+
+- 完成日期 / 合并 commit：未收尾，尚未合并；最新功能提交 `2a139ce`。
+- 本地验证：173 tests passed；compileall/pip check/diff check 通过；固定来源 FFprobe 的
+  macOS 下载/摘要/实际执行通过。P24-9 的远端 CI、P24-10 的 Human Review 尚待完成。
+- 独立 review：Luna-max，两个持久化 Blocker 已修复并定点复查通过。
+- 实现订正：unknown/VFR 保存浏览媒体引用但不授予测量权限；未知 workflow 版本不降级。
+- 提交粒度：Slice 2–5 的互相关联应用/GUI 集成合为一次功能提交，测试仍逐步运行；
+  FFprobe/生命周期测试由 Luna-max 执行有界子任务，主模型负责架构与最终集成。
+- Human Review：未通过。用户反馈新项目预加载很久，进入视频后 Add track 禁用；本轮只读诊断，未改实现。
+  `P001.mp4`（1080p HEVC，3326 帧）首帧 0.140 s，完整 packet PTS 扫描 0.264 s，
+  当前完整帧解码 91.906 s；两条路径的逐帧 PTS 完全一致。实际帧间隔 3000/3010 ticks
+  （time_base=1/90000），分类器的 30 FPS + 1 tick 规则返回 vfr_suspected。
+  参考平均 FPS 的固定网格最大偏差约 0.17014 ms，属于必须明确取舍的微小时序变化，
+  不能直接作为严格 CFR 放行。后续需分别解决首屏阻塞与测量误差策略。
+- 遗留：Windows 真机反馈、远端 CI 与 git push 授权未落实。

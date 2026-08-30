@@ -7,7 +7,7 @@ from typing import Literal, Protocol
 import numpy as np
 import numpy.typing as npt
 
-TimingStatus = Literal["unknown", "cfr", "vfr_suspected"]
+TimingStatus = Literal["unknown", "cfr", "near_cfr", "vfr_suspected"]
 
 
 class VideoError(Exception):

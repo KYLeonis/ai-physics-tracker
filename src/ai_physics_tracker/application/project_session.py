@@ -7,17 +7,24 @@ TrackStore 语义落地后同步生成新的 Project 快照；dirty 状态驱动
 """
 
 import logging
+import json
+from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 from typing import Protocol
 from uuid import UUID, uuid4
 
 from ai_physics_tracker.application.video import VideoStreamInfo
+from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
 from ai_physics_tracker.domain.project import (
     Project,
     add_video,
     create_project,
+    relink_video,
+    delete_track,
+    register_video_reference,
 )
+from ai_physics_tracker.domain.derived import DerivedData, mark_tracks_stale
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.track_store import (
@@ -25,6 +32,7 @@ from ai_physics_tracker.domain.track_store import (
     resolve_effective_point,
 )
 from ai_physics_tracker.domain.types import utc_now
+from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.domain.video import Video
 
 logger = logging.getLogger(__name__)
@@ -36,6 +44,12 @@ class ProjectRepositoryPort(Protocol):
     def save(self, project_root: Path, project: Project) -> Project: ...
 
     def load(self, project_root: Path) -> Project: ...
+
+    def create_from_project(self, project_root: Path, project: Project) -> Project: ...
+
+    def save_as(self, source_root: Path, destination_root: Path, project: Project) -> Project: ...
+
+    def resolve_video_path(self, project_root: Path, video: Video) -> Path | None: ...
 
 # 撤销栈深度上限（快照为不可变元组的引用组合，成本极低）
 UNDO_STACK_LIMIT = 50
@@ -70,11 +84,13 @@ class ProjectSession:
     ) -> None:
         self._repository = repository
         self._project = project
+        self._saved_project = deepcopy(project)
         self._project_root = project_root
         self._store = TrackStore(project.tracks, project.observations)
-        self._is_dirty = False
-        self._undo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...]]] = []
-        self._redo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...]]] = []
+        self._verified_videos: set[UUID] = set()
+        self._approximate_timing: dict[UUID, str] = {}
+        self._undo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...], tuple[DerivedData, ...]]] = []
+        self._redo_stack: list[tuple[tuple[Track, ...], tuple[TrackPoint, ...], tuple[DerivedData, ...]]] = []
 
     @classmethod
     def start(
@@ -98,16 +114,30 @@ class ProjectSession:
     def is_dirty(self) -> bool:
         """自上次保存（或创建）以来是否发生写操作。"""
 
-        return self._is_dirty
+        # 浏览位置/UI 状态和保存时间不属于未保存的科学数据内容。
+        current = replace(self._project, ui_state={}, modified_at=self._saved_project.modified_at)
+        baseline = replace(self._saved_project, ui_state={})
+        return current != baseline
 
     @property
     def tracks(self) -> tuple[Track, ...]:
         return self._store.tracks
 
     def register_external_video(
-        self, path: Path, info: VideoStreamInfo
+        self, path: Path, info: VideoStreamInfo, *, sha256: str | None = None
     ) -> tuple[Video, Timeline]:
         """以外部引用（file_path=None）登记视频及其 Timeline。"""
+
+        if info.timing_status != "cfr":
+            raise ProjectSessionError("video timing is not verified CFR; browsing only")
+        video, timeline = self.register_preview_video(path, info, sha256=sha256)
+        self._verified_videos.add(video.video_id)
+        return video, timeline
+
+    def register_preview_video(
+        self, path: Path, info: VideoStreamInfo, *, sha256: str | None = None
+    ) -> tuple[Video, Timeline]:
+        """保存只读浏览引用，不授予新增测量能力，也不伪称 CFR。"""
 
         video_id = uuid4()
         video = Video(
@@ -120,14 +150,15 @@ class ProjectSession:
             fps_container=info.fps_container,
             frame_count=info.frame_count,
             container_format=info.container_format,
+            sha256=sha256,
+            vfr_suspected=info.timing_status in ("vfr_suspected", "near_cfr"),
         )
         timeline = Timeline(
             video_id=video_id,
             fps_nominal=info.fps_container,
             working_zone=(0, info.frame_count - 1),
         )
-        self._project = add_video(self._project, video, timeline)
-        self._mark_dirty()
+        self._project = register_video_reference(self._project, video, timeline)
         return video, timeline
 
     def add_track(self, video_id: UUID, name: str | None = None) -> Track:
@@ -142,17 +173,16 @@ class ProjectSession:
             color=color,
             created_at=utc_now(),
         )
-        self._push_undo_snapshot()
-        self._store.add_track(track)
-        self._sync_store_to_project()
+        candidate = TrackStore(self._store.tracks, self._store.observations)
+        candidate.add_track(track)
+        self._commit_store(candidate, self._project.derived)
         return track
 
     def remove_track(self, track_id: UUID) -> None:
         """删除 Track 并级联删除其观测。"""
 
-        self._push_undo_snapshot()
-        self._store.delete_track(track_id)
-        self._sync_store_to_project()
+        candidate = delete_track(self._project, track_id)
+        self._commit_store(TrackStore(candidate.tracks, candidate.observations), candidate.derived)
 
     def mark_point(
         self,
@@ -168,6 +198,8 @@ class ProjectSession:
         )
         if track is None:
             raise ProjectSessionError(f"unknown track_id: {track_id}")
+        if track.video_id not in self._verified_videos:
+            raise ProjectSessionError("video timing is not verified CFR; new measurements disabled")
         timeline = next(
             (
                 item
@@ -189,15 +221,16 @@ class ProjectSession:
             pixel_x=pixel_x,
             pixel_y=pixel_y,
             source="manual",
+            source_detail=self._approximate_timing.get(track.video_id),
             # data-model.md §3.5：manual 缺省 visible（用户亲眼所见落点）
             visibility="visible",
             status="active",
             created_at=now,
             modified_at=now,
         )
-        self._push_undo_snapshot()
-        self._store.add_manual_point(point)
-        self._sync_store_to_project()
+        candidate = TrackStore(self._store.tracks, self._store.observations)
+        candidate.add_manual_point(point)
+        self._commit_store(candidate, mark_tracks_stale(self._project.derived, {track_id}))
         logger.info(
             "manual point marked track=%s frame=%d pixel=(%.1f, %.1f)",
             track.name,
@@ -233,11 +266,105 @@ class ProjectSession:
                 "project has no root directory; use save-as workflow first"
             )
         self._project = self._repository.save(self._project_root, self._project)
-        self._is_dirty = False
+        self._saved_project = deepcopy(self._project)
         # 保存点是安全边界：跨保存的回溯会让 dirty 语义混乱
         self._undo_stack.clear()
         self._redo_stack.clear()
         return self._project
+
+    @classmethod
+    def load(cls, repository: ProjectRepositoryPort, project_root: Path) -> "ProjectSession":
+        """候选会话工厂；失败不触碰当前窗口持有的会话。"""
+
+        return cls(repository, repository.load(project_root), project_root.resolve())
+
+    def save_as(self, destination: Path) -> Project:
+        """首存或另存，IO 成功后才提交根目录、clean 基线与历史边界。"""
+
+        destination = destination.resolve()
+        if self._project_root is None:
+            saved = self._repository.create_from_project(destination, self._project)
+        else:
+            saved = self._repository.save_as(self._project_root, destination, self._project)
+        self._project = saved
+        self._project_root = destination
+        self._saved_project = deepcopy(saved)
+        self._undo_stack.clear()
+        self._redo_stack.clear()
+        return saved
+
+    def detached(self) -> "ProjectSession":
+        """后台 IO 使用独立快照；活动会话不被工作线程修改。"""
+
+        candidate = ProjectSession(self._repository, deepcopy(self._project), self._project_root)
+        candidate._saved_project = deepcopy(self._saved_project)
+        candidate._verified_videos = set(self._verified_videos)
+        candidate._approximate_timing = dict(self._approximate_timing)
+        candidate._undo_stack = list(self._undo_stack)
+        candidate._redo_stack = list(self._redo_stack)
+        return candidate
+
+    def update_view_state(self, state: JsonObject) -> None:
+        """只更新 workflow 命名空间，未知键/其他插件状态保留。"""
+
+        ui_state = deepcopy(self._project.ui_state)
+        existing = ui_state.get("workflow", {})
+        if isinstance(existing, dict) and existing.get("version", 1) != 1:
+            return  # 未来版本命名空间保留，不用当前 UI 状态降级覆盖。
+        workflow = dict(existing) if isinstance(existing, dict) else {}
+        workflow.update(state)
+        ui_state["workflow"] = workflow
+        self._project = replace(self._project, ui_state=ui_state)
+
+    def relink(self, video_id: UUID, path: Path) -> None:
+        """提交已经过媒体身份校验的外部 locator，不修改观测与 ID。"""
+
+        self._project = relink_video(self._project, video_id, file_path=None,
+                                    original_path=str(path.resolve()))
+        self._verified_videos.discard(video_id)
+        self._approximate_timing.pop(video_id, None)
+
+    def confirm_video_timing(self, video_id: UUID, report: TimingReport) -> None:
+        """应用在本次文件探测完成后授予测量能力；该集合不持久化。"""
+
+        self._approximate_timing.pop(video_id, None)
+        if report.status == "cfr":
+            self._verified_videos.add(video_id)
+        else:
+            self._verified_videos.discard(video_id)
+
+    def record_media_validation(self, video_id: UUID, report: TimingReport, sha256: str | None) -> None:
+        """GUI 线程合并验证结果，不替换用户在探测期间操作的项目快照。"""
+
+        videos = tuple(replace(video, sha256=sha256 or video.sha256,
+                               vfr_suspected=(video.vfr_suspected if report.status == "unknown"
+                                              else report.status in ("near_cfr", "vfr_suspected")))
+                       if video.video_id == video_id else video for video in self._project.videos)
+        self._project = replace(self._project, videos=videos)
+        self.confirm_video_timing(video_id, report)
+
+    def accept_approximate_timing(self, video_id: UUID, report: TimingReport) -> None:
+        """仅在 UI 明确确认后调用；仍在应用层再次检查完整性与当前时间轴误差。"""
+
+        video = next(item for item in self._project.videos if item.video_id == video_id)
+        timeline = next(item for item in self._project.timelines if item.video_id == video_id)
+        errors = approximation_errors(report, timeline.fps_nominal)
+        if errors is None or report.frame_count != video.frame_count:
+            raise ProjectSessionError("timing approximation exceeds the allowed error budget")
+        self._approximate_timing[video_id] = json.dumps({
+            "timing_method": "near_cfr_user_accepted_v1",
+            "fps_nominal": timeline.fps_nominal,
+            "max_grid_error_s": errors[0], "max_interval_error_s": errors[1],
+        }, sort_keys=True)
+        self._verified_videos.add(video_id)
+
+    def video_path(self, video: Video) -> Path | None:
+        """缺媒体为可恢复状态；只解析，不自动修改 locator。"""
+
+        if self._project_root is not None:
+            return self._repository.resolve_video_path(self._project_root, video)
+        path = Path(video.original_path) if video.original_path else None
+        return path if path is not None and path.is_file() else None
 
     @property
     def can_undo(self) -> bool:
@@ -253,9 +380,9 @@ class ProjectSession:
         if not self._undo_stack:
             return False
         self._redo_stack.append(self._current_data_snapshot())
-        tracks, observations = self._undo_stack.pop()
+        tracks, observations, derived = self._undo_stack.pop()
         self._store = TrackStore(tracks, observations)
-        self._sync_store_to_project()
+        self._project = replace(self._project, tracks=tracks, observations=observations, derived=derived)
         return True
 
     def redo(self) -> bool:
@@ -264,15 +391,15 @@ class ProjectSession:
         if not self._redo_stack:
             return False
         self._undo_stack.append(self._current_data_snapshot())
-        tracks, observations = self._redo_stack.pop()
+        tracks, observations, derived = self._redo_stack.pop()
         self._store = TrackStore(tracks, observations)
-        self._sync_store_to_project()
+        self._project = replace(self._project, tracks=tracks, observations=observations, derived=derived)
         return True
 
     def _current_data_snapshot(
         self,
-    ) -> tuple[tuple[Track, ...], tuple[TrackPoint, ...]]:
-        return (self._store.tracks, self._store.observations)
+    ) -> tuple[tuple[Track, ...], tuple[TrackPoint, ...], tuple[DerivedData, ...]]:
+        return (self._store.tracks, self._store.observations, self._project.derived)
 
     def _push_undo_snapshot(self) -> None:
         self._undo_stack.append(self._current_data_snapshot())
@@ -286,13 +413,10 @@ class ProjectSession:
             index += 1
         return f"Track {index}"
 
-    def _sync_store_to_project(self) -> None:
-        self._project = replace(
-            self._project,
-            tracks=self._store.tracks,
-            observations=self._store.observations,
-        )
-        self._mark_dirty()
-
-    def _mark_dirty(self) -> None:
-        self._is_dirty = True
+    def _commit_store(self, store: TrackStore, derived: tuple[DerivedData, ...]) -> None:
+        # 先完成跨对象校验；失败不能污染原 store 或提前清 redo。
+        project = replace(self._project, tracks=store.tracks,
+                          observations=store.observations, derived=derived)
+        self._push_undo_snapshot()
+        self._store = store
+        self._project = project
