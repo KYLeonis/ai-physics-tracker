@@ -79,10 +79,12 @@ DLC 模型（dlc-models, PyTorch engine）
 
 ## 4. 运动学计算与可视化（Phase 3/6 起细化）
 
-- 输入：标定后的物理坐标序列 x(t), y(t)
-- 计算：一阶/二阶导数（数值微分方法与平滑策略在 Phase 3 以 ADR 确定）、θ/ω/α（Phase 6）
-- 数据流：Raw Track → Calibration → (Smooth → Differentiate) → 派生量序列
-- 可视化：交互图表使用 PyQtGraph（与视频帧时间同步联动），科学出图导出使用 Matplotlib。
+- 输入：标定后的物理坐标序列 x(t), y(t)；或无标定时的像素坐标
+- 计算：一阶/二阶导数（[ADR-0008](decisions/0008-numerical-differentiation-and-smoothing.md)：Savitzky-Golay 先平滑后微分）、θ/ω/α（Phase 6）
+- 数据流：Raw Track → Calibration → SG Smooth+Differentiate → 派生量序列（DerivedData）
+- NaN 处理：缺测帧展开为 NaN，按连续有效段分割独立滤波（ADR-0008 §D4）
+- 可视化：交互图表使用 PyQtGraph（与视频帧时间同步联动），科学出图导出使用 Matplotlib（Phase 8）
+- Phase 3 需求规范：[phase3-requirements.md](spec/phase3-requirements.md)
 
 ## 5. 持久化与文件布局（Phase 1 已定，见 ADR-0003）
 
@@ -112,3 +114,5 @@ DLC 模型（dlc-models, PyTorch engine）
 - [0004 — 外部视频使用可空项目路径与绝对 locator](decisions/0004-external-video-locator.md)
 - [0005 — Phase 2 采用 PySide6 Qt Widgets 与 OpenCV headless 视频适配器](decisions/0005-phase2-gui-video-stack.md)
 - [0006 — 项目工作流采用候选提交与 FFprobe 时序关卡](decisions/0006-project-workflow-and-timing-gate.md)
+- [0007 — 响应式首帧预览与显式近似时序确认](decisions/0007-responsive-preview-and-explicit-timing-approximation.md)
+- [0008 — 数值微分与平滑方法（Savitzky-Golay 先平滑后微分）](decisions/0008-numerical-differentiation-and-smoothing.md)

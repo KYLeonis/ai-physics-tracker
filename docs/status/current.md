@@ -3,75 +3,53 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 2 ✅ Completed；Phase 3 启动）
+- 最后更新：2026-08-30（Phase 3.0 Spec & Requirements 进行中）
 
 ---
 
 ## Current Phase
 
-**Phase 2 — Video Analysis MVP** 🔄 进行中
+**Phase 3 — Calibration & Physics Engine** 🔄 进行中
 
 ## Current Subphase
 
-**2.4 — Project Workflow & Phase Close** ✅ 代码与 macOS Human Review 完成（[Issue #5](https://github.com/KYLeonis/ai-physics-tracker/issues/5) 保持开放：仅剩 P24-10 Windows 真机验收）。**Phase 2 整体标记 Completed 前必须完成 P24-10**（计划原文约束）。
+**3.0 — Spec & Requirements**（[Issue #6](https://github.com/KYLeonis/ai-physics-tracker/issues/6)）：编写 Phase 3 需求规范与 ADR-0008。
 
-上一 Subphase 2.3 已完成（Issue #4 已关闭，merge `3967f6a`/`38eaa39`，CI 双平台全绿，Human Review 2 轮通过）。
+上一 Phase 2 已完成（macOS Human Review 通过；Windows 真机验收经用户决定延后）。
 
 ## Current Slice
 
-Slice 6：首帧预览/后台验证已接通，正在完成 packet 快路径、near-CFR 显式确认及独立回归/复审。
+Slice 2/3：`phase3-requirements.md` 与 ADR-0008 编写完成，文档同步中。
 
 ## Current Goal
 
-实现项目生命周期、未保存修改保护、持久化 Timeline 恢复、视频 relink 与 CFR/VFR 验证。Phase 2 最终收尾必须通过用户 Human Review（含 Windows 真机）。
+完成 Phase 3 的需求规范文档和数值微分/平滑的架构决策，为 Subphase 3.1–3.4 的实现提供设计依据。
 
 ## Recently Completed
 
-- **Phase 2.4 — Project Workflow & Phase Close**（2026-08-30）：项目首存/另存/加载/重连与 Save/Discard/Cancel 保护；持久化 Timeline/ID 恢复；外部视频 relink 身份校验；FFprobe packet-PTS 快路径 + near_cfr 显式近似确认（ADR-0007，响应式预览：P001 类视频首帧秒开，后台验证，用户看到误差数字后授权标注，溯源写入 source_detail）；macOS Human Review 通过；223 tests
-- **Phase 2.4 本地增量（待 HR/CI）**：Project 首存/另存/加载/重连、Save/Discard/Cancel 保护；候选会话后台准备与取消；保留持久化 Timeline/ID、视图状态；dirty 与保存基线比较；unknown/VFR 媒体可保存浏览引用但不能新增测量；FFprobe 完整时间戳验证及固定来源工具取得脚本；Luna-max review 两个 Blocker（preview 丢引用、未来 workflow 版本降级）已修复。最新功能提交 `2a139ce`。
-- **Phase 2.3 — Manual Annotation**（2026-08-30）：ProjectSession（application，ProjectRepositoryPort 协议 + 组合根注入）；Track 面板（创建/删除/选择、自动命名与调色板）；标注模式（选中即标记、Esc/列表空白退出，D1=A/D2=确认）；点击落点（mapScreenToPixel、呈现帧为唯一落帧来源、在途拒绝）；overlay 拖尾显示（当前帧实心高亮、屏幕固定大小、全缩放锚定）；manual 语义（time_s 冻结、visibility=visible、同帧 last-wins 硬删旧点）；独立 review 4 Blocker 全部修复（visibility、落帧时序、marker 锚点、空转测试）；**HR 反馈修复**：十字光标稳定（item 级 cursor，修 QGraphicsScene hover 覆盖）、快照式 Undo/Redo（按钮+⌘Z/⇧⌘Z、完整恢复被 last-wins 替换的旧点、撤销删除后恢复选择、save 清栈）；本地 124 tests
-- **Phase 2.2 — Playback & Viewport**（2026-08-29）：AsyncVideoSession（单线程串行 reader、latest-wins 解码合并、跨视频代际隔离）；播放控制（QTimer 节流、末帧自动暂停、空格/按钮、0.25–4× 倍速）；时间轴 scrub/commit；VideoView 重写为 QGraphicsView（pinch 手势缩放、拖拽平移、Fit/100%/200%/400% 档位、`mapScreenToPixel` ±0.5px）；**顺序解码 fast path（1080p H.264 从 33.3ms/帧降至 11.8ms/帧，根因修复卡顿）**；解码支持矩阵实测入库（development.md）；Human Review 5 轮通过（含 pinch 手势投递修复、`scripts/diagnose_pinch.py` 探针），本地 100 tests + CI 全绿
-- **注释语言规范**（2026-08-29）：CODE_STANDARD.md §12 规定注释/docstring 一律中文（标识符、spec 引用、API 名保留英文）；存量 34 个文件的英文 docstring/注释全部改写为中文，AST 对比确认代码逻辑零改动，70 tests 全绿（commit `1b5e303`）
-
-- **Phase 2.1 — Desktop Video Foundation**（2026-08-29）：ADR-0005；PySide6/OpenCV headless/NumPy 2.4.6 依赖；Qt-free VideoReader/VideoSession；桌面入口、视频显示、前后步进/帧号跳转；本地 70 tests + CI macOS/Windows Python 3.11 全绿（run 33256154612）；Luna-max 独立 review 无 Blocker；Issue #2 已关闭，merge `7da0af1`
-  - 过程订正：初版锁定 `numpy==2.5.2` 无 Python 3.11 wheel，CI 安装阶段双平台失败；`47758ae` 改锁 2.4.6（3.11/3.12 兼容最新版），ADR-0005/development.md 同步
-- **Phase 1 — Project & Data Foundation**（2026-08-29）：src-layout + 锁定依赖；Project/Video/Timeline/Track/TrackPoint/Calibration/DerivedData；TrackStore first-wins/manual last-wins/superseded 恢复语义；可逆标定与 stale 传播；schema v1 JSON repository、迁移守卫、原子保存/滚动备份、Save As、external locator/relink；56 项 pytest 本地与 GitHub Actions macOS/Windows Python 3.11 全绿；独立 review 最终通过
-- **ADR-0004**（2026-08-29）：外部视频使用 `file_path = null` + 绝对 `original_path`，项目内视频使用 Windows-safe 相对路径；部分取代 ADR-0003 的 locator 条款
-- **代码规范建立**（2026-08-28）：`CODE_STANDARD.md`（根目录）——领域词汇表命名、分层依赖、typing、错误处理语义、数值代码纪律（时间/坐标/容差）、跨平台规则、测试风格、反模式与示例；已加入 Agent 进入协议（AGENTS.md §6 / workflow.md §11）
-- **Subphase 1.0 — Phase 1 Spec & Requirements**（2026-08-28）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md` + **ADR-0003**（JSON 清单优先持久化）、`docs/spec/phase1-requirements.md`（AC-1…AC-10，含 DLC 无损转换设计）；`docs/research/software-spec-plan.md` §5 Readiness Criteria 全部勾选，PLAN 转 Closed
-- **Phase 0 — Project Initialization**（2026-08-27）：仓库结构、基础文档、Git/GitHub 初始化 ✅
-- 开源生态调研：project map + 14 份 raw notes（`docs/research/`）
-- 跨平台开发模式确定：macOS 开发 → Windows 发布（`docs/development.md` §1.1）
-- 软件规范设计准备计划收敛为 v2（`docs/research/software-spec-plan.md`）
-- 开发工作流体系建立（`docs/workflow.md` + `docs/status/` + `docs/templates/`，2026-08-28）
+- **Phase 3.0 — Spec & Requirements**（2026-08-30 进行中）：
+  - `docs/spec/phase3-requirements.md`：标定 GUI / 运动学引擎 / 基础图表，10 条验收标准（AC-1…AC-10），Subphase 3.0–3.4 划分建议
+  - `docs/decisions/0008-numerical-differentiation-and-smoothing.md`（ADR-0008）：Savitzky-Golay 先平滑后微分、默认 window=7 / polyorder=2、NaN 连续段分割策略
+  - GitHub Issue #6 创建，工作分支 `feat/p3.0-spec-requirements`
+- **Phase 2 — Video Analysis MVP**（✅ 2026-08-30）：完整的 GUI 视频分析 MVP——视频播放/缩放/平移、时间轴、手工标注（创建/删除 Track、逐帧标记）、项目生命周期（保存/加载/重连/保护）；macOS Human Review 通过；223 tests
+- **Phase 1 — Project & Data Foundation**（✅ 2026-08-29）：统一数据体系、持久化、标定域模型；56 tests
 
 ## Current Decisions / Blockers
 
 **已定决策**
 
 - Python 3.11（ADR-0002）
-- 持久化格式：**JSON 清单优先混合方案**（ADR-0003）——`project.json` 单文件 + 引擎输出外置 `data/engines/`，`schema_version` + 迁移链，原子写入 + 滚动备份
-- 外部视频 locator：`file_path = null` + 绝对 `original_path`；项目内视频使用 Windows-safe 相对路径（ADR-0004，部分取代 ADR-0003 Decision 4）
-- Phase 2 GUI/视频栈：PySide6-Essentials 6.11.2 + OpenCV headless 4.14.0.94 + NumPy 2.4.6（Python 3.11–3.12 compatible）；Qt-free application contract（ADR-0005）
-- 数据模型核心结论（`docs/spec/data-model.md`）：帧号 0-based、CFR（VFR 显式拒绝）、raw 只存像素坐标、手工修正遮蔽 AI 预测不覆盖（superseded 链）、confidence 与 visibility 分立、source 开放注册表、标定变更仅派生层失效、裁剪不重置时间基准
-- Phase 1 前的设计只到字段级建议，**不写 Python class**（自 Phase 1.1 起）
-- 数值微分/平滑方法 → Phase 3 前出 ADR
+- 持久化格式：JSON 清单优先混合方案（ADR-0003）
+- 外部视频 locator（ADR-0004）
+- Phase 2 GUI/视频栈：PySide6-Essentials + OpenCV headless + NumPy（ADR-0005）
+- 项目工作流：候选提交与 FFprobe 时序关卡（ADR-0006）
+- 响应式首帧预览与显式近似时序确认（ADR-0007）
+- **数值微分与平滑：Savitzky-Golay 先平滑后微分（ADR-0008）**——window=7, polyorder=2, delta=1/fps_nominal；NaN 连续段分割；pipeline 注册表预留 butterworth/kalman 等
 
-**本轮决策**：ADR-0006 确定候选项目提交与 FFprobe 时序关卡；CI 工具使用固定 ffmpeg-static b6.1.1 及 SHA-256 校验，不改系统 PATH。
+**本轮新增**：ADR-0008 确定数值微分方法；Phase 3 需求规范（10 条 AC）编写完成。
 
-**验证状态**：规划基线 124 tests → 当前 **173 passed**；本机 FFprobe 和 CI 固定来源 macOS 二进制均验证；compileall/pip check/diff check 通过；Luna-max 最终 Verdict：通过。远端 CI、Windows 工具执行与 Human Review 尚未完成，不声称 Phase 2 已收尾。
-
-**用户未提交修改**：`.github/workflows/README.md`，本次未改动、未纳入提交。
-
-**Human Review 诊断（2026-08-30）**：当前打开的 `P001.mp4` 为 1920×1080 HEVC，
-约 110.88 s、3326 帧、250 MB。首帧 0.140 s；全部 packet PTS 扫描 0.264 s；当前
-`-show_frames` 全解码验证 91.906 s。完整帧 PTS 与排序后的 packet PTS 完全相同。
-时间基 1/90000，间隔 3000 ticks 共 3224 次、3010 ticks 共 101 次；当前 30 FPS + 1 tick
-容差规则返回 `vfr_suspected`，从而禁用 Add track。以容器平均 FPS 29.9969636 为参考，
-固定时间网格最大偏差约 0.17014 ms；与严格 30 FPS 比则累计偏差 11.2222 ms。
-结论：全量解码被放在首屏之前是长等待根因；按钮禁用是严格时序判定的结果，不是 Qt 点击失效。
-不能据此把视频称为严格 CFR，也不能直接放开按钮；需明确近似恒定帧率的误差预算/用户确认策略。
+**延后项**：Windows 真机验收（原 P24-10）由用户决定延后执行。
 
 ## Next Recommended Action
 
-Phase 3.0 — Spec & Requirements（参照 1.0/2.1 模式）：写 `docs/spec/phase3-requirements.md`（标定/坐标系/运动学/图表的需求与验收标准），并准备数值微分与平滑方法的 ADR-0008（roadmap 风险项：噪声放大、平滑与微分顺序）。spec 确认后按 3.1（标定数据层）开工。**延后项**：Windows 真机验收（原 P24-10）由用户决定延后，Phase 3 期间择机补做后回填 roadmap Phase 2 备注。保留用户 `experiment/` 与 `.github/workflows/README.md`，不纳入 Git。
+完成 Subphase 3.0 收尾（文档同步提交 + 合并回 main + push），然后进入 **Subphase 3.1 — Calibration UI**：在 VideoView 上实现交互式标定工具（比例尺线段拖拽、坐标原点设置、旋转角输入、overlay 显示）。参照 `phase3-requirements.md` R1–R3 和 AC-1/AC-2。

@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 2.3 — Manual Annotation（✅ 2026-08-30）**
-- 当前阶段：**Phase 2 — Video Analysis MVP（🔄 Subphase 2.4 实现/验证，等待最终 Human Review）**
+- 最近完成：**Phase 2 — Video Analysis MVP（✅ 2026-08-30）**
+- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.0 Spec & Requirements）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -92,7 +92,8 @@
 - [ ] 图表与视频帧同步联动
 
 **主要技术风险**
-- 数值微分的噪声放大：平滑与微分的顺序、参数选择需提供可调方案并记录 ADR。
+- ~~数值微分的噪声放大：平滑与微分的顺序、参数选择需提供可调方案并记录 ADR。~~ 已解决：[ADR-0008](decisions/0008-numerical-differentiation-and-smoothing.md)——Savitzky-Golay 先平滑后微分，默认 window=7 / polyorder=2。
+- 需求规范：[phase3-requirements.md](spec/phase3-requirements.md)（10 条验收标准，含 Subphase 划分建议）
 
 ---
 
