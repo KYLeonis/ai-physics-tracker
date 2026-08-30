@@ -116,8 +116,10 @@ class ProjectMediaService:
         video = next(item for item in session.project.videos if item.video_id == video_id)
         path = session.video_path(video)
         if path is None:
-            return PreparedProject(session, video_id, None, None,
-                                   TimingReport("unknown", "Video is missing; use Relink Video"))
+            report = TimingReport("unknown", "Video is missing; use Relink Video")
+            # 切换候选可能复制过旧会话的权限，缺媒体时不能继续复用旧验证。
+            session.confirm_video_timing(video_id, report)
+            return PreparedProject(session, video_id, None, None, report)
         timeline = next(item for item in session.project.timelines if item.video_id == video_id)
         fingerprint = path.stat()
         state = workflow_state(session)

@@ -105,6 +105,10 @@ Phase 3 为项目增加**物理实验分析能力**：用户可在视频上设�
 2. **按需重算**：提供"重新计算"操作（按钮/菜单项），对 stale 的 DerivedData 重新运行 pipeline
 3. **参数可调**：用户可修改 SG 窗口长度与多项式阶数（Phase 3 提供简单 UI，如对话框或面板上的参数输入）
 
+3.3 批次重算通过既有扩展字段保存 `timing_context={fps_nominal, approximation}`；
+`approximation` 为当前近似时序授权的来源说明（CFR 为 null），不替代已有 pipeline。
+查看旧结果不需要重新授权，生成新结果必须通过当前时序关卡；不迁移 raw 或 schema。
+
 ### R7 基础图表 — PyQtGraph 集成
 
 1. **新增依赖**：`pyqtgraph>=0.13,<0.14`（交互绘图）、`scipy>=1.14,<2.0`（SG 滤波器实现）

@@ -11,7 +11,7 @@ import json
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from ai_physics_tracker.application.video import VideoStreamInfo
@@ -49,6 +49,9 @@ from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.domain.video import Video
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from ai_physics_tracker.application.kinematics_job import KinematicsResult
 
 
 class ProjectRepositoryPort(Protocol):
@@ -759,6 +762,22 @@ class ProjectSession:
             if item.track_id == track_id and item.kind == kind
         ]
         return matches[-1] if matches else None
+
+    def can_measure(self, video_id: UUID) -> bool:
+        """仅表示本次媒体会话的时序授权；不从持久化 vfr 标志猜测权限。"""
+
+        return video_id in self._verified_videos
+
+    def measurement_timing_detail(self, video_id: UUID) -> str | None:
+        """近似授权的来源说明；None 表示当前没有近似授权说明。"""
+
+        return self._approximate_timing.get(video_id)
+
+    def apply_kinematics_result(self, result: "KinematicsResult") -> None:
+        """主线程原子提交整个批次，共用现有 Undo/Redo 快照边界。"""
+
+        from ai_physics_tracker.application.kinematics_job import validated_derived
+        self._commit_store(self._store, validated_derived(self, result))
 
     def _next_calibration_name(self) -> str:
         index = len(self._project.calibrations) + 1
