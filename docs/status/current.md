@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 2.4 Human Review 通过，已合并；Phase 2 收尾仅剩 Windows 真机验收）
+- 最后更新：2026-08-30（Phase 2 ✅ Completed；Phase 3 启动）
 
 ---
 
@@ -74,4 +74,4 @@ Slice 6：首帧预览/后台验证已接通，正在完成 packet 快路径、n
 
 ## Next Recommended Action
 
-Phase 2.4 已合并（merge 后见 git log），CI 双平台全绿后 Issue #5 补 Result（P24-1…9 勾选）。**Phase 2 收尾的最后一步是 P24-10：在自有 NVIDIA GPU Windows 笔记本上做 MP4/H.264 全流程真机验收**（打开项目 → 标注 → 保存 → 重开 → relink + FFprobe Windows 执行确认）。完成后按 AGENTS.md §11 勾选 roadmap Phase 2 验收标准并把 Phase 2 标记 Completed。保留用户 `experiment/` 与 `.github/workflows/README.md`，不纳入 Git。
+Phase 3.0 — Spec & Requirements（参照 1.0/2.1 模式）：写 `docs/spec/phase3-requirements.md`（标定/坐标系/运动学/图表的需求与验收标准），并准备数值微分与平滑方法的 ADR-0008（roadmap 风险项：噪声放大、平滑与微分顺序）。spec 确认后按 3.1（标定数据层）开工。**延后项**：Windows 真机验收（原 P24-10）由用户决定延后，Phase 3 期间择机补做后回填 roadmap Phase 2 备注。保留用户 `experiment/` 与 `.github/workflows/README.md`，不纳入 Git。
