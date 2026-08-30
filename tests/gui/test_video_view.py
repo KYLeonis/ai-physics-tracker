@@ -183,3 +183,99 @@ def test_pinch_gesture_event_scales_in_view_event(qtbot: QtBot) -> None:
         assert view.event(gesture_event) is True
 
     assert abs(view.currentScale() - 1.2**2) < 1e-9
+
+
+def test_calibration_overlay_renders_scale_line_and_axes(qtbot: QtBot) -> None:
+    from ai_physics_tracker.gui.video_view import CalibrationView
+
+    view = _shown_view(qtbot)
+    assert view.calibration_view() is None
+    assert view.calibration_items_count() == 0
+
+    cal = CalibrationView(
+        scale_end_1_px=(10.0, 10.0),
+        scale_end_2_px=(60.0, 10.0),
+        known_length=0.5,
+        unit="m",
+        origin_px=(20.0, 40.0),
+        rotation_deg=30.0,
+    )
+    view.set_calibration(cal, image_height=HEIGHT_PX)
+
+    assert view.calibration_view() == cal
+    assert view.calibration_items_count() > 0
+
+    view.set_calibration(None)
+    assert view.calibration_view() is None
+    assert view.calibration_items_count() == 0
+
+
+def test_calibration_scale_mode_drag_emits_scale_line_drawn(qtbot: QtBot) -> None:
+    from PySide6.QtCore import QPointF, Qt
+
+    view = _shown_view(qtbot)
+    view.zoomOriginal()
+    view.set_calibration_mode("scale")
+    assert view.is_calibration_mode() == "scale"
+
+    signals: list[tuple[QPointF, QPointF]] = []
+    view.scaleLineDrawn.connect(lambda p1, p2: signals.append((p1, p2)))
+
+    p1 = view.mapFromScene(QPointF(10.0, 15.0))
+    p2 = view.mapFromScene(QPointF(70.0, 45.0))
+
+    qtbot.mousePress(view.viewport(), Qt.MouseButton.LeftButton, pos=p1)
+    qtbot.mouseMove(view.viewport(), pos=p2)
+    qtbot.mouseRelease(view.viewport(), Qt.MouseButton.LeftButton, pos=p2)
+
+    assert len(signals) == 1
+    start, end = signals[0]
+    assert abs(start.x() - 10.0) <= 1.0
+    assert abs(start.y() - 15.0) <= 1.0
+    assert abs(end.x() - 70.0) <= 1.0
+    assert abs(end.y() - 45.0) <= 1.0
+
+
+def test_calibration_scale_mode_two_clicks_emits_scale_line_drawn(qtbot: QtBot) -> None:
+    from PySide6.QtCore import QPointF, Qt
+
+    view = _shown_view(qtbot)
+    view.zoomOriginal()
+    view.set_calibration_mode("scale")
+
+    signals: list[tuple[QPointF, QPointF]] = []
+    view.scaleLineDrawn.connect(lambda p1, p2: signals.append((p1, p2)))
+
+    p1 = view.mapFromScene(QPointF(15.0, 20.0))
+    p2 = view.mapFromScene(QPointF(80.0, 50.0))
+
+    qtbot.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=p1)
+    assert len(signals) == 0
+
+    qtbot.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=p2)
+    assert len(signals) == 1
+    start, end = signals[0]
+    assert abs(start.x() - 15.0) <= 1.0
+    assert abs(start.y() - 20.0) <= 1.0
+    assert abs(end.x() - 80.0) <= 1.0
+    assert abs(end.y() - 50.0) <= 1.0
+
+
+def test_calibration_origin_mode_click_emits_origin_clicked(qtbot: QtBot) -> None:
+    from PySide6.QtCore import QPointF, Qt
+
+    view = _shown_view(qtbot)
+    view.zoomOriginal()
+    view.set_calibration_mode("origin")
+    assert view.is_calibration_mode() == "origin"
+
+    origin_signals: list[QPointF] = []
+    view.originClicked.connect(lambda pt: origin_signals.append(pt))
+
+    target = view.mapFromScene(QPointF(25.0, 35.0))
+    qtbot.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=target)
+
+    assert len(origin_signals) == 1
+    assert abs(origin_signals[0].x() - 25.0) <= 1.0
+    assert abs(origin_signals[0].y() - 35.0) <= 1.0
+

@@ -1,15 +1,17 @@
-"""Phase 2 桌面外壳：异步播放、时间轴、逐帧浏览与手工标注。"""
-
 import logging
+import math
+from dataclasses import replace
 from pathlib import Path
 from threading import Event
 from typing import Callable
 from uuid import UUID
 
-from PySide6.QtCore import QPoint, QSignalBlocker, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, QPointF, QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
+    QDoubleSpinBox,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -33,10 +35,11 @@ from ai_physics_tracker.application.video import DecodedFrame, VideoError
 from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.application.project_media import ProjectMediaService, PreparedProject, workflow_state
 from ai_physics_tracker.application.video_timing import VideoTimingProbe
+from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
 from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.gui.timing_actions import TimingActions
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
-from ai_physics_tracker.gui.video_view import MarkerView, VideoView
+from ai_physics_tracker.gui.video_view import CalibrationView, MarkerView, VideoView
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +115,42 @@ class MainWindow(QMainWindow):
         self.undoButton.setEnabled(False)
         self.redoButton.setEnabled(False)
 
+        # --- 标定控制面板 (Calibration Group) ---
+        self.calibrationGroup = QGroupBox("Calibration", self)
+        self.calibrationStatusLabel = QLabel("Status: Uncalibrated", self)
+        self.calibrationStatusLabel.setWordWrap(True)
+        self.calibrationSelector = QComboBox(self)
+        self.drawScaleButton = QPushButton("Draw scale", self)
+        self.drawScaleButton.setCheckable(True)
+        self.drawScaleButton.setEnabled(False)
+        self.setOriginButton = QPushButton("Set origin", self)
+        self.setOriginButton.setCheckable(True)
+        self.setOriginButton.setEnabled(False)
+        self.deleteCalibrationButton = QPushButton("Delete calibration", self)
+        self.deleteCalibrationButton.setEnabled(False)
+
+        self.originLabel = QLabel("Origin: —", self)
+        self.rotationSpinBox = QDoubleSpinBox(self)
+        self.rotationSpinBox.setRange(-360.0, 360.0)
+        self.rotationSpinBox.setSingleStep(1.0)
+        self.rotationSpinBox.setDecimals(1)
+        self.rotationSpinBox.setSuffix("°")
+        self.rotationSpinBox.setPrefix("Rotation: ")
+        self.rotationSpinBox.setEnabled(False)
+
+        calButtons = QHBoxLayout()
+        calButtons.addWidget(self.drawScaleButton)
+        calButtons.addWidget(self.setOriginButton)
+
+        calLayout = QVBoxLayout()
+        calLayout.addWidget(self.calibrationStatusLabel)
+        calLayout.addWidget(self.calibrationSelector)
+        calLayout.addLayout(calButtons)
+        calLayout.addWidget(self.originLabel)
+        calLayout.addWidget(self.rotationSpinBox)
+        calLayout.addWidget(self.deleteCalibrationButton)
+        self.calibrationGroup.setLayout(calLayout)
+
         self.frameSpinBox.setPrefix("Go to: ")
         self.frameSpinBox.setMinimum(0)
         self.timelineSlider.setMinimum(0)
@@ -150,9 +189,15 @@ class MainWindow(QMainWindow):
         trackPanel.addWidget(self.trackList, 1)
         trackPanel.addLayout(trackButtons)
         trackPanel.addLayout(historyButtons)
+        self.trackGroup = QGroupBox("Tracks", self)
+        self.trackGroup.setLayout(trackPanel)
+
+        sideLayout = QVBoxLayout()
+        sideLayout.addWidget(self.calibrationGroup)
+        sideLayout.addWidget(self.trackGroup, 1)
         trackSide = QWidget(self)
-        trackSide.setLayout(trackPanel)
-        trackSide.setMaximumWidth(220)
+        trackSide.setLayout(sideLayout)
+        trackSide.setMaximumWidth(260)
 
         videoColumn = QVBoxLayout()
         videoColumn.addWidget(self.videoSelector)
@@ -235,6 +280,13 @@ class MainWindow(QMainWindow):
         self.decodeFailed.connect(self._onDecodeFailed)
         self.videoView.scaleChanged.connect(self._onScaleChanged)
         self.videoView.annotationClicked.connect(self._onAnnotationClicked)
+        self.videoView.scaleLineDrawn.connect(self._onScaleLineDrawn)
+        self.videoView.originClicked.connect(self._onOriginClicked)
+        self.drawScaleButton.clicked.connect(self._toggleDrawScaleMode)
+        self.setOriginButton.clicked.connect(self._toggleSetOriginMode)
+        self.deleteCalibrationButton.clicked.connect(self._deleteActiveCalibration)
+        self.calibrationSelector.currentIndexChanged.connect(self._onCalibrationSelected)
+        self.rotationSpinBox.valueChanged.connect(self._onRotationChanged)
         self.addTrackButton.clicked.connect(self._addTrack)
         self.deleteTrackButton.clicked.connect(self._deleteSelectedTrack)
         self.trackList.itemSelectionChanged.connect(self._onTrackSelectionChanged)
@@ -346,6 +398,7 @@ class MainWindow(QMainWindow):
         self.videoView.set_annotation_mode(False)
         self.addTrackButton.setEnabled(self._measurement_allowed)
         self._refreshHistoryButtons()
+        self._refreshCalibrationUI()
         self.projectActions.refresh()
         self.statusBar().showMessage(prepared.timing.reason +
             ("" if self._measurement_allowed else " — browsing only; new measurements disabled"))
@@ -472,6 +525,7 @@ class MainWindow(QMainWindow):
         # 选择失效或为空时自动选中第一行：撤销"删除 track"后恢复标注上下文
         if self.trackList.currentRow() == -1 and self.trackList.count() > 0:
             self.trackList.setCurrentRow(0)
+        self._refreshCalibrationUI()
         self._refreshHistoryButtons()
         self._refreshMarkers()
         self.statusBar().showMessage("")
@@ -513,19 +567,270 @@ class MainWindow(QMainWindow):
         )
         self._selected_track_id = track_id
         self.deleteTrackButton.setEnabled(track_id is not None)
-        self.videoView.set_annotation_mode(track_id is not None and self._measurement_allowed and not self.projectActions.busy)
         if track_id is not None:
+            self.drawScaleButton.setChecked(False)
+            self.setOriginButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+            self.videoView.set_annotation_mode(self._measurement_allowed and not self.projectActions.busy)
             self.statusBar().showMessage(
                 "Annotation mode: click the video to mark; Esc or click an empty "
                 "list area to exit"
             )
-        elif self._annotation_session is not None:
-            self.statusBar().showMessage("Browse mode")
+        else:
+            self.videoView.set_annotation_mode(False)
+            if (
+                self._annotation_session is not None
+                and not self.drawScaleButton.isChecked()
+                and not self.setOriginButton.isChecked()
+            ):
+                self.statusBar().showMessage("Browse mode")
         self._refreshMarkers()
 
     def _exitAnnotationMode(self) -> None:
         if self._selected_track_id is not None:
             self.trackList.setCurrentRow(-1)
+            self.trackList.clearSelection()
+            self._selected_track_id = None
+        if self.drawScaleButton.isChecked():
+            self.drawScaleButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+        if self.setOriginButton.isChecked():
+            self.setOriginButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+        self.statusBar().showMessage("Browse mode")
+
+    def _toggleDrawScaleMode(self, checked: bool) -> None:
+        if checked:
+            if not self._measurement_allowed or self.projectActions.busy:
+                self.drawScaleButton.setChecked(False)
+                return
+            self.setOriginButton.setChecked(False)
+            self.trackList.clearSelection()
+            self._selected_track_id = None
+            self.videoView.set_annotation_mode(False)
+            self.videoView.set_calibration_mode("scale")
+            self.statusBar().showMessage(
+                "Scale mode: drag or click two points to define scale; Esc to cancel"
+            )
+        else:
+            self.videoView.set_calibration_mode(None)
+            self.statusBar().showMessage("Browse mode")
+
+    def _toggleSetOriginMode(self, checked: bool) -> None:
+        if checked:
+            if not self._measurement_allowed or self.projectActions.busy:
+                self.setOriginButton.setChecked(False)
+                return
+            self.drawScaleButton.setChecked(False)
+            self.trackList.clearSelection()
+            self._selected_track_id = None
+            self.videoView.set_annotation_mode(False)
+            self.videoView.set_calibration_mode("origin")
+            self.statusBar().showMessage(
+                "Origin mode: click on video to set coordinate origin; Esc to cancel"
+            )
+        else:
+            self.videoView.set_calibration_mode(None)
+            self.statusBar().showMessage("Browse mode")
+
+    def _onScaleLineDrawn(self, p1: QPointF, p2: QPointF) -> None:
+        if not self._measurement_allowed or self.projectActions.busy:
+            self.drawScaleButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+            return
+        if self._annotation_session is None or self._annotation_video_id is None:
+            self.drawScaleButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+            return
+
+        pixel_length = math.hypot(p2.x() - p1.x(), p2.y() - p1.y())
+        if pixel_length < 1.0:
+            self.statusBar().showMessage("Scale line is too short; ignored")
+            self.drawScaleButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+            return
+
+        default_name = self._annotation_session._next_calibration_name()
+        dialog = CalibrationDialog(
+            pixel_length=pixel_length,
+            default_name=default_name,
+            parent=self,
+        )
+        if dialog.exec() == QMessageBox.DialogCode.Accepted or dialog.result() == 1:
+            known_len = dialog.known_length()
+            unit = dialog.unit()
+            name = dialog.calibration_name()
+            try:
+                self._annotation_session.add_calibration(
+                    video_id=self._annotation_video_id,
+                    scale_end_1_px=(p1.x(), p1.y()),
+                    scale_end_2_px=(p2.x(), p2.y()),
+                    known_length=known_len,
+                    unit=unit,
+                    name=name,
+                )
+                self.statusBar().showMessage(f"Calibration '{name}' set ({known_len:g} {unit})")
+            except (ProjectSessionError, ValueError) as error:
+                logger.error("add calibration failed", exc_info=True)
+                QMessageBox.warning(self, "Calibration Error", str(error))
+
+        self.drawScaleButton.setChecked(False)
+        self.videoView.set_calibration_mode(None)
+        self._refreshCalibrationUI()
+        self._refreshHistoryButtons()
+
+    def _onOriginClicked(self, pt: QPointF) -> None:
+        if not self._measurement_allowed or self.projectActions.busy:
+            self.setOriginButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+            return
+        if self._annotation_session is None or self._annotation_video_id is None:
+            self.setOriginButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+            return
+
+        active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
+        if active_cal is None:
+            self.statusBar().showMessage("No active calibration; please draw a scale line first")
+            self.setOriginButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+            return
+
+        try:
+            updated = replace(active_cal, origin_px=(pt.x(), pt.y()))
+            self._annotation_session.update_calibration(updated)
+            self.statusBar().showMessage(f"Origin set to ({pt.x():.1f}, {pt.y():.1f}) px")
+        except (ProjectSessionError, ValueError) as error:
+            logger.error("update origin failed", exc_info=True)
+            self.statusBar().showMessage(f"Set origin failed: {error}")
+
+        self.setOriginButton.setChecked(False)
+        self.videoView.set_calibration_mode(None)
+        self._refreshCalibrationUI()
+        self._refreshHistoryButtons()
+
+    def _onRotationChanged(self, deg: float) -> None:
+        if self._annotation_session is None or self._annotation_video_id is None:
+            return
+        active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
+        if active_cal is None:
+            return
+        if math.isclose(active_cal.rotation_deg, deg, rel_tol=0.0, abs_tol=1e-6):
+            return
+        try:
+            updated = replace(active_cal, rotation_deg=deg)
+            self._annotation_session.update_calibration(updated)
+        except (ProjectSessionError, ValueError) as error:
+            logger.error("update rotation failed", exc_info=True)
+            self.statusBar().showMessage(f"Rotation update failed: {error}")
+            return
+        self._refreshCalibrationOverlay()
+        self._refreshHistoryButtons()
+
+    def _deleteActiveCalibration(self) -> None:
+        if self._annotation_session is None or self._annotation_video_id is None:
+            return
+        active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
+        if active_cal is None:
+            return
+        self._annotation_session.remove_calibration(active_cal.calibration_id)
+        self._refreshCalibrationUI()
+        self._refreshHistoryButtons()
+        self.statusBar().showMessage("Calibration deleted")
+
+    def _onCalibrationSelected(self, _index: int) -> None:
+        if self._annotation_session is None or self._annotation_video_id is None:
+            return
+        cal_id = self.calibrationSelector.currentData(Qt.ItemDataRole.UserRole)
+        if cal_id is not None and isinstance(cal_id, UUID):
+            self._annotation_session.set_active_calibration(self._annotation_video_id, cal_id)
+        else:
+            self._annotation_session.set_active_calibration(self._annotation_video_id, None)
+        self._refreshCalibrationUI()
+        self._refreshHistoryButtons()
+
+    def _refreshCalibrationUI(self) -> None:
+        if self._annotation_session is None or self._annotation_video_id is None:
+            self.calibrationStatusLabel.setText("Status: Uncalibrated")
+            with QSignalBlocker(self.calibrationSelector):
+                self.calibrationSelector.clear()
+            self.drawScaleButton.setEnabled(False)
+            self.drawScaleButton.setChecked(False)
+            self.setOriginButton.setEnabled(False)
+            self.setOriginButton.setChecked(False)
+            self.rotationSpinBox.setEnabled(False)
+            self.deleteCalibrationButton.setEnabled(False)
+            self.originLabel.setText("Origin: —")
+            self.videoView.set_calibration(None)
+            return
+
+        session = self._annotation_session
+        video_id = self._annotation_video_id
+        active_cal = session.active_calibration(video_id)
+        video_cals = [c for c in session.calibrations if c.video_id == video_id]
+
+        with QSignalBlocker(self.calibrationSelector):
+            self.calibrationSelector.clear()
+            if not video_cals:
+                self.calibrationSelector.addItem("No calibrations", None)
+            else:
+                for cal in video_cals:
+                    self.calibrationSelector.addItem(cal.name, cal.calibration_id)
+                if active_cal is not None:
+                    idx = self.calibrationSelector.findData(active_cal.calibration_id)
+                    if idx >= 0:
+                        self.calibrationSelector.setCurrentIndex(idx)
+
+        has_cal = active_cal is not None
+        self.drawScaleButton.setEnabled(self._measurement_allowed)
+        self.setOriginButton.setEnabled(self._measurement_allowed and has_cal)
+        self.rotationSpinBox.setEnabled(self._measurement_allowed and has_cal)
+        self.deleteCalibrationButton.setEnabled(self._measurement_allowed and has_cal)
+
+        if active_cal is not None:
+            dx = active_cal.scale_end_2_px[0] - active_cal.scale_end_1_px[0]
+            dy = active_cal.scale_end_2_px[1] - active_cal.scale_end_1_px[1]
+            px_dist = math.hypot(dx, dy)
+            scale_ratio = px_dist / active_cal.known_length
+            self.calibrationStatusLabel.setText(
+                f"Active: {active_cal.name} ({active_cal.known_length:g} {active_cal.unit}, {scale_ratio:.1f} px/{active_cal.unit})"
+            )
+            with QSignalBlocker(self.rotationSpinBox):
+                self.rotationSpinBox.setValue(active_cal.rotation_deg)
+            h = self._snapshot_height()
+            ox, oy = active_cal.origin_px if active_cal.origin_px is not None else (0.0, float(h))
+            self.originLabel.setText(f"Origin: ({ox:.1f}, {oy:.1f}) px")
+        else:
+            self.calibrationStatusLabel.setText("Status: Uncalibrated")
+            self.originLabel.setText("Origin: —")
+
+        self._refreshCalibrationOverlay()
+
+    def _snapshot_height(self) -> int:
+        if self._annotation_session and self._annotation_video_id:
+            for v in self._annotation_session.project.videos:
+                if v.video_id == self._annotation_video_id:
+                    return v.height_px
+        return 480
+
+    def _refreshCalibrationOverlay(self) -> None:
+        if self._annotation_session is None or self._annotation_video_id is None:
+            self.videoView.set_calibration(None)
+            return
+        active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
+        if active_cal is None:
+            self.videoView.set_calibration(None)
+            return
+        h = self._snapshot_height()
+        cal_view = CalibrationView(
+            scale_end_1_px=active_cal.scale_end_1_px,
+            scale_end_2_px=active_cal.scale_end_2_px,
+            known_length=active_cal.known_length,
+            unit=active_cal.unit,
+            origin_px=active_cal.origin_px,
+            rotation_deg=active_cal.rotation_deg,
+        )
+        self.videoView.set_calibration(cal_view, image_height=h)
 
     def _onAnnotationClicked(self, view_pos: QPoint) -> None:
         if not self._measurement_allowed or self.projectActions.busy or not self.videoView.is_annotation_mode():
@@ -678,6 +983,7 @@ class MainWindow(QMainWindow):
         self._selected_track_id = None
         self._presented_frame_index = None
         self._refreshHistoryButtons()
+        self._refreshCalibrationUI()
         self.trackList.clear()
         self.videoView.set_markers([])
         self.videoView.set_annotation_mode(False)

@@ -82,6 +82,7 @@ class TimingActions(QObject):
                 self.window.projectActions.refresh()
         self.window._measurement_allowed = self._report.status == "cfr"
         self.window.addTrackButton.setEnabled(self.window._measurement_allowed)
+        self.window._refreshCalibrationUI()
         self._showReport()
         self.window.statusBar().showMessage(self._report.reason +
             (" — measurements enabled" if self.window._measurement_allowed else " — browsing only"))
@@ -142,6 +143,7 @@ class TimingActions(QObject):
         session.accept_approximate_timing(video_id, self._report)
         window._measurement_allowed = True
         window.addTrackButton.setEnabled(True)
+        window._refreshCalibrationUI()
         window.addTrackButton.setToolTip("Approximate timing explicitly accepted for this session")
         window.timingLabel.setText(
             f"Approximate timing accepted: {window._timeline.fps_nominal:.8g} FPS; "

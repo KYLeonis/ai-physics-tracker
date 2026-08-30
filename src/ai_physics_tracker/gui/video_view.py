@@ -6,9 +6,14 @@ mapToScene，越界返回 None（data-model.md §6.1：逆映射发生在 GUI
 边界，落点前钳位并验证图像范围）。
 """
 
+import math
+from dataclasses import dataclass
+
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import (
+    QBrush,
     QColor,
+    QFont,
     QImage,
     QMouseEvent,
     QPainter,
@@ -20,13 +25,14 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem,
     QGraphicsItem,
+    QGraphicsLineItem,
     QGraphicsPixmapItem,
     QGraphicsScene,
+    QGraphicsSimpleTextItem,
     QGraphicsTextItem,
     QGraphicsView,
     QWidget,
 )
-from dataclasses import dataclass
 
 from ai_physics_tracker.application.video import DecodedFrame
 
@@ -49,11 +55,25 @@ class MarkerView:
     is_current_frame: bool = False
 
 
+@dataclass(frozen=True)
+class CalibrationView:
+    """overlay 标定与坐标系的视图模型（gui 层，不携带领域对象）。"""
+
+    scale_end_1_px: tuple[float, float]
+    scale_end_2_px: tuple[float, float]
+    known_length: float
+    unit: str
+    origin_px: tuple[float, float] | None = None
+    rotation_deg: float = 0.0
+
+
 class VideoView(QGraphicsView):
     """展示解耦的 RGB 帧；fit 模式自动适配，自由缩放后保持用户缩放。"""
 
     scaleChanged = Signal(float)
     annotationClicked = Signal(QPoint)
+    scaleLineDrawn = Signal(QPointF, QPointF)
+    originClicked = Signal(QPointF)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -63,6 +83,12 @@ class VideoView(QGraphicsView):
         self._placeholder_item: QGraphicsTextItem | None = None
         self._marker_items: list[QGraphicsEllipseItem] = []
         self._marker_views: list[MarkerView] = []
+        self._calibration_items: list[QGraphicsItem] = []
+        self._calibration_view: CalibrationView | None = None
+        self._calibration_mode: str | None = None
+        self._scale_draw_start: tuple[float, float] | None = None
+        self._scale_preview_item: QGraphicsLineItem | None = None
+        self._is_scale_dragging = False
         self._annotation_mode = False
         self._fit_pending = True
         self.setMinimumSize(320, 240)
@@ -113,6 +139,8 @@ class VideoView(QGraphicsView):
         if self._pixmap_item is not None:
             self._scene.removeItem(self._pixmap_item)
             self._pixmap_item = None
+        self.set_calibration(None)
+        self._clear_scale_preview()
         self._scene.setSceneRect(QRectF(0.0, 0.0, 0.0, 0.0))
         self.zoomFit()
         self.setPlaceholder("Open a video to begin")
@@ -262,6 +290,35 @@ class VideoView(QGraphicsView):
         self.scale(factor, factor)
         self.scaleChanged.emit(self.currentScale())
 
+    def set_calibration_mode(self, mode: str | None) -> None:
+        """设置标定交互模式：'scale'（绘制比例尺）、'origin'（设置原点）或 None。"""
+
+        self._calibration_mode = mode
+        if mode is not None:
+            self._annotation_mode = False
+        self._clear_scale_preview()
+        self._update_cursors()
+
+    def is_calibration_mode(self) -> str | None:
+        return self._calibration_mode
+
+    def _update_cursors(self) -> None:
+        shape = (
+            Qt.CursorShape.CrossCursor
+            if (self._annotation_mode or self._calibration_mode is not None)
+            else Qt.CursorShape.ArrowCursor
+        )
+        if self._annotation_mode or self._calibration_mode is not None:
+            self.setDragMode(QGraphicsView.DragMode.NoDrag)
+        else:
+            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        if self._pixmap_item is not None:
+            self._pixmap_item.setCursor(shape)
+        for item in self._marker_items:
+            item.setCursor(shape)
+        for item in self._calibration_items:
+            item.setCursor(shape)
+
     def set_annotation_mode(self, enabled: bool) -> None:
         """标注模式：左键点击落点（发 annotationClicked），禁用拖拽平移。
 
@@ -271,19 +328,10 @@ class VideoView(QGraphicsView):
         """
 
         self._annotation_mode = enabled
-        shape = (
-            Qt.CursorShape.CrossCursor
-            if enabled
-            else Qt.CursorShape.ArrowCursor
-        )
         if enabled:
-            self.setDragMode(QGraphicsView.DragMode.NoDrag)
-        else:
-            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-        if self._pixmap_item is not None:
-            self._pixmap_item.setCursor(shape)
-        for item in self._marker_items:
-            item.setCursor(shape)
+            self._calibration_mode = None
+            self._clear_scale_preview()
+        self._update_cursors()
 
     def is_annotation_mode(self) -> bool:
         return self._annotation_mode
@@ -316,7 +364,7 @@ class VideoView(QGraphicsView):
                 item.setBrush(Qt.BrushStyle.NoBrush)
             item.setPen(pen)
             item.setZValue(10.0)
-            if self._annotation_mode:
+            if self._annotation_mode or self._calibration_mode is not None:
                 item.setCursor(Qt.CursorShape.CrossCursor)
             self._scene.addItem(item)
             self._marker_items.append(item)
@@ -329,23 +377,246 @@ class VideoView(QGraphicsView):
 
         return list(self._marker_views)
 
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        if (
-            self._annotation_mode
-            and event.button() == Qt.MouseButton.LeftButton
-            and self._pixmap_item is not None
-        ):
-            self.annotationClicked.emit(event.position().toPoint())
-            event.accept()
+    def set_calibration(
+        self,
+        calibration: CalibrationView | None,
+        image_height: int | None = None,
+    ) -> None:
+        """整批替换 overlay 标定线段与坐标系展示。"""
+
+        for item in self._calibration_items:
+            self._scene.removeItem(item)
+        self._calibration_items = []
+        self._calibration_view = calibration
+
+        if calibration is None:
             return
+
+        # 1. 绘制比例尺线段 (Scale Line)
+        p1 = calibration.scale_end_1_px
+        p2 = calibration.scale_end_2_px
+        line_pen = QPen(QColor("#00e5ff"))
+        line_pen.setWidthF(2.0)
+        line_pen.setCosmetic(True)
+
+        line_item = QGraphicsLineItem(p1[0], p1[1], p2[0], p2[1])
+        line_item.setPen(line_pen)
+        line_item.setZValue(20.0)
+        self._scene.addItem(line_item)
+        self._calibration_items.append(line_item)
+
+        # 两端端点 ticks
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        length = math.hypot(dx, dy)
+        if length > 1e-6:
+            nx = -dy / length * 6.0
+            ny = dx / length * 6.0
+            for pt in (p1, p2):
+                tick = QGraphicsLineItem(pt[0] - nx, pt[1] - ny, pt[0] + nx, pt[1] + ny)
+                tick.setPen(line_pen)
+                tick.setZValue(20.0)
+                self._scene.addItem(tick)
+                self._calibration_items.append(tick)
+
+        # 端点圆点 handle (固定屏幕大小 6px)
+        handle_brush = QBrush(QColor("#00e5ff"))
+        for pt in (p1, p2):
+            handle = QGraphicsEllipseItem(-3, -3, 6, 6)
+            handle.setPos(pt[0], pt[1])
+            handle.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
+            handle.setPen(line_pen)
+            handle.setBrush(handle_brush)
+            handle.setZValue(20.5)
+            self._scene.addItem(handle)
+            self._calibration_items.append(handle)
+
+        # 长度文本标签
+        text_label = f"{calibration.known_length:g} {calibration.unit}"
+        text_item = QGraphicsSimpleTextItem(text_label)
+        font = QFont()
+        font.setBold(True)
+        font.setPointSize(10)
+        text_item.setFont(font)
+        text_item.setBrush(QBrush(QColor("#00e5ff")))
+        text_item.setPen(QPen(QColor("#000000"), 0.5))
+        text_item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
+        mx = (p1[0] + p2[0]) / 2.0
+        my = (p1[1] + p2[1]) / 2.0
+        offset_x = ny * 1.5 if length > 1e-6 else 0.0
+        offset_y = -nx * 1.5 if length > 1e-6 else -10.0
+        text_item.setPos(mx + offset_x, my + offset_y)
+        text_item.setZValue(21.0)
+        self._scene.addItem(text_item)
+        self._calibration_items.append(text_item)
+
+        # 2. 绘制世界坐标原点与坐标轴 (Origin & Axes)
+        h = image_height or (self._pixmap_item.pixmap().height() if self._pixmap_item else 100)
+        ox, oy = calibration.origin_px if calibration.origin_px is not None else (0.0, float(h))
+
+        # 原点标记（十字圆环）
+        origin_item = QGraphicsEllipseItem(-5, -5, 10, 10)
+        origin_item.setPos(ox, oy)
+        origin_item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
+        origin_pen = QPen(QColor("#ffea00"))
+        origin_pen.setWidthF(1.5)
+        origin_item.setPen(origin_pen)
+        origin_item.setBrush(QBrush(QColor(255, 234, 0, 100)))
+        origin_item.setZValue(22.0)
+        self._scene.addItem(origin_item)
+        self._calibration_items.append(origin_item)
+
+        # 坐标轴（X 轴为红，Y 轴为绿）
+        axis_len = 50.0
+        rad = math.radians(calibration.rotation_deg)
+
+        # +X 轴 (图像中顺时针旋转 rad)
+        x_dir_x = math.cos(rad)
+        x_dir_y = math.sin(rad)
+        x_end = (ox + axis_len * x_dir_x, oy + axis_len * x_dir_y)
+
+        x_axis = QGraphicsLineItem(ox, oy, x_end[0], x_end[1])
+        x_pen = QPen(QColor("#ff3333"))
+        x_pen.setWidthF(2.0)
+        x_pen.setCosmetic(True)
+        x_axis.setPen(x_pen)
+        x_axis.setZValue(22.0)
+        self._scene.addItem(x_axis)
+        self._calibration_items.append(x_axis)
+
+        # X 轴标签
+        x_label = QGraphicsSimpleTextItem("+X")
+        x_label.setFont(font)
+        x_label.setBrush(QBrush(QColor("#ff3333")))
+        x_label.setPen(QPen(QColor("#000000"), 0.5))
+        x_label.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
+        x_label.setPos(x_end[0] + 4 * x_dir_x, x_end[1] + 4 * x_dir_y)
+        x_label.setZValue(22.5)
+        self._scene.addItem(x_label)
+        self._calibration_items.append(x_label)
+
+        # +Y 轴 (世界坐标逆时针 90°；图像中对应 (sin, -cos))
+        y_dir_x = math.sin(rad)
+        y_dir_y = -math.cos(rad)
+        y_end = (ox + axis_len * y_dir_x, oy + axis_len * y_dir_y)
+
+        y_axis = QGraphicsLineItem(ox, oy, y_end[0], y_end[1])
+        y_pen = QPen(QColor("#00e676"))
+        y_pen.setWidthF(2.0)
+        y_pen.setCosmetic(True)
+        y_axis.setPen(y_pen)
+        y_axis.setZValue(22.0)
+        self._scene.addItem(y_axis)
+        self._calibration_items.append(y_axis)
+
+        # Y 轴标签
+        y_label = QGraphicsSimpleTextItem("+Y")
+        y_label.setFont(font)
+        y_label.setBrush(QBrush(QColor("#00e676")))
+        y_label.setPen(QPen(QColor("#000000"), 0.5))
+        y_label.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
+        y_label.setPos(y_end[0] + 4 * y_dir_x, y_end[1] + 4 * y_dir_y)
+        y_label.setZValue(22.5)
+        self._scene.addItem(y_label)
+        self._calibration_items.append(y_label)
+
+        self._update_cursors()
+
+    def calibration_view(self) -> CalibrationView | None:
+        """当前 overlay 的标定视图快照。"""
+
+        return self._calibration_view
+
+    def calibration_items_count(self) -> int:
+        return len(self._calibration_items)
+
+    def _clear_scale_preview(self) -> None:
+        if self._scale_preview_item is not None:
+            self._scene.removeItem(self._scale_preview_item)
+            self._scale_preview_item = None
+        self._scale_draw_start = None
+        self._is_scale_dragging = False
+
+    def _update_scale_preview(self, p1: tuple[float, float], p2: tuple[float, float]) -> None:
+        if self._scale_preview_item is None:
+            self._scale_preview_item = QGraphicsLineItem()
+            pen = QPen(QColor("#00e5ff"))
+            pen.setStyle(Qt.PenStyle.DashLine)
+            pen.setWidthF(1.5)
+            pen.setCosmetic(True)
+            self._scale_preview_item.setPen(pen)
+            self._scale_preview_item.setZValue(25.0)
+            self._scene.addItem(self._scale_preview_item)
+        self._scale_preview_item.setLine(p1[0], p1[1], p2[0], p2[1])
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self._pixmap_item is not None:
+            if self._calibration_mode == "scale":
+                pt = self.mapScreenToPixel(event.position().toPoint())
+                if pt is not None:
+                    if self._scale_draw_start is not None:
+                        start_pt = self._scale_draw_start
+                        self._scale_draw_start = None
+                        self._clear_scale_preview()
+                        self.scaleLineDrawn.emit(
+                            QPointF(start_pt[0], start_pt[1]),
+                            QPointF(pt[0], pt[1]),
+                        )
+                    else:
+                        self._scale_draw_start = pt
+                        self._is_scale_dragging = True
+                        self._update_scale_preview(pt, pt)
+                    event.accept()
+                    return
+            elif self._calibration_mode == "origin":
+                pt = self.mapScreenToPixel(event.position().toPoint())
+                if pt is not None:
+                    self.originClicked.emit(QPointF(pt[0], pt[1]))
+                    event.accept()
+                    return
+            elif self._annotation_mode:
+                self.annotationClicked.emit(event.position().toPoint())
+                event.accept()
+                return
         super().mousePressEvent(event)
 
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if self._calibration_mode == "scale" and self._scale_draw_start is not None:
+            scene_pos = self.mapToScene(event.position().toPoint())
+            self._update_scale_preview(self._scale_draw_start, (scene_pos.x(), scene_pos.y()))
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if (
+            self._calibration_mode == "scale"
+            and self._is_scale_dragging
+            and self._scale_draw_start is not None
+        ):
+            self._is_scale_dragging = False
+            pt = self.mapScreenToPixel(event.position().toPoint())
+            if pt is not None:
+                dist = math.hypot(
+                    pt[0] - self._scale_draw_start[0], pt[1] - self._scale_draw_start[1]
+                )
+                if dist >= 5.0:
+                    start_pt = self._scale_draw_start
+                    self._scale_draw_start = None
+                    self._clear_scale_preview()
+                    self.scaleLineDrawn.emit(
+                        QPointF(start_pt[0], start_pt[1]),
+                        QPointF(pt[0], pt[1]),
+                    )
+                    event.accept()
+                    return
+        super().mouseReleaseEvent(event)
+
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
-        # 双击回到 fit 模式（浏览模式专属；标注模式下双击会连点两个标记）
+        # 双击回到 fit 模式（浏览模式专属；标注/标定模式下不重置）
         if (
             event.button() == Qt.MouseButton.LeftButton
             and self._pixmap_item
             and not self._annotation_mode
+            and self._calibration_mode is None
         ):
             self.zoomFit()
             event.accept()

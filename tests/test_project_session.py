@@ -224,3 +224,146 @@ def test_new_write_clears_redo_stack(tmp_path: Path) -> None:
     session.mark_point(track.track_id, 1, 2.0, 2.0)  # 分支：旧 redo 作废
 
     assert not session.can_redo
+
+
+def test_add_calibration_creates_and_activates_calibration(tmp_path: Path) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+
+    cal = session.add_calibration(
+        video.video_id,
+        scale_end_1_px=(10.0, 20.0),
+        scale_end_2_px=(110.0, 20.0),
+        known_length=1.0,
+        unit="m",
+    )
+
+    assert cal.name == "Calibration 1"
+    assert cal.known_length == 1.0
+    assert cal.unit == "m"
+    assert session.calibrations == (cal,)
+    assert session.active_calibration(video.video_id) == cal
+    assert session.project.active_calibration_by_video == {video.video_id: cal.calibration_id}
+    assert session.is_dirty
+
+
+def test_add_calibration_auto_names_and_custom_name(tmp_path: Path) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+
+    cal1 = session.add_calibration(
+        video.video_id,
+        scale_end_1_px=(0.0, 0.0),
+        scale_end_2_px=(50.0, 0.0),
+        known_length=0.5,
+        unit="m",
+    )
+    cal2 = session.add_calibration(
+        video.video_id,
+        scale_end_1_px=(0.0, 0.0),
+        scale_end_2_px=(100.0, 0.0),
+        known_length=100.0,
+        unit="cm",
+        name="Ruler 1m",
+    )
+
+    assert cal1.name == "Calibration 1"
+    assert cal2.name == "Ruler 1m"
+    assert session.active_calibration(video.video_id) == cal2
+
+
+def test_add_calibration_invalid_params_raises(tmp_path: Path) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+
+    with pytest.raises(ProjectSessionError):
+        session.add_calibration(
+            video.video_id,
+            scale_end_1_px=(10.0, 10.0),
+            scale_end_2_px=(10.0, 10.0),  # 重合点
+            known_length=1.0,
+        )
+
+    with pytest.raises(ProjectSessionError):
+        session.add_calibration(
+            video.video_id,
+            scale_end_1_px=(0.0, 0.0),
+            scale_end_2_px=(10.0, 10.0),
+            known_length=-5.0,  # 负长度
+        )
+
+
+def test_remove_calibration_and_set_active(tmp_path: Path) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+
+    cal = session.add_calibration(
+        video.video_id,
+        scale_end_1_px=(0.0, 0.0),
+        scale_end_2_px=(100.0, 0.0),
+        known_length=1.0,
+        unit="m",
+    )
+    assert session.active_calibration(video.video_id) == cal
+
+    session.set_active_calibration(video.video_id, None)
+    assert session.active_calibration(video.video_id) is None
+
+    session.set_active_calibration(video.video_id, cal.calibration_id)
+    assert session.active_calibration(video.video_id) == cal
+
+    session.remove_calibration(cal.calibration_id)
+    assert session.calibrations == ()
+    assert session.active_calibration(video.video_id) is None
+
+
+def test_update_calibration_modifies_origin_and_rotation(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+
+    cal = session.add_calibration(
+        video.video_id,
+        scale_end_1_px=(0.0, 0.0),
+        scale_end_2_px=(100.0, 0.0),
+        known_length=1.0,
+        unit="m",
+    )
+
+    updated_cal = replace(cal, origin_px=(10.0, 40.0), rotation_deg=45.0)
+    session.update_calibration(updated_cal)
+
+    active = session.active_calibration(video.video_id)
+    assert active is not None
+    assert active.origin_px == (10.0, 40.0)
+    assert active.rotation_deg == 45.0
+
+
+def test_undo_redo_calibration_operations(tmp_path: Path) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+
+    cal = session.add_calibration(
+        video.video_id,
+        scale_end_1_px=(0.0, 0.0),
+        scale_end_2_px=(100.0, 0.0),
+        known_length=1.0,
+        unit="m",
+    )
+
+    assert session.undo()
+    assert session.calibrations == ()
+    assert session.active_calibration(video.video_id) is None
+
+    assert session.redo()
+    assert session.calibrations == (cal,)
+    assert session.active_calibration(video.video_id) == cal
+
+    session.remove_calibration(cal.calibration_id)
+    assert session.calibrations == ()
+
+    assert session.undo()
+    assert session.calibrations == (cal,)
+    assert session.active_calibration(video.video_id) == cal
+
