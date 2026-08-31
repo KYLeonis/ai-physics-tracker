@@ -4,9 +4,10 @@ from uuid import UUID
 from math import isclose
 
 import numpy as np
-from PySide6.QtCore import Qt, Signal, QSignalBlocker
+from PySide6.QtCore import QEvent, QObject, QPoint, Qt, Signal, QSignalBlocker
 from PySide6.QtGui import QPalette
-from PySide6.QtWidgets import (QComboBox, QDockWidget, QHBoxLayout, QLabel, QListWidget,
+from PySide6.QtWidgets import (
+    QApplication,QComboBox, QDockWidget, QHBoxLayout, QLabel, QListWidget,
                               QListWidgetItem, QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget)
 import pyqtgraph as pg
 
@@ -161,11 +162,12 @@ class ChartPanel(QDockWidget):
     frameRequested = Signal(int)
 
     def _make_help_label(self, text: str) -> QLabel:
-        """参数旁的 "?" 提示：hover 显示解释与调参效果。"""
+        """参数旁的 "?" 提示：hover 显示自绘气泡（QToolTip 在 macOS 渲染异常）。"""
 
         label = QLabel("?")
-        label.setToolTip(text)
-        label.setToolTipDuration(20000)
+        label.setProperty("helpText", text)
+        label.setMouseTracking(True)
+        label.installEventFilter(self)
         label.setStyleSheet(
             "color: #888; border: 1px solid #bbb; border-radius: 7px;"
             "min-width: 14px; max-width: 14px; min-height: 14px; max-height: 14px;"
@@ -173,8 +175,43 @@ class ChartPanel(QDockWidget):
         )
         return label
 
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        # 拦截原生 Tooltip 事件（平台渲染不可靠），Enter/Leave 控制自绘气泡
+        if event.type() == QEvent.Type.Enter and obj.property("helpText"):
+            self._showHelpBubble(obj)
+        elif event.type() == QEvent.Type.Leave:
+            self._hideHelpBubble()
+        elif event.type() == QEvent.Type.ToolTip:
+            return True  # 抑制原生 QToolTip，避免叠加显示
+        return super().eventFilter(obj, event)
+
+    def _showHelpBubble(self, label: QLabel) -> None:
+        if self._help_bubble is None:
+            bubble = QLabel(None, Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint)
+            bubble.setWordWrap(True)
+            bubble.setFixedWidth(380)
+            bubble.setStyleSheet(
+                "background: #ffffe8; color: #222; border: 1px solid #999;"
+                "border-radius: 4px; padding: 8px; font-size: 12px;"
+            )
+            self._help_bubble = bubble
+        self._help_bubble.setText(label.property("helpText"))
+        self._help_bubble.adjustSize()
+        top_left = label.mapToGlobal(QPoint(0, label.height() + 6))
+        screen = QApplication.primaryScreen().availableGeometry()
+        x = min(max(top_left.x(), screen.left() + 8), screen.right() - self._help_bubble.width() - 8)
+        y = min(top_left.y(), screen.bottom() - self._help_bubble.height() - 8)
+        self._help_bubble.move(x, y)
+        self._help_bubble.show()
+        self._help_bubble.raise_()
+
+    def _hideHelpBubble(self) -> None:
+        if self._help_bubble is not None:
+            self._help_bubble.hide()
+
     def __init__(self, parent: QWidget) -> None:
         super().__init__("Kinematics charts", parent)
+        self._help_bubble: QLabel | None = None
         self.setObjectName("kinematicsCharts")
         self.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.trackChoices = QListWidget()
