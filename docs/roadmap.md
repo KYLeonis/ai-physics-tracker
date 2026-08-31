@@ -4,7 +4,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近完成：**Subphase 3.3 — Interactive Charts（✅ 2026-08-31）**
-- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.4 Integration & Phase Close，计划待确认）**
+- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.4，本地 310 tests 通过，待整体 Human Review/Windows/CI）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---

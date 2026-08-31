@@ -130,6 +130,12 @@ Measured/Smoothed position 只切换位置图，速度/加速度沿用记录的 
 青色线是已呈现帧，橙色 seek 线是请求目标；点击图表导航会解除视频标注模式，
 需要继续标注时重新点击视频侧 Track。详见 `docs/status/phase-3.3-plan.md` 的验收步骤。
 
+3.4 标定管理：`Edit scale…` 编辑当前比例尺长度/单位/名称，保留 ID 与端点，
+生效后派生结果标记 stale，需重算；取消或无改动不产生新历史。
+`Delete inactive…` 仅列出非生效标定，删除不切换当前计算基准，保存前可 Undo。
+`Save PNG…` 保存当前图表快照，不含面板外参数/近似时序说明；完整实验依据应连同项目保存
+（ADR-0010）。本轮没有升级依赖或修改插件全局设置。
+
 ### Phase 2.4 FFprobe 工具
 
 应用保留 OpenCV 解码；额外使用 FFprobe 完整时间索引验证 CFR。适用的 MP4/MOV
