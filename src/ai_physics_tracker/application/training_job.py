@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 import logging
+import hashlib
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -85,6 +86,9 @@ class TrainingCoordinator:
         if track is None:
             raise ProjectSessionError(f"Unknown track_id: {track_id}")
 
+        if any(r.track_id == track_id and r.status == "running" for r in session.tracking_runs()):
+            raise ProjectSessionError("This track already has an active engine task")
+
         manual_points = tuple(
             p
             for p in session.manual_points(track_id)
@@ -160,6 +164,13 @@ class TrainingCoordinator:
             engine_version=actual_adapter.engine_version(),
             config=actual_params.to_config(),
         )
+        if session.project_root is not None:
+            try:
+                relative_config = config_path.resolve().relative_to(session.project_root.resolve()).as_posix()
+            except ValueError:
+                relative_config = None
+            if relative_config is not None:
+                run = replace(run, extra_fields={"config_path": relative_config})
         session.record_tracking_run(run)
 
         # 记录配置路径与适配器类型供后续启动使用
@@ -183,7 +194,13 @@ class TrainingCoordinator:
         if run.status != "pending":
             raise ProjectSessionError(f"Cannot start training run in '{run.status}' status")
 
-        cfg_path = config_path or self._config_paths.get(run_id)
+        if any(r.run_id != run_id and r.track_id == run.track_id and r.status == "running"
+               for r in session.tracking_runs()):
+            raise ProjectSessionError("This track already has an active engine task")
+        stored_config = run.extra_fields.get("config_path")
+        saved_path = (session.project_root / stored_config
+                      if session.project_root and isinstance(stored_config, str) else None)
+        cfg_path = config_path or self._config_paths.get(run_id) or saved_path
         if cfg_path is None or not cfg_path.is_file():
             raise ProjectSessionError(f"DLC config.yaml not found for run: {run_id}")
 
@@ -216,6 +233,10 @@ class TrainingCoordinator:
             return []
 
         messages = handle.poll_messages()
+        if not handle.is_alive():
+            handle.join(timeout_s=0)
+            # 退出后再排空队列，避免首次轮询与最后一条消息到达竞态。
+            messages.extend(handle.poll_messages())
         has_result = False
         for msg in messages:
             if isinstance(msg, TaskResult):
@@ -226,7 +247,21 @@ class TrainingCoordinator:
                     status_str = payload.get("status")
                     if msg.success and status_str == "completed":
                         snapshot = str(payload.get("snapshot_path") or "") or None
-                        completed_run = mark_run_completed(run, model_snapshot=snapshot)
+                        if snapshot is None or not Path(snapshot).is_file():
+                            session.update_tracking_run(mark_run_failed(run, "Training returned no existing model snapshot"))
+                            continue
+                        snapshot_path = Path(snapshot).resolve()
+                        with snapshot_path.open("rb") as model_file:
+                            digest = hashlib.file_digest(model_file, "sha256").hexdigest()
+                        if session.project_root is not None:
+                            try:
+                                snapshot = snapshot_path.relative_to(session.project_root.resolve()).as_posix()
+                            except ValueError:
+                                # 兼容显式外部 working_dir；不猜测或迁移外部权重。
+                                snapshot = str(snapshot_path)
+                        completed_run = replace(mark_run_completed(run, model_snapshot=snapshot),
+                            engine_version=str(payload.get("engine_version") or run.engine_version),
+                            extra_fields={**run.extra_fields, "model_sha256": digest})
                         session.update_tracking_run(completed_run)
                     elif status_str == "cancelled" or (not msg.success and "cancelled" in str(msg.error).lower()):
                         cancelled_run = mark_run_cancelled(run)

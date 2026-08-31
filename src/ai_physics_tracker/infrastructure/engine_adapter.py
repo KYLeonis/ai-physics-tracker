@@ -1,6 +1,7 @@
 """AI 跟踪引擎适配器的抽象协议定义与训练参数对象。"""
 
 from dataclasses import dataclass, field
+from math import isfinite
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 from uuid import UUID
@@ -91,6 +92,66 @@ class TrainOutcome:
     error_message: str | None = None
 
 
+@dataclass(frozen=True)
+class InferenceParams:
+    """推理设置；阈值由调用方显式选择，不把实验默认值写死。"""
+
+    min_confidence: float
+    device: str = "auto"
+    batch_size: int = 8
+
+    def __post_init__(self) -> None:
+        if (isinstance(self.min_confidence, bool)
+                or not isinstance(self.min_confidence, (int, float))
+                or not isfinite(self.min_confidence)
+                or not 0 <= self.min_confidence <= 1):
+            raise ValueError("min_confidence must be finite and in [0, 1]")
+        if type(self.batch_size) is not int or self.batch_size <= 0:
+            raise ValueError("batch_size must be a positive integer")
+        if not isinstance(self.device, str) or self.device not in {"auto", "cpu", "mps", "cuda"}:
+            raise ValueError("device must be auto, cpu, mps or cuda")
+
+
+@dataclass(frozen=True)
+class InferenceRequest:
+    """子进程独占的单视频推理请求，不包含活动会话。"""
+
+    config_path: Path
+    video_path: Path
+    model_snapshot: Path
+    output_dir: Path
+    track_id: UUID
+    timeline: Timeline
+    source_detail: str
+    frame_count: int
+    params: InferenceParams
+    shuffle: int = 1
+    trainingsetindex: int = 0
+    model_sha256: str | None = None
+
+    def __post_init__(self) -> None:
+        if type(self.frame_count) is not int or self.frame_count <= 0:
+            raise ValueError("frame_count must be a positive integer")
+        if any(type(n) is not int or n < 0 for n in (self.shuffle, self.trainingsetindex)):
+            raise ValueError("shuffle and trainingsetindex must be non-negative integers")
+        if not self.source_detail.strip():
+            raise ValueError("source_detail must not be blank")
+
+
+@dataclass(frozen=True)
+class InferenceOutcome:
+    """成功推理的已校验观测与原始文件；失败通过异常返回。"""
+
+    points: tuple[TrackPoint, ...]
+    prediction_path: Path
+    row_count: int
+    missing_count: int
+    low_confidence_count: int
+    model_snapshot: Path
+    engine_version: str
+    device: str
+
+
 @runtime_checkable
 class EngineAdapter(Protocol):
     """AI 跟踪引擎适配器的抽象契约协议。"""
@@ -148,6 +209,12 @@ class EngineAdapter(Protocol):
         min_confidence: float = 0.0,
     ) -> tuple[TrackPoint, ...]:
         """将引擎预测产出的数据解析并转换为不可变 TrackPoint 元组。"""
+        ...
+
+    def infer(
+        self, run_id: UUID, queue: Any, cancel_event: Any, request: InferenceRequest,
+    ) -> InferenceOutcome:
+        """执行全帧推理并解析结果；不写活动项目，异常/取消不返回部分结果。"""
         ...
 
     def engine_version(self) -> str:

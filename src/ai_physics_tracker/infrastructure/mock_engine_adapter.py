@@ -1,16 +1,17 @@
 """用于测试与 CI 环境的 Mock 引擎适配器实现。"""
 
-from math import isfinite
+from concurrent.futures import CancelledError
+import csv
 from pathlib import Path
 import time
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
-from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
+from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import TrackPoint
-from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.infrastructure.engine_adapter import (
-    EngineAdapter,
+    InferenceRequest,
+    InferenceOutcome,
     TrainingParams,
     TrainOutcome,
 )
@@ -147,43 +148,48 @@ class MockEngineAdapter:
         )
 
     def import_results(
-        self,
-        prediction_data: Any,
-        track_id: UUID,
-        timeline: Timeline,
-        source_detail: str,
-        bodypart: str = "target",
-        min_confidence: float = 0.0,
+        self, prediction_data: Any, track_id: UUID, timeline: Timeline,
+        source_detail: str, bodypart: str = "target", min_confidence: float = 0.0,
     ) -> tuple[TrackPoint, ...]:
-        """将 mock 字典序列解析为 TrackPoint 元组。"""
-
-        points: list[TrackPoint] = []
-        now = utc_now()
+        """测试记录允许省略分数；实际格式解析复用生产边界。"""
+        from ai_physics_tracker.infrastructure.dlc_predictions import parse_predictions
 
         if isinstance(prediction_data, (list, tuple)):
-            for item in prediction_data:
-                if isinstance(item, dict):
-                    f_idx = item.get("frame_index") if "frame_index" in item else item.get("frame", 0)
-                    x_val = item.get("x") if "x" in item else item.get("pixel_x", 0.0)
-                    y_val = item.get("y") if "y" in item else item.get("pixel_y", 0.0)
-                    conf = float(item.get("confidence", self.default_confidence))
-                    if conf >= min_confidence and isfinite(x_val) and isfinite(y_val):
-                        points.append(
-                            TrackPoint(
-                                point_id=uuid4(),
-                                track_id=track_id,
-                                frame_index=int(f_idx),
-                                time_s=frame_to_time(int(f_idx), timeline),
-                                pixel_x=float(x_val),
-                                pixel_y=float(y_val),
-                                source="dlc",
-                                source_detail=source_detail,
-                                confidence=conf,
-                                visibility="visible",
-                                status="active",
-                                created_at=now,
-                                modified_at=now,
-                            )
-                        )
+            prediction_data = [dict(item, confidence=item.get("confidence", self.default_confidence))
+                               if "likelihood" not in item else item for item in prediction_data]
+        return parse_predictions(prediction_data, track_id, timeline, source_detail,
+                                 bodypart, min_confidence).points
 
-        return tuple(points)
+    def infer(
+        self, run_id: UUID, queue: Any, cancel_event: Any, request: InferenceRequest,
+    ) -> InferenceOutcome:
+        """生成与真实 DLC 相同的三层 CSV；CI 无需 pandas/DLC。"""
+        from ai_physics_tracker.infrastructure.dlc_predictions import parse_predictions
+
+        if cancel_event.is_set():
+            raise CancelledError("Inference cancelled")
+        if not request.model_snapshot.is_file():
+            raise ValueError("Model snapshot is missing")
+        request.output_dir.mkdir(parents=True, exist_ok=False)
+        path = request.output_dir / "prediction.csv"
+        send_log(queue, run_id, "INFO", "Mock inference started")
+        send_progress(queue, run_id, 0, request.frame_count)
+        with path.open("w", encoding="utf-8", newline="") as output:
+            writer = csv.writer(output)
+            writer.writerows([
+                ["scorer", "MockDLC", "MockDLC", "MockDLC"],
+                ["bodyparts", "target", "target", "target"],
+                ["coords", "x", "y", "likelihood"],
+            ])
+            for frame_index in range(request.frame_count):
+                if cancel_event.is_set():
+                    raise CancelledError("Inference cancelled")
+                writer.writerow([frame_index, 10 + frame_index, 20 + 2 * frame_index,
+                                 self.default_confidence])
+                send_progress(queue, run_id, frame_index + 1, request.frame_count)
+        parsed = parse_predictions(path, request.track_id, request.timeline, request.source_detail,
+                                   min_confidence=request.params.min_confidence,
+                                   frame_count=request.frame_count)
+        return InferenceOutcome(parsed.points, path, parsed.row_count, parsed.missing_count,
+                                parsed.low_confidence_count, request.model_snapshot,
+                                self.engine_version(), "cpu")
