@@ -81,23 +81,15 @@ AI 训练 / 微调
 
 ```text
 Current Phase:   Phase 4 — Deep Learning Tracking 🔄
-Last Completed:  Subphase 3.3 — Interactive Charts ✅（2026-08-31）
-Current Subphase: 3.4 — Integration & Phase Close（本地验证完成，待整体 Human Review/Windows/CI）
+Last Completed:  Phase 3 — Calibration & Physics Engine ✅（2026-08-31）
+Current Subphase: 4.0 — Research & ADR
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
 
-Phase 2.1–2.4 已形成桌面视频浏览、异步播放、缩放/平移、手工标注（含 Undo/Redo）、项目保存/恢复/重连与 CFR/Near-CFR 时序验证门禁，macOS 全流程 Human Review 通过；Windows 真机验收延后执行（用户决定），不影响 Phase 3 启动。
+Phase 2.1–2.4 已形成桌面视频浏览、异步播放、缩放/平移、手工标注（含 Undo/Redo）、项目保存/恢复/重连与 CFR/Near-CFR 时序验证门禁，macOS 全流程 Human Review 通过；Windows 真机验收延后执行（用户决定），不影响后续阶段。
 
-2.4 本地增量采用首帧预览 + 后台时序验证；近似恒定帧率须明确接受所显示误差才能标记，
-不会静默当作 CFR。策略和限制见 [ADR-0007](docs/decisions/0007-responsive-preview-and-explicit-timing-approximation.md)。
-
-3.3 已加入底部五类运动学图表、多轨迹叠加、双向帧定位，以及 SG 参数与后台重算。
-先在图表面板勾选轨迹，再点击 **Recompute checked tracks**；标定/标记修改后旧图提示
-stale，需重算。后续 HR 加入多选轨迹视频同屏、? 帮助气泡和当前图表 Save PNG。
-3.3 已经 303 项测试、五轮 Human Review 与双平台 CI 验证并合并。3.4 本地补齐集成回归，
-新增 Edit scale / Delete inactive 标定入口，310 项测试通过；整体 Human Review 和本轮
-双平台 CI/Windows 真机尚待完成，见 [phase-3.4-plan.md](docs/status/phase-3.4-plan.md)。
+Phase 3.0–3.4 已完成全部标定、运动学引擎、交互式图表与集成验收，310 项测试 + 双平台 CI 全绿 + 整体 Human Review 通过。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
@@ -108,8 +100,8 @@ stale，需重算。后续 HR 加入多选轨迹视频同屏、? 帮助气泡和
 | Phase 0 | Project Initialization | ✅ 已完成（2026-08-27） |
 | Phase 1 | Project & Data Foundation | ✅ 已完成（2026-08-29） |
 | Phase 2 | Video Analysis MVP | ✅ 已完成（2026-08-30，Windows 真机验收延后） |
-| Phase 3 | Calibration & Physics Engine | 🔄 进行中 |
-| Phase 4 | Deep Learning Tracking | ⬜ |
+| Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
+| Phase 4 | Deep Learning Tracking | 🔄 进行中 |
 | Phase 5 | AI-assisted Annotation & Refinement | ⬜ |
 | Phase 6 | Advanced Physics Analysis | ⬜ |
 | Phase 7 | Model Library | ⬜ |

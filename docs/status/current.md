@@ -3,87 +3,50 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-31（Phase 3.4 整体 Human Review 通过，Phase 3 完成；Windows 真机延后待补）
+- 最后更新：2026-08-31（Phase 4.0 Research & ADR 完成）
 
 ---
 
 ## Current Phase
 
-**Phase 3 — Calibration & Physics Engine** 🔄 进行中
+**Phase 4 — Deep Learning Tracking** 🔄 进行中
 
 ## Current Subphase
 
-**3.4 — Integration & Phase Close** ✅ 已完成（整体 Human Review 5 步通过；[Issue #10](https://github.com/KYLeonis/ai-physics-tracker/issues/10) 已关闭；merge `61c8df0` → main，CI 双平台全绿 run `33366630932`）。Windows 真机验收为延后项，待补。
+**4.0 — Research & ADR** ✅ 已完成
 
-上一 Subphase **3.3 — Interactive Charts** ✅ 已完成；Human Review 5 轮通过，
-[Issue #9](https://github.com/KYLeonis/ai-physics-tracker/issues/9) 已关闭，merge `51c1cce`。
-已只读核实该提交的 [CI run 33353856199](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33353856199)
-macOS/Windows Python 3.11 jobs 均成功。当前规划基线 `main` / `162017e`。
-
-更早的 Subphase **3.2 — Kinematics Engine**（[Issue #8](https://github.com/KYLeonis/ai-physics-tracker/issues/8)）
-已完成，并由 `3d3ad90` 合并至 `main`，不重复执行其收尾。
+下一 Subphase 为 **4.1 — Engine Adapter & Task Framework**：实现 DLCAdapter、TaskRunner 后台任务框架和 TrackingRun 领域模型。
 
 ## Current Slice
 
-Slice 1–3 全部完成：编辑比例尺/单位（Edit scale）、删除未生效标定（Delete inactive）、PNG 取消与双轨迹 overlay 补测；310 tests + 整体 Human Review 通过。
+N/A（等待进入 4.1）。
 
 ## Current Goal
 
-核验标定→标注→重算→图表/PNG→保存重开的同项目闭环，补全 Phase 3 验收证据。
-现有 PNG 快照属于 3.3 HR 已批准增量；CSV/Excel/科学图表导出仍属 Phase 8。
-Phase 3 最终收尾后停止，不自动进入 Phase 4。
+在软件内接入 DeepLabCut 3.x（PyTorch 引擎），实现从手工标注到 AI 自动跟踪的完整闭环。
 
 ## Recently Completed
 
-- **Phase 3.4 — Integration & Phase Close**（✅ 2026-08-31）：编辑比例尺/单位（Edit scale）、删除未生效标定（Delete inactive）、PNG 取消断言修正、双轨迹同屏 overlay 补测；补 ADR-0010；310 tests + 整体 Human Review 5 步通过 + 双平台 CI 全绿；merge `61c8df0`，Issue #10 关闭。
-- **Phase 3.3 — Interactive Charts**（✅ 2026-08-31）：五标签图表、多 Track 叠加、物理/像素单位、缺测断线、双向帧同步、SG 参数与后台重算、多选轨迹同屏、？帮助气泡、PNG 导出；303 tests，merge `51c1cce`。
-
-- **Phase 3.4 规划盘点**（2026-08-31）：已有版本本地复跑 **303 passed**、依赖检查通过；
-  Luna-max 只读映射 AC 与测试缺口，形成三个优先集成场景。未进行 3.4 功能修改/真人验收。
-
-- **Phase 3.3 完成**（2026-08-31）：五标签页 QDockWidget、多 Track 叠加、物理/像素
-  单位、缺测断线、呈现帧/目标帧双游标和 x-y 点选；SG 参数与后台批次重算、一次 Undo、
-  保存/切换/取消隔离；首次标定 stale 与旧缓存标定引用守卫；请求编号贯穿解码成功/失败，
-  修复旧结果覆盖新请求；HR 新增多选轨迹视频同屏、? 帮助气泡与当前图表 PNG。
-  初次交付 297 tests → 收尾 **303 tests**，5 轮 HR 及双平台 CI 通过，merge `51c1cce`。
-
-- **Phase 3.3 规划盘点**（2026-08-30）：读取 Phase 3 spec/ADR-0008 与图表参考；
-  Luna-max 只读核对应用/GUI 接口；形成 mini-plan。规划时工作区干净，已有回归
-  **260 passed**（本机 Python 3.12.13），`pip check` 通过；不是 3.3 功能验收。
-
-- **Phase 3.2 — Kinematics Engine**（✅ 2026-08-30）：
-  - 纯领域层 `kinematics.py`：实现密集网格展开、按 NaN 切分、Savitzky-Golay 平滑与数值微分，完全隔离 UI。
-  - 应用层 `ProjectSession.compute_kinematics`：完整生成 4 条 `DerivedData` 记录并入库，记录 pipeline 参数。
-  - 测试：使用解析单摆、匀速、匀加速数据完成了所有 260 项测试。
-- **Phase 3.1 — Calibration UI**（✅ 2026-08-30）：交互式比例尺与标定 UI 工具。
-- **Phase 3.0 — Spec & Requirements**（✅ 2026-08-30）：编写 Phase 3 需求规范及 ADR-0008。
-- **Phase 2 — Video Analysis MVP**（✅ 2026-08-30）：完整的视频分析与人工追踪功能。
+- **Phase 4.0 — Research & ADR**（✅ 2026-08-31）：
+  - ADR-0011：DeepLabCut 集成架构（适配器隔离、后台子进程框架、标注导出/推理导入、设备三态、依赖管理、License 合规分析）
+  - `docs/spec/phase4-requirements.md`：6 项功能需求、6 条验收标准、5 个 Subphase 划分
+  - Phase 3 文档收尾同步（roadmap/AGENTS/README 状态标记统一更正为已完成）
+- **Phase 3 — Calibration & Physics Engine**（✅ 2026-08-31）：全部 3.0–3.4 完成，310 tests + 双平台 CI + 整体 Human Review 通过。
+- **Phase 2 — Video Analysis MVP**（✅ 2026-08-30）。
+- **Phase 1 — Project & Data Foundation**（✅ 2026-08-29）。
 
 ## Current Decisions / Blockers
 
 **已定决策**
 
-- 运动学平滑与微分：Savitzky-Golay（ADR-0008），在 3.2 阶段已完整落实。
-- **重算触发**：3.3 已提供 Recompute checked tracks，按 ADR-0009 在后台计算并原子提交；
-  默认 SG window=7 / polyorder=2，不在播放帧回调中重算。
+- DeepLabCut 集成架构（ADR-0011）：适配器隔离 + 后台子进程 + 单 bodypart 先行
+- License：MIT 兼容（DLC LGPL-3.0 动态链接合规），中国软著不受影响
+- DLC 作为必需依赖（非可选），Phase 9 安装程序可提供轻量选项
+- 单 bodypart 先行，多关键点留后续扩展
+- 从零训练基础流程先行，预训练模型留 Phase 7
 
-**已继承的方案与 3.4 待办**
-
-- PyQtGraph 0.13.7（spec 范围 >=0.13,<0.14）；项目依赖已安装并完成 Qt/NumPy smoke test。
-- 首次设置标定后既有 px 派生数据未置 stale 的缺口已修复。兼容已有
-  `world_position(px)` 命名，界面按实际单位/标定引用显示，不迁移原始数据。
-- 时序权限、后台批次提交和 GUI 已呈现帧通知已补齐；绘图层不重做数值引擎。
-- 本地 `.venv` 使用锁定 SciPy **1.17.1** / PyQtGraph **0.13.7**；当前 **310 tests** 通过。
-  3.3 远端双平台 CI 已核实；未来 3.4 交付仍需绑定其自身验证版本，不能借用旧 run。
-- ADR-0010 已补记 3.3 PNG 例外，只更新 ADR-0009 的状态，不改其 Accepted 正文；
-  PNG 不含面板外参数/时序说明，不等同科学导出。
-- PNG 取消/失败、双轨迹均有点 overlay 与带数据当前 tab PNG 已补测；R1 编辑比例尺、
-  R3 删除非生效标定的 UI 缺口已获用户追加批准并实现，需本轮 HR 验证。
-- Phase 2 Windows 真机延期仍保留；`development.md` 的 Phase 收尾要求也仍有效。
-  3.4 可先做本地/自动化验收，但若要继续延期并关闭 Phase 3，需要用户明确确认例外。
+**延后项**：Windows 真机验收。
 
 ## Next Recommended Action
 
-Phase 3 全部完成（3.0 spec → 3.1 Calibration UI → 3.2 Kinematics Engine → 3.3 Interactive Charts → 3.4 Integration & Phase Close；merge `61c8df0`）。
-下一步 **Phase 4 — Deep Learning Tracking**（接入 DeepLabCut/PyTorch：标注→训练→跟踪），等待用户启动指令。
-Phase 3 收尾前可择机补做 Windows 真机验收（延后项）。
+进入 **Subphase 4.1 — Engine Adapter & Task Framework**：创建工作分支，实现 DLCAdapter（infrastructure 层）、TaskRunner（后台子进程框架）和 TrackingRun 领域模型，编写单元测试（使用 mock adapter）。参照 ADR-0011 和 `phase4-requirements.md` R1。

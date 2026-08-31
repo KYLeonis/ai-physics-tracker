@@ -75,7 +75,7 @@
 
 ---
 
-## Phase 3 — Calibration & Physics Engine 🔄
+## Phase 3 — Calibration & Physics Engine ✅
 
 **目标**：具备物理实验分析能力：标定、坐标系、运动学计算与基础图表。
 
@@ -89,10 +89,9 @@
 **验收标准**
 - [x] 标定后坐标转换误差满足设计精度（合成数据测试）
 - [x] 用匀速/匀加速合成数据验证 v/a 计算正确
-- [ ] 图表与视频帧同步联动
+- [x] 图表与视频帧同步联动
 
-> 3.3 已完成 303 项回归、五轮 Human Review 与双平台 CI；Phase 3 整体证据核对及最终勾选
-> 放在 [3.4 集成验收](status/phase-3.4-plan.md)，本次规划不提前标记 Phase 完成。
+> 全部验收标准在 3.4 整体 Human Review 中确认通过（2026-08-31）。310 tests + 双平台 CI 全绿。
 
 **主要技术风险**
 - ~~数值微分的噪声放大：平滑与微分的顺序、参数选择需提供可调方案并记录 ADR。~~ 已解决：[ADR-0008](decisions/0008-numerical-differentiation-and-smoothing.md)——Savitzky-Golay 先平滑后微分，默认 window=7 / polyorder=2。
