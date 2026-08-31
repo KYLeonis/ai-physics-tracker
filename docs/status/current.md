@@ -68,6 +68,7 @@
 
 ## Next Recommended Action
 
-等待用户按 [3.3 计划中的 Human Review](phase-3.3-plan.md) 亲测并逐项反馈，暂不继续开发。
-未通过则按反馈修复并重验；通过后申请 push 授权、运行双平台 CI，再合并/关闭 Issue #9，
-进入 3.4。push、CI 配置修改仍需单独授权，本轮未推送或修改 CI。
+Phase 3.3 已收尾（merge `51c1cce`，Issue #9 关闭，CI 双平台全绿，303 tests，Human Review 5 轮通过）。
+下一步 **Phase 3.4 — 整体集成验收**（3.1 标定数据层 + 3.2 运动学引擎 + 3.3 图表的端到端联动验收，
+按 3.3 计划约定不做 Phase 3 最终收尾前的独立验收，不直接开始 Phase 4）：真实视频走标定 → 标注 →
+Recompute → 五图联动 → 保存重开的完整闭环；期间可补做 Windows 真机验收（延后的 2 项）。等待用户启动指令。
