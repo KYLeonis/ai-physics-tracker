@@ -121,8 +121,8 @@
   `InferenceRunner._extract_results`，以已后处理的预测数计数；同时在 DLC 实际解析模型时
   校验所选路径，避免 snapshot index 因目录变化而指向其他权重。结束时恢复原方法。
   升级 DLC 后必须重跑真实冒烟；不修改安装包源码，不以读帧或耗时模拟进度。
-- 当前真实验证仅 macOS CPU；MPS/CUDA 与 Windows 真机仍需另外验收。新提交的双平台 CI
-  需在获准 push 后检查，不能沿用旧 main 的绿色结果。
+- 当前真实 DLC 验证仅 macOS CPU；MPS/CUDA 与 Windows 真机仍需另外验收。4.3 集成提交
+  `e58b28d` 的 [macOS/Windows Python 3.11 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33380207408) 均通过；CI 使用 mock，不等同 Windows CUDA 验收。
 - **4.4 接线前的性能关卡**：当前 Qt-free coordinator 在 prepare/start/提交校验中会同步
   扫描视频 SHA-256。大视频会让调用方等待；GUI 接入时必须将这些校验放入后台准备/提交
   阶段，主线程仅做最终输入版本检查和原子提交，不能直接把当前完整调用挂在点击/QTimer 上。

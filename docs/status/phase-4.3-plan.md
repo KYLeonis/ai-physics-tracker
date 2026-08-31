@@ -2,7 +2,7 @@
 
 - Issue：[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14)
 - 分支：`feat/p4.3-inference-pipeline`
-- 日期 / 状态：2026-08-31 · 本地验收与独立复审通过；待 push 授权及远端 CI
+- 日期 / 状态：2026-08-31 · 已完成；本地验收、独立复审与双平台 CI 均通过
 - 基线：`main` / `7ecb4ea`，与实时查询的远程 main 一致；进入会话时工作区干净。
 
 ## Goal
@@ -98,7 +98,7 @@
 - [x] P43-5：成功导入按单次操作 Undo/Redo，影响目标派生 stale；全冲突/全过滤不改旧派生；save→load 保留 confidence、run 关联及相对输出引用。
 - [x] P43-6：混合 manual/AI 的已知解析轨迹重算正确，训练仍只导出 manual；AI 导入使进行中的旧运动学批次失效，纯手工回归不变。
 - [x] P43-7：本机真实 CPU 冒烟验证“已有/1 epoch 训练 snapshot → 推理 → 导入 → 保存重开”，明确这只证明管线可用，不代表单摆跟踪精度合格。
-- [ ] P43-8：全回归及独立 review 通过；文档同步完成。Windows CUDA 延后不伪称已验证；推送后的双平台 CI 以实际结果记录。
+- [x] P43-8：全回归及独立 review 通过；文档同步完成。Windows CUDA 延后不伪称已验证；推送后的双平台 CI 以实际结果记录。
 
 ## Slices
 
@@ -124,7 +124,7 @@
 
 ## Approval and Next Action
 
-用户已确认范围并授权实施；4.3 Issue 与工作分支已创建。实现沿用已接受架构，没有引入依赖或数据格式迁移。`git push`、删除及其他红线动作仍单独遵守用户授权，不将计划确认解释成这些动作的授权。
+用户已确认实施范围并单独批准推送。4.3 已本地集成、推送且双平台 CI 通过，Issue #14 已关闭。未修改依赖或数据格式，未执行删除或强推；4.4 留待后续指令。
 
 ## Result
 
@@ -136,10 +136,12 @@
 - 真实验证暴露并修复：macOS `/var` 与 `/private/var` 等价 locator 比较；DLC compat 自带 `overwrite=False`，重复传参导致失败。没有绕过错误或降低验收要求。
 - 实现细化：将纯格式解析放入 `dlc_predictions.py`，现有 `DLCAdapter.import_results` 复用它；临时桥接 DLC `_extract_results` 统计真正完成的预测帧，退出恢复。协议不依赖 pandas，CI CSV 路径使用标准库。
 - 人工验收：未新增 GUI 交互，按 Qt-free 标准验证；4.4 的 GUI Human Review 未开始。
-- 独立 review：复审通过，原 4 个 finding 关闭；P43-8 保持未勾选，仅待 push 授权及推送后实际 CI。
+- 独立 review：复审通过，原 4 个 finding 关闭；P43-8 已完成，集成提交的双平台 CI 均通过。
 - 首轮独立 review 提出 2 个 P1（无模型 hash 仍推理、未核对登记视频 hash）及 2 个 P2（模型索引竞态、外部旧式路径兼容），均已补实现及回归测试，独立复审确认关闭；另修复注入 adapter 构造参数在 spawn 时丢失的问题。
 - 修复后真实 CPU 重复推理再次通过（0 插入 / 10 跳过），41 项针对性测试通过；最终全回归405 passed、精简依赖74 passed / 1 skipped。独立复审通过，未发现新的直接问题。
 - 复审建议：legacy 归档路径现只在文件成功生成并验证后写入 completed run，失败/取消无虚构引用；config 同样加入内容 hash 校验。同步视频 hash 扫描可能让调用线程等待，此性能项明确交给 4.4 后台准备/提交接线；当前没有 GUI 推理入口，不宣称大视频 GUI 响应已验收。
-- 下一步：请求 push 授权，核对推送后新提交的双平台 CI，再关闭 Issue #14；不提前开始 4.4。
+- 下一步：等待用户指令后准备 4.4 mini-plan，优先解决后台 hash 校验与 GUI 提交边界；不提前实现 4.4。
 
-- 本地完成日期：2026-08-31。功能提交：`dcc296e`（DLC/模型交接）、`e6c00fc`（会话/运动学）、`aa93adb`（后台编排/冒烟）；审查修复：`2b6454b`。未推送，不沿用 4.2 CI 作为本次远端验证。
+- 本地完成日期：2026-08-31。功能提交：`dcc296e`（DLC/模型交接）、`e6c00fc`（会话/运动学）、`aa93adb`（后台编排/冒烟）；审查修复：`2b6454b`。合并提交 `e58b28d` 已推送；[CI run 33380207408](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33380207408) 的 macOS/Windows Python 3.11 均成功。Issue #14 已关闭；这里记录的是 4.3 集成提交的实际结果，没有沿用旧基线 CI。
+
+- 远端测试明细：macOS Python 3.11 为 **404 passed, 1 skipped（33.64s）**；Windows Python 3.11 为 **404 passed, 1 skipped（36.22s）**。唯一跳过项是 CI 未安装 pandas 的 HDF5 实读测试，本地完整依赖已验证该项。

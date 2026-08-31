@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:   Phase 4 — Deep Learning Tracking 🔄
-Last Completed:  Subphase 4.2 — Training Pipeline ✅（2026-08-31）
-Current Subphase: 4.3 — Inference Pipeline & Track Integration 本地验收完成，待推送及 CI
+Last Completed:  Subphase 4.3 — Inference Pipeline & Track Integration ✅（2026-08-31）
+Next Subphase:   4.4 — GUI & Integration（待规划，尚未开始）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -91,7 +91,7 @@ Phase 2.1–2.4 已形成桌面视频浏览、异步播放、缩放/平移、手
 
 Phase 3.0–3.4 已完成全部标定、运动学引擎、交互式图表与集成验收，310 项测试 + 双平台 CI 全绿 + 整体 Human Review 通过。
 
-Phase 4.3 已实现后台推理、严格预测解析、置信度过滤、人工/AI 生效观测融合与运动学输入接通。
+Phase 4.3 已完成后台推理、严格预测解析、置信度过滤、人工/AI 生效观测融合与运动学输入接通；405 项本地测试、独立复审及集成提交的 macOS/Windows CI 均通过。
 本地真实 CPU 闭环可运行 `.venv/bin/python scripts/smoke_test_dlc_infer.py`：生成合成视频，
 训练 1 epoch，推理并保存重开，产物保留供检查。GUI 推理按钮、任务面板与视觉样式留给 4.4；
 该冒烟只验证管线，不代表模型精度通过。详情见 [4.3 计划与验收](docs/status/phase-4.3-plan.md)。
