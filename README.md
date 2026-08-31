@@ -80,7 +80,7 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:   Phase 3 — Calibration & Physics Engine 🔄
+Current Phase:   Phase 4 — Deep Learning Tracking 🔄
 Last Completed:  Subphase 3.3 — Interactive Charts ✅（2026-08-31）
 Current Subphase: 3.4 — Integration & Phase Close（本地验证完成，待整体 Human Review/Windows/CI）
 ```
