@@ -40,6 +40,8 @@
 
 - `TrackStore.add_engine_points()` 和 `resolve_effective_point()` 已实现首写优先和人工优先，融合语义不需要重新设计。
 - `EngineAdapter` 已有 `import_results()`，但尚无推理执行契约；现有解析器会把缺失/非有限 likelihood 当作 1.0、把越界 confidence 截断，且 CSV 路径虽写在 docstring 中却没有读取分支。4.3 应修复这些信任边界问题，不能直接作为真实预测导入入口。
+- `dlc_infer_worker()` 当前仅发送模拟进度，不执行模型推理、不产出预测。
+- **训练交接前置缺口**：真实训练 worker 只查 `dlc-models`，而本机 DLC PyTorch 使用 `dlc-models-pytorch`；找不到快照时仍拼出一个未经存在性验证的路径并报 completed。`config_path` 也仅存于 TrainingCoordinator 内存，没有写入训练 run。341 项测试通过不代表这些真实模型交接条件已满足。Slice 1 需做定向修复和回归，不扩展为 4.2 全面重做；不自动更改历史 run。
 - `ProjectSession` 已能记录并保存 `TrackingRun`，但缺少引擎点批次提交入口。
 - `ProjectSession.compute_kinematics()`、`kinematics_job.analysis_inputs()` 当前只使用 `manual_points()`；只导入而不改两处读取路径会遗漏 AI 数据，也会漏判后台计算输入变化。
 - GUI overlay 当前也只读取 manual 点；此处明确交给 4.4，不在 4.3 提前改视觉行为。
@@ -51,6 +53,7 @@
 - 在既有协议文件补充最小的推理参数/结果值对象及 `infer` 方法，新增 `application/inference_job.py` 做编排；不增加通用任务管理框架。
 - 启动时要求项目已保存、视频可访问且具有当前会话的时序授权、训练 run 已完成、Track/Video 对应、config 和 snapshot 存在。
 - 明确指定并核实本次使用的 snapshot，继承训练 run 的 shuffle/trainingsetindex；不得无提示改用目录中的最新模型。记录实际设备、引擎版本、训练 run、模型与参数快照。
+- 先修复训练到推理的必要交接：依据当前 shuffle/训练集定位真正产出的模型，找不到模型应失败，不能返回猜测路径；新训练 run 使用已有可扩展字段记录相对 config/model 引用。历史记录无法验证时明确阻止推理，提供重新训练或显式选择可验证配置的恢复方式，不自动修改旧 project.json。
 - 当前只支持一个活动推理任务；共享 DLC 项目目录的训练与推理不能并发修改同一配置/模型，采用最小的活动任务检查，不引入排队系统。
 - 每次输出放在 `data/engines/<run_id>/`，不写到用户原视频目录，也不复用旧 run 的输出目录。动手前先在项目格式说明中补充该子目录用途、命名和保留规则。
 - 原始输出的相对路径、行数、文件哈希和导入统计放入 `TrackingRun` 已有可扩展字段；不增加 schema 版本。项目内路径按相对根目录的 POSIX 路径存储，执行时再解析。
@@ -100,7 +103,7 @@
 
 | Slice | 交付 | 主要文件 | 验证 |
 | --- | --- | --- | --- |
-| 1 | 复核真实 DLC snapshot/帧进度/输出契约；补目录约定与推理参数、协议、mock | `engine_adapter.py`、`dlc_adapter.py`、`mock_engine_adapter.py`、`docs/spec/project-format.md` | API 参数测试、短视频真实调用；提前暴露接口风险 |
+| 1 | 复核真实 DLC snapshot/帧进度/输出契约；修复模型交接缺口；补目录约定与推理参数、协议、mock | `engine_adapter.py`、`dlc_adapter.py`、`training_job.py`、`mock_engine_adapter.py`、`docs/spec/project-format.md` | API 参数测试、快照真实存在/归属测试、短视频真实调用；提前暴露接口风险 |
 | 2 | 真实推理与结果解析、严格校验、原始输出引用 | `dlc_adapter.py`、已有 adapter 测试 | 合成 MultiIndex/HDF5/CSV、阈值与失败边界 |
 | 3 | 会话原子导入、融合查询、批量写入成本、运动学输入衔接 | `project_session.py`、`track_store.py`、`kinematics_job.py` | 导入/Undo/Redo/持久化、修正链、解析轨迹和过期批次测试 |
 | 4 | 推理编排、spawn 生命周期、取消与晚到结果保护 | 新增 `application/inference_job.py`、必要的既有任务接口小改 | 真实 spawn + mock 的集成测试 |

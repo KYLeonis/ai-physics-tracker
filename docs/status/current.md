@@ -53,6 +53,8 @@ N/A（等待确认 4.3 范围，确认后从 Slice 1：真实 DLC 契约核对�
 
 **4.3 计划边界**：先做 Qt-free 推理/导入/混合观测分析；任务面板、AI 视觉样式、窗口生命周期接线与自动刷新留给 4.4。真实 snapshot 选择、帧进度与输出完整性在首个 Slice 优先核对。现有 4.2 模型路径移动兼容风险在草案中说明，不自动迁移。
 
+**进入检查发现的前置缺口**：训练 worker 查找 `dlc-models` 而非 PyTorch 实际目录，找不到仍返回猜测 snapshot 路径；config 路径只在 coordinator 内存。草案 Slice 1 包含必要的模型交接定向修复及真实验证，不自动修写历史 run。现有 341 项回归通过不覆盖该真实产物缺口。
+
 ## Next Recommended Action
 
 等待用户确认 [4.3 计划草案](phase-4.3-plan.md)；确认后创建对应 Issue 和 `feat/p4.3-inference-pipeline` 工作分支，从 Slice 1 核对真实 DLC 推理的 snapshot/进度/输出契约开始。按草案完成各 Slice，不提前实现 4.4 GUI。推送、删除等红线动作另依用户授权执行。
