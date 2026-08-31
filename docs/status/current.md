@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-30（Phase 3.3 本地实现/复审通过，等待 Human Review）
+- 最后更新：2026-08-31（Phase 3.3 Human Review 5 轮通过，收尾中）
 
 ---
 
@@ -13,16 +13,16 @@
 
 ## Current Subphase
 
-**3.3 — Interactive Charts / Charting UI**：**等待 Human Review / 远端 CI，未收尾**。
-计划见 [phase-3.3-plan.md](phase-3.3-plan.md)，[Issue #9](https://github.com/KYLeonis/ai-physics-tracker/issues/9)，
-工作分支 `feat/p3.3-interactive-charts`。PyQtGraph 0.13.7 与锁定 SciPy 1.17.1 已安装，smoke 通过。
+**3.3 — Interactive Charts / Charting UI** ✅ 已完成（Human Review 5 轮通过：
+基础图表联动 → 多选轨迹同屏 → ？帮助气泡 → PNG 导出）。
+[Issue #9](https://github.com/KYLeonis/ai-physics-tracker/issues/9) 已关闭；merge 见 git log。
 
 上一 Subphase **3.2 — Kinematics Engine**（[Issue #8](https://github.com/KYLeonis/ai-physics-tracker/issues/8)）
 已完成，并由 `3d3ad90` 合并至 `main`；本轮基线为 `e49132a`。原“先合并 3.2”建议已过期。
 
 ## Current Slice
 
-Slice 1–5 本地完成；Slice 6：297 tests 与交叉独立复审通过，已准备五条 Human Review 步骤。
+无（3.3 已收尾，303 tests；等待 3.4 启动指令）
 
 ## Current Goal
 
