@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-31（Phase 4.4 计划草案完成，等待确认）
+- 最后更新：2026-08-31（Phase 4.4 其余方案已认可，哈希策略简化，待确认 K-means 范围）
 
 ---
 
@@ -13,13 +13,13 @@
 
 ## Current Subphase
 
-**4.4 — GUI & Integration** 📝 计划待确认，尚未开始实现。
+**4.4 — GUI & Integration** 📝 其余方案已获认可；按用户反馈简化 AI 哈希校验，待确认基础 K-means 选帧是否前移。尚未开始实现。
 
 计划草案：[phase-4.4-plan.md](phase-4.4-plan.md)。4.3 已完成（[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14) 已关闭；[验收记录](phase-4.3-plan.md)）。
 
 ## Current Slice
 
-N/A（确认计划后从 Slice 1：AI 请求/结果快照与后台准备/校验边界开始）。
+N/A（完成 K-means 范围确认后，从 Slice 1：轻量校验与后台准备/提交边界开始）。
 
 ## Current Goal
 
@@ -51,7 +51,7 @@ N/A（确认计划后从 Slice 1：AI 请求/结果快照与后台准备/校验�
 - 训练默认参数（D2）：`epochs=50, batch_size=8, device=auto(cuda→mps→cpu)`，后续在 4.4 GUI 中提供配置控件
 - 测试策略：CI 与单元测试使用 `MockEngineAdapter`，本地真实训练/推理闭环通过（`scripts/smoke_test_dlc_infer.py`）
 
-**延后项**：Windows 真机/CUDA 验收。4.4 接线前必须将当前调用方线程内的视频 hash 扫描放入后台准备/提交阶段，避免大视频卡 GUI；当前没有 GUI 推理入口。
+**延后项**：Windows 真机/CUDA 验收。4.4 按用户反馈取消 AI 链路重复全文件哈希和缺历史 hash 门禁，保留轻量文件检查及数据正确性/任务归属校验；抽帧、建集和解析仍后台化。此为已确认的设计修订，现有 4.3 代码尚未改变。
 
 **4.3 计划边界**：先做 Qt-free 推理/导入/混合观测分析；任务面板、AI 视觉样式、窗口生命周期接线与自动刷新留给 4.4。真实 snapshot 选择、帧进度与输出完整性已验证。现有 4.2 模型路径移动兼容风险在草案中说明，不自动迁移。
 
@@ -59,4 +59,4 @@ N/A（确认计划后从 Slice 1：AI 请求/结果快照与后台准备/校验�
 
 ## Next Recommended Action
 
-等待用户确认 [4.4 计划](phase-4.4-plan.md)；确认后创建对应 Issue 和 `feat/p4.4-gui-integration`，先写 ADR-0012 并完成 Slice 1 后台边界，再按六个 Slice 推进。GUI Human Review 和 Windows/CUDA 条件在 Phase 4 收尾前落实；不提前进入 Phase 5。本次未获新的推送授权。
+仅确认是否将基础 K-means 选帧从 Phase 5 提前至 4.4，其余方案用户已认可，哈希策略按最新反馈简化。范围确定后同步规范、创建 Issue/工作分支、写 ADR-0012，再按计划实施。GUI Human Review 与 Windows/CUDA 条件保留；不默认前移困难帧/主动学习，也不推送未授权的 4.4 改动。
