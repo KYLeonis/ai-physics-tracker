@@ -7,14 +7,15 @@ from threading import Event
 
 import pytest
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QPainterPath
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtGui import QImage, QPainterPath
+from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.application.video_timing import TimingReport
 from ai_physics_tracker.domain.track import Track
 from ai_physics_tracker.gui.main_window import MainWindow
+from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
@@ -468,3 +469,147 @@ def test_reopen_restores_cached_charts_without_making_project_dirty(
     window.chartActions.panel.tabs.setCurrentIndex(4)
     window.chartActions.panel.fitButton.click()
     assert not loaded.is_dirty
+
+
+def _calibrate_for_chart(window: MainWindow, monkeypatch: pytest.MonkeyPatch) -> None:
+    """复用真实对话框字段和 GUI 信号，只替代模态确认，不替代标定用例。"""
+
+    def accept(dialog: CalibrationDialog) -> int:
+        dialog.lengthSpinBox.setValue(20.0)
+        dialog.unitComboBox.setCurrentText("cm")
+        dialog.nameEdit.setText("Integration ruler")
+        return QDialog.DialogCode.Accepted
+    monkeypatch.setattr(CalibrationDialog, "exec", accept)
+    window.drawScaleButton.click()
+    window.videoView.scaleLineDrawn.emit(QPointF(10, 10), QPointF(50, 10))
+    window.setOriginButton.click()
+    window.videoView.originClicked.emit(QPointF(10, 40))
+    window.rotationSpinBox.setValue(90.0)
+
+
+def test_calibration_annotation_recompute_save_and_reopen_full_project(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window = _opened(qtbot, synthetic_video_path)
+    # UI 尚无工作区编辑器；把非零工作区作为已保存项目输入，再走真实 Open project。
+    seed = window.analysisSession.detached()
+    timeline = replace(seed.project.timelines[0], working_zone=(1, 4))
+    seed._project = replace(seed.project, timelines=(timeline,))
+    seed.save_as(tmp_path / "seed")
+    root = tmp_path / "seed"
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *args: (str(root / "project.json"), ""))
+    window.projectActions.openProject()
+    qtbot.waitUntil(lambda: not window.projectActions.busy and not window.timingActions.pending, timeout=5000)
+    _calibrate_for_chart(window, monkeypatch)
+    window.addTrackButton.click()
+    for frame_index in range(1, 5):
+        window.frameSpinBox.setValue(frame_index)
+        qtbot.waitUntil(lambda: window.presentedFrameIndex == frame_index)
+        position = window.videoView.mapFromScene(QPointF(20 + frame_index * 4, 20 + frame_index))
+        qtbot.mouseClick(window.videoView.viewport(), Qt.MouseButton.LeftButton, pos=position)
+    session = window.analysisSession
+    raw = session.project.observations
+    assert tuple(point.frame_index for point in raw) == (1, 2, 3, 4)
+    qtbot.waitUntil(lambda: window.chartActions.panel.recomputeButton.isEnabled())
+    panel = window.chartActions.panel
+    panel.recomputeButton.click()
+    qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
+    assert len(session.project.derived) == 4
+    assert all(item.status == "valid" and item.frames == (1, 2, 3, 4) for item in session.project.derived)
+    assert session.project.observations == raw
+    first_position = session.derived_data(session.tracks[0].track_id, "world_position")
+    assert first_position.values[0] == pytest.approx(
+        ((raw[0].pixel_y - 40) / 2, (raw[0].pixel_x - 10) / 2), abs=1e-9)
+    for index, (kind, unit) in enumerate(zip(panel.plots, ("cm", "cm", "cm/s", "cm/s²", "cm"))):
+        panel.tabs.setCurrentIndex(index)
+        assert panel.plots[kind].data.y_unit == unit
+        assert panel.plots[kind].data.series
+    assert panel.plots["x_t"].data.series[0].x_values == pytest.approx((0.1, 0.2, 0.3, 0.4), abs=1e-9)
+
+    root = tmp_path / "实验闭环"
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (str(root), ""))
+    window.projectActions.saveAs()
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
+    saved = window.analysisSession.project
+    window.projectActions.closeProject()
+    assert window.analysisSession.project.videos == ()
+    window.projectActions.openProject()
+    qtbot.waitUntil(lambda: not window.projectActions.busy and not window.timingActions.pending, timeout=5000)
+    assert window.analysisSession.project == saved  # 包含 ID、raw、全部派生字段/时序来源及视图上下文。
+    assert not window.analysisSession.is_dirty
+    assert window.presentedFrameIndex == 4 and not window.isPlaying
+    assert not window.videoView.is_annotation_mode()
+    assert window.videoView.calibration_view().rotation_deg == pytest.approx(90.0)
+    qtbot.waitUntil(lambda: bool(panel.plots["x_t"].data.series))
+    assert panel.plots["x_t"].data.series[0].frames == (1, 2, 3, 4)
+    assert not panel.plots["xy"].getViewBox().yInverted()
+
+
+def test_gui_calibration_change_recompute_history_and_persistence(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window = _opened(qtbot, synthetic_video_path)
+    _calibrate_for_chart(window, monkeypatch)
+    track = _add_track(window)
+    panel, session = window.chartActions.panel, window.analysisSession
+    raw = session.project.observations
+    panel.recomputeButton.click()
+    qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
+    assert len(session.project.derived) == 4
+    previous_ids = {item.derived_id for item in session.project.derived}
+    window.rotationSpinBox.setValue(0.0)
+    qtbot.waitUntil(lambda: panel.plots["x_t"].data.series[0].status == "stale")
+    stale = session.project.derived
+    assert all(item.status == "stale" for item in stale)
+    assert "stale" in panel.statusLabel.text()
+    panel.windowLength.setValue(3)
+    panel.recomputeButton.click()
+    qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
+    updated = session.project.derived
+    assert all(item.status == "valid" and item.derived_id not in previous_ids for item in updated)
+    assert session.derived_data(track.track_id, "world_position").values[0] == pytest.approx((0, 10), abs=1e-9)
+    velocity = session.derived_data(track.track_id, "velocity")
+    assert velocity.calibration_ref == session.active_calibration(window.activeVideoId).calibration_id
+    assert velocity.pipeline[-1]["params"]["window_length"] == 3
+    assert velocity.values[0] == pytest.approx((5, -10), abs=1e-9)
+    assert panel.plots["x_t"].data.series[0].status == "valid"
+    window.undoButton.click()
+    assert session.project.derived == stale
+    window.redoButton.click()
+    assert session.project.derived == updated
+    assert session.project.observations == raw
+    root = tmp_path / "recalculated"
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (str(root), ""))
+    window.projectActions.save()
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
+    loaded = ProjectRepository().load(root)
+    assert loaded.derived == updated and loaded.observations == raw
+
+
+def test_two_tracked_objects_overlay_and_current_chart_png_in_one_session(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window, tracks = _with_results(qtbot, synthetic_video_path, track_count=2)
+    for row in range(window.trackList.count()):
+        window.trackList.item(row).setSelected(True)
+    assert window.videoView.marker_count() == 10
+    panel = window.chartActions.panel
+    assert set(panel.checkedTracks()) == {track.track_id for track in tracks}
+    panel.tabs.setCurrentIndex(2)
+    plot = panel.currentPlot
+    assert plot.kind == "v_t" and len(plot.data.series) == 4
+    assert {series.color for series in plot.data.series} == {track.color for track in tracks}
+    before = window.analysisSession.project
+    target = tmp_path / "双轨迹速度.png"
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (str(target), ""))
+    captured = []
+    real_grab = plot.grab
+    def grab():
+        captured.append(plot.kind)
+        return real_grab()
+    monkeypatch.setattr(plot, "grab", grab)
+    panel.savePngButton.click()
+    assert captured == ["v_t"]
+    assert not QImage(str(target)).isNull()
+    assert window.analysisSession.project == before
+    assert window.videoView.marker_count() == 10

@@ -248,29 +248,38 @@ def test_multiselection_overlays_all_selected_tracks(
 ) -> None:
     # HR 反馈：同时选中 Track 1 与 Track 2 → overlay 同时显示两条轨迹的点
     window = _opened_with_track(qtbot, synthetic_video_path)
-    window.addTrackButton.click()  # 新 Track 成为唯一选中并是标注目标
-    assert window._selected_track_id == window.trackList.currentItem().data(
-        Qt.ItemDataRole.UserRole
-    )
-
-    # 在新 Track 上落一个点，然后重新选中两条轨迹
+    session = window._annotation_session
+    assert session is not None
+    track_one = session.tracks[0]
     window._onAnnotationClicked(_inside_point(window, 20.0, 15.0))
+    qtbot.waitUntil(lambda: window.videoView.marker_count() == 1)
+    window.addTrackButton.click()  # 新 Track 成为唯一选中并是标注目标
+    track_two = session.tracks[1]
+    assert window._selected_track_id == track_two.track_id
+
+    # 两条轨迹各有真实点；当前项仍是 Track 2。
+    window.frameSpinBox.setValue(1)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 1 / 4")
+    window._onAnnotationClicked(_inside_point(window, 40.0, 30.0))
     qtbot.waitUntil(lambda: window.videoView.marker_count() == 1)
     window.trackList.item(0).setSelected(True)
     window._onTrackSelectionChanged()
 
-    # Track 2 的 1 点 + Track 1 的 0 点 = overlay 1 个
-    assert window.videoView.marker_count() == 1
-    # 标注目标仍是 currentItem（Track 2）。切到帧 1 再落点：
-    # 不同帧不触发 last-wins，overlay 显示跨帧的 2 个点
-    window.frameSpinBox.setValue(1)
-    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 1 / 4")
-    window._onAnnotationClicked(_inside_point(window, 40.0, 30.0))
-    qtbot.waitUntil(lambda: window.videoView.marker_count() == 2)
-    session = window._annotation_session
-    assert session is not None
-    assert len(session.manual_points(session.tracks[0].track_id)) == 0
-    assert len(session.manual_points(session.tracks[1].track_id)) == 2
+    markers = window.videoView.marker_views()
+    assert len(markers) == 2
+    assert {marker.color for marker in markers} == {track_one.color, track_two.color}
+    assert sum(marker.is_current_frame for marker in markers) == 1
+    assert next(marker for marker in markers if marker.is_current_frame).color == track_two.color
+
+    # 标注目标仍是 currentItem（Track 2），新增点不得落到 Track 1。
+    window.frameSpinBox.setValue(2)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 2 / 4")
+    window._onAnnotationClicked(_inside_point(window, 45.0, 32.0))
+    qtbot.waitUntil(lambda: window.videoView.marker_count() == 3)
+    assert window._selected_track_id == track_two.track_id
+    assert len(session.manual_points(track_one.track_id)) == 1
+    assert len(session.manual_points(track_two.track_id)) == 2
+    assert session.manual_points(track_two.track_id)[-1].frame_index == 2
 
 
 def test_deselect_all_exits_annotation_target(

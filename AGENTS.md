@@ -18,7 +18,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | Phase 0 | Project Initialization | 仓库、文档、Git 初始化（✅ 已完成） |
 | Phase 1 | Project & Data Foundation | Project / Video / Track / Annotation / Calibration 数据体系（✅ 已完成） |
 | Phase 2 | Video Analysis MVP | 可用的 GUI + 视频播放 + 手工标记 + 项目保存（✅ 已完成，2026-08-30；Windows 真机验收延后） |
-| Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表（**当前：3.4 规划；3.3 已完成**） |
+| Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表（**当前：3.4 待整体 Human Review；3.3 已完成**） |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪 |
 | Phase 5 | AI-assisted Annotation & Refinement | 代表帧选取、困难帧发现、快速修正与再训练 |
 | Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析 |

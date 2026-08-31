@@ -87,6 +87,8 @@ DLC 模型（dlc-models, PyTorch engine）
 - Phase 3 需求规范：[phase3-requirements.md](spec/phase3-requirements.md)
 - 图表数据适配与后台批次提交：[ADR-0009](decisions/0009-interactive-charts-and-analysis-transactions.md)。
   图表面板独立于 MainWindow，计算结果只在输入/代际匹配时合并，不替换活动 Project。
+- 当前图表 PNG 使用既有 Qt 显示快照；不等同 Phase 8 科学导出，见
+  [ADR-0010](decisions/0010-current-chart-png-snapshots.md)。
 
 ## 5. 持久化与文件布局（Phase 1 已定，见 ADR-0003）
 

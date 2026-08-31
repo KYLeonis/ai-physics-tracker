@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-31（Phase 3.4 计划草案完成，等待确认）
+- 最后更新：2026-08-31（Phase 3.4 本地完成，310 tests；等待整体 Human Review）
 
 ---
 
@@ -13,8 +13,9 @@
 
 ## Current Subphase
 
-**3.4 — Integration & Phase Close**：**Plan / Draft，未开始执行**。
-计划见 [phase-3.4-plan.md](phase-3.4-plan.md)，确认后创建或复用 Issue 与工作分支。
+**3.4 — Integration & Phase Close**：**待整体 Human Review / Windows / CI，未收尾**。
+计划见 [phase-3.4-plan.md](phase-3.4-plan.md)，[Issue #10](https://github.com/KYLeonis/ai-physics-tracker/issues/10)
+保持打开；工作分支 `feat/p3.4-integration-acceptance`，功能提交 `d1c90c4`。
 
 上一 Subphase **3.3 — Interactive Charts** ✅ 已完成；Human Review 5 轮通过，
 [Issue #9](https://github.com/KYLeonis/ai-physics-tracker/issues/9) 已关闭，merge `51c1cce`。
@@ -26,7 +27,7 @@ macOS/Windows Python 3.11 jobs 均成功。当前规划基线 `main` / `162017e`
 
 ## Current Slice
 
-Plan：确认 3.4 的集成场景、验收证据与 Windows 收尾条件；不改实现。
+Slice 1–2 本地完成；Slice 3：310 tests 与独立正确性复审通过，等待用户整体 Human Review。
 
 ## Current Goal
 
@@ -35,6 +36,11 @@ Plan：确认 3.4 的集成场景、验收证据与 Windows 收尾条件；不�
 Phase 3 最终收尾后停止，不自动进入 Phase 4。
 
 ## Recently Completed
+
+- **3.4 本地增量（待 HR/CI）**：Ponytail lite 下复用现有测试补 E1/E2/E3，修正 PNG 取消
+  恒真断言；补记 ADR-0010。用户追加同意后新增 Edit scale / Delete inactive，保留标定
+  ID/raw/精度/Undo/失效状态；修正删除 active 后 selector 状态。**310 passed**，
+  compileall/pip check/diff check 通过；独立 Luna-max 正确性复审及 Ponytail 复杂度检查完成。
 
 - **Phase 3.4 规划盘点**（2026-08-31）：已有版本本地复跑 **303 passed**、依赖检查通过；
   Luna-max 只读映射 AC 与测试缺口，形成三个优先集成场景。未进行 3.4 功能修改/真人验收。
@@ -71,17 +77,17 @@ Phase 3 最终收尾后停止，不自动进入 Phase 4。
 - 首次设置标定后既有 px 派生数据未置 stale 的缺口已修复。兼容已有
   `world_position(px)` 命名，界面按实际单位/标定引用显示，不迁移原始数据。
 - 时序权限、后台批次提交和 GUI 已呈现帧通知已补齐；绘图层不重做数值引擎。
-- 本地 `.venv` 使用锁定 SciPy **1.17.1** / PyQtGraph **0.13.7**；当前 **303 tests** 通过。
+- 本地 `.venv` 使用锁定 SciPy **1.17.1** / PyQtGraph **0.13.7**；当前 **310 tests** 通过。
   3.3 远端双平台 CI 已核实；未来 3.4 交付仍需绑定其自身验证版本，不能借用旧 run。
-- 3.3 PNG 与 ADR-0009 的原始“不导出”条款需要补记已批准例外；3.4 Slice 1 拟新增
-  ADR-0010，不改写 Accepted ADR 正文、不扩展科学导出。
-- PNG 取消测试的恒真断言、双轨迹均有点的 overlay、带数据的当前 tab PNG 等覆盖缺口，
-  纳入 3.4 的最小补测；本次只记录，不修改测试实现。
+- ADR-0010 已补记 3.3 PNG 例外，只更新 ADR-0009 的状态，不改其 Accepted 正文；
+  PNG 不含面板外参数/时序说明，不等同科学导出。
+- PNG 取消/失败、双轨迹均有点 overlay 与带数据当前 tab PNG 已补测；R1 编辑比例尺、
+  R3 删除非生效标定的 UI 缺口已获用户追加批准并实现，需本轮 HR 验证。
 - Phase 2 Windows 真机延期仍保留；`development.md` 的 Phase 收尾要求也仍有效。
   3.4 可先做本地/自动化验收，但若要继续延期并关闭 Phase 3，需要用户明确确认例外。
 
 ## Next Recommended Action
 
-请用户确认 [3.4 计划](phase-3.4-plan.md)，再建立 Issue/工作分支，从证据表与文档例外整理开始，
-补必要集成回归并交付整体 Human Review。保留 Windows 收尾条件；需要延期、改变验收标准、
-修改 CI 或 push 时单独请求授权。本轮仅规划与本地文档提交，不开始实现，不直接进入 Phase 4。
+等待用户按 [3.4 Human Review](phase-3.4-plan.md) 亲测五步并反馈，不继续扩展实现。
+失败则修复对应问题并复验；通过后处理 Windows 真机条件，申请 push 授权再运行双平台
+CI/合并/关闭 Issue #10。没有修改 CI、插件全局设置或真实媒体，不直接进入 Phase 4。

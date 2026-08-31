@@ -1,6 +1,6 @@
 # Phase 3 需求与验收标准（Calibration & Physics Engine）
 
-- 日期：2026-08-30 · 状态：**Draft**
+- 日期：2026-08-31 · 状态：**In Progress — 3.4 自动化证据已核对，整体 Human Review/CI 待完成**
 - 来源：`docs/roadmap.md` Phase 3；上游依据 `docs/spec/data-model.md`（§3.7/§3.8/§6）、`docs/architecture.md` §4
 - 输入：`docs/research/open-source-project-map.md` §3/§4/§6/§7（TrackLab/Tracker/Kinovea/DLC2Kinematics/Sports2D/Pose2Sim 调研）、Phase 1/2 已有实现
 - 与 roadmap 的关系：本文档是 roadmap Phase 3 验收标准的**细化**，逐条可勾选判定；两者如有矛盾以本文档为准并回改 roadmap
@@ -23,7 +23,7 @@ Phase 3 启动时，项目已具备：
 - **AI/引擎跟踪**：DeepLabCut 等自动跟踪引擎（Phase 4）
 - **代表帧选取/困难帧检测**（Phase 5）
 - **高级物理分析**：θ/ω/α、相图、周期分析、拟合、误差分析（Phase 6）
-- **数据导出**：CSV/Excel/高质量图表导出（Phase 8）
+- **科学数据导出**：CSV/Excel/定版高质量图表导出（Phase 8）；3.3 HR 已批准当前图表 PNG 快照例外，见 ADR-0010。
 
 因此 Phase 3 的运动学计算与图表**仅消费手工标注数据**。轨迹点数量有限（用户逐帧标注，典型数十~数百帧），这既是约束也是简化——无需处理 AI 批量跟踪的 confidence 过滤（该路径在 Phase 4+ 接入引擎后自然激活）。
 
@@ -120,6 +120,8 @@ Phase 3 为项目增加**物理实验分析能力**：用户可在视频上设�
    - **ax(t) / ay(t) 或 |a|(t)**：加速度分量或加速度大小随时间变化
    - **x-y 轨迹图**：物理坐标系下的空间轨迹（y 向上）
 4. **图表切换**：提供下拉框或标签页在不同图表类型间切换（不要求同时显示全部 5 种）
+5. **当前图表 PNG**（3.3 HR 增量，ADR-0010）：Save PNG 保存当前图表显示快照；取消不写入、失败提示。
+   它不包含图表面板外的参数/时序说明，不能单独作为精度或完整溯源凭证。
 
 ### R8 基础图表 — 帧同步与交互
 
@@ -144,14 +146,18 @@ Phase 3 为项目增加**物理实验分析能力**：用户可在视频上设�
 |---|---------|---------|------|
 | AC-1 | 可在视频帧上交互式创建比例尺标定（拖拽线段 + 输入已知长度） | Human Review：打开视频 → 进入标定模式 → 画线 → 输入长度 → 确认 → 标定生效 | [ ] |
 | AC-2 | 可设置坐标原点与轴旋转，overlay 实时显示坐标系 | Human Review：设置原点 → 看到坐标轴十字 → 修改旋转角 → overlay 更新 | [ ] |
-| AC-3 | 标定后坐标转换误差满足设计精度（合成数据测试） | pytest：已知像素坐标 + 已知标定参数 → 批量转换 → 与解析解比对，误差 < 1e-9（复用 Phase 1 的 CalibrationTransform 测试，扩展到批量 pipeline） | [ ] |
-| AC-4 | 用匀速合成数据验证 v 计算正确 | pytest：匀速 (vx=2 m/s) 合成 100 帧 → SG 平滑+微分 → vx 与真值偏差 < 0.01 m/s（扣除边界 N/2 帧） | [ ] |
-| AC-5 | 用匀加速合成数据验证 a 计算正确 | pytest：匀加速 (ax=1 m/s²) 合成 100 帧 → 二阶微分 → ax 与真值偏差 < 0.05 m/s²（扣除边界） | [ ] |
-| AC-6 | NaN 处理正确：缺测帧不造值、不跨越缺测段平滑 | pytest：合成带间断（帧 40–60 缺测）的轨迹 → 平滑/微分结果在缺测段保持 NaN，有效段结果不受影响 | [ ] |
+| AC-3 | 标定后坐标转换误差满足设计精度（合成数据测试） | pytest：已知像素坐标 + 已知标定参数 → 批量转换 → 与解析解比对，误差 < 1e-9（复用 Phase 1 的 CalibrationTransform 测试，扩展到批量 pipeline） | [x] |
+| AC-4 | 用匀速合成数据验证 v 计算正确 | pytest：匀速 (vx=2 m/s) 合成 100 帧 → SG 平滑+微分 → vx 与真值偏差 < 0.01 m/s（扣除边界 N/2 帧） | [x] |
+| AC-5 | 用匀加速合成数据验证 a 计算正确 | pytest：匀加速 (ax=1 m/s²) 合成 100 帧 → 二阶微分 → ax 与真值偏差 < 0.05 m/s²（扣除边界） | [x] |
+| AC-6 | NaN 处理正确：缺测帧不造值、不跨越缺测段平滑 | pytest：合成带间断（帧 40–60 缺测）的轨迹 → 平滑/微分结果在缺测段保持 NaN，有效段结果不受影响 | [x] |
 | AC-7 | 图表面板显示 x(t)、y(t)、v(t)、a(t)、x-y 轨迹共 5 种图表 | Human Review：标注若干帧 → 标定 → 看到图表显示运动学数据 → 切换图表类型 | [ ] |
 | AC-8 | 图表与视频帧同步联动（双向） | Human Review：步进/播放视频 → 图表游标跟随 → 点击图表 → 视频跳转到对应帧 | [ ] |
-| AC-9 | DerivedData pipeline 参数完整记录在 project.json 中 | pytest：生成 DerivedData → 保存 → 加载 → pipeline 参数逐字段一致 | [ ] |
-| AC-10 | 标定变更后 DerivedData 自动置 stale，重算后恢复 valid | pytest：创建标定 + 计算 DerivedData → 修改标定 → DerivedData status=stale → 重算 → status=valid + 新值 | [ ] |
+| AC-9 | DerivedData pipeline 参数完整记录在 project.json 中 | pytest：生成 DerivedData → 保存 → 加载 → pipeline 参数逐字段一致 | [x] |
+| AC-10 | 标定变更后 DerivedData 自动置 stale，重算后恢复 valid | pytest：创建标定 + 计算 DerivedData → 修改标定 → DerivedData status=stale → 重算 → status=valid + 新值 | [x] |
+
+自动化证据：2026-08-31 本地 310 tests passed，具体测试映射见
+[3.4 Result](../status/phase-3.4-plan.md)。AC-1/2/7/8 的整体验收仍等用户反馈，
+不以 offscreen 或此前 3.3 的 HR 替代新增标定管理交互的真人确认。
 
 > roadmap 原始三条验收标准的对应：
 > - "标定后坐标转换误差满足设计精度" → AC-3
@@ -213,7 +219,7 @@ Phase 3 为项目增加**物理实验分析能力**：用户可在视频上设�
 | 相图（θ-ω）、周期分析、拟合 | Phase 6 | |
 | 误差分析 | Phase 6 | |
 | Butterworth/Kalman 等替代滤波器 | Phase 6 或按需 | Phase 3 只实现 SG；pipeline 注册表已预留扩展 |
-| CSV/Excel/高质量图表导出 | Phase 8 | Phase 3 图表为交互查看，不含导出 |
+| CSV/Excel/定版科学图表导出 | Phase 8 | 已有当前图表 PNG 快照为 ADR-0010 明确的窄范围例外 |
 | 多视频联动标定 | Phase 10 | 当前单视频分析 |
 | 平面标定（单应矩阵） | Phase 10 | Phase 3 仅 `line_scale` 类型 |
 | 时变标定（Kinovea `GetPointAtTime`） | Phase 10 | `applies_from/to_frame` 已预留，Phase 3 恒 null |
@@ -259,8 +265,8 @@ PyQtGraph 的 `PlotWidget` 提供内置的鼠标滚轮缩放与拖拽平移，�
 ## 8. 完成定义（Definition of Done）
 
 - [ ] AC-1…AC-10 全部勾选
-- [ ] 运动学计算引擎有 pytest 覆盖，合成数据验证通过
+- [x] 运动学计算引擎有 pytest 覆盖，合成数据验证通过
 - [ ] 标定 GUI 与图表面板 Human Review 通过
-- [ ] `pyqtgraph` 与 `scipy` 依赖加入 `pyproject.toml` 与 `requirements.txt`
-- [ ] DerivedData pipeline 持久化往返一致
+- [x] `pyqtgraph` 与 `scipy` 依赖加入 `pyproject.toml` 与 `requirements.txt`
+- [x] DerivedData pipeline 持久化往返一致
 - [ ] 按 AGENTS.md §11 完成文档同步与 push

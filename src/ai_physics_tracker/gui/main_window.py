@@ -1,6 +1,7 @@
 import logging
 import math
 from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 from threading import Event
 from typing import Callable
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QGroupBox,
+    QInputDialog,
     QHBoxLayout,
     QLabel,
     QAbstractItemView,
@@ -144,6 +146,10 @@ class MainWindow(QMainWindow):
         self.setOriginButton.setEnabled(False)
         self.deleteCalibrationButton = QPushButton("Delete calibration", self)
         self.deleteCalibrationButton.setEnabled(False)
+        self.editScaleButton = QPushButton("Edit scale…", self)
+        self.editScaleButton.setEnabled(False)
+        self.deleteInactiveCalibrationButton = QPushButton("Delete inactive…", self)
+        self.deleteInactiveCalibrationButton.setEnabled(False)
 
         self.originLabel = QLabel("Origin: —", self)
         self.rotationSpinBox = QDoubleSpinBox(self)
@@ -157,6 +163,9 @@ class MainWindow(QMainWindow):
         calButtons = QHBoxLayout()
         calButtons.addWidget(self.drawScaleButton)
         calButtons.addWidget(self.setOriginButton)
+        calEditButtons = QHBoxLayout()
+        calEditButtons.addWidget(self.editScaleButton)
+        calEditButtons.addWidget(self.deleteInactiveCalibrationButton)
 
         calLayout = QVBoxLayout()
         calLayout.addWidget(self.calibrationStatusLabel)
@@ -164,6 +173,7 @@ class MainWindow(QMainWindow):
         calLayout.addLayout(calButtons)
         calLayout.addWidget(self.originLabel)
         calLayout.addWidget(self.rotationSpinBox)
+        calLayout.addLayout(calEditButtons)
         calLayout.addWidget(self.deleteCalibrationButton)
         self.calibrationGroup.setLayout(calLayout)
 
@@ -304,6 +314,8 @@ class MainWindow(QMainWindow):
         self.drawScaleButton.clicked.connect(self._toggleDrawScaleMode)
         self.setOriginButton.clicked.connect(self._toggleSetOriginMode)
         self.deleteCalibrationButton.clicked.connect(self._deleteActiveCalibration)
+        self.editScaleButton.clicked.connect(self._editActiveScale)
+        self.deleteInactiveCalibrationButton.clicked.connect(self._deleteInactiveCalibration)
         self.calibrationSelector.currentIndexChanged.connect(self._onCalibrationSelected)
         self.rotationSpinBox.valueChanged.connect(self._onRotationChanged)
         self.addTrackButton.clicked.connect(self._addTrack)
@@ -809,6 +821,61 @@ class MainWindow(QMainWindow):
         self._refreshCalibrationOverlay()
         self._refreshHistoryButtons()
 
+    def _editActiveScale(self) -> None:
+        """复用标尺对话框编辑属性，保留标定 ID、端点与原始观测。"""
+
+        session, video_id = self._annotation_session, self._annotation_video_id
+        if not self._measurement_allowed or self.projectActions.busy or session is None or video_id is None:
+            return
+        calibration = session.active_calibration(video_id)
+        if calibration is None:
+            return
+        self.stopPlayback()
+        dialog = CalibrationDialog(math.dist(calibration.scale_end_1_px, calibration.scale_end_2_px),
+            calibration.name, calibration.known_length, calibration.unit, self)
+        dialog.setWindowTitle("Edit scale calibration")
+        # 保持已保存标尺的精度/范围，不能因编辑器的缺省四位小数静默改动它。
+        decimals = max(dialog.lengthSpinBox.decimals(), -Decimal(str(calibration.known_length)).as_tuple().exponent)
+        dialog.lengthSpinBox.setDecimals(decimals)
+        dialog.lengthSpinBox.setRange(min(dialog.lengthSpinBox.minimum(), calibration.known_length),
+                                      max(dialog.lengthSpinBox.maximum(), calibration.known_length))
+        dialog.lengthSpinBox.setValue(calibration.known_length)
+        if dialog.exec() != QMessageBox.DialogCode.Accepted:
+            return
+        name = calibration.name if dialog.nameEdit.text() == calibration.name else dialog.calibration_name()
+        try:
+            updated = replace(calibration, known_length=dialog.known_length(), unit=dialog.unit(), name=name)
+            if updated == calibration:
+                return
+            session.update_calibration(updated)
+        except (ProjectSessionError, ValueError) as error:
+            self.statusBar().showMessage(f"Scale update failed: {error}")
+            return
+        self._refreshCalibrationUI()
+        self._refreshHistoryButtons()
+        self.statusBar().showMessage("Scale updated — recompute affected results")
+
+    def _deleteInactiveCalibration(self) -> None:
+        """选择非生效标定后删除，不为了删除而切换 active 标定。"""
+
+        session, video_id = self._annotation_session, self._annotation_video_id
+        if not self._measurement_allowed or self.projectActions.busy or session is None or video_id is None:
+            return
+        active = session.active_calibration(video_id)
+        candidates = [cal for cal in session.calibrations if cal.video_id == video_id and cal != active]
+        if not candidates:
+            return
+        self.stopPlayback()
+        labels = [f"{index + 1}. {cal.name}" for index, cal in enumerate(candidates)]
+        selected, accepted = QInputDialog.getItem(self, "Delete inactive calibration",
+            "Delete which inactive calibration? (Undo is available)", labels, 0, False)
+        if not accepted:
+            return
+        session.remove_calibration(candidates[labels.index(selected)].calibration_id)
+        self._refreshCalibrationUI()
+        self._refreshHistoryButtons()
+        self.statusBar().showMessage("Inactive calibration deleted; active calibration unchanged")
+
     def _deleteActiveCalibration(self) -> None:
         if self._annotation_session is None or self._annotation_video_id is None:
             return
@@ -842,6 +909,8 @@ class MainWindow(QMainWindow):
             self.setOriginButton.setChecked(False)
             self.rotationSpinBox.setEnabled(False)
             self.deleteCalibrationButton.setEnabled(False)
+            self.editScaleButton.setEnabled(False)
+            self.deleteInactiveCalibrationButton.setEnabled(False)
             self.originLabel.setText("Origin: —")
             self.videoView.set_calibration(None)
             return
@@ -862,12 +931,16 @@ class MainWindow(QMainWindow):
                     idx = self.calibrationSelector.findData(active_cal.calibration_id)
                     if idx >= 0:
                         self.calibrationSelector.setCurrentIndex(idx)
+                else:
+                    self.calibrationSelector.setCurrentIndex(-1)
 
         has_cal = active_cal is not None
         self.drawScaleButton.setEnabled(self._measurement_allowed)
         self.setOriginButton.setEnabled(self._measurement_allowed and has_cal)
         self.rotationSpinBox.setEnabled(self._measurement_allowed and has_cal)
         self.deleteCalibrationButton.setEnabled(self._measurement_allowed and has_cal)
+        self.editScaleButton.setEnabled(self._measurement_allowed and has_cal)
+        self.deleteInactiveCalibrationButton.setEnabled(self._measurement_allowed and len(video_cals) > int(has_cal))
 
         if active_cal is not None:
             dx = active_cal.scale_end_2_px[0] - active_cal.scale_end_1_px[0]

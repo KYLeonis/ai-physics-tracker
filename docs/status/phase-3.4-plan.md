@@ -1,10 +1,10 @@
 # Subphase Plan — Phase 3.4 Integration & Phase Close
 
-- 日期 / 状态：2026-08-31 · **Draft，等待确认；未开始实现或真人验收**。
+- 日期 / 状态：2026-08-31 · **本地实现/自动化完成，待整体 Human Review；未收尾**。
 - 基线：`main` / `162017e`，进入时工作区干净，`main` 与本地 `origin/main` 一致。
 - 前置交付：3.3 merge `51c1cce`，[Issue #9](https://github.com/KYLeonis/ai-physics-tracker/issues/9)
   已关闭，current/Issue 记录 Human Review 5 轮通过。
-- Issue：确认计划后创建或复用；计划分支 `feat/p3.4-integration-acceptance`，尚未创建。
+- Issue：[#10](https://github.com/KYLeonis/ai-physics-tracker/issues/10)；工作分支 `feat/p3.4-integration-acceptance`。
 - 规划基线验证：**303 passed**，`pip check` 通过；这是已有版本基线，不代表 3.4 验收完成。
 
 ## Goal
@@ -14,6 +14,10 @@
 
 ## Scope
 
+本轮使用 Ponytail 4.9.0 的 lite 技能规则，优先复用已有代码/测试；不运行插件钩子或
+修改全局默认，不以“少代码”为由削减既定回归、数据保护、独立正确性复审或 HR。
+收尾另用 ponytail-review 检查复杂度，它不替代正确性审查；Windows/push 边界保持不变。
+
 **做**：
 
 - 逐项核对 Phase 3 的 R1–R9、AC-1…AC-10 与完成定义，区分已有证据、待验证及真实缺口。
@@ -22,6 +26,9 @@
   先补能失败的回归；若发现需求尚未实现或需要裁剪验收标准，先报告用户，不自行改标准。
 - 将 3.3 HR 中已交付的多选轨迹 overlay、当前标注目标、帮助气泡、Save PNG 纳入回归，
   不重做已通过的交互设计。PNG 只验当前图表快照，不扩大为 Phase 8 的科学导出系统。
+- 用户追加批准（2026-08-31）：补齐原 R1/R3 的两个界面缺口——编辑当前比例尺的
+  长度/单位/名称（复用 CalibrationDialog），以及不切换 active 的非生效标定删除入口。
+  复用 update_calibration/remove_calibration，保留数据格式、raw、Undo/Redo 和 stale 传播。
 - 组织一轮真实实验项目的整体 Human Review；核对 Windows 真机遗留与 Phase 收尾关卡。
 - 补齐文档/ADR 的已批准变更记录，最后将每条验收结论绑定到测试、commit、CI 或用户反馈。
 
@@ -103,7 +110,7 @@ CI run/job 链接、Human Review 日期/反馈。总测试数量不是单项验�
 ## Acceptance Criteria（3.4 完成判定）
 
 - [ ] P34-1：Phase 3 AC-1…AC-10 均有可追溯证据；R1–R9 的偏差明确说明，不擅自裁剪。
-- [ ] P34-2：E1/E2/E3 的必要组合回归通过，无恒真/空转断言；不降低原有容差或跳过关键测试。
+- [x] P34-2：E1/E2/E3 的必要组合回归通过，无恒真/空转断言；不降低原有容差或跳过关键测试。
 - [ ] P34-3：同一个真实实验项目的整体 Human Review 通过，记录使用的版本与媒体类型。
 - [ ] P34-4：交付提交的本地验证与 macOS/Windows Python 3.11 CI 通过；Windows 真机事项
   按下节处理，CI 与真机结论分开记录。
@@ -124,9 +131,9 @@ CI run/job 链接、Human Review 日期/反馈。总测试数量不是单项验�
 
 ## Slices
 
-- [ ] Slice 1：确认范围，建立 Issue/工作分支；整理 AC 证据表、核清 Windows 遗留，
+- [x] Slice 1：确认范围，建立 Issue/工作分支；整理 AC 证据表、核清 Windows 遗留，
   补记 PNG 的 ADR/spec 例外及 3.3 HR 行为文档，不改 Accepted ADR 正文。
-- [ ] Slice 2：补 E1/E2/E3 中缺少的自动化组合测试，替换失效断言；发现阻断缺陷才做
+- [x] Slice 2：补 E1/E2/E3 中缺少的自动化组合测试，替换失效断言；发现阻断缺陷才做
   对应最小修复，并运行相关测试与全回归。无新缺陷则不为收尾制造实现改动。
 - [ ] Slice 3：必要的独立 Luna-max review → 整体 Human Review；若有代码修复，
   review 必须覆盖修复范围。发起 HR 后停止等反馈，失败则修复/复验，不提前合并。
@@ -159,7 +166,8 @@ CI run/job 链接、Human Review 日期/反馈。总测试数量不是单项验�
 1. 打开视频并确认时序状态，设置比例尺/单位/原点/旋转，连续标注至少 9 帧 →
    标定与标注模式清晰切换；原点和轴方向正确。
 2. 勾选并 Recompute，切换五图，播放/逐帧/图表反向定位 → 单位正确、画面与游标一致。
-3. 修改标定并查看旧图，再调整 SG/重算、Undo/Redo → stale/valid 与参数同步，缺测仍断开。
+3. 用 Edit scale 修改长度/单位并重算、Undo/Redo；有两个标定时用 Delete inactive 删除旧项 →
+   stale/valid 与参数同步、raw 不变，删除旧项不切换当前生效标定，缺测仍断开。
 4. 两条有点轨迹多选同屏，切换标注目标并查看 ? 帮助，切换图表后 Save PNG →
    新点目标正确，图像对应当前图表；取消导出不新增文件。
 5. 保存新项目、关闭、重开，尝试未保存切换后 Cancel → 原始/派生数据和标定不丢失、
@@ -170,7 +178,34 @@ CI run/job 链接、Human Review 日期/反馈。总测试数量不是单项验�
 
 ## Result（执行后填写）
 
-- 本轮只完成规划、只读盘点与基线验证；未创建 3.4 Issue/分支、未改代码/测试/依赖/CI，未 push。
-- 规划基线：303 tests passed；依赖检查通过；3.3 CI run 的两平台结果已只读核实。
-- 3.4 AC / HR / Windows / 交付 CI / 合并：**均未开始或尚待验证**，不提前勾选。
-- 下一步：用户确认计划后从 Slice 1 开始；Windows 若需延期，单独明确例外，不默认批准。
+- 功能提交：`d1c90c4`。既有四个 GUI 测试文件补强 E1/E2/E3，修正 PNG 取消恒真断言。
+  用户追加批准后，复用 CalibrationDialog/QInputDialog 和 Session API 补齐 Edit scale /
+  Delete inactive；保留标定 ID、端点、raw、数值精度、Undo/Redo 及 stale 传播。
+  同时修正删除生效标定后 selector 假选中剩余项的状态不一致。
+- 验证环境：macOS / Python 3.12.13，保持原锁定依赖；**310 tests passed**，
+  compileall、pip check、diff check 通过。取消/无编辑/非法名称、当前标定不变等分支已覆盖。
+- Ponytail lite：使用已读取的 4.9.0 技能约束，未运行插件钩子或改全局设置；只复用现有
+  应用模块和测试工具，无新依赖/测试框架。Ponytail-review 移除一条被字典相等断言覆盖的
+  冗余集合比较；其余实现无建议删减（`Lean already. Ship.`，仅复杂度结论，不等于阶段交付）。
+- 正确性复审：独立 Luna-max 检查代码与测试，无代码 Blocker；要求同步旧状态文档并
+  明确断言 PNG 失败分支确实调用 save，均已处理。Ponytail-review 不替代该复审。
+
+### 自动化证据（2026-08-31）
+
+| 对应项 | 可运行测试证据 | 状态 |
+| --- | --- | --- |
+| E1 / AC-1/2/7/8/9 | `tests/gui/test_charts.py::test_calibration_annotation_recompute_save_and_reopen_full_project` | 通过；使用已有 5 帧视频/非零工作区，真实标注点击、后台重算及 GUI 保存重开；模态确认注入，真人体验仍待验 |
+| E2 / AC-10 | `tests/gui/test_charts.py::test_gui_calibration_change_recompute_history_and_persistence` | 通过；原点/旋转、stale、SG 参数、派生数值、Undo/Redo、持久化 |
+| E3 / R8 / PNG | `tests/gui/test_charts.py::test_two_tracked_objects_overlay_and_current_chart_png_in_one_session` | 通过；双轨迹数据/overlay/图表/当前 v-t PNG 同会话 |
+| R1 编辑 | `tests/gui/test_calibration_ui.py::test_edit_scale_preserves_identity_raw_and_cancel_undo`、`test_edit_scale_without_changes_keeps_full_precision_and_clean_state` | 通过；新增 UI 待 HR |
+| R3 非生效删除 | `tests/gui/test_calibration_ui.py::test_delete_inactive_preserves_active_results_and_is_undoable` | 通过；新增 UI 待 HR |
+| PNG 取消/失败 | `tests/gui/test_chart_help.py::test_save_png_appends_extension_and_handles_cancel`、`test_save_png_reports_failure_without_mutating_chart_data` | 通过；文件集合/内容不变、save 调用、失败状态与图表保留 |
+| AC-3…6 | `tests/test_kinematics.py` 的 `test_batch_pixel_to_world_ac3`、`test_smooth_uniform_velocity_ac4`、`test_smooth_uniform_acceleration_ac5`、`test_nan_gap_no_bridging_ac6`、`test_short_segment_window_shrink_ac6` | 全量回归通过，保持原精度/缺测规则 |
+| AC-9/10 原有领域证据 | `tests/test_kinematics_session.py::test_pipeline_serialization_roundtrip_ac9`、`test_stale_on_calibration_change_ac10` | 全量回归通过 |
+
+- R1–R9 核对：R1/R3 缺口按用户追加批准补齐；R2 沿用原点/旋转，R4–R6 沿用数值和
+  原子批次流程，R7–R9 沿用图表/同步/无效态规则，PNG 例外见 ADR-0010。不放宽验收标准。
+- **尚未完成**：整体 Human Review、Windows 真机、3.4 交付提交的远端 CI、合并与 push。
+  3.3 的 run 33353856199 只作为历史证据，不代替这次验证；Issue #10 保持打开。
+- 下一步：用户亲测上节五步（特别是新增两个标定入口）。HR 通过后处理 Windows 收尾条件，
+  再请求 push 授权运行双平台 CI/合并；不开始 Phase 4。

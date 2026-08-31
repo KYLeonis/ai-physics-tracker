@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted（2026-08-30，用户确认 Phase 3.3 计划与项目内依赖变更）
+Partially superseded by ADR-0010（2026-08-31，仅 Decision 1 的“不引入导出功能”；其余保持 Accepted）
 
 ## Context
 

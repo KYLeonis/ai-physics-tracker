@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Subphase 3.3 — Interactive Charts（✅ 2026-08-31）**
-- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.4 Integration & Phase Close，计划待确认）**
+- 最近完成：**Phase 3.4 — Integration Acceptance（✅ 2026-08-31，整体 Human Review 通过，Windows 真机及远端 CI 待补）**
+- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.4 ✅）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---

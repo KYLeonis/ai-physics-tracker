@@ -11,7 +11,10 @@
 """
 
 from pathlib import Path
+from dataclasses import replace
+import pytest
 from PySide6.QtCore import QPointF, Qt
+from PySide6.QtWidgets import QInputDialog
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
@@ -173,6 +176,9 @@ def test_switch_and_delete_calibration(
     window.deleteCalibrationButton.click()
     assert len(session.calibrations) == 1
     assert session.active_calibration(video_id) is None
+    assert window.calibrationSelector.currentIndex() == -1
+    window.calibrationSelector.setCurrentIndex(0)
+    assert session.active_calibration(video_id).name == "Calibration 2"
 
 
 def test_esc_exits_calibration_modes(
@@ -213,3 +219,98 @@ def test_undo_redo_calibration_updates_ui(
     window.redoButton.click()
     assert window.videoView.calibration_view() is not None
     assert "Active: Calibration 1" in window.calibrationStatusLabel.text()
+
+
+def test_edit_scale_preserves_identity_raw_and_cancel_undo(
+    qtbot: QtBot, synthetic_video_path: Path, monkeypatch,
+) -> None:
+    window = _opened_window(qtbot, synthetic_video_path)
+    monkeypatch.setattr(CalibrationDialog, "exec", lambda self: 1)
+    window._onScaleLineDrawn(QPointF(10, 10), QPointF(50, 10))
+    window.addTrackButton.click()
+    session = window.analysisSession
+    track = session.tracks[0]
+    for frame_index in range(5):
+        session.mark_point(track.track_id, frame_index, 20 + frame_index, 30)
+    session.compute_kinematics(track.track_id)
+    before = session.project
+    original = session.active_calibration(window.activeVideoId)
+    monkeypatch.setattr(CalibrationDialog, "exec", lambda self: 0)
+    window.editScaleButton.click()
+    assert session.project == before
+
+    def accept(dialog):
+        assert dialog.lengthSpinBox.value() == pytest.approx(original.known_length)
+        dialog.lengthSpinBox.setValue(2.5)
+        dialog.unitComboBox.setCurrentText("cm")
+        dialog.nameEdit.setText("Corrected scale")
+        return 1
+    monkeypatch.setattr(CalibrationDialog, "exec", accept)
+    window.editScaleButton.click()
+    changed = session.active_calibration(window.activeVideoId)
+    assert changed == replace(original, known_length=2.5, unit="cm", name="Corrected scale")
+    assert session.project.observations == before.observations
+    assert all(item.status == "stale" for item in session.project.derived)
+    assert window.videoView.calibration_view().known_length == pytest.approx(2.5)
+    window.undoButton.click()
+    assert session.project == before
+    window.redoButton.click()
+    assert session.active_calibration(window.activeVideoId) == changed
+    stable = session.project
+    def invalid_name(dialog):
+        dialog.nameEdit.setText("   ")
+        return 1
+    monkeypatch.setattr(CalibrationDialog, "exec", invalid_name)
+    window.editScaleButton.click()
+    assert session.project == stable
+    assert "Scale update failed" in window.statusBar().currentMessage()
+
+
+def test_edit_scale_without_changes_keeps_full_precision_and_clean_state(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch,
+) -> None:
+    window = _opened_window(qtbot, synthetic_video_path)
+    monkeypatch.setattr(CalibrationDialog, "exec", lambda self: 1)
+    window._onScaleLineDrawn(QPointF(10, 10), QPointF(50, 10))
+    session = window.analysisSession
+    original = replace(session.active_calibration(window.activeVideoId), known_length=1 / 3)
+    session.update_calibration(original)
+    session.save_as(tmp_path / "precise")
+    before = session.project
+    window.editScaleButton.click()
+    assert session.project == before
+    assert not session.is_dirty and not session.can_undo
+
+
+def test_delete_inactive_preserves_active_results_and_is_undoable(
+    qtbot: QtBot, synthetic_video_path: Path, monkeypatch,
+) -> None:
+    window = _opened_window(qtbot, synthetic_video_path)
+    monkeypatch.setattr(CalibrationDialog, "exec", lambda self: 1)
+    window._onScaleLineDrawn(QPointF(0, 0), QPointF(20, 0))
+    window._onScaleLineDrawn(QPointF(0, 0), QPointF(40, 0))
+    window.addTrackButton.click()
+    session = window.analysisSession
+    track = session.tracks[0]
+    session.mark_point(track.track_id, 0, 20, 20)
+    session.compute_kinematics(track.track_id)
+    before = session.project
+    inactive = session.calibrations[0]
+    active = session.active_calibration(window.activeVideoId)
+    monkeypatch.setattr(QInputDialog, "getItem", lambda *args: (args[3][0], False))
+    window.deleteInactiveCalibrationButton.click()
+    assert session.project == before
+    def choose(*args):
+        assert len(args[3]) == 1 and inactive.name in args[3][0]
+        return args[3][0], True
+    monkeypatch.setattr(QInputDialog, "getItem", choose)
+    window.deleteInactiveCalibrationButton.click()
+    assert session.calibrations == (active,)
+    assert session.active_calibration(window.activeVideoId) == active
+    assert session.project.observations == before.observations
+    assert session.project.derived == before.derived
+    assert not window.deleteInactiveCalibrationButton.isEnabled()
+    window.undoButton.click()
+    assert session.project == before
+    window.redoButton.click()
+    assert session.calibrations == (active,)
