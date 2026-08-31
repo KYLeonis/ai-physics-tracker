@@ -7,8 +7,20 @@ import numpy as np
 from PySide6.QtCore import QEvent, QObject, QPoint, Qt, Signal, QSignalBlocker
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
-    QApplication,QComboBox, QDockWidget, QHBoxLayout, QLabel, QListWidget,
-                              QListWidgetItem, QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget)
+    QApplication,
+    QComboBox,
+    QDockWidget,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 import pyqtgraph as pg
 
 from ai_physics_tracker.application.chart_data import ChartData, ChartKind
@@ -175,6 +187,25 @@ class ChartPanel(QDockWidget):
         )
         return label
 
+    def _savePng(self) -> None:
+        """把当前可见图表卡渲染为 PNG；grab 走设备像素比（Retina 天然 2x）。"""
+
+        index = self.tabs.currentIndex()
+        kind = CHART_KINDS[index]
+        suggested = f"{self.tabs.tabText(index).replace('-', '')}.png"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save chart as PNG", suggested, "PNG image (*.png)"
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".png"):
+            path += ".png"
+        pixmap = self.plots[kind].grab()
+        if pixmap.save(path, "PNG"):
+            self.statusLabel.setText(f"Chart saved: {path}")
+        else:
+            self.statusLabel.setText(f"Failed to save chart: {path}")
+
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         # 拦截原生 Tooltip 事件（平台渲染不可靠），Enter/Leave 控制自绘气泡
         if event.type() == QEvent.Type.Enter and obj.property("helpText"):
@@ -257,6 +288,9 @@ class ChartPanel(QDockWidget):
         self.cancelButton = QPushButton("Cancel calculation")
         self.cancelButton.setEnabled(False)
         self.fitButton = QPushButton("Fit chart")
+        self.savePngButton = QPushButton("Save PNG…")
+        self.savePngButton.setToolTip("Export the currently visible chart as a PNG image")
+        self.savePngButton.clicked.connect(self._savePng)
         settings = QHBoxLayout()
         for widget in (QLabel("SG window (frames)"), self.sgHelp, self.windowLength,
                        QLabel("Order"), self.orderHelp, self.polyorder,
@@ -264,7 +298,7 @@ class ChartPanel(QDockWidget):
             settings.addWidget(widget)
         settings.addStretch(1)
         buttons = QHBoxLayout()
-        for widget in (self.recomputeButton, self.cancelButton, self.fitButton):
+        for widget in (self.recomputeButton, self.cancelButton, self.fitButton, self.savePngButton):
             buttons.addWidget(widget)
         controls = QVBoxLayout()
         controls.addLayout(settings)
