@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QAbstractItemView,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
@@ -25,7 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ai_physics_tracker.application.playback import AsyncVideoSession
+from ai_physics_tracker.application.playback import AsyncVideoSession, DecodeDelivery
 from ai_physics_tracker.application.project_session import (
     ProjectRepositoryPort,
     ProjectSession,
@@ -38,7 +39,8 @@ from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
 from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.gui.timing_actions import TimingActions
-from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
+from ai_physics_tracker.gui.chart_actions import ChartActions
+from ai_physics_tracker.domain.timeline import Timeline, frame_to_time, clamp_to_working_zone
 from ai_physics_tracker.gui.video_view import CalibrationView, MarkerView, VideoView
 
 logger = logging.getLogger(__name__)
@@ -54,6 +56,14 @@ class MainWindow(QMainWindow):
 
     frameDelivered = Signal(object, int)
     decodeFailed = Signal(str, int)
+    decodeCompleted = Signal(object, int)
+    presentedFrameChanged = Signal(object)
+    frameRequestFailed = Signal()
+    frameRequested = Signal(int)
+    analysisChanged = Signal()
+    selectedTrackChanged = Signal(object)
+    projectChanged = Signal()
+    closing = Signal()
 
     def __init__(
         self,
@@ -73,6 +83,7 @@ class MainWindow(QMainWindow):
         self._measurement_allowed = False
         self._is_playing = False
         self._has_pending_request = False
+        self._latest_request_id: int | None = None
         self._frame_count = 0
         self._timeline: Timeline | None = None
         # 交付代际：openVideo 递增；worker 回调发射时捕获当前代际，
@@ -106,6 +117,11 @@ class MainWindow(QMainWindow):
         self.zoomLabel = QLabel("Zoom: —", self)
 
         self.trackList = QListWidget(self)
+        # 多选：overlay 同时显示所有选中轨迹的标注点（各用各自颜色）；
+        # 标注落点目标 = 最后点击的项（currentItem，Qt 多选语义）
+        self.trackList.setSelectionMode(
+            QAbstractItemView.SelectionMode.MultiSelection
+        )
         self.trackDataLabel = QLabel("Stored observations: 0", self)
         self.addTrackButton = QPushButton("Add track", self)
         self.deleteTrackButton = QPushButton("Delete track", self)
@@ -239,6 +255,8 @@ class MainWindow(QMainWindow):
         zoom400Action.setShortcut(QKeySequence("Ctrl+3"))
         zoom400Action.triggered.connect(lambda: self.videoView.zoomTo(4.0))
         viewMenu = self.menuBar().addMenu("View")
+        self.chartActions = ChartActions(self)
+        viewMenu.addAction(self.chartActions.panel.toggleViewAction())
         viewMenu.addAction(zoomInAction)
         viewMenu.addAction(zoomOutAction)
         viewMenu.addSeparator()
@@ -278,6 +296,7 @@ class MainWindow(QMainWindow):
         self.timelineSlider.sliderReleased.connect(self._scrubCommitted)
         self.frameDelivered.connect(self._onFrameDelivered)
         self.decodeFailed.connect(self._onDecodeFailed)
+        self.decodeCompleted.connect(self._onDecodeCompleted)
         self.videoView.scaleChanged.connect(self._onScaleChanged)
         self.videoView.annotationClicked.connect(self._onAnnotationClicked)
         self.videoView.scaleLineDrawn.connect(self._onScaleLineDrawn)
@@ -300,6 +319,42 @@ class MainWindow(QMainWindow):
         self.undoButton.clicked.connect(self._undo)
         self.redoButton.clicked.connect(self._redo)
         self.statusBar().showMessage("Ready")
+
+    @property
+    def analysisSession(self) -> ProjectSession | None:
+        return self._annotation_session
+
+    @property
+    def activeVideoId(self) -> UUID | None:
+        return self._annotation_video_id
+
+    @property
+    def selectedTrackId(self) -> UUID | None:
+        return self._selected_track_id
+
+    @property
+    def presentedFrameIndex(self) -> int | None:
+        return self._presented_frame_index
+
+    @property
+    def deliveryGeneration(self) -> int:
+        return self._delivery_generation
+
+    def seekFrame(self, frame_index: int) -> bool:
+        """图表导航统一走现有解码入口，暂停并解除视频上的编辑模式。"""
+
+        if self.projectActions.busy or self._timeline is None or self._async.snapshot() is None:
+            return False
+        self.stopPlayback()
+        self.videoView.set_annotation_mode(False)
+        self.videoView.set_calibration_mode(None)
+        self.drawScaleButton.setChecked(False)
+        self.setOriginButton.setChecked(False)
+        self._requestFrame(clamp_to_working_zone(frame_index, self._timeline))
+        return True
+
+    def refreshAnalysisHistory(self) -> None:
+        self._refreshHistoryButtons()
 
     @property
     def isPlaying(self) -> bool:
@@ -330,7 +385,8 @@ class MainWindow(QMainWindow):
         # token 在创建时固定；旧 worker 发射迟到帧时不能冒充当前会话。
         return AsyncVideoSession(self._session_factory(),
             lambda frame: self.frameDelivered.emit(frame, token),
-            lambda error: self.decodeFailed.emit(str(error), token))
+            lambda error: self.decodeFailed.emit(str(error), token),
+            on_result=lambda result: self.decodeCompleted.emit(result, token))
 
     def candidateService(self, *, deferTiming: bool = False) -> tuple[int, ProjectMediaService]:
         self._generation_counter += 1
@@ -365,6 +421,7 @@ class MainWindow(QMainWindow):
         self.projectActions.executor.submit(old_decoder.close)
         self._has_pending_request = False
         self._last_requested_frame = None
+        self._latest_request_id = None
         self._resetPresentation()
         self._annotation_session = prepared.session
         self._annotation_video_id = prepared.video_id
@@ -403,6 +460,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(prepared.timing.reason +
             ("" if self._measurement_allowed else " — browsing only; new measurements disabled"))
         self.timingActions.adopt(prepared, token, service)
+        self.projectChanged.emit()
 
     def adoptEmptyProject(self) -> None:
         from ai_physics_tracker.application.video_timing import TimingReport
@@ -459,6 +517,7 @@ class MainWindow(QMainWindow):
         self._generation_counter += 1
         self._delivery_generation = self._generation_counter
         self.stopPlayback()
+        self.closing.emit()
         self.timingActions.shutdown()
         self._async.close()
         self.projectActions.shutdown()
@@ -481,7 +540,16 @@ class MainWindow(QMainWindow):
     def _requestFrame(self, frame_index: int) -> None:
         self._has_pending_request = True
         self._last_requested_frame = frame_index
-        self._async.request_frame(frame_index)
+        self._latest_request_id = self._async.request_frame(frame_index)
+        self.frameRequested.emit(frame_index)
+
+    def _onDecodeCompleted(self, result: DecodeDelivery, generation: int) -> None:
+        if generation != self._delivery_generation or result.request_id != self._latest_request_id:
+            return  # 旧请求即便失败也不能清除新请求；相同帧号靠编号区分。
+        if result.error is not None:
+            self.decodeFailed.emit(str(result.error), generation)
+        elif result.frame is not None:
+            self.frameDelivered.emit(result.frame, generation)
 
     def _onFrameDelivered(self, frame: DecodedFrame, generation: int) -> None:
         if generation != self._delivery_generation:
@@ -500,7 +568,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(message)
         snapshot = self._async.snapshot()
         if snapshot is not None:
+            self._last_requested_frame = snapshot.current_frame.frame_index
             self._presentFrame(snapshot.current_frame)
+        self.frameRequestFailed.emit()
 
     def _undo(self) -> None:
         if self._annotation_session is None or not self._annotation_session.undo():
@@ -536,15 +606,21 @@ class MainWindow(QMainWindow):
         self.redoButton.setEnabled(session is not None and session.can_redo)
         if hasattr(self, "projectActions"):
             self.projectActions.refresh()
+        self.analysisChanged.emit()
 
     def _addTrack(self) -> None:
         if not self._measurement_allowed or self.projectActions.busy or self._annotation_session is None or self._annotation_video_id is None:
             return
         track = self._annotation_session.add_track(self._annotation_video_id)
         self._refreshTrackList()
+        # 新 Track 成为唯一选中并立即成为标注目标；既有选中保留会让
+        # "建完就标"的新点落到旧 Track 上（多选模式下 setCurrentRow 不清选区）
+        self.trackList.clearSelection()
         for row in range(self.trackList.count()):
             if self.trackList.item(row).data(Qt.ItemDataRole.UserRole) == track.track_id:
                 self.trackList.setCurrentRow(row)
+                self.trackList.item(row).setSelected(True)
+                break
         self._refreshHistoryButtons()
 
     def _deleteSelectedTrack(self) -> None:
@@ -559,13 +635,19 @@ class MainWindow(QMainWindow):
         self._refreshHistoryButtons()
 
     def _onTrackSelectionChanged(self) -> None:
-        # 基于 selectedItems 而非 currentItem：clearSelection/点击列表空白后
-        # currentItem 仍保留旧项（Qt 语义），据此判定无法实现 D2 退出路径
+        # 多选语义：标注目标 = 选中集中的 currentItem（最后点击项）；currentItem
+        # 已被 toggle 取消选中时回落到任一剩余选中项；选中为空必须得到 None
+        # （clearSelection 后 Qt 仍保留 currentItem，不能让它复活旧目标）
         selected = self.trackList.selectedItems()
-        track_id = (
-            selected[0].data(Qt.ItemDataRole.UserRole) if selected else None
-        )
+        current = self.trackList.currentItem()
+        if current is not None and current in selected:
+            track_id = current.data(Qt.ItemDataRole.UserRole)
+        elif selected:
+            track_id = selected[0].data(Qt.ItemDataRole.UserRole)
+        else:
+            track_id = None
         self._selected_track_id = track_id
+        self.selectedTrackChanged.emit(track_id)
         self.deleteTrackButton.setEnabled(track_id is not None)
         if track_id is not None:
             self.drawScaleButton.setChecked(False)
@@ -878,32 +960,27 @@ class MainWindow(QMainWindow):
         if self._annotation_session is None:
             return
         self.trackDataLabel.setText(f"Stored observations: {len(self._annotation_session.project.observations)}")
-        if self._selected_track_id is None:
+        selected = self.trackList.selectedItems()
+        if not selected or self._presented_frame_index is None:
             self.videoView.set_markers([])
             return
-        track = next(
-            (
-                item
-                for item in self._annotation_session.tracks
-                if item.track_id == self._selected_track_id
-            ),
-            None,
-        )
-        if track is None:
-            self.videoView.set_markers([])
-            return
-        if self._presented_frame_index is None:
-            self.videoView.set_markers([])
-            return
-        markers = [
-            MarkerView(
-                pixel_x=point.pixel_x,
-                pixel_y=point.pixel_y,
-                color=track.color,
-                is_current_frame=point.frame_index == self._presented_frame_index,
+        tracks_by_id = {
+            track.track_id: track for track in self._annotation_session.tracks
+        }
+        markers: list[MarkerView] = []
+        for item in selected:
+            track = tracks_by_id.get(item.data(Qt.ItemDataRole.UserRole))
+            if track is None:
+                continue
+            markers.extend(
+                MarkerView(
+                    pixel_x=point.pixel_x,
+                    pixel_y=point.pixel_y,
+                    color=track.color,
+                    is_current_frame=point.frame_index == self._presented_frame_index,
+                )
+                for point in self._annotation_session.manual_points(track.track_id)
             )
-            for point in self._annotation_session.manual_points(track.track_id)
-        ]
         self.videoView.set_markers(markers)
 
     def _onScaleChanged(self, scale: float) -> None:
@@ -928,6 +1005,7 @@ class MainWindow(QMainWindow):
         self.nextButton.setEnabled(frame.frame_index < self._timeline.working_zone[1])
         self._presented_frame_index = frame.frame_index
         self._refreshMarkers()
+        self.presentedFrameChanged.emit(frame.frame_index)
 
     def _step(self, delta: int) -> None:
         snapshot = self._async.snapshot()

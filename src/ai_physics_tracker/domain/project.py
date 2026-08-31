@@ -241,10 +241,18 @@ def set_active_calibration(
     # 切换解释基准会使旧标定产出的数据失效；用新选标定已经产出的数据
     # 仍然有效（data-model.md §6.3）。
     changed_ids = {previous} if previous is not None else set()
+    derived = mark_calibrations_stale(project.derived, changed_ids)
+    if previous is None:
+        # 首次标定同样改变像素结果的解释基准，只影响该视频的基础运动学记录。
+        from ai_physics_tracker.domain.derived import KINEMATICS_KINDS
+        track_ids = {track.track_id for track in project.tracks if track.video_id == video_id}
+        derived = tuple(replace(item, status="stale")
+                        if item.track_id in track_ids and item.calibration_ref is None
+                        and item.kind in KINEMATICS_KINDS else item for item in derived)
     return replace(
         project,
         active_calibration_by_video=active,
-        derived=mark_calibrations_stale(project.derived, changed_ids),
+        derived=derived,
     )
 
 

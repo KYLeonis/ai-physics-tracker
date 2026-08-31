@@ -40,6 +40,16 @@ class PlaybackSnapshot:
     current_frame: DecodedFrame
 
 
+@dataclass(frozen=True)
+class DecodeDelivery:
+    """带请求身份的解码结果；GUI 可丢弃过期成功/失败，帧号相同也不混淆。"""
+
+    request_id: int
+    requested_frame_index: int
+    frame: DecodedFrame | None = None
+    error: VideoError | None = None
+
+
 class AsyncVideoSession:
     """把同步 VideoSession 包成 latest-wins 的异步帧服务。
 
@@ -48,6 +58,8 @@ class AsyncVideoSession:
       高频提交时，中间帧在解码开始前即被丢弃，这正是 phase2-requirements.md
       §2 R3 的"latest-request coalescing / 过期解码请求可丢弃"；
     - `snapshot()` 提供当前状态的最终一致读取（见其 docstring）；
+    - 提供 `on_result` 时只通过 DecodeDelivery 回调一次；原 on_frame/on_error
+      不重复投递。GUI 使用请求编号丢弃旧成功/失败，原调用者可继续使用旧回调；
     - 会话已停止或正在关闭时 `request_frame()` 静默丢弃请求且**不产生
       任何回调**——调用方不得依赖回调来清自身的在途标志。
     """
@@ -57,10 +69,14 @@ class AsyncVideoSession:
         session: VideoSession,
         on_frame: FrameCallback,
         on_error: ErrorCallback,
+        *, on_result: Callable[[DecodeDelivery], None] | None = None,
     ) -> None:
         self._session = session
         self._on_frame = on_frame
         self._on_error = on_error
+        self._on_result = on_result
+        self._request_counter = 0
+        self._pending_request_id = 0
         self._lock = threading.Lock()
         self._wakeup = threading.Condition(self._lock)
         self._pending_frame: int | None = None
@@ -95,17 +111,20 @@ class AsyncVideoSession:
             self._wakeup.notify_all()
         return future
 
-    def request_frame(self, frame_index: int) -> None:
+    def request_frame(self, frame_index: int) -> int | None:
         """提交解码请求；覆盖尚未开始的旧请求（latest-wins）。
 
-        会话已停止或正在关闭时请求被静默丢弃，不产生回调。
+        返回该请求的编号；会话已停止或正在关闭时返回 None，不产生回调。
         """
 
         with self._wakeup:
             if self._stopped or self._pending_close:
                 return
             self._pending_frame = frame_index
+            self._request_counter += 1
+            self._pending_request_id = self._request_counter
             self._wakeup.notify_all()
+            return self._pending_request_id
 
     def snapshot(self) -> PlaybackSnapshot | None:
         """当前会话状态；未打开或已关闭时返回 None。
@@ -161,6 +180,7 @@ class AsyncVideoSession:
                 open_future = self._pending_open_future
                 self._pending_open_future = None
                 frame_index = self._pending_frame
+                request_id = self._pending_request_id
                 self._pending_frame = None
                 closing = self._pending_close
             if closing:
@@ -173,7 +193,7 @@ class AsyncVideoSession:
             if path is not None:
                 self._handle_open(path, open_future, timeline, initial_frame)
             elif frame_index is not None:
-                self._decode(frame_index)
+                self._decode(frame_index, request_id)
 
     def _handle_open(
         self, path: Path, future: Future[PlaybackSnapshot] | None,
@@ -199,7 +219,7 @@ class AsyncVideoSession:
         if future is not None:
             future.set_result(snapshot)
 
-    def _decode(self, frame_index: int) -> None:
+    def _decode(self, frame_index: int, request_id: int) -> None:
         # 不在解码期间持有任何锁：request_frame 必须能在慢速解码进行中
         # 覆盖 pending 槽，否则 latest-wins 退化为排队（见
         # test_latest_wins_coalesces_pending_requests）。worker 是唯一写者。
@@ -208,22 +228,28 @@ class AsyncVideoSession:
                 raise VideoError("no video is open")
             frame = self._session.go_to_frame(frame_index)
         except VideoError as error:
-            self._emit_error(error)
+            self._emit_error(error, request_id, frame_index)
             return
         except Exception as error:
-            self._emit_error(VideoError(str(error)))
+            self._emit_error(VideoError(str(error)), request_id, frame_index)
             return
         try:
             if not self._pending_close and not self._stopped:
-                self._on_frame(frame)
+                if self._on_result is not None:
+                    self._on_result(DecodeDelivery(request_id, frame_index, frame=frame))
+                else:
+                    self._on_frame(frame)
         except Exception:
             logger.exception("on_frame callback raised for frame %d", frame.frame_index)
 
-    def _emit_error(self, error: Exception) -> None:
+    def _emit_error(self, error: Exception, request_id: int, frame_index: int) -> None:
         if not isinstance(error, VideoError):
             error = VideoError(str(error))
         try:
             if not self._pending_close and not self._stopped:
-                self._on_error(error)
+                if self._on_result is not None:
+                    self._on_result(DecodeDelivery(request_id, frame_index, error=error))
+                else:
+                    self._on_error(error)
         except Exception:
             logger.exception("on_error callback raised")

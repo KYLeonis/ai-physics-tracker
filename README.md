@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:   Phase 3 — Calibration & Physics Engine 🔄
 Last Completed:  Subphase 3.2 — Kinematics Engine ✅（2026-08-30）
-Current Subphase: 3.3 — Charting UI 规划中
+Current Subphase: 3.3 — Interactive Charts（本地实现完成，待 Human Review/CI）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -91,6 +91,10 @@ Phase 2.1–2.4 已形成桌面视频浏览、异步播放、缩放/平移、手
 
 2.4 本地增量采用首帧预览 + 后台时序验证；近似恒定帧率须明确接受所显示误差才能标记，
 不会静默当作 CFR。策略和限制见 [ADR-0007](docs/decisions/0007-responsive-preview-and-explicit-timing-approximation.md)。
+
+3.3 已加入底部五类运动学图表、多轨迹叠加、双向帧定位，以及 SG 参数与后台重算。
+先在图表面板勾选轨迹，再点击 **Recompute checked tracks**；标定/标记修改后旧图提示
+stale，需重算。当前 297 项本地测试与交叉复审通过，尚待用户验收和远端双平台 CI。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 

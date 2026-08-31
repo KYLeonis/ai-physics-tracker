@@ -4,7 +4,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近完成：**Subphase 3.2 — Kinematics Engine（✅ 2026-08-30）**
-- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.3 Interactive Charts，计划待确认）**
+- 当前阶段：**Phase 3 — Calibration & Physics Engine（🔄 Subphase 3.3 Interactive Charts，本地实现通过，待 Human Review/CI）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -90,6 +90,8 @@
 - [x] 标定后坐标转换误差满足设计精度（合成数据测试）
 - [x] 用匀速/匀加速合成数据验证 v/a 计算正确
 - [ ] 图表与视频帧同步联动
+
+> 3.3 本地实现与 297 项回归、交叉独立复审通过；此项待用户 Human Review 后再勾选。
 
 **主要技术风险**
 - ~~数值微分的噪声放大：平滑与微分的顺序、参数选择需提供可调方案并记录 ADR。~~ 已解决：[ADR-0008](decisions/0008-numerical-differentiation-and-smoothing.md)——Savitzky-Golay 先平滑后微分，默认 window=7 / polyorder=2。

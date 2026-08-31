@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 3.3 Interactive Charts
 
-- Issue：待用户确认本计划后创建或复用对应 Issue；当前不修改 GitHub。
-- 计划工作分支：`feat/p3.3-interactive-charts`（确认后创建）。
-- 日期 / 状态：2026-08-30 · **Draft — 等待用户确认，未开始实现**。
+- Issue：[#9](https://github.com/KYLeonis/ai-physics-tracker/issues/9)。
+- 工作分支：`feat/p3.3-interactive-charts`。
+- 日期 / 状态：2026-08-30 · **本地实现/复审通过 — 等待 Human Review 与 CI**。
 - 仓库基线：`main` / `e49132a`；3.2 已由 `3d3ad90` 合并，无需再次合并。
 - 规划验证：本地 **260 passed**，`pip check` 通过；这是已有代码基线，不是 3.3 验收。
 
@@ -122,14 +122,14 @@
 
 ## Slices
 
-- [ ] Slice 1：确认 PyQtGraph 方案并记录 ADR-0009；同步依赖/开发文档，锁定环境，
+- [x] Slice 1：确认 PyQtGraph 方案并记录 ADR-0009；同步依赖/开发文档，锁定环境，
   运行真实 PlotWidget + InfiniteLine smoke test，不改变 CI 配置。
-- [ ] Slice 2：补齐派生数据查询/选择与 Qt-free 图表数据适配，确定 kind/列/单位契约，
+- [x] Slice 2：补齐派生数据查询/选择与 Qt-free 图表数据适配，确定 kind/列/单位契约，
   实现缺测断线、working-zone 过滤与数值状态测试；补首次标定 stale 回归。
-- [ ] Slice 3：QDockWidget + 五标签页 + Track 勾选/图例 + 位置来源切换及状态提示，
+- [x] Slice 3：QDockWidget + 五标签页 + Track 勾选/图例 + 位置来源切换及状态提示，
   Qt 测试覆盖空态/多轨迹/未标定/重开；先不增加双向 seek。
-- [ ] Slice 4：双向帧同步、x-y 点选、视图范围保持；验证呈现帧/请求帧隔离、无反馈环。
-- [ ] Slice 5：SG 参数与后台重算、stale 刷新和项目生命周期整合；补事务/取消/保存竞态测试。
+- [x] Slice 4：双向帧同步、x-y 点选、视图范围保持；验证呈现帧/请求帧隔离、无反馈环。
+- [x] Slice 5：SG 参数与后台重算、stale 刷新和项目生命周期整合；补事务/取消/保存竞态测试。
 - [ ] Slice 6：完整回归、独立 Luna-max review、Human Review；通过后按授权同步 Issue/CI/
   合并与状态，再进入 3.4 的整体集成验收，不直接开始 Phase 4。
 
@@ -161,13 +161,13 @@ Qt-free 数据适配与绘图控件分离，不再把图表和后台任务堆入
 - 既有 Actions 是 macOS/Windows Python 3.11 矩阵，不默认更改 YAML；本机 Python 3.12
   通过不等于 Windows 已通过。Phase 2 已延后的 Windows 真人验收继续单独记录。
 
-### 实现后 Human Review（本轮仅规划，不启动验收）
+### 实现后 Human Review（自动化与复审通过后发起）
 
 启动方式仍为仓库内 `.venv/bin/python -m ai_physics_tracker`（依赖按确认后的锁文件安装）。
 
 1. 打开视频，连续标注至少 9 帧并标定 → 勾选 Track、重算，五个图表有数据和单位。
 2. 播放/步进 → 游标跟随；点击/拖拽时间游标与 x-y 实际点 → 视频定位正确，不误标点。
-3. 勾选两条轨迹、切换图表、缩放/平移、关闭/恢复面板 → 颜色/图例与视图操作符合预期。
+3. 勾选两条轨迹、切换图表、缩放/平移、拖动停靠/浮动、关闭/恢复面板 → 颜色/图例与视图操作符合预期。
 4. 修改标定或标记 → 旧结果明确 stale；调整 SG 后重算 → 状态/结果更新，缺测处仍断开。
 5. 保存、关闭、重开 → 结果/单位/参数保留；取消未保存切换 → 当前数据不丢失。
 
@@ -175,9 +175,23 @@ Qt-free 数据适配与绘图控件分离，不再把图表和后台任务堆入
 
 ## 授权边界与 Result
 
-- 本次仅写计划和状态文档并做本地文档提交；不改 `src/`、测试实现、依赖或 CI，不 push。
-- 待确认：本计划范围，以及引入 PyQtGraph 0.13.7、在项目 `.venv` 对齐锁定依赖。
+- 用户已确认计划及项目内依赖变更；实施到 Human Review。本轮不改 CI、不 push。
+- 已确认：本计划范围，以及引入 PyQtGraph 0.13.7、在项目 `.venv` 对齐锁定依赖。
   代价是多一项绘图库依赖与 Qt/NumPy 兼容验证；若 smoke 不通过，停下来报告，不擅自改版本范围。
 - 确认后：建立 Issue/工作分支 → Slice 1 验证依赖 → 逐 Slice 实现/测试 → 独立 review → HR。
   原视频和原始标注不迁移，实施中可停止或调整未完成 Slice；不会以破坏性 Git 操作回退。
-- 完成日期 / 合并 commit：未实现；所有 P33 验收项尚待验证。
+- 本地功能提交：`f50bb36`（依赖/契约）、`79c4795`（数据适配/批次）、`69c0864`（图表/帧身份）。
+  尚未合并、push 或关闭 Issue #9；不宣称 Subphase 已收尾。
+- 验证：锁定环境 **297 passed**（Python 3.12.13 / SciPy 1.17.1 / NumPy 2.4.6 /
+  PySide6-Essentials 6.11.2 / PyQtGraph 0.13.7）；compileall、pip check、diff check 通过。
+  真实 PlotWidget/InfiniteLine、五图曲线数与 x-y 点选 smoke 通过，未用截图代替 HR。
+- 复审：Luna-max 交叉独立复审通过。受 agent 数量上限限制，无法新建复审会话，改为
+  适配器作者仅审查其未实现的 GUI/批次模块，回归作者审查其未实现的适配器；主模型集成。
+  GUI 复审发现旧请求交付/失败覆盖新目标的 Blocker，已通过 DecodeDelivery 请求编号修复；
+  真实 worker 的迟到成功/失败、相同帧不同请求编号均有回归，定点复审通过。
+- 额外防护：缺媒体时撤销候选复制的旧时序权限；同单位但不同标定的 valid 缓存仅以
+  stale 状态显示，不篡改已保存 Project；首次标定使已有像素派生结果失效。
+- P33-1…P33-8 的核心数据/交互自动化分支已覆盖；停靠/浮动等实际体验仍需按上节逐项确认。P33-9 的远端
+  macOS/Windows CI 尚未运行（未获准 push），Human Review 尚未完成。
+- 下一步：等待用户 Human Review 反馈；通过后申请 push 授权运行双平台 CI，再处理
+  Issue/合并和 3.4。不得跳过人测直接收尾。

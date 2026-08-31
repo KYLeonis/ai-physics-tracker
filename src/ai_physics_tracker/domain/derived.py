@@ -6,6 +6,8 @@ from uuid import UUID
 
 from ai_physics_tracker.domain.types import JsonObject, require_aware_datetime
 
+KINEMATICS_KINDS = ("world_position", "smoothed_position", "velocity", "acceleration")
+
 
 @dataclass(frozen=True)
 class DerivedInput:
