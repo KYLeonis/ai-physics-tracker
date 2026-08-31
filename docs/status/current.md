@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-31（Phase 4.3 计划草案完成，等待用户确认）
+- 最后更新：2026-08-31（Phase 4.3 本地验收与独立 review 完成，等待 push 授权）
 
 ---
 
@@ -13,13 +13,13 @@
 
 ## Current Subphase
 
-**4.3 — Inference Pipeline & Track Integration** 📝 计划待确认，尚未开始实现。
+**4.3 — Inference Pipeline & Track Integration** 本地完成，待推送及新提交 CI（[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14)）。
 
-计划草案：[phase-4.3-plan.md](phase-4.3-plan.md)。上一个 Subphase 4.2 已完成（[Issue #13](https://github.com/KYLeonis/ai-physics-tracker/issues/13) 已关闭）。
+计划与验收：[phase-4.3-plan.md](phase-4.3-plan.md)。上一个 Subphase 4.2 已完成（[Issue #13](https://github.com/KYLeonis/ai-physics-tracker/issues/13) 已关闭）。
 
 ## Current Slice
 
-N/A（等待确认 4.3 范围，确认后从 Slice 1：真实 DLC 契约核对与推理协议开始）。
+Slice 5 本地验收完成；实现分支 `feat/p4.3-inference-pipeline`，独立复审通过。等待 push 授权与远端 CI，不进入 4.4。
 
 ## Current Goal
 
@@ -27,6 +27,7 @@ N/A（等待确认 4.3 范围，确认后从 Slice 1：真实 DLC 契约核对�
 
 ## Recently Completed
 
+- **4.3 本地实现与验证**：真实推理、严格解析、模型 hash 校验、spawn 取消/错误/晚到消息处理、原子导入与 Undo/Redo、人工/AI 生效观测和运动学已接通；405 tests 通过。真实 CPU 合成视频 10 帧推理，5 点导入/5 个人工点保护，保存重开通过；重复推理 0 点导入/10 点跳过，既有派生不变。精简依赖模拟 74 passed / 1 HDF5 测试因无 pandas 跳过。独立审查发现的模型/视频身份、快照索引竞态、legacy 归档引用问题均已修复并复审通过。未改依赖、CI、schema；尚未 push。
 - **4.3 进入检查与计划**（2026-08-31）：进入时 `main` 工作区干净，HEAD `7ecb4ea` 与实时查询的 origin/main 一致，对应 CI success；本轮重新运行 offscreen 全回归 **341 passed in 22.05s**。已读取 Phase 4 spec/ADR、数据语义、训练 Issue 与相关实现；确认现有融合规则可复用，但运动学计算及后台输入检查仍只读 manual，需在 4.3 接通 AI 生效观测。只新增计划文档，未改实现、依赖、CI 或 schema。
 - **Phase 4.2 — Training Pipeline**（✅ 2026-08-31）：
   - 协议扩展：`EngineAdapter` 协议补齐 `create_training_dataset`、`train` 与 `engine_version`，新增 `TrainingParams` 与 `TrainOutcome` 数据类。
@@ -47,14 +48,14 @@ N/A（等待确认 4.3 范围，确认后从 Slice 1：真实 DLC 契约核对�
 - DeepLabCut 集成架构（ADR-0011）：适配器隔离 + 后台子进程 (spawn 模式) + 单 bodypart 先行
 - 会话切换/关闭策略（D1）：关闭或切换会话时强制取消活动训练任务，避免产生孤儿后台进程
 - 训练默认参数（D2）：`epochs=50, batch_size=8, device=auto(cuda→mps→cpu)`，后续在 4.4 GUI 中提供配置控件
-- 测试策略：CI 与单元测试使用 `MockEngineAdapter`，本地真实 DLC 冒烟通过（`scripts/smoke_test_dlc_train.py`）
+- 测试策略：CI 与单元测试使用 `MockEngineAdapter`，本地真实训练/推理闭环通过（`scripts/smoke_test_dlc_infer.py`）
 
-**延后项**：Windows 真机验收。
+**延后项**：Windows 真机/CUDA 验收。4.4 接线前必须将当前调用方线程内的视频 hash 扫描放入后台准备/提交阶段，避免大视频卡 GUI；当前没有 GUI 推理入口。
 
-**4.3 计划边界**：先做 Qt-free 推理/导入/混合观测分析；任务面板、AI 视觉样式、窗口生命周期接线与自动刷新留给 4.4。真实 snapshot 选择、帧进度与输出完整性在首个 Slice 优先核对。现有 4.2 模型路径移动兼容风险在草案中说明，不自动迁移。
+**4.3 计划边界**：先做 Qt-free 推理/导入/混合观测分析；任务面板、AI 视觉样式、窗口生命周期接线与自动刷新留给 4.4。真实 snapshot 选择、帧进度与输出完整性已验证。现有 4.2 模型路径移动兼容风险在草案中说明，不自动迁移。
 
-**进入检查发现的前置缺口**：训练 worker 查找 `dlc-models` 而非 PyTorch 实际目录，找不到仍返回猜测 snapshot 路径；config 路径只在 coordinator 内存。草案 Slice 1 包含必要的模型交接定向修复及真实验证，不自动修写历史 run。现有 341 项回归通过不覆盖该真实产物缺口。
+**前置缺口已修复**：训练快照通过 DLC loader 定位，只接受本次真实产出的权重；新增训练 run 保存项目内相对 config/model 引用和模型 hash。不自动修写历史 run。失效/被覆盖的旧模型明确拒绝推理。
 
 ## Next Recommended Action
 
-等待用户确认 [4.3 计划草案](phase-4.3-plan.md)；确认后创建对应 Issue 和 `feat/p4.3-inference-pipeline` 工作分支，从 Slice 1 核对真实 DLC 推理的 snapshot/进度/输出契约开始。按草案完成各 Slice，不提前实现 4.4 GUI。推送、删除等红线动作另依用户授权执行。
+请求用户授权 `git push origin main`；获准后推送 4.3 本地集成提交，检查该新提交的 macOS/Windows CI，成功后关闭 Issue #14 并同步 P43-8 / 完成状态。若 CI 失败先修复再验证，不强推。4.4 GUI 尚未开始，等待后续指令；删除等其他红线动作不包含在推送授权内。

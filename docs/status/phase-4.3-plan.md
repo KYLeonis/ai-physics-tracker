@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 4.3 Inference Pipeline & Track Integration
 
-- Issue：待用户确认计划后创建（本轮不操作远程内容）
-- 分支：计划使用 `feat/p4.3-inference-pipeline`，尚未创建
-- 日期 / 状态：2026-08-31 · 草案，等待用户确认，未开始实现
+- Issue：[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14)
+- 分支：`feat/p4.3-inference-pipeline`
+- 日期 / 状态：2026-08-31 · 本地验收与独立复审通过；待 push 授权及远端 CI
 - 基线：`main` / `7ecb4ea`，与实时查询的远程 main 一致；进入会话时工作区干净。
 
 ## Goal
@@ -58,6 +58,7 @@
 - 每次输出放在 `data/engines/<run_id>/`，不写到用户原视频目录，也不复用旧 run 的输出目录。动手前先在项目格式说明中补充该子目录用途、命名和保留规则。
 - 原始输出的相对路径、行数、文件哈希和导入统计放入 `TrackingRun` 已有可扩展字段；不增加 schema 版本。项目内路径按相对根目录的 POSIX 路径存储，执行时再解析。
 - 兼容读取 4.2 已存在的模型/config 路径；发现旧绝对路径在项目移动后失效时明确报错，不隐式迁移或猜测替代模型。
+- Review 后明确“可验证”：必须有合法模型哈希；缺少哈希的旧训练记录需重训。有效外部旧式路径在推理后归档一份本次模型/config 内容到 run 目录，新 run 仅保存相对引用，原件不动。已登记视频的内容哈希也必须匹配。
 
 ### 2. 帧号、置信度与异常结果
 
@@ -90,13 +91,13 @@
 
 ## Acceptance Criteria
 
-- [ ] P43-1：mock API 与真实 DLC 冒烟均证明使用指定 snapshot 对当前视频全帧推理，结果文件只落在本次 run 目录。
-- [ ] P43-2：合成 MultiIndex/HDF5/CSV 验证字段、源帧号、时间、阈值等于边界、缺测/零点、非法结构与截断输出；坏批次不会部分写入。
-- [ ] P43-3：真实 spawn + mock adapter 验证真实帧计数消息、成功、取消回收、worker 异常、进程异常退出及重复/晚到消息；取消/失败没有新增观测。
-- [ ] P43-4：首写优先保护人工及旧 AI，推理中人工编辑不丢；导入后人工覆盖保留原预测；跨会话/媒体/时间上下文的结果被拒绝。
-- [ ] P43-5：成功导入按单次操作 Undo/Redo，影响目标派生 stale；全冲突/全过滤不改旧派生；save→load 保留 confidence、run 关联及相对输出引用。
-- [ ] P43-6：混合 manual/AI 的已知解析轨迹重算正确，训练仍只导出 manual；AI 导入使进行中的旧运动学批次失效，纯手工回归不变。
-- [ ] P43-7：本机真实 CPU 冒烟验证“已有/1 epoch 训练 snapshot → 推理 → 导入 → 保存重开”，明确这只证明管线可用，不代表单摆跟踪精度合格。
+- [x] P43-1：mock API 与真实 DLC 冒烟均证明使用指定 snapshot 对当前视频全帧推理，结果文件只落在本次 run 目录。
+- [x] P43-2：合成 MultiIndex/HDF5/CSV 验证字段、源帧号、时间、阈值等于边界、缺测/零点、非法结构与截断输出；坏批次不会部分写入。
+- [x] P43-3：真实 spawn + mock adapter 验证真实帧计数消息、成功、取消回收、worker 异常、进程异常退出及重复/晚到消息；取消/失败没有新增观测。
+- [x] P43-4：首写优先保护人工及旧 AI，推理中人工编辑不丢；导入后人工覆盖保留原预测；跨会话/媒体/时间上下文的结果被拒绝。
+- [x] P43-5：成功导入按单次操作 Undo/Redo，影响目标派生 stale；全冲突/全过滤不改旧派生；save→load 保留 confidence、run 关联及相对输出引用。
+- [x] P43-6：混合 manual/AI 的已知解析轨迹重算正确，训练仍只导出 manual；AI 导入使进行中的旧运动学批次失效，纯手工回归不变。
+- [x] P43-7：本机真实 CPU 冒烟验证“已有/1 epoch 训练 snapshot → 推理 → 导入 → 保存重开”，明确这只证明管线可用，不代表单摆跟踪精度合格。
 - [ ] P43-8：全回归及独立 review 通过；文档同步完成。Windows CUDA 延后不伪称已验证；推送后的双平台 CI 以实际结果记录。
 
 ## Slices
@@ -123,10 +124,22 @@
 
 ## Approval and Next Action
 
-此草案沿用已接受架构，不请求新增依赖或数据格式迁移。用户确认范围后：创建 4.3 Issue 与工作分支，先完成 Slice 1，再逐片实现和验证。源代码阶段可以按 commit 回退；原始预测文件和旧项目数据保留。`git push`、删除及其他红线动作仍单独遵守用户授权，不将计划确认解释成这些动作的授权。
+用户已确认范围并授权实施；4.3 Issue 与工作分支已创建。实现沿用已接受架构，没有引入依赖或数据格式迁移。`git push`、删除及其他红线动作仍单独遵守用户授权，不将计划确认解释成这些动作的授权。
 
 ## Result
 
-- 本轮只完成进入检查、基线验证与计划草案；未开始 4.3 实现。
-- AC 均未验收，独立实现 review 未开始。
-- 下一步：用户确认本计划后，从 Slice 1 的真实 DLC 契约核对开始。
+- 实现：推理请求/结果契约、严格解析、模型交接、后台编排、原子导入和混合观测分析已落地。
+- 自动化：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **405 passed in 28.48s**。
+- 精简依赖模拟：阻止加载 DLC/PyTorch/Pandas/PyTables，运行新增推理/解析/会话及既有 adapter 测试 → **74 passed, 1 skipped**（HDF5 实读按缺失 pandas 跳过），没有修改 CI。
+- 真实 CPU：`.venv/bin/python scripts/smoke_test_dlc_infer.py` → **PASSED**；真实 `snapshot-001.pt` 位于 `dlc-models-pytorch`，进度 `0/2/4/6/8/10`；10 行预测，5 点导入、5 个人工点跳过，运动学/保存重开通过。
+- 重复真实推理：对已保存的相同项目再推理 → **0 点导入、10 点跳过**，原有 observations 和 DerivedData 完全不变。
+- 真实验证暴露并修复：macOS `/var` 与 `/private/var` 等价 locator 比较；DLC compat 自带 `overwrite=False`，重复传参导致失败。没有绕过错误或降低验收要求。
+- 实现细化：将纯格式解析放入 `dlc_predictions.py`，现有 `DLCAdapter.import_results` 复用它；临时桥接 DLC `_extract_results` 统计真正完成的预测帧，退出恢复。协议不依赖 pandas，CI CSV 路径使用标准库。
+- 人工验收：未新增 GUI 交互，按 Qt-free 标准验证；4.4 的 GUI Human Review 未开始。
+- 独立 review：复审通过，原 4 个 finding 关闭；P43-8 保持未勾选，仅待 push 授权及推送后实际 CI。
+- 首轮独立 review 提出 2 个 P1（无模型 hash 仍推理、未核对登记视频 hash）及 2 个 P2（模型索引竞态、外部旧式路径兼容），均已补实现及回归测试，独立复审确认关闭；另修复注入 adapter 构造参数在 spawn 时丢失的问题。
+- 修复后真实 CPU 重复推理再次通过（0 插入 / 10 跳过），41 项针对性测试通过；最终全回归405 passed、精简依赖74 passed / 1 skipped。独立复审通过，未发现新的直接问题。
+- 复审建议：legacy 归档路径现只在文件成功生成并验证后写入 completed run，失败/取消无虚构引用；config 同样加入内容 hash 校验。同步视频 hash 扫描可能让调用线程等待，此性能项明确交给 4.4 后台准备/提交接线；当前没有 GUI 推理入口，不宣称大视频 GUI 响应已验收。
+- 下一步：请求 push 授权，核对推送后新提交的双平台 CI，再关闭 Issue #14；不提前开始 4.4。
+
+- 本地完成日期：2026-08-31。功能提交：`dcc296e`（DLC/模型交接）、`e6c00fc`（会话/运动学）、`aa93adb`（后台编排/冒烟）；审查修复：`2b6454b`。未推送，不沿用 4.2 CI 作为本次远端验证。
