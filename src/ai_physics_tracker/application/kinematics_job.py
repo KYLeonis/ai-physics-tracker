@@ -54,7 +54,7 @@ def analysis_inputs(session: ProjectSession, video_id: UUID,
         raise ProjectSessionError("All selected tracks must belong to the current video")
     video = next(item for item in session.project.videos if item.video_id == video_id)
     timeline = next(item for item in session.project.timelines if item.video_id == video_id)
-    points = tuple(point for track_id in track_ids for point in session.manual_points(track_id))
+    points = tuple(point for track_id in track_ids for point in session.effective_points(track_id))
     return AnalysisInputs(session.project.project_id, video, timeline,
                           session.active_calibration(video_id), tracks, points,
                           session.measurement_timing_detail(video_id))
