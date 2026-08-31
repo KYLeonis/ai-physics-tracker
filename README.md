@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:   Phase 3 — Calibration & Physics Engine 🔄
-Last Completed:  Subphase 3.2 — Kinematics Engine ✅（2026-08-30）
-Current Subphase: 3.3 — Interactive Charts（本地实现完成，待 Human Review/CI）
+Last Completed:  Subphase 3.3 — Interactive Charts ✅（2026-08-31）
+Current Subphase: 3.4 — Integration & Phase Close（计划待确认）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -94,7 +94,9 @@ Phase 2.1–2.4 已形成桌面视频浏览、异步播放、缩放/平移、手
 
 3.3 已加入底部五类运动学图表、多轨迹叠加、双向帧定位，以及 SG 参数与后台重算。
 先在图表面板勾选轨迹，再点击 **Recompute checked tracks**；标定/标记修改后旧图提示
-stale，需重算。当前 297 项本地测试与交叉复审通过，尚待用户验收和远端双平台 CI。
+stale，需重算。后续 HR 加入多选轨迹视频同屏、? 帮助气泡和当前图表 Save PNG。
+3.3 已经 303 项测试、五轮 Human Review 与双平台 CI 验证并合并；3.4 将做整个实验项目的
+集成验收与 Phase 收尾，计划见 [phase-3.4-plan.md](docs/status/phase-3.4-plan.md)。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
@@ -124,7 +126,7 @@ stale，需重算。当前 297 项本地测试与交叉复审通过，尚待用�
 ## 当前项目状态
 
 - ✅ 仓库结构、基础文档、Git 初始化、GitHub 远程推送（[KYLeonis/ai-physics-tracker](https://github.com/KYLeonis/ai-physics-tracker)，Private）
-- ✅ src-layout 核心/GUI 包、锁定依赖与 124 项 pytest 测试（2.3 基线）；GitHub Actions 覆盖 macOS/Windows Python 3.11
+- ✅ src-layout 核心/GUI 包、锁定依赖与 303 项 pytest 测试（3.3 基线）；GitHub Actions 覆盖 macOS/Windows Python 3.11
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 

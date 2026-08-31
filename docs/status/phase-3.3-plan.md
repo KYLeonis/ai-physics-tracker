@@ -2,7 +2,7 @@
 
 - Issue：[#9](https://github.com/KYLeonis/ai-physics-tracker/issues/9)。
 - 工作分支：`feat/p3.3-interactive-charts`。
-- 日期 / 状态：2026-08-30 · **本地实现/复审通过 — 等待 Human Review 与 CI**。
+- 日期 / 状态：2026-08-31 · **已完成，merge `51c1cce`，Issue #9 已关闭**。
 - 仓库基线：`main` / `e49132a`；3.2 已由 `3d3ad90` 合并，无需再次合并。
 - 规划验证：本地 **260 passed**，`pip check` 通过；这是已有代码基线，不是 3.3 验收。
 
@@ -27,7 +27,8 @@
 **不做**：
 
 - 不做 AI 跟踪、物理拟合、θ/ω/α、相图、误差传播、插值补点或替换 SG 算法。
-- 不做 CSV/Excel、图片/PDF/视频导出；关闭或隐藏 PyQtGraph 默认导出入口，避免误交付。
+- 原计划不做导出；后续 HR 已批准当前图表 **Save PNG** 例外。CSV/Excel/PDF/视频及
+  Phase 8 科学导出仍不在本次范围，完整 HR 变更见末尾收尾补记。
 - 不做跨视频/多相机叠加、数据表编辑器、派生结果历史管理器、安装包或 GPU 图表。
 - 不改 schema、不迁移历史观测、不写回图表临时 NaN，不自动清理项目文件。
 - 不在每个视频帧回调中重新跑运动学计算；不将 3.4 的 Phase 收尾提前宣布完成。
@@ -130,7 +131,7 @@
   Qt 测试覆盖空态/多轨迹/未标定/重开；先不增加双向 seek。
 - [x] Slice 4：双向帧同步、x-y 点选、视图范围保持；验证呈现帧/请求帧隔离、无反馈环。
 - [x] Slice 5：SG 参数与后台重算、stale 刷新和项目生命周期整合；补事务/取消/保存竞态测试。
-- [ ] Slice 6：完整回归、独立 Luna-max review、Human Review；通过后按授权同步 Issue/CI/
+- [x] Slice 6：完整回归、独立 Luna-max review、Human Review；通过后按授权同步 Issue/CI/
   合并与状态，再进入 3.4 的整体集成验收，不直接开始 Phase 4。
 
 每个 Slice 自带测试；确认计划前不创建实现文件、不安装依赖。主模型负责跨模块设计，
@@ -173,7 +174,7 @@ Qt-free 数据适配与绘图控件分离，不再把图表和后台任务堆入
 
 届时逐条回答“是/否”；发起后停止等待，不以 computer-use/截图自检替代真人反馈。
 
-## 授权边界与 Result
+## 首次本地交付记录（2026-08-30；历史状态，现状见收尾补记）
 
 - 用户已确认计划及项目内依赖变更；实施到 Human Review。本轮不改 CI、不 push。
 - 已确认：本计划范围，以及引入 PyQtGraph 0.13.7、在项目 `.venv` 对齐锁定依赖。
@@ -195,3 +196,16 @@ Qt-free 数据适配与绘图控件分离，不再把图表和后台任务堆入
   macOS/Windows CI 尚未运行（未获准 push），Human Review 尚未完成。
 - 下一步：等待用户 Human Review 反馈；通过后申请 push 授权运行双平台 CI，再处理
   Issue/合并和 3.4。不得跳过人测直接收尾。
+
+## 收尾补记（2026-08-31）
+
+- 依据最新 `current.md`、[Issue #9 Result](https://github.com/KYLeonis/ai-physics-tracker/issues/9)
+  与 Git 历史补齐本地记录；不删除此前首次交付的过程记录。
+- merge `51c1cce`；P33-1…P33-9 在 Issue 中已核对完成，Human Review 5 轮通过。
+- HR 增量：`7bda4c8` 多选视频 overlay 与 currentItem 标注目标；`b78f10b` / `968489e`
+  修复帮助提示（最终为自绘气泡）；`71a33fe` 当前图表 Save PNG，合入 `eed7974`。
+- **303 tests**；[CI run 33353856199](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33353856199)
+  对应上述 merge，macOS/Windows Python 3.11 jobs 均成功（本轮只读核实）。
+- PNG 例外尚需在 3.4 补记 ADR/spec，与原始“不导出”条款保持可追溯关系；不意味着
+  Phase 8 完整导出已完成。Phase 2 延后的 Windows 真机事项继续保留。
+- 后续为 [3.4 Integration & Phase Close](phase-3.4-plan.md) 的整体闭环验收；不重复3.3独立HR，不直接启动 Phase 4。
