@@ -19,3 +19,11 @@ def test_gui_does_not_import_opencv() -> None:
 
     assert "import cv2" not in _python_texts(package / "gui")
     assert "infrastructure" not in _python_texts(package / "gui")
+
+
+def test_dlc_only_imported_in_dlc_adapter() -> None:
+    package = Path(__file__).parents[1] / "src" / "ai_physics_tracker"
+
+    assert "deeplabcut" not in _python_texts(package / "domain")
+    assert "deeplabcut" not in _python_texts(package / "application")
+    assert "deeplabcut" not in _python_texts(package / "gui")

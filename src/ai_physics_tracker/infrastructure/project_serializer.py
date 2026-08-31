@@ -11,6 +11,7 @@ from ai_physics_tracker.domain.derived import DerivedData, DerivedInput
 from ai_physics_tracker.domain.project import Project, Registries
 from ai_physics_tracker.domain.timeline import Timeline, has_time_mismatch
 from ai_physics_tracker.domain.track import Track, TrackPoint
+from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.domain.video import Video
 
@@ -49,6 +50,9 @@ def project_to_payload(project: Project) -> dict[str, object]:
                 for video_id, calibration_id in project.active_calibration_by_video.items()
             },
             "derived": [_derived_to_payload(item) for item in project.derived],
+            "tracking_runs": [
+                _tracking_run_to_payload(item) for item in project.tracking_runs
+            ],
             "registries": _registries_to_payload(project.registries),
             "ui_state": project.ui_state,
         }
@@ -73,6 +77,7 @@ def project_from_payload(payload: dict[str, object]) -> Project:
         "calibrations",
         "active_calibration_by_video",
         "derived",
+        "tracking_runs",
         "registries",
         "ui_state",
     }
@@ -116,6 +121,12 @@ def project_from_payload(payload: dict[str, object]) -> Project:
         derived=tuple(
             _derived_from_payload(item)
             for item in _object_sequence(payload.get("derived", []), "derived")
+        ),
+        tracking_runs=tuple(
+            _tracking_run_from_payload(item)
+            for item in _object_sequence(
+                payload.get("tracking_runs", []), "tracking_runs"
+            )
         ),
         registries=_registries_from_payload(
             _object(payload.get("registries", {}), "registries")
@@ -486,6 +497,68 @@ def _derived_from_payload(payload: dict[str, object]) -> DerivedData:
         produced_by=_string(payload, "produced_by"),
         created_at=_parse_datetime(_string(payload, "created_at")),
         status=_string(payload, "status"),
+        extra_fields=_unknown(payload, known),
+    )
+
+
+def _tracking_run_to_payload(run: TrackingRun) -> dict[str, object]:
+    return _merge_extra(
+        run.extra_fields,
+        {
+            "run_id": str(run.run_id),
+            "video_id": str(run.video_id),
+            "track_id": str(run.track_id),
+            "engine": run.engine,
+            "engine_version": run.engine_version,
+            "task_type": run.task_type,
+            "config": run.config,
+            "source_detail": run.source_detail,
+            "model_snapshot": run.model_snapshot,
+            "status": run.status,
+            "error_message": run.error_message,
+            "created_at": _format_datetime(run.created_at),
+            "completed_at": (
+                _format_datetime(run.completed_at)
+                if run.completed_at is not None
+                else None
+            ),
+        },
+    )
+
+
+def _tracking_run_from_payload(payload: dict[str, object]) -> TrackingRun:
+    known = {
+        "run_id",
+        "video_id",
+        "track_id",
+        "engine",
+        "engine_version",
+        "task_type",
+        "config",
+        "source_detail",
+        "model_snapshot",
+        "status",
+        "error_message",
+        "created_at",
+        "completed_at",
+    }
+    completed_at = _optional_string(payload.get("completed_at"))
+    return TrackingRun(
+        run_id=UUID(_string(payload, "run_id")),
+        video_id=UUID(_string(payload, "video_id")),
+        track_id=UUID(_string(payload, "track_id")),
+        engine=_string(payload, "engine"),
+        engine_version=_string(payload, "engine_version"),
+        task_type=_string(payload, "task_type"),
+        config=_json_object(payload.get("config", {}), "config"),
+        source_detail=_string(payload, "source_detail"),
+        model_snapshot=_optional_string(payload.get("model_snapshot")),
+        status=_string(payload, "status"),
+        error_message=_optional_string(payload.get("error_message")),
+        created_at=_parse_datetime(_string(payload, "created_at")),
+        completed_at=(
+            _parse_datetime(completed_at) if completed_at is not None else None
+        ),
         extra_fields=_unknown(payload, known),
     )
 
