@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-31（Phase 4.2 Training Pipeline 完成）
+- 最后更新：2026-08-31（Phase 4.3 计划草案完成，等待用户确认）
 
 ---
 
@@ -13,13 +13,13 @@
 
 ## Current Subphase
 
-**4.2 — Training Pipeline** ✅ 已完成（[Issue #13](https://github.com/KYLeonis/ai-physics-tracker/issues/13) 已关闭；341 tests 全部通过，真实 DLC 冒烟通过，Review Agent 审查通过）
+**4.3 — Inference Pipeline & Track Integration** 📝 计划待确认，尚未开始实现。
 
-下一 Subphase 为 **4.3 — Inference Pipeline & Track Integration**：实现视频批量推理、置信度过滤、轨迹点导入 TrackStore 以及与手工标注的图层融合。
+计划草案：[phase-4.3-plan.md](phase-4.3-plan.md)。上一个 Subphase 4.2 已完成（[Issue #13](https://github.com/KYLeonis/ai-physics-tracker/issues/13) 已关闭）。
 
 ## Current Slice
 
-N/A（等待进入 4.3）。
+N/A（等待确认 4.3 范围，确认后从 Slice 1：真实 DLC 契约核对与推理协议开始）。
 
 ## Current Goal
 
@@ -27,6 +27,7 @@ N/A（等待进入 4.3）。
 
 ## Recently Completed
 
+- **4.3 进入检查与计划**（2026-08-31）：进入时 `main` 工作区干净，HEAD `7ecb4ea` 与实时查询的 origin/main 一致，对应 CI success；本轮重新运行 offscreen 全回归 **341 passed in 22.05s**。已读取 Phase 4 spec/ADR、数据语义、训练 Issue 与相关实现；确认现有融合规则可复用，但运动学计算及后台输入检查仍只读 manual，需在 4.3 接通 AI 生效观测。只新增计划文档，未改实现、依赖、CI 或 schema。
 - **Phase 4.2 — Training Pipeline**（✅ 2026-08-31）：
   - 协议扩展：`EngineAdapter` 协议补齐 `create_training_dataset`、`train` 与 `engine_version`，新增 `TrainingParams` 与 `TrainOutcome` 数据类。
   - 应用层编排：`TrainingCoordinator` 实现 `prepare_training`（标注抽帧/CSV/H5 导出、DLC 项目目录复用、训练集生成）、`start_training`（spawn 子进程运行）、`poll_messages`（流式日志与进度转发、进程异常退出兜底）与 `cancel_training` / `cancel_all`（D1 策略：关闭或切换会话时安全回收子进程）。
@@ -50,6 +51,8 @@ N/A（等待进入 4.3）。
 
 **延后项**：Windows 真机验收。
 
+**4.3 计划边界**：先做 Qt-free 推理/导入/混合观测分析；任务面板、AI 视觉样式、窗口生命周期接线与自动刷新留给 4.4。真实 snapshot 选择、帧进度与输出完整性在首个 Slice 优先核对。现有 4.2 模型路径移动兼容风险在草案中说明，不自动迁移。
+
 ## Next Recommended Action
 
-进入 **Subphase 4.3 — Inference Pipeline & Track Integration**：实现视频批量推理（`analyze_video`）、DLC 预测数据解析、按置信度阈值导入 `TrackStore`、以及与手工标注点共存时的观察值融合解析。
+等待用户确认 [4.3 计划草案](phase-4.3-plan.md)；确认后创建对应 Issue 和 `feat/p4.3-inference-pipeline` 工作分支，从 Slice 1 核对真实 DLC 推理的 snapshot/进度/输出契约开始。按草案完成各 Slice，不提前实现 4.4 GUI。推送、删除等红线动作另依用户授权执行。
