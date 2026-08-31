@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:   Phase 4 — Deep Learning Tracking 🔄
 Last Completed:  Subphase 4.2 — Training Pipeline ✅（2026-08-31）
-Current Subphase: 4.3 — Inference Pipeline & Track Integration 规划中
+Current Subphase: 4.3 — Inference Pipeline & Track Integration 本地验收完成，待推送及 CI
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -90,6 +90,11 @@ Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTran
 Phase 2.1–2.4 已形成桌面视频浏览、异步播放、缩放/平移、手工标注（含 Undo/Redo）、项目保存/恢复/重连与 CFR/Near-CFR 时序验证门禁，macOS 全流程 Human Review 通过；Windows 真机验收延后执行（用户决定），不影响后续阶段。
 
 Phase 3.0–3.4 已完成全部标定、运动学引擎、交互式图表与集成验收，310 项测试 + 双平台 CI 全绿 + 整体 Human Review 通过。
+
+Phase 4.3 已实现后台推理、严格预测解析、置信度过滤、人工/AI 生效观测融合与运动学输入接通。
+本地真实 CPU 闭环可运行 `.venv/bin/python scripts/smoke_test_dlc_infer.py`：生成合成视频，
+训练 1 epoch，推理并保存重开，产物保留供检查。GUI 推理按钮、任务面板与视觉样式留给 4.4；
+该冒烟只验证管线，不代表模型精度通过。详情见 [4.3 计划与验收](docs/status/phase-4.3-plan.md)。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
@@ -119,7 +124,7 @@ Phase 3.0–3.4 已完成全部标定、运动学引擎、交互式图表与集�
 ## 当前项目状态
 
 - ✅ 仓库结构、基础文档、Git 初始化、GitHub 远程推送（[KYLeonis/ai-physics-tracker](https://github.com/KYLeonis/ai-physics-tracker)，Private）
-- ✅ src-layout 核心/GUI 包、锁定依赖与 303 项 pytest 测试（3.3 基线）；GitHub Actions 覆盖 macOS/Windows Python 3.11
+- ✅ src-layout 核心/GUI 包、锁定依赖与自动化测试；GitHub Actions 覆盖 macOS/Windows Python 3.11，最新验证见 current.md
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 

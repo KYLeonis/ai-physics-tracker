@@ -38,12 +38,18 @@ from ai_physics_tracker.domain.project import (
     set_active_calibration as set_domain_active_calibration,
 )
 from ai_physics_tracker.domain.derived import DerivedData, DerivedInput, mark_tracks_stale
-from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
+from ai_physics_tracker.domain.timeline import (
+    TIME_COMPARISON_TOLERANCE_S,
+    Timeline,
+    frame_to_time,
+)
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.domain.track_store import (
+    BatchWriteResult,
     TrackStore,
     resolve_effective_point,
+    resolve_effective_points,
 )
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.domain.types import JsonObject
@@ -305,6 +311,117 @@ class ProjectSession:
         return resolve_effective_point(
             self._store.observations, track_id, frame_index
         )
+
+    def effective_points(self, track_id: UUID) -> tuple[TrackPoint, ...]:
+        """返回一个 Track 的全部 active 生效观测，按 frame_index 排序。"""
+
+        return resolve_effective_points(self._store.observations, track_id)
+
+    def import_engine_points(
+        self,
+        points: tuple[TrackPoint, ...],
+        completed_run: TrackingRun,
+    ) -> BatchWriteResult:
+        """原子导入已完成推理批次，并记录导入统计。"""
+
+        registered_run = next(
+            (run for run in self._project.tracking_runs
+             if run.run_id == completed_run.run_id),
+            None,
+        )
+        if registered_run is None:
+            raise ProjectSessionError(
+                f"unknown tracking run_id: {completed_run.run_id}"
+            )
+        if registered_run.status != "running" or completed_run.status != "completed":
+            raise ProjectSessionError(
+                "engine import requires a registered running infer run and a completed result"
+            )
+        if registered_run.task_type != "infer":
+            raise ProjectSessionError("engine import requires an infer run")
+        if (
+            completed_run.video_id != registered_run.video_id
+            or completed_run.track_id != registered_run.track_id
+            or completed_run.engine != registered_run.engine
+            or completed_run.task_type != registered_run.task_type
+            or completed_run.source_detail != registered_run.source_detail
+            or completed_run.config != registered_run.config
+            or (registered_run.model_snapshot is not None
+                and completed_run.model_snapshot != registered_run.model_snapshot)
+            or completed_run.created_at != registered_run.created_at
+            or (registered_run.extra_fields.get("model_sha256") is not None
+                and completed_run.extra_fields.get("model_sha256")
+                != registered_run.extra_fields["model_sha256"])
+        ):
+            raise ProjectSessionError("completed run identity or configuration does not match")
+
+        track = next(
+            (item for item in self._store.tracks
+             if item.track_id == registered_run.track_id),
+            None,
+        )
+        if track is None or track.video_id != registered_run.video_id:
+            raise ProjectSessionError("completed run track does not match the current project")
+        if not self.can_measure(registered_run.video_id):
+            raise ProjectSessionError(
+                "Video timing is not authorized; engine import is disabled"
+            )
+        video = next(
+            (item for item in self._project.videos
+             if item.video_id == registered_run.video_id),
+            None,
+        )
+        timeline = next(
+            (item for item in self._project.timelines
+             if item.video_id == registered_run.video_id),
+            None,
+        )
+        if video is None or timeline is None:
+            raise ProjectSessionError("completed run video has no current timeline")
+
+        for point in points:
+            if (
+                point.track_id != registered_run.track_id
+                or point.source != registered_run.engine
+                or point.source_detail != registered_run.source_detail
+            ):
+                raise ProjectSessionError("engine point does not match the completed run")
+            if type(point.frame_index) is not int or not 0 <= point.frame_index < video.frame_count:
+                raise ProjectSessionError(
+                    f"engine point frame_index exceeds video frame_count: {point.frame_index}"
+                )
+            expected_time = frame_to_time(point.frame_index, timeline)
+            if abs(point.time_s - expected_time) >= TIME_COMPARISON_TOLERANCE_S:
+                raise ProjectSessionError(
+                    f"engine point time does not match current timeline at frame {point.frame_index}"
+                )
+
+        candidate = TrackStore(self._store.tracks, self._store.observations)
+        try:
+            result = candidate.add_engine_points(points)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+
+        completed_with_summary = self._with_import_summary(
+            registered_run, completed_run, result
+        )
+        runs = tuple(
+            completed_with_summary if run.run_id == completed_run.run_id else run
+            for run in self._project.tracking_runs
+        )
+        if result.inserted:
+            updated_project = replace(
+                self._project,
+                observations=candidate.observations,
+                derived=mark_tracks_stale(
+                    self._project.derived, {registered_run.track_id}
+                ),
+                tracking_runs=runs,
+            )
+            self._commit_project(updated_project, candidate)
+        else:
+            self._project = replace(self._project, tracking_runs=runs)
+        return result
 
     def save(self) -> Project:
         """保存到已绑定的项目根目录并清除 dirty；无根目录时报错。"""
@@ -587,7 +704,7 @@ class ProjectSession:
             raise ProjectSessionError(f"no video registered for track {track.name}")
 
         delta = 1.0 / timeline.fps_nominal
-        points = self.manual_points(track_id)
+        points = self.effective_points(track_id)
 
         try:
             frames, px_x, px_y = expand_to_dense_grid(
@@ -653,7 +770,10 @@ class ProjectSession:
 
         now = utc_now()
         derived_input = DerivedInput(
-            track_id=track_id, source_filter="manual", include_superseded=False
+            track_id=track_id,
+            source_filter=None,
+            include_superseded=False,
+            extra_fields={"observation_selection": "effective"},
         )
         produced_by = "ai_physics_tracker.kinematics.v1"
 
@@ -812,6 +932,24 @@ class ProjectSession:
 
         from ai_physics_tracker.application.kinematics_job import validated_derived
         self._commit_store(self._store, validated_derived(self, result))
+
+    @staticmethod
+    def _with_import_summary(
+        registered_run: TrackingRun,
+        completed_run: TrackingRun,
+        result: BatchWriteResult,
+    ) -> TrackingRun:
+        extras = deepcopy(registered_run.extra_fields)
+        extras.update(deepcopy(completed_run.extra_fields))
+        summary: JsonObject = {}
+        for source in (registered_run.extra_fields, completed_run.extra_fields):
+            existing = source.get("import_summary")
+            if isinstance(existing, dict):
+                summary.update(deepcopy(existing))
+        summary["inserted"] = result.inserted
+        summary["skipped"] = result.skipped
+        extras["import_summary"] = summary
+        return replace(completed_run, extra_fields=extras)
 
     def _next_calibration_name(self) -> str:
         index = len(self._project.calibrations) + 1

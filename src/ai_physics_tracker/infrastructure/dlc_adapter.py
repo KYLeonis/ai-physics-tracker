@@ -1,20 +1,22 @@
 """DeepLabCut 3.x (PyTorch) 引擎适配器与数据转换实现。"""
 
 import csv
+from concurrent.futures import CancelledError
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from io import TextIOBase
 from datetime import UTC, datetime
-from math import isfinite, isnan
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import cv2
 import numpy as np
 
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.domain.track import TrackPoint
-from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.infrastructure.engine_adapter import (
-    EngineAdapter,
+    InferenceRequest,
+    InferenceOutcome,
     TrainingParams,
     TrainOutcome,
 )
@@ -256,106 +258,82 @@ class DLCAdapter:
         )
 
     def import_results(
-        self,
-        prediction_data: Any,
-        track_id: UUID,
-        timeline: Timeline,
-        source_detail: str,
-        bodypart: str = "target",
-        min_confidence: float = 0.0,
+        self, prediction_data: Any, track_id: UUID, timeline: Timeline,
+        source_detail: str, bodypart: str = "target", min_confidence: float = 0.0,
     ) -> tuple[TrackPoint, ...]:
-        """将 DLC 预测结果（DataFrame、CSV 路径或字典序列）解析为不可变 TrackPoint 元组。"""
+        """在适配边界严格解析 DLC 预测；缺测不造点，非法结构拒绝整批。"""
+        from ai_physics_tracker.infrastructure.dlc_predictions import parse_predictions
 
-        points: list[TrackPoint] = []
-        now = utc_now()
+        return parse_predictions(prediction_data, track_id, timeline, source_detail,
+                                 bodypart, min_confidence).points
 
-        # 支持 1: Pandas DataFrame (带 MultiIndex 列)
-        if hasattr(prediction_data, "columns") and hasattr(prediction_data, "iterrows"):
-            df = prediction_data
-            cols = df.columns
-            for frame_idx, row in df.iterrows():
-                try:
-                    f_int = int(frame_idx)
-                except (ValueError, TypeError):
-                    continue
+    def infer(
+        self, run_id: UUID, queue: Any, cancel_event: Any, request: InferenceRequest,
+    ) -> InferenceOutcome:
+        """使用已选模型在当前子进程推理；真实完成帧数经队列上报。"""
+        import deeplabcut
+        from ai_physics_tracker.infrastructure.dlc_predictions import parse_predictions
 
-                x_val, y_val, l_val = None, None, None
-                for col in cols:
-                    if isinstance(col, tuple) and len(col) >= 3:
-                        _, bp, coord = col[0], col[1], col[2]
-                        if bp == bodypart:
-                            if coord == "x":
-                                x_val = float(row[col])
-                            elif coord == "y":
-                                y_val = float(row[col])
-                            elif coord in {"likelihood", "confidence", "prob"}:
-                                l_val = float(row[col])
-                if (
-                    x_val is not None
-                    and y_val is not None
-                    and isfinite(x_val)
-                    and isfinite(y_val)
-                    and not isnan(x_val)
-                    and not isnan(y_val)
-                ):
-                    conf = float(l_val) if l_val is not None and isfinite(l_val) else 1.0
-                    conf = max(0.0, min(1.0, conf))
-                    if conf >= min_confidence:
-                        points.append(
-                            TrackPoint(
-                                point_id=uuid4(),
-                                track_id=track_id,
-                                frame_index=f_int,
-                                time_s=frame_to_time(f_int, timeline),
-                                pixel_x=x_val,
-                                pixel_y=y_val,
-                                source="dlc",
-                                source_detail=source_detail,
-                                confidence=conf,
-                                visibility="visible",
-                                status="active",
-                                created_at=now,
-                                modified_at=now,
-                            )
-                        )
+        if cancel_event.is_set():
+            raise CancelledError("Inference cancelled")
+        if request.output_dir.exists():
+            raise ValueError("Inference output directory must be new")
+        snapshots = _model_snapshots(request.config_path, request.shuffle,
+                                     request.trainingsetindex)
+        matches = [i for i, snapshot in enumerate(snapshots)
+                   if snapshot.path.resolve() == request.model_snapshot.resolve()]
+        if len(matches) != 1 or not request.model_snapshot.is_file():
+            raise ValueError("Selected snapshot does not belong to this DLC model; retrain or select its config")
+        actual_device = detect_device() if request.params.device == "auto" else request.params.device
+        request.output_dir.mkdir(parents=True, exist_ok=False)
+        stream = _QueueLogStream(queue, run_id)
+        send_progress(queue, run_id, 0, request.frame_count, message="Loading selected model")
+        with redirect_stdout(stream), redirect_stderr(stream), _selected_snapshot(request.model_snapshot), _prediction_progress(
+            queue, run_id, cancel_event, request.frame_count
+        ) as progress:
+            scorer = deeplabcut.analyze_videos(
+                str(request.config_path), [str(request.video_path)],
+                shuffle=request.shuffle, trainingsetindex=request.trainingsetindex,
+                snapshot_index=matches[0], device=actual_device,
+                destfolder=str(request.output_dir), batch_size=request.params.batch_size,
+                save_as_csv=True, auto_track=False,
+                cropping=None, dynamic=(False, 0.5, 10),
+            )
+        stream.flush()
+        if cancel_event.is_set():
+            raise CancelledError("Inference cancelled")
+        if progress[0] != request.frame_count:
+            raise ValueError(f"Incomplete inference: processed {progress[0]}/{request.frame_count} frames")
+        if not isinstance(scorer, str) or Path(scorer).name != scorer:
+            raise ValueError("DLC returned an invalid scorer")
+        prediction_path = request.output_dir / f"{request.video_path.stem}{scorer}.h5"
+        parsed = parse_predictions(
+            prediction_path, request.track_id, request.timeline, request.source_detail,
+            min_confidence=request.params.min_confidence, frame_count=request.frame_count,
+        )
+        return InferenceOutcome(parsed.points, prediction_path, parsed.row_count,
+                                parsed.missing_count, parsed.low_confidence_count,
+                                request.model_snapshot, str(deeplabcut.__version__), actual_device)
 
-        # 支持 2: 字典/列表结构
-        elif isinstance(prediction_data, (list, tuple)):
-            for item in prediction_data:
-                if isinstance(item, dict):
-                    f_idx = item.get("frame_index") if "frame_index" in item else item.get("frame")
-                    x_val = item.get("x") if "x" in item else item.get("pixel_x")
-                    y_val = item.get("y") if "y" in item else item.get("pixel_y")
-                    l_val = item.get("likelihood") if "likelihood" in item else item.get("confidence", 1.0)
-                    if (
-                        f_idx is not None
-                        and x_val is not None
-                        and y_val is not None
-                        and isfinite(float(x_val))
-                        and isfinite(float(y_val))
-                    ):
-                        f_int = int(f_idx)
-                        conf = max(0.0, min(1.0, float(l_val)))
-                        if conf >= min_confidence:
-                            points.append(
-                                TrackPoint(
-                                    point_id=uuid4(),
-                                    track_id=track_id,
-                                    frame_index=f_int,
-                                    time_s=frame_to_time(f_int, timeline),
-                                    pixel_x=float(x_val),
-                                    pixel_y=float(y_val),
-                                    source="dlc",
-                                    source_detail=source_detail,
-                                    confidence=conf,
-                                    visibility="visible",
-                                    status="active",
-                                    created_at=now,
-                                    modified_at=now,
-                                )
-                            )
 
-        return tuple(points)
+@contextmanager
+def _selected_snapshot(expected_path: Path):
+    """复核 DLC 在加载权重前实际解析的路径，防止快照列表变化使 index 指向别处。"""
+    from deeplabcut.pose_estimation_pytorch.apis import utils
+
+    original = utils.get_model_snapshots
+
+    def select(*args, **kwargs):
+        selected = original(*args, **kwargs)
+        if len(selected) != 1 or selected[0].path.resolve() != expected_path.resolve():
+            raise ValueError("DLC resolved a different snapshot; retry with the selected model")
+        return selected
+
+    utils.get_model_snapshots = select
+    try:
+        yield
+    finally:
+        utils.get_model_snapshots = original
 
 
 def dlc_train_worker(
@@ -389,6 +367,10 @@ def dlc_train_worker(
             f"Calling deeplabcut.train_network(epochs={max_epochs}, batch_size={batch_size}, device={actual_device})",
         )
 
+        before = {snapshot.path.resolve(): _snapshot_stamp(snapshot.path)
+                  for snapshot in _model_snapshots(config_path, shuffle, trainingsetindex)}
+        if cancel_event.is_set():
+            return {"status": "cancelled", "epochs_completed": 0}
         deeplabcut.train_network(
             str(config_path),
             shuffle=shuffle,
@@ -400,41 +382,16 @@ def dlc_train_worker(
             save_epochs=max_epochs,
         )
 
-        models_dir = config_path.parent / "dlc-models"
-        raw_snapshots = list(models_dir.glob("**/*.pt")) + list(models_dir.glob("**/*.pth"))
-        snapshots = sorted(raw_snapshots, key=lambda p: p.stat().st_mtime)
-        snapshot_path = str(snapshots[-1]) if snapshots else str(models_dir / f"snapshot-{max_epochs}.pt")
-
+        snapshots = _model_snapshots(config_path, shuffle, trainingsetindex)
+        changed = [snapshot for snapshot in snapshots
+                   if _snapshot_stamp(snapshot.path) != before.get(snapshot.path.resolve())]
+        if not changed:
+            raise RuntimeError("Training returned without creating or updating a model snapshot")
+        # DLC 顺序按 epoch 排列，best 在末尾；只选择本次确实产出的文件。
+        snapshot_path = str(changed[-1].path.resolve())
         send_log(queue, run_id, "INFO", f"DLC training completed. Snapshot saved: {snapshot_path}")
-        return {
-            "status": "completed",
-            "epochs_completed": max_epochs,
-            "snapshot_path": snapshot_path,
-        }
-    except ImportError:
-        send_log(queue, run_id, "WARNING", "deeplabcut not installed, running simulation")
-        for epoch in range(1, max_epochs + 1):
-            if cancel_event.is_set():
-                send_log(queue, run_id, "WARNING", "DLC training cancelled by user")
-                return {"status": "cancelled", "epochs_completed": epoch - 1}
-
-            loss = 0.5 / (epoch**0.5)
-            send_progress(
-                queue,
-                run_id,
-                step=epoch,
-                total_steps=max_epochs,
-                loss=loss,
-                message=f"Epoch {epoch}/{max_epochs} - Loss: {loss:.4f}",
-            )
-
-        snapshot_path = str(config_path.parent / "dlc-models" / f"snapshot-{max_epochs}.pt")
-        send_log(queue, run_id, "INFO", f"DLC training completed. Snapshot saved: {snapshot_path}")
-        return {
-            "status": "completed",
-            "epochs_completed": max_epochs,
-            "snapshot_path": snapshot_path,
-        }
+        return {"status": "completed", "epochs_completed": max_epochs,
+                "snapshot_path": snapshot_path}
     except Exception as exc:
         send_log(queue, run_id, "ERROR", f"DLC training failed: {exc}")
         return {
@@ -444,34 +401,72 @@ def dlc_train_worker(
         }
 
 
-def dlc_infer_worker(
-    run_id: UUID,
-    queue: Any,
-    cancel_event: Any,
-    config_path_str: str,
-    video_path_str: str,
-    total_frames: int = 100,
-) -> dict[str, Any]:
-    """子进程中的 DLC 视频推理工作入口函数。"""
+def _snapshot_stamp(path: Path) -> tuple[int, int]:
+    stat = path.stat()
+    return stat.st_mtime_ns, stat.st_size
 
-    send_log(queue, run_id, "INFO", f"DLC inference started for video: {video_path_str}")
 
-    for frame in range(1, total_frames + 1):
+def _model_snapshots(config_path: Path, shuffle: int, trainingsetindex: int) -> list[Any]:
+    """通过 DLC 自身 loader 定位当前模型，避免硬编码 TF/PyTorch 目录名。"""
+    from deeplabcut.pose_estimation_pytorch.data.dlcloader import DLCLoader
+
+    loader = DLCLoader(config_path, shuffle=shuffle, trainset_index=trainingsetindex)
+    if loader.project_cfg["multianimalproject"] or list(loader.project_cfg["bodyparts"]) != ["target"]:
+        raise ValueError("Inference currently requires one bodypart named target")
+    if loader.project_cfg.get("cropping", False):
+        raise ValueError("Cropped DLC projects are not supported; use full-frame coordinates")
+    return loader.snapshots()
+
+
+class _QueueLogStream(TextIOBase):
+    """把 DLC 标准输出转成有界日志行，兼容 tqdm 的回车刷新。"""
+
+    def __init__(self, queue: Any, run_id: UUID) -> None:
+        self.queue, self.run_id = queue, run_id
+        self.pending = ""
+
+    def write(self, value: str) -> int:
+        self.pending += value.replace("\r", "\n")
+        while "\n" in self.pending or len(self.pending) > 4096:
+            if "\n" in self.pending:
+                line, self.pending = self.pending.split("\n", 1)
+            else:
+                line, self.pending = self.pending[:4096], self.pending[4096:]
+            if line.strip():
+                send_log(self.queue, self.run_id, "INFO", line[:4096])
+        return len(value)
+
+    def flush(self) -> None:
+        if self.pending.strip():
+            send_log(self.queue, self.run_id, "INFO", self.pending[:4096])
+        self.pending = ""
+
+
+@contextmanager
+def _prediction_progress(queue: Any, run_id: UUID, cancel_event: Any, total: int):
+    """DLC 3.0.1 无回调；仅在独占子进程中桥接已后处理的帧，退出恢复。
+
+    不包装读帧迭代器：异步预处理可能提前读取，不能充当已预测进度。
+    上游提供正式回调后替换此局部兼容层。
+    """
+    from deeplabcut.pose_estimation_pytorch.runners.inference import InferenceRunner
+
+    original = InferenceRunner._extract_results
+    count = [0]
+
+    def extract(runner, *args, **kwargs):
         if cancel_event.is_set():
-            send_log(queue, run_id, "WARNING", "DLC inference cancelled by user")
-            return {"status": "cancelled", "frames_processed": frame - 1}
+            raise CancelledError("Inference cancelled")
+        results = original(runner, *args, **kwargs)
+        if results:
+            count[0] += len(results)
+            if count[0] > total:
+                raise ValueError("DLC produced more frames than the registered video")
+            send_progress(queue, run_id, count[0], total, message="Frames predicted")
+        return results
 
-        send_progress(
-            queue,
-            run_id,
-            step=frame,
-            total_steps=total_frames,
-            message=f"Inference frame {frame}/{total_frames}",
-        )
-
-    send_log(queue, run_id, "INFO", "DLC inference finished successfully")
-    return {
-        "status": "completed",
-        "frames_processed": total_frames,
-        "video_path": video_path_str,
-    }
+    InferenceRunner._extract_results = extract
+    try:
+        yield count
+    finally:
+        InferenceRunner._extract_results = original

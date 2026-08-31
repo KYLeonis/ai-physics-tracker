@@ -77,6 +77,14 @@ DLC 模型（dlc-models, PyTorch engine）
 - 模型库（Phase 7）记录模型元数据与来源实验，支持在新视频上复用并补充标注微调。
 - 推理输出必须携带 per-point confidence，供困难帧检测与图表着色使用。
 
+4.3 实现遵循 [ADR-0011](decisions/0011-deeplabcut-integration-architecture.md)：
+`InferenceCoordinator` 捕获媒体/时序/模型请求 → spawn worker 的 `DLCAdapter.infer`
+→ 适配层 `dlc_predictions` 严格解析 → 原始文件与校验后的观测交换文件存入本次 run 目录。
+队列仅传进度、日志和结果摘要；主进程确认上下文及文件哈希未变后，通过
+`ProjectSession.import_engine_points` 一次提交观测、run 完成状态和派生失效。
+取消/错误不提交半批结果。`effective_points` 是运动学与后台输入校验共同的数据入口，
+`manual_points` 仍仅供人工标注和训练使用。GUI 视觉/按钮接线留到 4.4。
+
 ## 4. 运动学计算与可视化（Phase 3/6 起细化）
 
 - 输入：标定后的物理坐标序列 x(t), y(t)；或无标定时的像素坐标

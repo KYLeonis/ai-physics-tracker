@@ -37,6 +37,33 @@ def resolve_effective_point(
     return max(active, key=lambda point: (point.created_at, str(point.point_id)))
 
 
+def resolve_effective_points(
+    points: tuple[TrackPoint, ...] | list[TrackPoint],
+    track_id: UUID,
+) -> tuple[TrackPoint, ...]:
+    """批量解析一个 Track 的生效观测，并按源帧号排序。"""
+
+    selected: dict[int, TrackPoint] = {}
+    for point in points:
+        if point.track_id != track_id or point.status != "active":
+            continue
+        current = selected.get(point.frame_index)
+        if current is None:
+            selected[point.frame_index] = point
+            continue
+        if current.source == "manual" and point.source != "manual":
+            continue
+        if point.source == "manual" and current.source != "manual":
+            selected[point.frame_index] = point
+            continue
+        if (point.created_at, str(point.point_id)) > (
+            current.created_at,
+            str(current.point_id),
+        ):
+            selected[point.frame_index] = point
+    return tuple(selected[frame] for frame in sorted(selected))
+
+
 class TrackStore:
     """实现 Track 与 TrackPoint 写入规则的可变服务。"""
 
@@ -156,19 +183,20 @@ class TrackStore:
             if point.source == "manual" or point.status != "active":
                 raise ValueError("engine batch requires active non-manual points")
 
+        active_keys = {
+            (existing.track_id, existing.frame_index)
+            for existing in self._observations
+            if existing.status == "active"
+        }
         inserted = 0
         skipped = 0
         for point in points:
-            has_active = any(
-                existing.track_id == point.track_id
-                and existing.frame_index == point.frame_index
-                and existing.status == "active"
-                for existing in self._observations
-            )
-            if has_active:
+            key = (point.track_id, point.frame_index)
+            if key in active_keys:
                 skipped += 1
                 continue
             self._observations.append(point)
+            active_keys.add(key)
             inserted += 1
         return BatchWriteResult(inserted=inserted, skipped=skipped)
 

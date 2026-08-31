@@ -99,6 +99,35 @@
    - CI 环境：不安装真实 DLC，通过 `MockEngineAdapter` 覆盖 100% 协议与任务流程测试
 5. 验证设备支持：`python -c "import torch; print('CUDA:', torch.cuda.is_available(), 'MPS:', hasattr(torch.backends, 'mps') and torch.backends.mps.is_available())"`
 
+### Phase 4.3 推理接口与真实验证
+
+- 本地已有环境：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q`。
+- 真实 CPU 闭环：`.venv/bin/python scripts/smoke_test_dlc_infer.py`。脚本生成独立实验，
+  训练 1 epoch 后全帧推理、导入、重算、保存重开；最终应显示 `PASSED`，10 帧中人工 5 点
+  被保护、AI 新增 5 点。输出目录会打印并保留；首次预训练权重可能需要网络下载。
+- GUI 尚无推理按钮；4.4 才接 Task Panel、窗口取消和 AI 视觉样式，当前不要求操作 GUI。
+- API 顺序：`prepare_inference(session, training_run_id, InferenceParams(min_confidence=...))`
+  → `start_inference(session, run_id)` → 定时 `poll_messages(session, run_id)`。
+  项目必须先保存，视频必须具备本次会话时序授权，训练模型必须具有可信 SHA-256。
+  首选项目内 config/model；可验证的外部旧式模型允许显式指定 config，成功后将模型及配置
+  副本归档到本次 run 目录，新引用仍为相对路径。没有模型哈希的旧训练记录需重新训练，
+  不能仅凭相同文件名继续推理。已登记的视频 SHA-256 会复核，内容变化不会混入旧轨迹。
+- `cancel_all(session)` 在切换/关闭前回收该会话任务。推理导入成功会使目标派生 stale；
+  调用既有重算 API 后使用 manual/AI 生效观测，训练标注仍只取 manual。
+- 低于指定阈值及缺测不生成观测，但原始 HDF5/CSV 保留；first-wins 会跳过已有 AI，
+  调低阈值再推理只能补空缺，不自动替换旧点。阈值不是模型准确度保证。
+- DLC 3.0.1 兼容边界：经 `compat.analyze_videos` 调用，不重复传递它已指定的 `overwrite`；
+  用 `DLCLoader.snapshots()` 定位 PyTorch 权重；帧进度在独占 worker 中临时桥接
+  `InferenceRunner._extract_results`，以已后处理的预测数计数；同时在 DLC 实际解析模型时
+  校验所选路径，避免 snapshot index 因目录变化而指向其他权重。结束时恢复原方法。
+  升级 DLC 后必须重跑真实冒烟；不修改安装包源码，不以读帧或耗时模拟进度。
+- 当前真实验证仅 macOS CPU；MPS/CUDA 与 Windows 真机仍需另外验收。新提交的双平台 CI
+  需在获准 push 后检查，不能沿用旧 main 的绿色结果。
+- **4.4 接线前的性能关卡**：当前 Qt-free coordinator 在 prepare/start/提交校验中会同步
+  扫描视频 SHA-256。大视频会让调用方等待；GUI 接入时必须将这些校验放入后台准备/提交
+  阶段，主线程仅做最终输入版本检查和原子提交，不能直接把当前完整调用挂在点击/QTimer 上。
+  这是后续 GUI 接线的明确待办，不宣称当前已通过大视频 GUI 响应验收。
+
 ## 3. 仓库工作流
 
 ```text

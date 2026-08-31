@@ -21,6 +21,21 @@ from ai_physics_tracker.infrastructure.engine_adapter import TrainingParams
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 
 
+def create_synthetic_video(video_path: Path, frame_count: int = 10) -> None:
+    """生成恒定帧率移动圆点，供训练/推理冒烟共用。"""
+    writer = cv2.VideoWriter(str(video_path), cv2.VideoWriter_fourcc(*"mp4v"),
+                             30.0, (100, 100))
+    if not writer.isOpened():
+        raise RuntimeError("Cannot create synthetic video")
+    try:
+        for frame_index in range(frame_count):
+            img = np.zeros((100, 100, 3), dtype=np.uint8)
+            cv2.circle(img, (30 + frame_index * 4, 50), 5, (255, 255, 255), -1)
+            writer.write(img)
+    finally:
+        writer.release()
+
+
 def main() -> None:
     print("=== DeepLabCut 3.x Real Smoke Test ===")
     tmp_dir = Path(tempfile.mkdtemp(prefix="dlc_smoke_"))
@@ -29,15 +44,7 @@ def main() -> None:
     try:
         # 1. 创建合成视频（10 帧，100x100）
         video_path = tmp_dir / "synthetic_pendulum.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(str(video_path), fourcc, 30.0, (100, 100))
-        for i in range(10):
-            img = np.zeros((100, 100, 3), dtype=np.uint8)
-            # 绘制一个白色移动圆点
-            cx, cy = 30 + i * 4, 50
-            cv2.circle(img, (cx, cy), 5, (255, 255, 255), -1)
-            writer.write(img)
-        writer.release()
+        create_synthetic_video(video_path)
         print(f"Created synthetic video: {video_path}")
 
         adapter = DLCAdapter()
