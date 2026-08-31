@@ -81,6 +81,10 @@ def test_infer_passes_selected_snapshot_and_all_dlc_parameters(
         yield [total]
 
     monkeypatch.setattr(dlc_adapter, "_prediction_progress", completed_progress)
+    @contextmanager
+    def selected_snapshot(path):
+        yield
+    monkeypatch.setattr(dlc_adapter, "_selected_snapshot", selected_snapshot)
     monkeypatch.setattr(
         "ai_physics_tracker.infrastructure.dlc_predictions.parse_predictions",
         lambda *args, **kwargs: SimpleNamespace(
@@ -263,3 +267,23 @@ def test_dlc_train_worker_fails_when_training_creates_no_snapshot(
     assert result["status"] == "failed"
     assert "snapshot_path" not in result
     assert "without creating or updating" in str(result["error_message"])
+
+
+@pytest.mark.parametrize("actual_name", ["selected.pt", "other.pt"])
+def test_snapshot_resolution_is_checked_at_load_time(tmp_path, monkeypatch, actual_name):
+    apis = ModuleType("deeplabcut.pose_estimation_pytorch.apis")
+    utils = ModuleType("deeplabcut.pose_estimation_pytorch.apis.utils")
+    selected = SimpleNamespace(path=tmp_path / actual_name)
+    original = lambda *args, **kwargs: [selected]
+    utils.get_model_snapshots = original
+    apis.utils = utils
+    monkeypatch.setitem(sys.modules, "deeplabcut.pose_estimation_pytorch.apis", apis)
+    monkeypatch.setitem(sys.modules, "deeplabcut.pose_estimation_pytorch.apis.utils", utils)
+    if actual_name == "selected.pt":
+        with dlc_adapter._selected_snapshot(tmp_path / "selected.pt"):
+            assert utils.get_model_snapshots(0, tmp_path, "pose") == [selected]
+    else:
+        with pytest.raises(ValueError, match="different snapshot"):
+            with dlc_adapter._selected_snapshot(tmp_path / "selected.pt"):
+                utils.get_model_snapshots(0, tmp_path, "pose")
+    assert utils.get_model_snapshots is original

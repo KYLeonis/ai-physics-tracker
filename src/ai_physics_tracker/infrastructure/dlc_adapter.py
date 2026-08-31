@@ -288,7 +288,7 @@ class DLCAdapter:
         request.output_dir.mkdir(parents=True, exist_ok=False)
         stream = _QueueLogStream(queue, run_id)
         send_progress(queue, run_id, 0, request.frame_count, message="Loading selected model")
-        with redirect_stdout(stream), redirect_stderr(stream), _prediction_progress(
+        with redirect_stdout(stream), redirect_stderr(stream), _selected_snapshot(request.model_snapshot), _prediction_progress(
             queue, run_id, cancel_event, request.frame_count
         ) as progress:
             scorer = deeplabcut.analyze_videos(
@@ -314,6 +314,26 @@ class DLCAdapter:
         return InferenceOutcome(parsed.points, prediction_path, parsed.row_count,
                                 parsed.missing_count, parsed.low_confidence_count,
                                 request.model_snapshot, str(deeplabcut.__version__), actual_device)
+
+
+@contextmanager
+def _selected_snapshot(expected_path: Path):
+    """复核 DLC 在加载权重前实际解析的路径，防止快照列表变化使 index 指向别处。"""
+    from deeplabcut.pose_estimation_pytorch.apis import utils
+
+    original = utils.get_model_snapshots
+
+    def select(*args, **kwargs):
+        selected = original(*args, **kwargs)
+        if len(selected) != 1 or selected[0].path.resolve() != expected_path.resolve():
+            raise ValueError("DLC resolved a different snapshot; retry with the selected model")
+        return selected
+
+    utils.get_model_snapshots = select
+    try:
+        yield
+    finally:
+        utils.get_model_snapshots = original
 
 
 def dlc_train_worker(

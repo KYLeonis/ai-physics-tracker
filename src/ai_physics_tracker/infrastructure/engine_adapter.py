@@ -128,6 +128,9 @@ class InferenceRequest:
     shuffle: int = 1
     trainingsetindex: int = 0
     model_sha256: str | None = None
+    video_sha256: str | None = None
+    archive_model: bool = False
+    config_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if type(self.frame_count) is not int or self.frame_count <= 0:

@@ -346,8 +346,12 @@ class ProjectSession:
             or completed_run.task_type != registered_run.task_type
             or completed_run.source_detail != registered_run.source_detail
             or completed_run.config != registered_run.config
-            or completed_run.model_snapshot != registered_run.model_snapshot
+            or (registered_run.model_snapshot is not None
+                and completed_run.model_snapshot != registered_run.model_snapshot)
             or completed_run.created_at != registered_run.created_at
+            or (registered_run.extra_fields.get("model_sha256") is not None
+                and completed_run.extra_fields.get("model_sha256")
+                != registered_run.extra_fields["model_sha256"])
         ):
             raise ProjectSessionError("completed run identity or configuration does not match")
 

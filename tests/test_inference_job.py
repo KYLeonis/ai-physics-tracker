@@ -238,3 +238,112 @@ def test_equivalent_media_locator_does_not_invalidate_inference(tmp_path):
     coordinator.start_inference(session, run.run_id)
     coordinator.poll_messages(session, run.run_id)
     assert session.tracking_runs()[-1].status == "completed"
+
+
+@pytest.mark.parametrize("digest", [None, "", "invalid", "0" * 63])
+def test_unverified_training_run_is_rejected_before_inference(tmp_path, digest):
+    session, trained = session_and_model(tmp_path)
+    extras = dict(trained.extra_fields)
+    extras["model_sha256"] = digest
+    session.update_tracking_run(replace(trained, extra_fields=extras))
+    with pytest.raises(ProjectSessionError, match="verified model hash"):
+        InferenceCoordinator().prepare_inference(session, trained.run_id, InferenceParams(0.5))
+    assert len(session.tracking_runs()) == 1
+
+
+def test_registered_video_hash_rejects_replacement_before_prepare(tmp_path):
+    session, trained = session_and_model(tmp_path)
+    session._project = replace(session.project, videos=tuple(
+        replace(video, sha256=hashlib.sha256(b"").hexdigest()) for video in session.project.videos))
+    (tmp_path / "sample.mp4").write_bytes(b"replacement video")
+    with pytest.raises(ProjectSessionError, match="registered SHA-256"):
+        InferenceCoordinator().prepare_inference(session, trained.run_id, InferenceParams(0.5))
+    assert len(session.tracking_runs()) == 1
+
+
+def test_media_hash_detects_replacement_even_with_unchanged_stat(tmp_path):
+    session, trained = session_and_model(tmp_path)
+    media = tmp_path / "sample.mp4"
+    media.write_bytes(b"original")
+    coordinator = InferenceCoordinator(ImmediateRunner())
+    run = coordinator.prepare_inference(session, trained.run_id, InferenceParams(0.5), adapter=MockEngineAdapter())
+    coordinator.start_inference(session, run.run_id)
+    stamp = media.stat()
+    media.write_bytes(b"replaced")
+    os.utime(media, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+    messages = coordinator.poll_messages(session, run.run_id)
+    assert session.tracking_runs()[-1].status == "failed"
+    assert not [message for message in messages if isinstance(message, TaskResult)][0].success
+    assert len(session.project.observations) == 1
+
+
+def test_verified_external_legacy_model_is_archived_without_absolute_new_refs(tmp_path):
+    session, trained = session_and_model(tmp_path)
+    external = tmp_path / "legacy model"
+    external.mkdir()
+    snapshot = external / "snapshot-1.pt"
+    snapshot.write_bytes(b"mock weights")
+    config = external / "config.yaml"
+    config.write_text("legacy config", encoding="utf-8")
+    trained = replace(trained, model_snapshot=str(snapshot),
+        extra_fields={"model_sha256": hashlib.sha256(b"mock weights").hexdigest()})
+    session.update_tracking_run(trained)
+    coordinator = InferenceCoordinator(ImmediateRunner())
+    run = coordinator.prepare_inference(session, trained.run_id, InferenceParams(0.5),
+        adapter=MockEngineAdapter(), config_path=config)
+    assert run.model_snapshot is None
+    assert "config_path" not in run.extra_fields
+    coordinator.start_inference(session, run.run_id)
+    coordinator.poll_messages(session, run.run_id)
+    completed = session.tracking_runs()[-1]
+    assert completed.status == "completed"
+    assert not Path(completed.model_snapshot).is_absolute()
+    assert not Path(completed.extra_fields["config_path"]).is_absolute()
+    assert (session.project_root / completed.model_snapshot).read_bytes() == snapshot.read_bytes()
+    assert (session.project_root / completed.extra_fields["config_path"]).read_bytes() == config.read_bytes()
+    assert session.tracking_runs()[0] == trained
+    session.save()
+    reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+    assert reopened.tracking_runs()[-1] == completed
+
+
+def test_spawn_retains_explicit_adapter_parameters(tmp_path):
+    session, trained = session_and_model(tmp_path)
+    coordinator = InferenceCoordinator()
+    run = coordinator.prepare_inference(session, trained.run_id, InferenceParams(0.5),
+        adapter=MockEngineAdapter(default_confidence=0.4))
+    handle = coordinator.start_inference(session, run.run_id)
+    poll_finished(coordinator, session, run, handle)
+    assert session.tracking_runs()[-1].status == "completed"
+    assert session.tracking_runs()[-1].extra_fields["import_summary"]["low_confidence_count"] == 12
+    assert len(session.project.observations) == 1
+
+
+def test_cancelled_legacy_run_has_no_uncreated_archive_references(tmp_path):
+    session, trained = session_and_model(tmp_path)
+    external = tmp_path / "external.yaml"
+    external.write_text("external config", encoding="utf-8")
+    coordinator = InferenceCoordinator()
+    run = coordinator.prepare_inference(session, trained.run_id, InferenceParams(0.5),
+        adapter=MockEngineAdapter(), config_path=external)
+    coordinator.cancel_inference(session, run.run_id)
+    session.save()
+    cancelled = ProjectSession.load(ProjectRepository(), session.project_root).tracking_runs()[-1]
+    assert cancelled.status == "cancelled"
+    assert cancelled.model_snapshot is None
+    assert "config_path" not in cancelled.extra_fields
+    assert cancelled.config["training_run_id"] == str(trained.run_id)
+
+
+def test_config_hash_rejects_equal_stat_replacement(tmp_path):
+    session, trained = session_and_model(tmp_path)
+    config = session.project_root / "models/config.yaml"
+    coordinator = InferenceCoordinator(ImmediateRunner())
+    run = coordinator.prepare_inference(session, trained.run_id, InferenceParams(0.5), adapter=MockEngineAdapter())
+    coordinator.start_inference(session, run.run_id)
+    previous = config.stat()
+    config.write_bytes(b"x" * previous.st_size)
+    os.utime(config, ns=(previous.st_atime_ns, previous.st_mtime_ns))
+    coordinator.poll_messages(session, run.run_id)
+    assert session.tracking_runs()[-1].status == "failed"
+    assert len(session.project.observations) == 1
