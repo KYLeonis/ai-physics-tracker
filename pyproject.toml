@@ -10,11 +10,12 @@ readme = "README.md"
 requires-python = ">=3.11,<3.13"
 authors = [{ name = "Leonis" }]
 dependencies = [
-    "numpy==2.4.6",
-    "opencv-python-headless==4.14.0.94",
-    "PySide6-Essentials==6.11.2",
-    "scipy>=1.14,<2.0",
+    "numpy>=1.24,<3",
+    "opencv-python-headless>=4.8,<5",
+    "PySide6-Essentials>=6.5,<7",
+    "scipy>=1.12,<2.0",
     "pyqtgraph>=0.13,<0.14",
+    "deeplabcut>=3.0,<4.0",
 ]
 
 [project.optional-dependencies]

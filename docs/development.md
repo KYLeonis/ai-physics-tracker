@@ -88,12 +88,16 @@
 - PySide6、OpenCV、NumPy/SciPy/Pandas 在 3.11 上均有长期维护的轮子
 - 当前机器 Homebrew Python 为 3.14（**不在 DLC 支持范围内**），开发环境需单独安装 3.11
 
-### DeepLabCut 安装注意（Phase 4 时执行）
+### DeepLabCut 安装注意（Phase 4 已落地）
 
-1. 创建独立环境（conda 或 venv，Python 3.11）
-2. 先安装 PyTorch（GPU 版需选择匹配的 CUDA 轮子；CUDA runtime 随 PyTorch 轮子捆绑）
-3. 再安装 `deeplabcut`（PyTorch 引擎为默认；`[gui]` extra 供参考，本项目自带 GUI 不需要）
-4. 验证 `torch.cuda.is_available()`（GPU 环境）
+1. 创建独立环境（venv，Python 3.11–3.12）
+2. 安装依赖：`pip install -e .`（`pyproject.toml` 包含 `deeplabcut>=3.0,<4.0`）
+3. 本地验证：`python scripts/smoke_test_dlc_train.py`（单摆合成视频 1 epoch 冒烟验证）
+4. 设备探测与计算加速：
+   - macOS (Apple Silicon)：自动使用 MPS 加速（降级为 CPU 稳定运行）
+   - Windows (NVIDIA GPU)：自动使用 CUDA 加速
+   - CI 环境：不安装真实 DLC，通过 `MockEngineAdapter` 覆盖 100% 协议与任务流程测试
+5. 验证设备支持：`python -c "import torch; print('CUDA:', torch.cuda.is_available(), 'MPS:', hasattr(torch.backends, 'mps') and torch.backends.mps.is_available())"`
 
 ## 3. 仓库工作流
 

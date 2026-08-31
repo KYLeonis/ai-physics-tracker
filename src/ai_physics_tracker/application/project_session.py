@@ -40,6 +40,7 @@ from ai_physics_tracker.domain.project import (
 from ai_physics_tracker.domain.derived import DerivedData, DerivedInput, mark_tracks_stale
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.domain.track import Track, TrackPoint
+from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.domain.track_store import (
     TrackStore,
     resolve_effective_point,
@@ -412,6 +413,39 @@ class ProjectSession:
             return self._repository.resolve_video_path(self._project_root, video)
         path = Path(video.original_path) if video.original_path else None
         return path if path is not None and path.is_file() else None
+
+    def resolve_video_path(self, video: Video) -> Path | None:
+        """解析视频文件的可访问本地路径（video_path 别名）。"""
+        return self.video_path(video)
+
+    def record_tracking_run(self, run: TrackingRun) -> None:
+        """登记一个新的 TrackingRun。"""
+        if any(r.run_id == run.run_id for r in self._project.tracking_runs):
+            raise ProjectSessionError(f"tracking run_id already exists: {run.run_id}")
+        self._project = replace(
+            self._project,
+            tracking_runs=(*self._project.tracking_runs, run),
+        )
+
+    def update_tracking_run(self, run: TrackingRun) -> None:
+        """更新已存在的 TrackingRun 状态或结果。"""
+        found = False
+        runs: list[TrackingRun] = []
+        for existing in self._project.tracking_runs:
+            if existing.run_id == run.run_id:
+                runs.append(run)
+                found = True
+            else:
+                runs.append(existing)
+        if not found:
+            raise ProjectSessionError(f"unknown tracking run_id: {run.run_id}")
+        self._project = replace(self._project, tracking_runs=tuple(runs))
+
+    def tracking_runs(self, track_id: UUID | None = None) -> tuple[TrackingRun, ...]:
+        """返回项目中的 TrackingRun，可选按 track_id 过滤。"""
+        if track_id is None:
+            return self._project.tracking_runs
+        return tuple(r for r in self._project.tracking_runs if r.track_id == track_id)
 
     def add_calibration(
         self,
