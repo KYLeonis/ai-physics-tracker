@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-31（Phase 3.4 本地完成，310 tests；等待整体 Human Review）
+- 最后更新：2026-08-31（Phase 3.4 整体 Human Review 通过，Phase 3 完成；Windows 真机延后待补）
 
 ---
 
@@ -13,9 +13,7 @@
 
 ## Current Subphase
 
-**3.4 — Integration & Phase Close**：**待整体 Human Review / Windows / CI，未收尾**。
-计划见 [phase-3.4-plan.md](phase-3.4-plan.md)，[Issue #10](https://github.com/KYLeonis/ai-physics-tracker/issues/10)
-保持打开；工作分支 `feat/p3.4-integration-acceptance`，功能提交 `d1c90c4`。
+**3.4 — Integration & Phase Close** ✅ 已完成（整体 Human Review 5 步通过；[Issue #10](https://github.com/KYLeonis/ai-physics-tracker/issues/10) 已关闭；merge `61c8df0` → main，CI 双平台全绿 run `33366630932`）。Windows 真机验收为延后项，待补。
 
 上一 Subphase **3.3 — Interactive Charts** ✅ 已完成；Human Review 5 轮通过，
 [Issue #9](https://github.com/KYLeonis/ai-physics-tracker/issues/9) 已关闭，merge `51c1cce`。
@@ -27,7 +25,7 @@ macOS/Windows Python 3.11 jobs 均成功。当前规划基线 `main` / `162017e`
 
 ## Current Slice
 
-Slice 1–2 本地完成；Slice 3：310 tests 与独立正确性复审通过，等待用户整体 Human Review。
+Slice 1–3 全部完成：编辑比例尺/单位（Edit scale）、删除未生效标定（Delete inactive）、PNG 取消与双轨迹 overlay 补测；310 tests + 整体 Human Review 通过。
 
 ## Current Goal
 
@@ -37,10 +35,8 @@ Phase 3 最终收尾后停止，不自动进入 Phase 4。
 
 ## Recently Completed
 
-- **3.4 本地增量（待 HR/CI）**：Ponytail lite 下复用现有测试补 E1/E2/E3，修正 PNG 取消
-  恒真断言；补记 ADR-0010。用户追加同意后新增 Edit scale / Delete inactive，保留标定
-  ID/raw/精度/Undo/失效状态；修正删除 active 后 selector 状态。**310 passed**，
-  compileall/pip check/diff check 通过；独立 Luna-max 正确性复审及 Ponytail 复杂度检查完成。
+- **Phase 3.4 — Integration & Phase Close**（✅ 2026-08-31）：编辑比例尺/单位（Edit scale）、删除未生效标定（Delete inactive）、PNG 取消断言修正、双轨迹同屏 overlay 补测；补 ADR-0010；310 tests + 整体 Human Review 5 步通过 + 双平台 CI 全绿；merge `61c8df0`，Issue #10 关闭。
+- **Phase 3.3 — Interactive Charts**（✅ 2026-08-31）：五标签图表、多 Track 叠加、物理/像素单位、缺测断线、双向帧同步、SG 参数与后台重算、多选轨迹同屏、？帮助气泡、PNG 导出；303 tests，merge `51c1cce`。
 
 - **Phase 3.4 规划盘点**（2026-08-31）：已有版本本地复跑 **303 passed**、依赖检查通过；
   Luna-max 只读映射 AC 与测试缺口，形成三个优先集成场景。未进行 3.4 功能修改/真人验收。
@@ -88,6 +84,6 @@ Phase 3 最终收尾后停止，不自动进入 Phase 4。
 
 ## Next Recommended Action
 
-等待用户按 [3.4 Human Review](phase-3.4-plan.md) 亲测五步并反馈，不继续扩展实现。
-失败则修复对应问题并复验；通过后处理 Windows 真机条件，申请 push 授权再运行双平台
-CI/合并/关闭 Issue #10。没有修改 CI、插件全局设置或真实媒体，不直接进入 Phase 4。
+Phase 3 全部完成（3.0 spec → 3.1 Calibration UI → 3.2 Kinematics Engine → 3.3 Interactive Charts → 3.4 Integration & Phase Close；merge `61c8df0`）。
+下一步 **Phase 4 — Deep Learning Tracking**（接入 DeepLabCut/PyTorch：标注→训练→跟踪），等待用户启动指令。
+Phase 3 收尾前可择机补做 Windows 真机验收（延后项）。
