@@ -18,6 +18,7 @@ from ai_physics_tracker.domain.timeline import (
     has_time_mismatch,
 )
 from ai_physics_tracker.domain.track import Track, TrackPoint
+from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.domain.types import JsonObject, require_aware_datetime, utc_now
 from ai_physics_tracker.domain.video import Video
 
@@ -26,7 +27,7 @@ from ai_physics_tracker.domain.video import Video
 class Registries:
     """随项目一起持久化的开放字符串注册表。"""
 
-    sources: tuple[str, ...] = ("manual", "template")
+    sources: tuple[str, ...] = ("manual", "template", "dlc")
     units: tuple[str, ...] = ("m", "cm", "mm", "px")
     quality_flags: tuple[str, ...] = (
         "interpolated",
@@ -67,6 +68,7 @@ class Project:
     calibrations: tuple[Calibration, ...] = ()
     active_calibration_by_video: dict[UUID, UUID] = field(default_factory=dict)
     derived: tuple[DerivedData, ...] = ()
+    tracking_runs: tuple[TrackingRun, ...] = ()
     registries: Registries = field(default_factory=Registries)
     ui_state: JsonObject = field(default_factory=dict)
     extra_fields: JsonObject = field(default_factory=dict, repr=False)
@@ -399,6 +401,14 @@ def validate_project(project: Project) -> None:
             raise ValueError("active calibration must belong to its mapped video")
     if any(item.track_id not in track_id_set for item in project.derived):
         raise ValueError("every DerivedData item must reference a registered track")
+    run_ids = [run.run_id for run in project.tracking_runs]
+    if len(set(run_ids)) != len(run_ids):
+        raise ValueError("tracking run run_id values must be unique")
+    for run in project.tracking_runs:
+        if run.video_id not in videos_by_id:
+            raise ValueError("every tracking run must reference a registered video")
+        if run.track_id not in track_id_set:
+            raise ValueError("every tracking run must reference a registered track")
 
 
 def _video_reference_key(video: Video) -> tuple[str, str]:

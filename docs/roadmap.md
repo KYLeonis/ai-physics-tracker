@@ -99,7 +99,7 @@
 
 ---
 
-## Phase 4 — Deep Learning Tracking ⬜
+## Phase 4 — Deep Learning Tracking 🔄
 
 **目标**：接入 DeepLabCut/PyTorch，实现软件内"标注 → 训练 → 跟踪"完整流程。
 
