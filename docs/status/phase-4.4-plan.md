@@ -1,0 +1,143 @@
+# Subphase Plan — Phase 4.4 GUI & Integration
+
+- Issue：计划确认后创建；本轮只设计，不创建实施 Issue。
+- 分支：拟用 `feat/p4.4-gui-integration`，尚未创建。
+- 日期 / 状态：2026-08-31 · 草案，等待用户确认。
+- 进入基线：`main` / `1ca5bee`，与实时查询的远程 main 一致，工作区干净；4.3 已收尾。
+
+## Goal
+
+在现有桌面界面内完成“人工标注 → 训练与基本评价 → 全视频推理 → AI/人工轨迹显示 → 运动学重算 → 保存重开”，准备、运行、校验与取消均不阻塞 GUI，并以单摆项目完成 Phase 4 的整体验收。
+
+## Scope
+
+**做**：
+
+- GUI 可安全调用的训练/推理异步入口、真实进度与日志、单活动 AI 任务、任务历史。
+- Task Panel、训练/推理/取消按钮、最少的参数和模型选择、前置条件说明。
+- 项目保存、切换、关闭、任务恢复显示与迟到结果保护。
+- AI 来源样式、全视频轨迹的绘制成本控制、人工覆盖及图表数据刷新。
+- roadmap 已要求的最小模型评价：同一训练快照的原生训练/验证指标与样本量摘要，不用训练 loss 冒充定位精度。
+- 自动化回归、真实 DLC 验证、Human Review、Windows 条件核对和 Phase 4 收尾。
+
+**不做**：
+
+- 多视频队列、多任务并行调度、多 bodypart、多模型库/跨视频应用、训练恢复、困难帧挖掘与主动学习（Phase 5/7）。
+- 改写 first-wins、自动覆盖/清除旧 AI 点、自动删除模型/原始结果、自动插值或新增物理算法。
+- 改版整个主窗口、引入新依赖、修改 CI、迁移项目 schema 或修改许可证。
+- 用合成视频的 1 epoch 冒烟替代真实单摆 GUI 验收，或把 Windows mock CI 视为 CUDA 真机验收。
+
+## Relevant Context
+
+- `AGENTS.md`；`CODE_STANDARD.md` §4/8/10/13/14/15；`docs/workflow.md` §5.1/6/8/11。
+- `docs/spec/phase4-requirements.md` R2–R6 / AC-1…6；`docs/roadmap.md` Phase 4。
+- `docs/status/phase-4.3-plan.md` Result；`docs/development.md`“4.4 接线前的性能关卡”。
+- ADR-0011（引擎隔离与 spawn）；ADR-0007（时序授权）；ADR-0009（后台结果与主线程事务）。
+- `docs/spec/data-model.md` §4/5；`docs/spec/project-format.md`；`docs/research/open-source-project-map.md` §3.4/9。
+- `docs/research/raw/deeplabcut-notes.md` 训练 logger、评价与推理；本机 DLC 的 `runners/logger.py`、`apis/training.py`、`apis/evaluation.py`。
+
+## Baseline Findings
+
+1. 4.3 已有 `InferenceCoordinator`、严格结果解析、原子导入、`effective_points()`、混合观测运动学；不重写这些语义。
+2. `prepare_training()` 同步抽帧/导出/调用 DLC 建训练集；`prepare_inference()`、`_validate_context()` 和 `_apply_result()` 同步做哈希、读 JSON 和构造观测。直接绑在按钮或 QTimer 上会卡 GUI。
+3. `dlc_train_worker()` 真实分支尚未持续转发 epoch/loss/lr；`TrainingParams.learning_rate/save_iters` 与真实调用存在未接线之处。训练导出还有解码失败生成占位图、HDF5 错误被吞、缺 DLC 模拟成功的旧逻辑，GUI 发布前需定向修复。
+4. `ProjectActions._saveCandidate.accept()` 会把活动 session 替换为保存副本，而推理 job 按 session 对象验证身份。不能仅靠“保存后换引用”连接活动 AI 任务，否则会失联或丢失保存期间的更新。
+5. 当前 overlay 只读 manual 点，且 `VideoView.set_markers()` 每次重建全部图元；全帧 AI 数据会放大播放成本。非当前帧的 manual 已是空心圆，AI 不能也只用空心圆区分。
+6. 重开项目时磁盘可能保留 running/pending run，但没有对应 worker；任务面板不能假装它还在运行，也不能永久禁止后续任务。
+7. roadmap 的“模型评价”还没有软件入口；仅显示训练 loss 不足以交付这一项。仓库没有受版本管理的真实单摆视频，验收前需用户指定本地素材。
+
+## Proposed Design
+
+### D1 后台边界与事务（先于面板实现）
+
+- 在 ADR-0011/0009 基础上写 ADR-0012，明确 AI 请求快照、后台校验和主线程提交的职责；用户确认本计划后先写决策/接口约定，再改实现。不把现有同步 coordinator 整体搬到线程中并修改活动 session。
+- GUI 主线程只捕获小型请求/当前版本、登记任务、处理有界消息和最终提交；DLC 导入、设备探测、训练集生成、训练/评价/推理仍在 spawn 子进程，worker 使用自己的视频 reader，不共享播放器 reader。
+- 抽帧、哈希、结果文件读取/反序列化和批量候选数据准备走后台。返回可校验的结果与媒体/模型/配置指纹；GUI 用会话代际、输入版本和最新人工观测确认有效后原子合并，不能删除 4.3 的内容身份校验来换速度。
+- 输入变化时拒绝过期候选或在后台重新合并，保留用户期间的人工标注；不把过期 Project 快照替换进活动会话。大批次候选验证也不在 QTimer 槽里重新全表处理。
+- GUI 侧用一个轻量 `TrackingActions` 组合现有服务，与 `ProjectActions/ChartActions` 模式一致。复用任务 runner，不建立通用调度框架；一个窗口/项目一次只运行一个 AI 作业，避免目录和计算设备争用。
+- 约 100ms 轮询只排空有界消息批次；进度合并为最新值。取消发请求后立即返回，join/terminate/kill 在后台回收；UI 显示 Cancelling，直到确认退出，不能同步等待数秒。
+
+### D2 真实训练进度、参数和最小评价
+
+- 通过 DLC 真实 logger/日志边界取得 epoch、loss、实际 lr；同一适配器内复用日志重定向，GUI 不 import DLC。启动/下载/建集/哈希/评价等没有可测分母的阶段显示不定进度，不伪造百分比。
+- UI 第一版只开放 `epochs=50`、`batch_size=8`、`device=auto`（可选 CPU/MPS/CUDA）；高级 learning_rate/save_iters 不先做控件，但 API 参数与落盘的实际配置必须一致。修复未使用参数的传递/记录，并用真实短训练核对。
+- 解码/图像写入/HDF5 生成/依赖缺失必须报告失败，不能使用黑色占位图或伪成功继续训练；错误指出失败阶段和恢复办法。该修复直接服务 R2/R3，不扩展为全仓清理。
+- 训练后针对产出的确切 snapshot 执行最小 DLC 评价（关闭绘图）；记录引擎原生训练/验证误差、单位、有效样本量、阈值和快照身份。评价与模型可用状态分开：评价失败或取消不销毁已成功的模型，但明确显示“评价未完成”，Phase 4 的评价验收仍需补齐。
+- 评价是训练工作流子步骤，复用 run 的可扩展元数据，不新增 `task_type` 或 schema；不做模型排名/跨运行精度比较。模型、媒体、配置哈希保护在评价中同样有效。
+
+### D3 Task Panel 与参数默认值
+
+- 底部可停靠面板，默认与 Kinematics charts 并列为标签页，并接入 View 菜单；不重排视频、轨迹列表和时间轴。
+- 面板显示当前视频/当前落点 Track。现有多选只用于叠加显示；Train/Infer 针对 current Track，不悄悄批量执行多选目标。
+- 控件：训练参数、Start Training；同 Track 的完成模型列表、推理置信度、Start Inference；Cancel；任务历史和选中任务详情/日志。
+- **提议 GUI 推理阈值默认 0.6**，范围 `[0,1]` 可调，`>=` 包含边界；仅是可调整的工程起点，不代表已证明的定位精度。4.3 adapter 默认 0.0 不改。低分原始结果仍保留，manual 的 None 不参与置信度过滤。
+- 训练按钮要求项目已保存、视频/时序有效、current Track 至少 3 个人工点且无活动 AI 作业；3 点只是技术下限，UI 提示应覆盖摆动不同位置。推理还要求有可验证的完成模型；静态条件即时判定，哈希/文件强校验在后台完成。
+- 禁用原因必须可见（未保存、未授权时序、人工点不足、旧模型无 hash、忙等）。重训不自动覆盖旧 AI；再次推理可能仅补缺帧，面板在启动前提示 first-wins。
+- 用现有 TrackingRun 做历史事实源。Preparing/Validating/Importing/Cancelling 是临时显示阶段，不新增持久化状态；completed 只表示所需模型/观测提交已完成，不能拿 worker 的 100% 当作已导入成功。
+- 结果显示导入/冲突跳过/低置信度/缺测数量、实际设备、模型及评价摘要。低样本/评价不可用必须明示；不把数据为空画成零。
+- 完整日志保存为 `data/engines/<run_id>.log`，引用走现有扩展字段；不会提前创建 4.3 必须独占的新预测目录。UI 只保留最近一段日志，历史日志异步按需读取；旧任务没有日志就明确说明。实施前更新目录规范。
+
+### D4 保存、切换、关闭和中断恢复
+
+- 普通 Save 仍可用，但保存成功只更新**该保存快照对应的 clean 基线**，不替换活动 session、不覆盖之后的编辑/任务完成结果。保存期间新增内容仍应 dirty；Undo/Redo 与既有保存边界保持一致。
+- AI 活动时允许播放、seek、选择和手工标注；另存、重连媒体、改变时序或删除活动目标等上下文破坏操作先禁用并提示取消任务。其他轨迹的普通查看不被误锁。
+- 打开/新建/切换视频/关闭时整合现有 Save/Discard/Cancel 提示，明确操作会取消活动任务。用户选择返回则任务与会话不变；确认继续后先异步回收旧作业并落定 cancelled，再按所选保存策略操作，之后提交候选新项目。
+- 不能在 projectChanged 已替换会话后才取消旧任务。打开/保存失败保留原项目；已按用户选择取消的任务不假装恢复。关闭后不接收任何访问已销毁 Qt 的回调。
+- 同一次普通保存不得改变 session 身份/任务归属；切换则使用明确代际丢弃旧回调。取消与成功竞争只允许一个终态，不能先导入再显示 cancelled。
+- 对从磁盘恢复、确无本进程 worker 的 pending/running 任务，载入候选会话时在内存标为 failed 并说明“上次执行已中断”；不自动续训、不删除产物、不改 completed run 的模型身份，只有后续正常保存才写回。这样旧状态不会永久锁住新任务。此项是拟批准的运行状态恢复规则，不迁移 schema。
+
+### D5 AI 显示与图表
+
+- `_refreshMarkers` 读取 `effective_points()`；manual 沿用圆形，AI 用空心菱形，沿用 Track 颜色并提供来源图例。当前帧另加高亮，不能只靠颜色/实心空心表达来源。修改人工点后立即显示人工优先结果，Undo/Redo 同步恢复。
+- 轨迹几何按数据/选中 Track/显示范围变化缓存，当前帧只更新少量高亮；避免每个呈现帧删除并重建全部 AI 图元。具体采用批量绘制或稳定图元复用，由 Slice 5 的规模验证决定，不更换渲染库、不减少保存的数据。
+- 推理完成后刷新 overlay、任务历史和 `analysisChanged`，使图表立即识别 stale。**默认沿用显式 Recompute**，显示“AI 数据已更新，请重算”；不在后台任务完成时擅自启动昂贵重算或抢走当前面板焦点。
+- 重算继续走 ChartActions 的后台机制，使用人工/AI 生效观测；不跨缺测连接/插值，不自动跳帧。推理与旧运动学结果相遇时，旧结果必须被拒绝或重新计算。
+
+## Acceptance Criteria
+
+- [ ] P44-1：慢哈希、慢抽帧、DLC 初始化和结果解析均不在 GUI 线程执行；用事件屏障验证等待期间 Qt 仍能处理播放/取消，不用易抖动的耗时断言代替线程边界测试。
+- [ ] P44-2：真实训练转发 epoch/loss/lr，参数快照与真实调用一致；解码/依赖/建集失败不会训练占位数据；成功模型有一次可追溯的基本评价。
+- [ ] P44-3：Task Panel 的目标、参数、禁用原因、进度、错误和历史正确；取消在准备/运行/验证阶段可用，进程退出后才落终态，无重复终态或半批导入。
+- [ ] P44-4：保存期间编辑/任务完成不丢失，取消导航不取消任务；确认导航、另存限制、失败回退、关闭回收、旧回调以及重开中断任务均有回归测试。
+- [ ] P44-5：manual/AI 来源可区分且人工优先；多选 overlay、当前帧、缩放、Undo/Redo 正确；全帧轨迹不会逐帧重建全量图元。图表识别新数据并按显式重算展示混合结果。
+- [ ] P44-6：用户亲测真实单摆项目，从标注到训练/评价/推理/显示/重算/保存重开全程不离开软件；真实模型进度、取消和交互体验通过 Human Review。
+- [ ] P44-7：405 项基线及新增测试通过，交付提交的 macOS/Windows CI 通过，独立 review 通过；Windows 真机/CUDA 条件按下节落实，不沿用以前的延期为自动豁免。
+- [ ] P44-8：Phase 4 所有 deliverables/AC 有证据，尤其模型评价和 GUI AC-5/6；同步相关文档、Issue 和 Git 状态，完成 Phase 4 后停止，不开始 Phase 5。
+
+## Slices
+
+| Slice | 可验证增量 | 主要影响范围 |
+| --- | --- | --- |
+| 1 | ADR-0012、请求/结果快照；拆开同步准备/验证/原子提交，Qt 响应性测试 | `training_job.py`、`inference_job.py`、必要的应用层请求模块、`task_runner.py`、相关测试 |
+| 2 | 训练准备进程化、真实指标/日志、参数与错误修复、最小评价 | `dlc_adapter.py`、`engine_adapter.py`、mock adapter、训练测试、目录规范 |
+| 3 | Task Panel + TrackingActions，接通按钮、目标/模型/参数、日志历史 | 新增 `gui/task_panel.py`、`gui/tracking_actions.py`，MainWindow 最小接线及 offscreen 测试 |
+| 4 | 保存身份、取消/导航/关闭、重开中断恢复与竞争回归 | `project_actions.py`、`project_session.py`、MainWindow、TrackingActions、既有项目/时序测试 |
+| 5 | AI 样式与绘制缓存、人工覆盖、图表通知和重算整合 | `video_view.py`、MainWindow、`chart_actions.py`、overlay/图表测试 |
+| 6 | 自动化与真实 DLC 验证、独立 review、Human Review、Phase 4 收尾 | 测试/脚本和 docs；通过用户体验与平台关卡后才合并/推送 |
+
+只创建当前 Slice 需要的模块；不因文件名提议预生成空文件。新公共接口先文档化，既有 4.2/4.3 脚本与测试用法尽量通过兼容入口保留。
+
+## Verification and Human Review
+
+- 本轮基线：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **405 passed in 52.40s**；没有运行 GUI 或真实训练。
+- 自动化：复用 `test_project_actions.py`、`test_timing_actions.py`、`test_chart_request_identity.py`、`test_charts.py` 和 4.3 推理/会话测试；补 mock Qt 任务流程、消息限流、同帧人工编辑、保存/切换竞争、缺依赖与日志恢复。
+- 真实脚本冒烟继续验证适配器；真实 GUI 验收需要用户指定一段本地单摆视频。原视频只读、使用独立实验项目，视频/权重不提交 Git。
+- 训练/评价耗时与模型精度不能从合成 1 epoch 推断。报告实际 epoch、设备、train/test 指标、样本量和过滤后覆盖情况；现有 spec 没有数值精度阈值，不临时杜撰“达到 N 像素即合格”。
+- GUI 实现和自动化通过后，提供 `.venv/bin/python -m ai_physics_tracker`，发起以下至多五步 Human Review，然后停止等待反馈；不得用 computer-use/截图代替真人体验：
+
+| 操作 | 预期 / 用户回答 |
+| --- | --- |
+| 新项目导入单摆视频、保存、标注不同摆动位置，在 Task Panel 选择当前 Track | 目标清楚、禁用理由正确；是/否 |
+| GUI 启动训练，期间播放/seek；查看模型与评价摘要 | 进度/loss/lr 真实更新，界面可用；是/否 |
+| 选择模型和阈值推理，检查 AI 来源样式、补一个人工修正并 Undo/Redo | 来源可区分、人工优先、计数解释得通；是/否 |
+| 点击重算、保存并重开同一项目 | 混合轨迹、图表、confidence 和任务历史可恢复；是/否 |
+| 新开短任务，测试 Cancel、关闭/打开的“返回”和“继续” | 返回不丢任务；确认取消后无残留进程/迟到结果；是/否 |
+
+Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自动免除本阶段。没有 Windows 条件不妨碍先实施和完成 macOS 验收，但必须保留未完成项；若用户希望延期后先收尾，届时明确确认例外和补验节点。
+
+## Approval and Result
+
+- 本轮只完成阅读、仓库/基线验证和方案；未实施、未建工作分支/Issue、未启动 Human Review。
+- 待确认的主要选择：后台准备/校验先行；底部 Task Panel；AI 菱形；GUI 阈值 0.6；显式重算；中断任务只在内存恢复终态；基本模型评价纳入 Phase 4。
+- 确认后先创建 Issue/分支并写 ADR-0012，从 Slice 1 开始；公开接口、模型/原始数据格式不作不兼容更改，新依赖/CI/删除等红线仍需单独授权。
+- 本次计划确认不等于 GUI Human Review 通过，也不等于 Windows 例外或 Phase 4 推送授权。实现可按 Slice 调整；保留原始媒体和产物，不通过重写历史回退。

@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-08-31（Phase 4.3 推送完成，双平台 CI 通过，Issue #14 已关闭）
+- 最后更新：2026-08-31（Phase 4.4 计划草案完成，等待确认）
 
 ---
 
@@ -13,13 +13,13 @@
 
 ## Current Subphase
 
-**4.3 — Inference Pipeline & Track Integration** ✅ 已完成（[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14) 已关闭）。
+**4.4 — GUI & Integration** 📝 计划待确认，尚未开始实现。
 
-计划与验收：[phase-4.3-plan.md](phase-4.3-plan.md)。上一个 Subphase 4.2 已完成（[Issue #13](https://github.com/KYLeonis/ai-physics-tracker/issues/13) 已关闭）。
+计划草案：[phase-4.4-plan.md](phase-4.4-plan.md)。4.3 已完成（[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14) 已关闭；[验收记录](phase-4.3-plan.md)）。
 
 ## Current Slice
 
-N/A（4.3 已收尾；下一 Subphase 为 4.4 — GUI & Integration，尚未开始）。
+N/A（确认计划后从 Slice 1：AI 请求/结果快照与后台准备/校验边界开始）。
 
 ## Current Goal
 
@@ -27,6 +27,7 @@ N/A（4.3 已收尾；下一 Subphase 为 4.4 — GUI & Integration，尚未开�
 
 ## Recently Completed
 
+- **4.4 进入检查与计划**：`main` / `1ca5bee` 与实时查询远程一致，进入时工作区干净；重新验证 **405 passed in 52.40s**。计划识别并覆盖同步准备/哈希、真实训练指标、保存替换 session、全量 marker 重建、中断任务恢复与基本模型评价缺口；只写计划，不改实现。
 - **4.3 — Inference Pipeline & Track Integration**（✅ 2026-08-31）：真实推理、严格解析、模型 hash 校验、spawn 取消/错误/晚到消息处理、原子导入与 Undo/Redo、人工/AI 生效观测和运动学已接通；405 tests 通过。真实 CPU 合成视频 10 帧推理，5 点导入/5 个人工点保护，保存重开通过；重复推理 0 点导入/10 点跳过，既有派生不变。精简依赖模拟 74 passed / 1 HDF5 测试因无 pandas 跳过。独立审查发现的模型/视频身份、快照索引竞态、legacy 归档引用问题均已修复并复审通过。未改依赖、CI、schema。集成提交 `e58b28d` 已推送；[该提交的 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33380207408) 在 macOS/Windows Python 3.11 上均通过，Issue #14 已关闭。
 - **4.3 进入检查与计划**（2026-08-31）：进入时 `main` 工作区干净，HEAD `7ecb4ea` 与实时查询的 origin/main 一致，对应 CI success；本轮重新运行 offscreen 全回归 **341 passed in 22.05s**。已读取 Phase 4 spec/ADR、数据语义、训练 Issue 与相关实现；确认现有融合规则可复用，但运动学计算及后台输入检查仍只读 manual，需在 4.3 接通 AI 生效观测。只新增计划文档，未改实现、依赖、CI 或 schema。
 - **Phase 4.2 — Training Pipeline**（✅ 2026-08-31）：
@@ -58,4 +59,4 @@ N/A（4.3 已收尾；下一 Subphase 为 4.4 — GUI & Integration，尚未开�
 
 ## Next Recommended Action
 
-等待用户指令后准备 **Subphase 4.4 — GUI & Integration** 的 mini-plan：先设计后台视频 hash 校验及准备/提交边界，再接 Task Panel、训练/推理/取消操作、关闭/切换回收、AI 视觉样式与重算通知，最后执行单摆端到端 Human Review。当前停在 4.3 收尾，不自动开始 4.4。
+等待用户确认 [4.4 计划](phase-4.4-plan.md)；确认后创建对应 Issue 和 `feat/p4.4-gui-integration`，先写 ADR-0012 并完成 Slice 1 后台边界，再按六个 Slice 推进。GUI Human Review 和 Windows/CUDA 条件在 Phase 4 收尾前落实；不提前进入 Phase 5。本次未获新的推送授权。
