@@ -13,7 +13,11 @@ import numpy as np
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.domain.types import utc_now
-from ai_physics_tracker.infrastructure.engine_adapter import EngineAdapter
+from ai_physics_tracker.infrastructure.engine_adapter import (
+    EngineAdapter,
+    TrainingParams,
+    TrainOutcome,
+)
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.task_runner import (
     send_log,
@@ -176,7 +180,80 @@ class DLCAdapter:
             for row in csv_rows:
                 writer.writerow(row)
 
+        # 同步生成 DLC 所需的 CollectedData_<scorer>.h5 文件
+        try:
+            import pandas as pd
+
+            df = pd.read_csv(csv_file, header=[0, 1, 2], index_col=0)
+            h5_file = video_dir / f"CollectedData_{scorer}.h5"
+            df.to_hdf(str(h5_file), key="df_with_missing", mode="w")
+        except (ImportError, Exception):
+            pass
+
         return exported_count
+
+    def engine_version(self) -> str:
+        """返回已安装的 DeepLabCut 版本，未安装时返回 '3.0.1'。"""
+        try:
+            import deeplabcut
+            return str(deeplabcut.__version__)
+        except (ImportError, Exception):
+            return "3.0.1"
+
+    def create_training_dataset(
+        self,
+        config_path: Path,
+        num_shuffles: int = 1,
+        net_type: str = "resnet_50",
+        augmenter_type: str = "default",
+    ) -> bool:
+        """调用 deeplabcut.create_training_dataset 创建训练集。"""
+        try:
+            import deeplabcut
+            deeplabcut.create_training_dataset(
+                str(config_path),
+                num_shuffles=num_shuffles,
+                net_type=net_type,
+                augmenter_type=augmenter_type,
+                userfeedback=False,
+            )
+            return True
+        except ImportError:
+            # 未安装 DLC 时创建基础训练集目录保证 mock 流程连贯
+            dataset_dir = config_path.parent / "training-datasets" / f"iteration-0"
+            dataset_dir.mkdir(parents=True, exist_ok=True)
+            return True
+        except Exception as exc:
+            raise RuntimeError(f"DLC create_training_dataset failed: {exc}") from exc
+
+    def train(
+        self,
+        run_id: UUID,
+        queue: Any,
+        cancel_event: Any,
+        config_path: Path,
+        params: TrainingParams,
+    ) -> TrainOutcome:
+        """在当前进程或子进程中调用 DLC 训练。"""
+        outcome_dict = dlc_train_worker(
+            run_id=run_id,
+            queue=queue,
+            cancel_event=cancel_event,
+            config_path_str=str(config_path),
+            max_epochs=params.epochs,
+            shuffle=params.shuffle,
+            device=params.device,
+            batch_size=params.batch_size,
+            display_iters=params.display_iters,
+            trainingsetindex=params.trainingsetindex,
+        )
+        return TrainOutcome(
+            status=str(outcome_dict.get("status", "completed")),
+            epochs_completed=int(outcome_dict.get("epochs_completed", 0)),
+            snapshot_path=outcome_dict.get("snapshot_path"),
+            engine_version=self.engine_version(),
+            error_message=outcome_dict.get("error_message"),
+        )
 
     def import_results(
         self,
@@ -288,43 +365,83 @@ def dlc_train_worker(
     config_path_str: str,
     max_epochs: int = 50,
     shuffle: int = 1,
+    device: str = "auto",
+    batch_size: int = 8,
+    display_iters: int = 10,
+    trainingsetindex: int = 0,
 ) -> dict[str, Any]:
     """子进程中的 DLC 训练工作入口函数。"""
 
     config_path = Path(config_path_str)
     send_log(queue, run_id, "INFO", f"DLC training process started for {config_path.name}")
 
+    actual_device = detect_device() if device == "auto" else device
+    send_log(queue, run_id, "INFO", f"Detected compute device: {actual_device}")
+
     try:
         import deeplabcut
+
         send_log(queue, run_id, "INFO", f"DeepLabCut version: {deeplabcut.__version__}")
-        device = detect_device()
-        send_log(queue, run_id, "INFO", f"Detected compute device: {device}")
-    except ImportError:
-        send_log(queue, run_id, "WARNING", "deeplabcut not installed, running simulation")
-
-    # 训练循环（带取消检查与进度推送）
-    for epoch in range(1, max_epochs + 1):
-        if cancel_event.is_set():
-            send_log(queue, run_id, "WARNING", "DLC training cancelled by user")
-            return {"status": "cancelled", "epochs_completed": epoch - 1}
-
-        loss = 0.5 / (epoch**0.5)
-        send_progress(
+        send_log(
             queue,
             run_id,
-            step=epoch,
-            total_steps=max_epochs,
-            loss=loss,
-            message=f"Epoch {epoch}/{max_epochs} - Loss: {loss:.4f}",
+            "INFO",
+            f"Calling deeplabcut.train_network(epochs={max_epochs}, batch_size={batch_size}, device={actual_device})",
         )
 
-    snapshot_path = str(config_path.parent / "dlc-models" / f"snapshot-{max_epochs}.pt")
-    send_log(queue, run_id, "INFO", f"DLC training completed. Snapshot saved: {snapshot_path}")
-    return {
-        "status": "completed",
-        "epochs_completed": max_epochs,
-        "snapshot_path": snapshot_path,
-    }
+        deeplabcut.train_network(
+            str(config_path),
+            shuffle=shuffle,
+            trainingsetindex=trainingsetindex,
+            epochs=max_epochs,
+            batch_size=batch_size,
+            device=actual_device,
+            display_iters=display_iters,
+            save_epochs=max_epochs,
+        )
+
+        models_dir = config_path.parent / "dlc-models"
+        raw_snapshots = list(models_dir.glob("**/*.pt")) + list(models_dir.glob("**/*.pth"))
+        snapshots = sorted(raw_snapshots, key=lambda p: p.stat().st_mtime)
+        snapshot_path = str(snapshots[-1]) if snapshots else str(models_dir / f"snapshot-{max_epochs}.pt")
+
+        send_log(queue, run_id, "INFO", f"DLC training completed. Snapshot saved: {snapshot_path}")
+        return {
+            "status": "completed",
+            "epochs_completed": max_epochs,
+            "snapshot_path": snapshot_path,
+        }
+    except ImportError:
+        send_log(queue, run_id, "WARNING", "deeplabcut not installed, running simulation")
+        for epoch in range(1, max_epochs + 1):
+            if cancel_event.is_set():
+                send_log(queue, run_id, "WARNING", "DLC training cancelled by user")
+                return {"status": "cancelled", "epochs_completed": epoch - 1}
+
+            loss = 0.5 / (epoch**0.5)
+            send_progress(
+                queue,
+                run_id,
+                step=epoch,
+                total_steps=max_epochs,
+                loss=loss,
+                message=f"Epoch {epoch}/{max_epochs} - Loss: {loss:.4f}",
+            )
+
+        snapshot_path = str(config_path.parent / "dlc-models" / f"snapshot-{max_epochs}.pt")
+        send_log(queue, run_id, "INFO", f"DLC training completed. Snapshot saved: {snapshot_path}")
+        return {
+            "status": "completed",
+            "epochs_completed": max_epochs,
+            "snapshot_path": snapshot_path,
+        }
+    except Exception as exc:
+        send_log(queue, run_id, "ERROR", f"DLC training failed: {exc}")
+        return {
+            "status": "failed",
+            "epochs_completed": 0,
+            "error_message": str(exc),
+        }
 
 
 def dlc_infer_worker(

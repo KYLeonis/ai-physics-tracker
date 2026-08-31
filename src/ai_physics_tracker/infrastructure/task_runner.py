@@ -59,8 +59,10 @@ def _worker_process_entry(
     try:
         res = target_fn(run_id, queue, cancel_event, *args, **kwargs)
         is_cancelled = cancel_event.is_set() or (isinstance(res, dict) and res.get("status") == "cancelled")
+        is_failed = isinstance(res, dict) and res.get("status") == "failed"
+        error_msg = res.get("error_message") if isinstance(res, dict) and is_failed else None
         if isinstance(res, dict):
-            queue.put(TaskResult(run_id=run_id, success=not is_cancelled, payload=res))
+            queue.put(TaskResult(run_id=run_id, success=not (is_cancelled or is_failed), payload=res, error=error_msg))
         elif res is True or res is None:
             queue.put(TaskResult(run_id=run_id, success=not is_cancelled))
     except Exception as exc:

@@ -326,3 +326,60 @@ def test_dlc_export_annotations_multiple_bodyparts(tmp_path: Path) -> None:
     assert rows[3] == ["labeled-data/multi_video/img00001.png", "10.00", "20.00", "", ""]
 
 
+def test_training_params_validation_and_config() -> None:
+    from ai_physics_tracker.infrastructure.engine_adapter import TrainingParams
+
+    params = TrainingParams(epochs=20, batch_size=4, device="cpu", display_iters=5, save_iters=10)
+    cfg = params.to_config()
+    assert cfg["epochs"] == 20
+    assert cfg["batch_size"] == 4
+    assert cfg["device"] == "cpu"
+
+    restored = TrainingParams.from_config(cfg)
+    assert restored.epochs == 20
+    assert restored.batch_size == 4
+
+    with pytest.raises(ValueError, match="epochs must be positive"):
+        TrainingParams(epochs=0)
+
+    with pytest.raises(ValueError, match="batch_size must be positive"):
+        TrainingParams(batch_size=-1)
+
+
+def test_mock_engine_adapter_train(tmp_path: Path) -> None:
+    from multiprocessing import Event, Queue
+    from ai_physics_tracker.infrastructure.engine_adapter import TrainingParams
+
+    adapter = MockEngineAdapter(version="3.0.1-test")
+    assert adapter.engine_version() == "3.0.1-test"
+
+    video_file = tmp_path / "vid.mp4"
+    video_file.touch()
+    cfg_path = adapter.create_project("test_train", "User", video_file, tmp_path)
+
+    # 1. Successful training
+    q = Queue()
+    cancel_evt = Event()
+    params = TrainingParams(epochs=3, extra_params={"simulate_delay": 0.0})
+    outcome = adapter.train(uuid4(), q, cancel_evt, cfg_path, params)
+
+    assert outcome.status == "completed"
+    assert outcome.epochs_completed == 3
+    assert outcome.snapshot_path is not None
+    assert Path(outcome.snapshot_path).is_file()
+
+    # 2. Cancelled training
+    cancel_evt.set()
+    outcome_cancelled = adapter.train(uuid4(), q, cancel_evt, cfg_path, params)
+    assert outcome_cancelled.status == "cancelled"
+    assert outcome_cancelled.epochs_completed == 0
+
+    # 3. Simulated failure
+    cancel_evt.clear()
+    params_fail = TrainingParams(epochs=3, extra_params={"simulate_failure": "Out of memory"})
+    outcome_failed = adapter.train(uuid4(), q, cancel_evt, cfg_path, params_fail)
+    assert outcome_failed.status == "failed"
+    assert outcome_failed.error_message == "Out of memory"
+
+
+
