@@ -137,4 +137,5 @@ Phase 4.3 已完成后台推理、严格预测解析、置信度过滤、人工/
 - [docs/roadmap.md](docs/roadmap.md) — 详细路线图
 - [docs/architecture.md](docs/architecture.md) — 高层架构设计
 - [docs/development.md](docs/development.md) — 开发环境与工作流
+- [docs/reviews/](docs/reviews/) — 独立 Review Record 存档（每 subphase 一个文件）
 - [docs/decisions/](docs/decisions/) — 架构决策记录（ADR）
