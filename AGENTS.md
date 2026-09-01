@@ -20,7 +20,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | Phase 2 | Video Analysis MVP | 可用的 GUI + 视频播放 + 手工标记 + 项目保存（✅ 已完成，2026-08-30；Windows 真机验收延后） |
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表（✅ 已完成，2026-08-31） |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪（✅ 已完成，2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
-| Phase 5 | AI-assisted Annotation & Refinement | 代表帧选取、困难帧发现、快速修正与再训练（下一阶段，尚未开始） |
+| Phase 5 | AI-assisted Annotation & Refinement | 代表帧、困难帧、人工修正、迭代比较（已规划，待确认后从 5.0 开始） |
 | Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析 |
 | Phase 7 | Model Library | 模型保存、版本管理、应用到新视频 |
 | Phase 8 | Export & Scientific Workflow | CSV/Excel/图表/视频导出、项目归档 |
@@ -80,6 +80,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - 开发环境与工作流：`docs/development.md`
 - Phase 1 数据体系规范（**实现前必读**）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md`（持久化与项目目录）、`docs/spec/phase1-requirements.md`（Phase 1 需求与验收标准）
 - Phase 2 视频/GUI 规范：`docs/spec/phase2-requirements.md`；技术栈与分层决策见 ADR-0005
+- Phase 5 规划入口：`docs/spec/phase5-requirements.md`（需求与边界）、`docs/status/phase-5-plan.md`（Subphase 顺序与验收）
 - 模板：`docs/templates/`（subphase 计划、review）
 - 独立 review 记录（Review Record）：`docs/reviews/`（索引见其 README；生命周期规则以 `docs/workflow.md` §6 为准）
 - 实现参考与前期调研（开源生态地图）：`docs/research/open-source-project-map.md` —— 实现任何模块前先读其对应小节；各项目源码级细节见 `docs/research/raw/`，仓库快照与校验规则见 `docs/research/README.md`

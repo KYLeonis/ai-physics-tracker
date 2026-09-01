@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:   Phase 4 — Deep Learning Tracking ✅（2026-09-01）
-Last Completed:  Phase 4 / Subphase 4.4 — GUI & Integration
-Current Subphase: N/A（等待 Phase 5 指令）
+Current Phase:    Phase 5 — AI-assisted Annotation & Refinement ⬜（已规划、待确认）
+Last Completed:   Phase 4 / Subphase 4.5 — Engineering Stabilization
+Current Subphase: N/A（确认 PHASE_5_PLAN 后从 5.0 开始）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -96,6 +96,10 @@ macOS Human Review、433 项本地测试、真实 CPU GUI 组件闭环及 macOS/
 真实短训练只验证管线，不代表模型精度。经用户批准，Windows 真机/CUDA 延期到 Phase 9 打包前；详情见
 [4.4 计划与验收](docs/status/phase-4.4-plan.md)。
 
+Phase 5 已完成需求与总计划草案，规划 Human-in-the-loop 的代表帧、困难帧、Suggested Frames、
+固定 validation、推理结果显式替换和规则型 Training Advisor；尚未开始产品实现。见
+[Phase 5 requirements](docs/spec/phase5-requirements.md) 与 [PHASE_5_PLAN](docs/status/phase-5-plan.md)。
+
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
 ## Roadmap
@@ -107,7 +111,7 @@ macOS Human Review、433 项本地测试、真实 CPU GUI 组件闭环及 macOS/
 | Phase 2 | Video Analysis MVP | ✅ 已完成（2026-08-30，Windows 真机验收延后） |
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
-| Phase 5 | AI-assisted Annotation & Refinement | ⬜ |
+| Phase 5 | AI-assisted Annotation & Refinement | ⬜ 已规划、待确认 |
 | Phase 6 | Advanced Physics Analysis | ⬜ |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |

@@ -3,28 +3,29 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-01（Phase 4.5 — Engineering Stabilization 完成：已合并 `2d0c858` + R2 修复 `1f369b7`、CI 双平台通过、R2 独立 review 通过）
+- 最后更新：2026-09-01（Phase 5 requirements / roadmap / PHASE_5_PLAN 已完成 Proposed 草案；尚未开始实现）
 
 ---
 
 ## Current Phase
 
-**Phase 4 — Deep Learning Tracking** ✅ 已完成（2026-09-01）；**4.5 工程稳定性 subphase** ✅ 已完成（2026-09-01）
+**Phase 4 — Deep Learning Tracking** ✅ 已完成；**Phase 5 — AI-assisted Annotation & Refinement** ⬜ 已规划、待用户确认后开始
 
 ## Current Subphase
 
-**4.5 — Engineering Stabilization** ✅ 已完成：Issue [#16](https://github.com/KYLeonis/ai-physics-tracker/issues/16)，验收记录 [phase-4.5-plan.md](phase-4.5-plan.md)，Review Record [phase-4.5-review.md](../reviews/phase-4.5-review.md)。修复 Phase 4 收尾 review 的 F1（删除带 run 的 track 静默失败，含 session 层提交路径）/F6（DLC 导出目录校验）/F5（detached 去 deepcopy，GUI 线程 O(n)→O(1)）/F4（AST 分层测试 + 跨包私有符号转正）；**441 tests passed**（基线 433），合并提交 `2d0c858`，CI [run 33509422340](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33509422340) macOS/Windows Python 3.11 均通过（首次 macOS leg 为 runner infra 取消、无测试失败日志，重跑即绿）。Review 经两层确认：R1 对抗性自查（当时环境 subagent 模型未配置）+ R2 独立 code-reviewer 复审（修复工作区子智能体配置后补做；approve-with-comments，4 项 Suggestion 已于 `b46c041`/`1f369b7` 修复：`VideoReader` 端口补 `path`、分层规则写入 architecture.md §1、检测器堵相对导入与整模块私有导入两处绕过、labeled-data 目录比较 casefold）。
+N/A。Phase 5 总计划见 [phase-5-plan.md](phase-5-plan.md)，状态为 **Proposed**；未创建实现分支或 Issue。
 
 ## Current Slice
 
-N/A（4.5 已完成）。
+N/A（规划完成，等待用户批准 5.0）。
 
 ## Current Goal
 
-Phase 0–4 工程基础稳定性债务已消化；可安全进入 Phase 5 规划。
+等待用户确认 Phase 5 需求与 Subphase 拆分；确认后只进入 **5.0 — Tracking Pipeline Consolidation**，不提前实现主动学习功能。
 
 ## Recently Completed
 
+- **Phase 5 规划**（2026-09-01，只改文档）：新增 [Phase 5 requirements](../spec/phase5-requirements.md) 与 [PHASE_5_PLAN](phase-5-plan.md)，把 Human-in-the-loop 不变式、DLC 复用边界、代表帧/困难帧、Suggested Frames、fixed validation、规则型 Advisor、F2/F3 和 5.0–5.6 验收路径具体化；未改产品代码、依赖或 schema。规划同步后全回归 **441 passed in 41.74s**（macOS，Python 3.12，Qt offscreen）。
 - **Phase 4.5 — Engineering Stabilization**（✅ 2026-09-01）：S1–S4 四个 Slice 全部完成（分支 `feat/p4.5-stabilization`，5 commits：`1641536`/`0d604ad`/`473ee65`/`e53ab7e`/`1ca4a91`）。F1 修复在实现中发现并覆盖了 review 未点名的 session 层路径（`remove_track` 原 `_commit_store` 回填会把级联删除的 run 带回旧聚合，新测试当场捕获）。
 - **Phase 4 收尾全库 Review**（2026-09-01，只读）：[docs/reviews/phase4-architecture-reliability-review.md](reviews/phase4-architecture-reliability-review.md)。15 项 finding（Critical 0 / High 1）；处置状态已在该报告顶部更新。
 - **Phase 4 — Deep Learning Tracking**（✅ 2026-09-01）：Subphase 4.0–4.4 全部完成；最终 `main` 集成 CI [run 33504579667](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33504579667) 在 macOS/Windows Python 3.11 通过。首轮 Windows CI 暴露两个平台相关测试假设，`51e05b1` 修复为按平台尺寸验证后复跑全绿。Issue #15 已关闭。经用户明确批准，Windows 真机/CUDA 验收延期到 Phase 9 打包前的专门关卡。
@@ -59,10 +60,9 @@ Phase 0–4 工程基础稳定性债务已消化；可安全进入 Phase 5 规�
 
 **4.4 已实现取舍**：AI 链路取消重复全文件哈希和缺历史 hash 门禁，保留轻量文件状态、实际模型引用、数据正确性与任务归属校验；抽帧、建集和解析后台化。基础 K-means 选帧留 Phase 5，直接调用 DLC。
 
+**Phase 5 Proposed 决策（待用户确认）**：K-means 初始取帧直接复用 DLC；困难帧由 DLC 数据/primitive + 本项目 ranking/de-dup/diversity 策略层完成；Accept 不成为 label；completed infer result 与 active result 分离；fixed validation 后才跨轮比较；Advisor 只建议、不自动训练。持久化方案在 5.4 冻结，本轮不改 schema/ADR。
+
 ## Next Recommended Action
 
-停止开发，等待用户下一条指令。下一步为 **Phase 5 — AI-assisted Annotation & Refinement** 规划，进入时注意：
-
-1. 把 **F2（AI 轨迹整体清除/替换，refinement 闭环前置需求）** 正式纳入 Phase 5 需求；first-wins 之下没有它，"再推理"无法替换旧轨迹。
-2. 建议把 **F3（4.2/4.3 编排双轨收敛到 TrackingJobRunner）** 作为 Phase 5 首个 subphase 的一部分（测试迁移量 ~1–2 天，别与新功能混批）。
-3. 基础 K-means 选帧直接调用 DLC；用户可按 [phase-4.5-plan.md](phase-4.5-plan.md) 末尾的手动验证步骤抽查 F1/F6 行为（替代本环境不可用的独立 review）。
+停止开发，等待用户确认 [Phase 5 requirements](../spec/phase5-requirements.md) 与 [PHASE_5_PLAN](phase-5-plan.md)。
+确认后：创建 `feat/p5.0-tracking-pipeline` 与 5.0 Issue，先独立处理 F3；不自行开始 5.1。

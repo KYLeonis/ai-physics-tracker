@@ -92,6 +92,11 @@ TaskPanel/TrackingActions 仅捕获请求和提交候选；spawn worker 独占 D
 保存保持活动 session 身份。AI 链路采用轻量文件状态，不反复哈希；数据结构、时序、
 snapshot、first-wins 和原子提交校验保留。Manual 圆形、AI 空心菱形，帧高亮索引更新。
 
+Phase 5 的 Proposed 目标边界见 [phase5-requirements.md](spec/phase5-requirements.md)：初始取帧复用
+DLC uniform/K-means；困难帧使用原始预测的多信号候选与本项目 ranking/de-dup/diversity 策略；
+Accept 不产生 ground truth，Correct 才写 manual；completed infer result 与 active result 分离并显式替换；
+固定 validation series 后再比较 iteration。实现前先按 5.0 收敛旧 coordinator 生命周期（F3）。
+
 ## 4. 运动学计算与可视化（Phase 3/6 起细化）
 
 - 输入：标定后的物理坐标序列 x(t), y(t)；或无标定时的像素坐标

@@ -7,6 +7,7 @@
 - Snapshot commit: `7833886b9be41f1d2313fad50bf4cedee6f0d301`
 - Default branch: `main`
 - Snapshot package version: `3.0.1`
+- Phase 5 capability re-check: `2026-09-01`（本地已安装 wheel `3.0.1` + 官方 release/docs/main source）
 
 ## Purpose
 
@@ -237,3 +238,49 @@ low-confidence/outlier video result
 - Reuse: `ProjectConfig`/metadata concepts, labels→training dataset conversion, `InferenceRunner` pre/postprocessor separation, `ShelfWriter` long-video streaming, snapshot manager, explicit per-keypoint likelihood, outlier/refinement loop and testable `Worker` error semantics.
 - Avoid: using DLC’s HDF5/Pickle files as the only internal model; retain an adapter that maps to our own versioned `TrackPoint`/`Annotation` model.
 - Highest-value reading order: `compat.py` → `core/config/project_config.py` → `generate_training_dataset/trainingsetmanipulation.py` → `pose_estimation_pytorch/apis/training.py` → `runners/train.py`/`snapshots.py` → `apis/videos.py` → `runners/inference.py`/`postprocessor.py` → `gui/utils.py` and `gui/tabs/analyze_videos.py` → tests.
+
+## Phase 5 capability re-check（2026-09-01）
+
+复核对象：项目 `.venv` 中的 DeepLabCut 3.0.1 wheel、官方 3.0.1 release、当前官方开发文档与
+`DeepLabCut/DeepLabCut` main source。PyPI/GitHub 当前稳定版仍为 3.0.1：
+
+- Release: <https://github.com/DeepLabCut/DeepLabCut/releases/tag/v3.0.1>
+- PyPI: <https://pypi.org/project/deeplabcut/3.0.1/>
+- Frame extraction API: <https://deeplabcut.github.io/DeepLabCut/dev/main/reference/deeplabcut/generate_training_dataset/frame_extraction/>
+- Outlier source/API: <https://github.com/DeepLabCut/DeepLabCut/blob/main/deeplabcut/refine_training_dataset/outlier_frames.py>
+- Standard refinement workflow: <https://github.com/DeepLabCut/DeepLabCut/blob/main/docs/standardDeepLabCut_UserGuide.md>
+- PyTorch resume configuration: <https://deeplabcut.github.io/DeepLabCut/docs/pytorch/pytorch_config.html>
+
+### Frame extraction
+
+- `extract_frames(..., mode="automatic", algo="kmeans"|"uniform")` 是公开 API。
+- `uniform` 在指定 start/stop 区间随机抽取时序分布帧；`kmeans` 将降采样帧展平后用
+  `MiniBatchKMeans` 聚类，每簇选一帧。`cluster_step`、`cluster_resizewidth` 与 `cluster_color`
+  控制长视频成本和颜色信息。
+- 高层 API 写入 `labeled-data/<video>/imgNNN.png` 且返回 `None`；底层
+  `UniformFramescv2`/`KmeansbasedFrameselectioncv2` 返回 frame indices。
+- Phase 5 因 UI 需要 frame indices 而不是让 DLC 直接拥有标签状态，适合由 `DLCAdapter` 包装底层
+  selector；算法本身不重写，随机 seed 和 DLC 版本随建议批次记录。
+
+### Outlier frames
+
+- 单目标 analyzed DataFrame 支持 `uncertain`（likelihood `< p_bound`）、`jump`（相邻坐标距离
+  `> epsilon`）、`fitting`（SARIMAX 拟合残差），以及 manual/list 模式。
+- 检出的 indices 会去重，再由 uniform 或 K-means 选 `numframes2pick`，最后写入
+  `labeled-data`/`machinelabels`；函数不返回带 component score/reason 的排序对象。
+- 所以 Phase 5 直接复用原始 HDF5/likelihood、DLC 的规则定义与 K-means primitive，但候选合并、
+  分数归一化、时序去重、跨信号排序和解释由本项目策略层负责。高层
+  `extract_outlier_frames` 保留为对照基线，不作为唯一产品实现。
+
+### Refinement、fixed split 与 retraining
+
+- DLC 原生闭环是 `extract_outlier_frames → refine_labels(napari) → merge_datasets →
+  create_training_dataset → train_network`。`merge_datasets` 更新 DLC config iteration。
+- 本项目已有 canonical manual `TrackPoint`、prediction provenance、Undo/Redo 和自己的 GUI；直接嵌入
+  napari refinement 会形成第二套 ground truth，因此 Phase 5 不直接使用 `refine_labels`/
+  `merge_datasets` 作为内部状态机，而是每轮重新导出 canonical manual labels。
+- `create_training_dataset` 明确接受 `trainIndices`/`testIndices`；`mergeandsplit` 文档也将此称为
+  freeze a split。Phase 5 可用它维持 fixed validation membership。
+- PyTorch `train_network` 公开 `snapshot_path`、`epochs`、`batch_size`、`device` 等参数；
+  `evaluate_network` 可指定 snapshot 或评估全部 snapshots。第一版 Advisor 可直接建议这些已支持参数，
+  无需先进入 optimizer/scheduler/HPO。

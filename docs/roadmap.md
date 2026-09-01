@@ -4,7 +4,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近完成：**Phase 4 — Deep Learning Tracking（✅ 2026-09-01）+ Subphase 4.5 工程稳定性修复（✅ 2026-09-01，[Review](reviews/phase4-architecture-reliability-review.md) findings F1/F4/F5/F6）**
-- 当前阶段：**Phase 4（含 4.5 stabilization）已完成；Phase 5 尚未开始，等待用户指令**
+- 当前阶段：**Phase 5 需求与总计划已形成 Proposed 草案，等待用户确认后从 5.0 开始实现**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -127,20 +127,46 @@ Python 3.11 通过。经用户批准，Windows 真机/CUDA 验收延期到 Phase
 
 ## Phase 5 — AI-assisted Annotation & Refinement ⬜
 
-**目标**：提升少量标注条件下的使用体验，形成主动学习式迭代。
+**目标**：形成“AI 推荐高价值帧、用户提供正确标签、固定验证集比较迭代结果”的
+Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 **Deliverables**
-- 代表帧自动选取
-- 低置信度检测、异常轨迹检测、困难帧发现（高速/遮挡/运动模糊区域）
-- 用户快速修正工具与再训练/微调
-- 训练结果比较与精度评价
+- 基于 DLC uniform/K-means 的初始代表帧选择
+- 困难帧 candidate pool：confidence/缺测、trajectory jump、局部平滑残差、既有修正邻域
+- 可解释 ranking → temporal de-duplication → visual/temporal diversity → Top N
+- Suggested Frames：查看 AI prediction → Accept / Correct / Skip → 下一帧
+- completed infer result 与 active AI result 分离；run 级 clear/activate/replace（Phase 4 Review F2）
+- 固定 validation series、refinement iteration history 与跨轮结果比较
+- 规则型 Training Advisor：补标数、先修/先训、resume/restart、additional epochs、batch size、snapshot
+- 统一任务生命周期，收敛旧 coordinator 双轨（Phase 4 Review F3）
+
+**Subphases**
+
+| Subphase | 名称 | 核心交付 |
+| --- | --- | --- |
+| 5.0 | Tracking Pipeline Consolidation | F3：`TrackingJobRunner` 成为唯一长任务生命周期 |
+| 5.1 | Representative Frame Selection | DLC uniform/K-means 初始建议帧 |
+| 5.2 | Difficult Frame Mining | 原始预测、多信号候选、排名/去重/多样性、Top N |
+| 5.3 | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复 |
+| 5.4 | Iteration History & Result Activation | fixed validation/history；F2 clear/activate/replace |
+| 5.5 | Training Advisor & Retraining | 规则建议、DLC resume/restart 与跨轮比较 |
+| 5.6 | Refinement Loop Integration & Acceptance | 单摆端到端闭环与量化验收 |
 
 **验收标准**
-- [ ] 修正少量困难帧并再训练后，单摆基准实验的跟踪精度有可量化提升
-- [ ] 困难帧定位准确率满足设计指标
+- [ ] DLC uniform/K-means 可在 working zone 推荐去重代表帧，不自动创建标签
+- [ ] 困难帧扫描消费指定 infer run 的全帧原始预测；连续低 confidence 片段不会垄断 Top N
+- [ ] Accept 不产生 ground truth，Correct 保留 prediction provenance，Skip 不造坐标；保存重开一致
+- [ ] 新 completed infer result 可显式激活/替换，且不丢 manual、旧 run 产物与历史；事务可撤销并使派生 stale
+- [ ] 至少两轮使用相同 fixed validation membership，RMSE 与 coverage/confidence 分开报告
+- [ ] Training Advisor 覆盖补标、resume/restart、epochs、batch size 与 snapshot，且不会自动启动无限训练
+- [ ] 单摆基准完成一次完整 refinement 闭环，并记录 fixed-validation、coverage、remaining difficult frames 的变化
+- [ ] 冻结人工审计集上的 Precision@N/review yield 优于 lowest-confidence-only Top N 基线
 
 **主要技术风险**
-- 困难样本检测的启发式/统计方法有效性需实验验证。
+- confidence 不等于定位误差，连续遮挡会淹没候选 → 多信号候选 + 去重/多样性 + 固定人工审计集。
+- 每轮随机重分训练/验证会制造不可比结果 → 显式冻结 validation membership。
+- DLC 高层 outlier API 有文件副作用且不返回综合排名 → 只在 adapter 复用适合的算法/primitive，本项目维护策略层。
+- 需求规范：[phase5-requirements.md](spec/phase5-requirements.md)；总计划：[PHASE_5_PLAN](status/phase-5-plan.md)。
 
 ---
 
