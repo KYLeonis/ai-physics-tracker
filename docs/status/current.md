@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-01（Phase 4.5 — Engineering Stabilization 完成，等待合并推送确认）
+- 最后更新：2026-09-01（Phase 4.5 — Engineering Stabilization 完成：已合并 `2d0c858` + R2 修复 `1f369b7`、CI 双平台通过、R2 独立 review 通过）
 
 ---
 
@@ -13,7 +13,7 @@
 
 ## Current Subphase
 
-**4.5 — Engineering Stabilization** ✅ 已完成：Issue [#16](https://github.com/KYLeonis/ai-physics-tracker/issues/16)，验收记录 [phase-4.5-plan.md](phase-4.5-plan.md)，Review Record [phase-4.5-review.md](../reviews/phase-4.5-review.md)。修复 Phase 4 收尾 review 的 F1（删除带 run 的 track 静默失败，含 session 层提交路径）/F6（DLC 导出目录校验）/F5（detached 去 deepcopy，GUI 线程 O(n)→O(1)）/F4（AST 分层测试 + 跨包私有符号转正）；**441 tests passed**（基线 433），合并提交 `2d0c858`，CI [run 33509422340](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33509422340) macOS/Windows Python 3.11 均通过（首次 macOS leg 为 runner infra 取消、无测试失败日志，重跑即绿）。独立 review 因环境 subagent 模型不可用以对抗性自查替代（偏差已在 Review Record 声明）。
+**4.5 — Engineering Stabilization** ✅ 已完成：Issue [#16](https://github.com/KYLeonis/ai-physics-tracker/issues/16)，验收记录 [phase-4.5-plan.md](phase-4.5-plan.md)，Review Record [phase-4.5-review.md](../reviews/phase-4.5-review.md)。修复 Phase 4 收尾 review 的 F1（删除带 run 的 track 静默失败，含 session 层提交路径）/F6（DLC 导出目录校验）/F5（detached 去 deepcopy，GUI 线程 O(n)→O(1)）/F4（AST 分层测试 + 跨包私有符号转正）；**441 tests passed**（基线 433），合并提交 `2d0c858`，CI [run 33509422340](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33509422340) macOS/Windows Python 3.11 均通过（首次 macOS leg 为 runner infra 取消、无测试失败日志，重跑即绿）。Review 经两层确认：R1 对抗性自查（当时环境 subagent 模型未配置）+ R2 独立 code-reviewer 复审（修复工作区子智能体配置后补做；approve-with-comments，4 项 Suggestion 已于 `b46c041`/`1f369b7` 修复：`VideoReader` 端口补 `path`、分层规则写入 architecture.md §1、检测器堵相对导入与整模块私有导入两处绕过、labeled-data 目录比较 casefold）。
 
 ## Current Slice
 

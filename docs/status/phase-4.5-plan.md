@@ -29,9 +29,9 @@
 - AC 勾选结果：6/6 全部满足
 - 偏离计划之处：
   - **F1 修复比计划多一层**：domain 级联之外，`ProjectSession.remove_track` 原实现经 `_commit_store` 只回填三个字段、会把已删除的 run 带回旧聚合（新 session 测试当场抓到），改为提交整个 candidate——属 F1 修复本体的必要部分，未扩范围。
-  - **独立 review 不可执行**：本环境 subagent 模型提供方未配置（两种 reviewer 均启动失败），按 Review Record 顶部偏差声明以对抗性自查 + 取证替代。
+  - **独立 review 延后补做**：R1 时环境 subagent 模型未配置，以对抗性自查替代；随后修复工作区子智能体配置，R2 已由独立 code-reviewer 完成（approve-with-comments，4 项 Suggestion 于 `b46c041` 修复）。
 - 遗留问题：F3（编排双轨收敛）→ Phase 5 首个 subphase；F2 → Phase 5 需求规划。已记入 `docs/status/current.md`。
-- 独立 review 结论：[phase-4.5-review.md](../reviews/phase-4.5-review.md) —— 修改后通过（2 个 Suggestion 当场修复、1 个理论风险 Accept），无 Blocker。
+- 独立 review 结论：[phase-4.5-review.md](../reviews/phase-4.5-review.md) —— 通过（R1 自查 + R2 独立复审双层确认，7 项 finding 全部 Closed）。
 
 ## 手动验证步骤（可选抽查，替代未执行的独立 review）
 

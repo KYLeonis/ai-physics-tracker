@@ -13,7 +13,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | --- | --- | --- | --- |
 | 4.3 | [phase-4.3-plan.md](../status/phase-4.3-plan.md) Result 节（机制建立前的记录） | 修改后通过；3 项 finding 已修复并复审确认 | 2026-08-31 |
 | 4.4 | [phase-4.4-plan.md](../status/phase-4.4-plan.md) Result 节（机制建立前的记录） | 修改后通过；2 项 finding 已修复并复审确认 | 2026-09-01 |
-| 4.5 | [phase-4.5-review.md](phase-4.5-review.md) | 修改后通过；2 项 Suggestion 修复、1 项 Accept；独立 review 因环境不可用以对抗性自查替代（见记录内偏差声明） | 2026-09-01 |
+| 4.5 | [phase-4.5-review.md](phase-4.5-review.md) | 通过（R1 对抗性自查 + R2 独立 code-reviewer 复审 approve-with-comments；7 项 finding 全部 Closed，R2 的 4 项 Suggestion 已修复） | 2026-09-01 |
 
 > 4.3 / 4.4 的独立 review 发生于本机制建立之前，不回溯补建独立文件；自下一个触发的 subphase 起使用本目录。
 
