@@ -2,11 +2,11 @@
 
 - Issue：[Phase 5.0 — Tracking Pipeline Consolidation #17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)
 - 分支：`feat/p5.0-tracking-pipeline`
-- 日期 / 状态：2026-09-01 · 进行中
+- 日期 / 状态：2026-09-01 至 2026-09-02 · 已完成
 
 ## Goal
 
-让 `TrackingJobRunner` 成为训练与推理唯一的长任务生命周期入口，关闭 Phase 4 Review F3。
+让 `TrackingJobRunner + TrackingActions + BackgroundTaskRunner` 成为训练与推理唯一的长任务生命周期路径，关闭 Phase 4 Review F3。
 
 ## Scope
 
@@ -25,11 +25,11 @@
 
 ## Acceptance Criteria
 
-- [ ] 生产代码与脚本不再调用旧 `TrainingCoordinator` / `InferenceCoordinator` 生命周期 API。
-- [ ] 训练与推理只通过 `TrackingJobRunner` / `BackgroundTaskRunner` 管理启动、轮询与取消。
-- [ ] prepare/read helper 仍覆盖训练准备、推理输入身份、原始结果校验与 first-wins 导入边界。
-- [ ] 真实 DLC 冒烟脚本使用统一 runner，现有 GUI 产品行为不变。
-- [ ] 定向测试、Qt offscreen 全回归和独立 architecture review 通过，F3 标记 Closed。
+- [x] 生产代码与脚本不再调用旧 `TrainingCoordinator` / `InferenceCoordinator` 生命周期 API。
+- [x] 训练与推理只通过 `TrackingJobRunner + TrackingActions + BackgroundTaskRunner` 管理启动、轮询与取消。
+- [x] prepare/read helper 仍覆盖训练准备、推理输入身份、原始结果校验与 first-wins 导入边界。
+- [x] 真实 DLC 冒烟脚本使用统一 runner，现有 GUI 产品行为不变。
+- [x] 定向测试、Qt offscreen 全回归和独立 architecture review 通过，F3 标记 Closed。
 
 ## Relevant Context
 
@@ -44,8 +44,8 @@
 ## Slices
 
 - [x] Slice 1：盘点旧 lifecycle 调用者，确认 GUI 已使用统一 runner，旧调用仅存于测试与一个冒烟脚本。
-- [ ] Slice 2：收缩 prepare/read 边界，移除旧 lifecycle，并迁移测试与冒烟脚本。
-- [ ] Slice 3：定向/全量验证、独立 review、文档收尾、合并与 CI。
+- [x] Slice 2：收缩 prepare/read 边界，移除旧 lifecycle，并迁移测试与冒烟脚本。
+- [x] Slice 3：定向/全量验证、独立 review 与文档收尾；合并/CI 证据在推送后补记。
 
 ## Verification
 
@@ -57,8 +57,8 @@
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：
-- AC 勾选结果：
-- 偏离计划之处及原因：
+- 完成日期 / 合并 commit：2026-09-02 / 待 `--no-ff` 合并后补记
+- AC 勾选结果：5/5 通过；本地全回归 433 passed，真实 DLC CPU smoke 通过。
+- 偏离计划之处及原因：R1 指出旧测试删除后统一路径边界覆盖不足；追加 `ba3d870` 后 R2 通过。无产品范围偏离。
 - 遗留问题：F2 继续由 5.4 处理；5.1 等待用户单独批准后开始。
-- 独立 review 结论：
+- 独立 review 结论：[phase-5.0-review.md](../reviews/phase-5.0-review.md) R2 通过，F3 Closed。

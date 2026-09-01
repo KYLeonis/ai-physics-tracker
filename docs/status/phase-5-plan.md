@@ -1,6 +1,6 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Accepted / Phase 5.0 进行中**
+> 状态：**Accepted / Phase 5.0 已完成，等待 5.1 指令**
 > 日期：2026-09-01  
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
@@ -28,6 +28,8 @@
 ## 3. Subphase 计划
 
 ### 5.0 — Tracking Pipeline Consolidation（F3）
+
+**状态**：✅ 2026-09-02 完成；Review F3 Closed。结果见 [phase-5.0-plan.md](phase-5.0-plan.md)。
 
 **目标**：消除 4.2/4.3 遗留长任务生命周期，建立 Phase 5 的单一任务骨架。
 
@@ -153,10 +155,9 @@
 
 ## 6. 当前入口
 
-用户已于 2026-09-01 确认并批准直接推进 5.0；Issue #17 与
-`feat/p5.0-tracking-pipeline` 已建立，执行计划见 [phase-5.0-plan.md](phase-5.0-plan.md)。
-5.0 只处理 F3，不提前写 5.1 产品代码；F2 仍由 5.4 处理。
+5.0 已完成且只处理 F3；未提前写 5.1 产品代码，F2 仍由 5.4 处理。
+下一步必须等待用户确认后，才建立 5.1 Issue 与分支。
 
 ## Result
 
-Phase 5 总计划已接受；Phase 5.0 进行中。
+Phase 5 总计划已接受；Phase 5.0 已完成，F3 Closed；等待 5.1 指令。

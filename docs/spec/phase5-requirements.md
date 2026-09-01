@@ -77,6 +77,10 @@ AI 只负责指出“哪些帧值得看”和解释原因；用户负责提供�
 
 ### R0 任务编排单轨化（Review F3）
 
+> **实现状态**：✅ Phase 5.0 于 2026-09-02 完成，F3 Closed；证据见
+> [phase-5.0-plan.md](../status/phase-5.0-plan.md) 与
+> [phase-5.0-review.md](../reviews/phase-5.0-review.md)。
+
 1. Phase 5 新任务接入前，收敛旧 `TrainingCoordinator`/`InferenceCoordinator` 的 start/poll/cancel 生命周期。
 2. 保留统一管线仍使用的 prepare/read helpers；`TrackingJobRunner` 成为唯一长任务生命周期所有者。
 3. 取消、迟到结果、会话归属、恢复与错误状态只维护一套规则。

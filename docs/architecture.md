@@ -93,7 +93,8 @@ TaskPanel/TrackingActions 仅捕获请求和提交候选；spawn worker 独占 D
 保存保持活动 session 身份。AI 链路采用轻量文件状态，不反复哈希；数据结构、时序、
 snapshot、first-wins 和原子提交校验保留。Manual 圆形、AI 空心菱形，帧高亮索引更新。
 Phase 5.0 已移除旧 Training/Inference coordinator 的 start/poll/cancel 状态机；prepare/read
-保留为无生命周期状态的模块边界，任务启动、取消、迟到结果与恢复只维护统一 runner 路径。
+保留为无生命周期状态的模块边界。`TrackingJobRunner` 统一启动，`BackgroundTaskRunner` 管理
+进程/句柄，`TrackingActions` 负责轮询、取消触发与活动 session 提交；三者组成唯一生命周期路径。
 
 Phase 5 的 Accepted 目标边界见 [phase5-requirements.md](spec/phase5-requirements.md)：初始取帧复用
 DLC uniform/K-means；困难帧使用原始预测的多信号候选与本项目 ranking/de-dup/diversity 策略；
