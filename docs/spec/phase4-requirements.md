@@ -75,8 +75,8 @@
 | AC-2 | TaskRunner 支持启动/进度/完成/取消生命周期 | pytest（后台进程单元测试） | [x] |
 | AC-3 | 推理结果导入后 TrackPoint 字段正确（source/confidence/first-wins） | pytest（合成 DataFrame → import → 校验） | [x] |
 | AC-4 | confidence 随项目 JSON 持久化（save → load 一致） | pytest | [x] |
-| AC-5 | 在单摆基准视频上：标注 → 训练 → 推理 → 轨迹显示，全流程在软件内完成 | Human Review | [ ] |
-| AC-6 | 任务面板显示进度、支持取消 | Human Review | [ ] |
+| AC-5 | 在单摆基准视频上：标注 → 训练 → 推理 → 轨迹显示，全流程在软件内完成 | Human Review | [x] |
+| AC-6 | 任务面板显示进度、支持取消 | Human Review | [x] |
 
 ---
 
@@ -85,7 +85,9 @@
 4.3 实现证据：`tests/test_dlc_predictions.py`、`test_dlc_inference.py`、
 `test_inference_session.py`、`test_inference_job.py`；真实 CPU 闭环脚本
 `scripts/smoke_test_dlc_infer.py` 验证 10 帧预测、5 点导入/5 个人工点保护及保存重开。
-GUI 验收 AC-5/6 保持未完成；帧进度数据已通过应用接口提供，显示接线留给 4.4。
+4.4 已接通 Task Panel、真实进度/日志、取消、模型评价、推理导入和 AI 轨迹显示。
+macOS Human Review 于 2026-09-01 通过；反馈的窗口缩放和 Chart 英文文案问题修复后完成聚焦复验。
+本地全回归 433 项通过，真实 CPU GUI 组件冒烟完成 1 epoch 训练、评价、推理及保存重开。
 
 - **GitHub Actions CI 不安装 DLC/PyTorch**（依赖链过大），DLC 相关测试全部使用 mock adapter
 - 真实 DLC 端到端测试在本地进行：

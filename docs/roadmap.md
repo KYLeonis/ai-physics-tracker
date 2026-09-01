@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Subphase 4.3 — Inference Pipeline & Track Integration（✅ 2026-08-31，双平台 CI 通过）**
-- 当前阶段：**Phase 4 — Deep Learning Tracking（🔄 4.3 ✅；4.4 等待 Human Review）**
+- 最近完成：**Subphase 4.4 — GUI & Integration（✅ 本地验收，2026-09-01）**
+- 当前阶段：**Phase 4 — Deep Learning Tracking（🔄 核心验收通过；等待 Windows/CUDA 处置与集成 CI）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -112,11 +112,13 @@
 - AI 轨迹在 GUI 中显示
 
 **验收标准**
-- [ ] 在单摆基准视频上：少量标注 → 训练 → 全视频推理 → 轨迹显示，全流程在软件内完成
+- [x] 在单摆基准视频上：少量标注 → 训练 → 全视频推理 → 轨迹显示，全流程在软件内完成
 - [x] 置信度数据随轨迹保存（4.3 合成数据及真实 CPU 推理 save/load 验证）
 
 4.3 Qt-free 推理/导入/运动学衔接的实现与验收见 [4.3 计划](status/phase-4.3-plan.md)。
-GUI Task Panel、AI 视觉样式和单摆完整 Human Review 属 4.4，尚未验收；Phase 4 仍进行中。
+4.4 的 Task Panel、AI 视觉样式、模型评价与 macOS Human Review 已通过，见
+[4.4 计划与验收](status/phase-4.4-plan.md)。Phase 4 暂不标记完成：Windows 真机/CUDA
+尚未验证，集成提交的 macOS/Windows CI 也需在 push 后确认。
 
 **主要技术风险**
 - DeepLabCut 的程序化 API 稳定性与 PyTorch 版本耦合；训练耗时与 GUI 响应（需后台任务框架）；依赖体积。

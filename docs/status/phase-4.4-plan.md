@@ -2,7 +2,7 @@
 
 - Issue：[Issue #15](https://github.com/KYLeonis/ai-physics-tracker/issues/15)。
 - 分支：`feat/p4.4-gui-integration`。
-- 日期 / 状态：2026-09-01 · 首轮 Human Review 反馈已修复；等待窗口缩放与英文文案聚焦复验。
+- 日期 / 状态：2026-09-01 · 本地验收完成；等待 Windows/CUDA 处置及集成 push/CI。
 - 进入基线：`main` / `1ca5bee`，与实时查询的远程 main 一致，工作区干净；4.3 已收尾。
 
 ## Goal
@@ -110,7 +110,7 @@
 - [x] P44-3：Task Panel 的目标、参数、禁用原因、进度、错误和历史正确；取消在准备/运行/验证阶段可用，进程退出后才落终态，无重复终态或半批导入。
 - [x] P44-4：保存期间编辑/任务完成不丢失，取消导航不取消任务；确认导航、另存限制、失败回退、关闭回收、旧回调以及重开中断任务均有回归测试。
 - [x] P44-5：manual/AI 来源可区分且人工优先；多选 overlay、当前帧、缩放、Undo/Redo 正确；全帧轨迹不会逐帧重建全量图元。图表识别新数据并按显式重算展示混合结果。
-- [ ] P44-6：用户亲测真实单摆项目，从标注到训练/评价/推理/显示/重算/保存重开全程不离开软件；真实模型进度、取消和交互体验通过 Human Review。
+- [x] P44-6：用户亲测真实单摆项目，从标注到训练/评价/推理/显示/重算/保存重开全程不离开软件；真实模型进度、取消和交互体验通过 Human Review。
 - [ ] P44-7：405 项基线及新增测试通过，交付提交的 macOS/Windows CI 通过，独立 review 通过；Windows 真机/CUDA 条件按下节落实，不沿用以前的延期为自动豁免。
 - [ ] P44-8：Phase 4 所有 deliverables/AC 有证据，尤其模型评价和 GUI AC-5/6；同步相关文档、Issue 和 Git 状态，完成 Phase 4 后停止，不开始 Phase 5。
 
@@ -147,10 +147,10 @@ Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自�
 
 ## Approval and Result
 
-- 本轮只完成阅读、仓库/基线验证和方案修订；未实施、未建工作分支/Issue、未启动 Human Review。
-- 用户已认可其余主要选择；按反馈采用 D0 轻量校验。唯一待确认的范围项为下节 K-means 基础选帧是否从 Phase 5 前移，不重复询问已认可的布局/参数/显示方案。
-- 确认后先创建 Issue/分支并写 ADR-0012，从 Slice 1 开始；公开接口、模型/原始数据格式不作不兼容更改，新依赖/CI/删除等红线仍需单独授权。
-- 本次计划确认不等于 GUI Human Review 通过，也不等于 Windows 例外或 Phase 4 推送授权。实现可按 Slice 调整；保留原始媒体和产物，不通过重写历史回退。
+- 用户批准 D0–D5；AI 链路采用轻量文件状态校验，基础 K-means 选帧留 Phase 5 并直接调用 DLC。
+- 4.4 实现、真实 CPU GUI 组件冒烟、自动化、独立 review 与 macOS Human Review 均已完成。
+- 没有修改项目 schema、依赖版本、CI 或许可证；原始媒体、模型和评价产物不进入 Git。
+- Windows 真机/CUDA 未验证，集成 push/CI 与 Issue 关闭尚未执行；这两项在最终远程收尾前保持可见。
 
 
 ## K-means 范围结论（用户不要求前移）
@@ -164,11 +164,11 @@ Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自�
 - 依据：[DLC 选帧 API](https://deeplabcut.github.io/DeepLabCut/dev/latest-release/reference/deeplabcut/generate_training_dataset/frame_extraction/)；[DLC 标注指南](https://deeplabcut.github.io/DeepLabCut/docs/beginner-guides/labeling.html)。
 
 - 实施确认：用户同意其余方案执行；基础 K-means 不前移，Phase 5 直接调用 DLC。ADR-0012 已记录本轮边界。
-- 本地实现提交：`0b1add2`（后台任务、训练指标/评价、轻量校验）与 `1bb4c51`（Task Panel、生命周期、AI 轨迹）。未合并、未推送。
-- 自动化：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **433 passed in 50.37s**。新增测试覆盖响应性、取消竞争、模型保留、保存身份、导航、旧回调、marker 复用、评价、窗口缩放和面板独立窗口切换。
+- 主要实现提交：`0b1add2`（后台任务、训练指标/评价、轻量校验）与 `1bb4c51`（Task Panel、生命周期、AI 轨迹）；Human Review 修复为 `0bd96c2`、`23275e9`。尚未合并或推送。
+- 自动化：合入最新 main 后运行 `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **433 passed in 52.04s**。新增测试覆盖响应性、取消竞争、模型保留、保存身份、导航、旧回调、marker 复用、评价、窗口缩放和面板独立窗口切换。
 - 真实 GUI 组件冒烟：CPU、1 epoch 完成训练/原生评价/推理，得到 train RMSE 46.91 px（n=4）、test RMSE 17.33 px（n=1）；10 帧中 5 AI 插入/5 manual 保留，保存重开通过。指标只证明评价管线可用，不代表模型精度。
 - 评价 CSV、模型、预测与完整日志均在各自 run 目录保留；重复训练使用独立目录，不影响旧模型。
 - 绘制规模检查：10,000 个 AI marker 首次构建约 0.32s；1,000 次当前帧索引高亮约 0.03s。当前帧变化不再重建全部图元。
 - 独立 review：首轮发现提交前遗漏模型/config 轻量复核，以及 mAP/mAR 单位错误；`102fe79` 修复并增加回归，复审确认关闭。当前无阻塞 finding。
-- Human Review 反馈：主要工作流无其他问题；发现窗口被面板最小尺寸撑大、Chart stale 状态消息为中文。已让 Main/Chart/AI 在空间不足时滚动，并把 Chart 动态消息统一为英文；Chart/AI 按后续反馈保留切换为可缩放独立窗口的能力。运行时三面板文案扫描无中文。
-- 当前待办：用户聚焦复验窗口缩放与英文文案。未完成 P44-6/7/8，不宣称 Phase 4 完成，也未合并/推送。
+- Human Review：主要工作流通过；窗口最小尺寸与 Chart 中文状态消息的反馈已修复，Chart/AI 保留可缩放独立窗口。用户于 2026-09-01 确认聚焦复验通过。
+- 当前待办：Windows/CUDA 处置、主分支集成、push 后双平台 CI 与 Issue #15 关闭。P44-7/8 完成前不宣称 Phase 4 完成，不开始 Phase 5。
