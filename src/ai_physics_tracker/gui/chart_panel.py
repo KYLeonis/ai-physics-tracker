@@ -246,10 +246,6 @@ class ChartPanel(QDockWidget):
         self._help_bubble: QLabel | None = None
         self.setObjectName("kinematicsCharts")
         self.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
-        self.setFeatures(
-            QDockWidget.DockWidgetFeature.DockWidgetClosable
-            | QDockWidget.DockWidgetFeature.DockWidgetMovable
-        )
         self.trackChoices = QListWidget()
         self.trackChoices.setMaximumHeight(72)
         self.trackChoices.setMaximumWidth(240)

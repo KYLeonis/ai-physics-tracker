@@ -37,7 +37,13 @@ def test_main_chart_and_ai_panels_allow_window_resizing(qtbot: QtBot) -> None:
 
     for panel in (window.chartActions.panel, window.trackingActions.panel):
         assert isinstance(panel.widget(), QScrollArea)
-        assert not panel.features() & QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        assert panel.features() & QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        panel.setFloating(True)
+        panel.resize(640, 480)
+        assert panel.isFloating()
+        assert panel.size().width() == 640
+        assert panel.size().height() == 480
+        panel.setFloating(False)
 
     window.resize(1100, 760)
     assert window.size().width() == 1100
