@@ -41,6 +41,7 @@ from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
 from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.gui.timing_actions import TimingActions
+from ai_physics_tracker.gui.tracking_actions import TrackingActions
 from ai_physics_tracker.gui.chart_actions import ChartActions
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time, clamp_to_working_zone
 from ai_physics_tracker.gui.video_view import CalibrationView, MarkerView, VideoView
@@ -266,6 +267,9 @@ class MainWindow(QMainWindow):
         zoom400Action.triggered.connect(lambda: self.videoView.zoomTo(4.0))
         viewMenu = self.menuBar().addMenu("View")
         self.chartActions = ChartActions(self)
+        self.trackingActions = TrackingActions(self)
+        self.chartActions.panel.raise_()
+        viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         viewMenu.addAction(self.chartActions.panel.toggleViewAction())
         viewMenu.addAction(zoomInAction)
         viewMenu.addAction(zoomOutAction)
@@ -636,6 +640,10 @@ class MainWindow(QMainWindow):
         self._refreshHistoryButtons()
 
     def _deleteSelectedTrack(self) -> None:
+        tracking = getattr(self, "trackingActions", None)
+        if tracking and tracking.pending and tracking.activeTrackId == self._selected_track_id:
+            self.statusBar().showMessage("Cancel the AI task before deleting its track")
+            return
         if self._annotation_session is None or self._selected_track_id is None:
             return
         self._annotation_session.remove_track(self._selected_track_id)
@@ -1034,6 +1042,12 @@ class MainWindow(QMainWindow):
             return
         self.trackDataLabel.setText(f"Stored observations: {len(self._annotation_session.project.observations)}")
         selected = self.trackList.selectedItems()
+        key = (self._annotation_session.project.observations, self._annotation_session.project.tracks,
+               tuple(item.data(Qt.ItemDataRole.UserRole) for item in selected), self._annotation_video_id)
+        if key == getattr(self, "_marker_data_key", None) and self._presented_frame_index is not None:
+            self.videoView.set_current_frame(self._presented_frame_index)
+            return
+        self._marker_data_key = key
         if not selected or self._presented_frame_index is None:
             self.videoView.set_markers([])
             return
@@ -1051,8 +1065,9 @@ class MainWindow(QMainWindow):
                     pixel_y=point.pixel_y,
                     color=track.color,
                     is_current_frame=point.frame_index == self._presented_frame_index,
+                    source=point.source, frame_index=point.frame_index,
                 )
-                for point in self._annotation_session.manual_points(track.track_id)
+                for point in self._annotation_session.effective_points(track.track_id)
             )
         self.videoView.set_markers(markers)
 

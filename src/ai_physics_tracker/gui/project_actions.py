@@ -58,11 +58,33 @@ class ProjectActions(QObject):
         name = session.project.name if session is not None else "Untitled"
         dirty = " *" if session is not None and session.is_dirty else ""
         self.window.setWindowTitle(f"{name}{dirty} — AI Physics Tracker")
+        tracking = getattr(self.window, "trackingActions", None)
+        if tracking is not None and not self.busy:
+            for index in (4, 5):
+                self.actions[index].setEnabled(not tracking.pending)
+                self.actions[index].setToolTip("Cancel the AI task before changing project/media location" if tracking.pending else "")
 
     def guarded(self, continuation: Callable[[], None]) -> None:
         if self.busy:
             return
         session = self.window._annotation_session
+        tracking = getattr(self.window, "trackingActions", None)
+        if tracking is not None and tracking.pending:
+            if tracking.cancelling:
+                return
+            choice = QMessageBox.question(self.window, "Active AI task",
+                "Continuing will cancel the active AI task. Save project changes after cancellation?",
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard |
+                QMessageBox.StandardButton.Cancel, QMessageBox.StandardButton.Cancel)
+            if choice == QMessageBox.StandardButton.Cancel:
+                return
+            def after_cancel():
+                if choice == QMessageBox.StandardButton.Save:
+                    self.save(continuation)
+                else:
+                    continuation()
+            tracking.cancel(after_cancel)
+            return
         self.window.stopPlayback()
         if session is None or not session.is_dirty:
             continuation()
@@ -87,29 +109,41 @@ class ProjectActions(QObject):
         self.guarded(self._emptyProject)
 
     def openVideo(self) -> None:
-        def choose() -> None:
-            selected, _ = QFileDialog.getOpenFileName(self.window, "Open video", "",
-                "Video files (*.mp4 *.avi *.mov *.mkv *.m4v);;All files (*)")
-            if selected:
-                self._load(lambda service, cancel: service.open_video(Path(selected), cancel))
-        self.guarded(choose)
+        if self.busy:
+            return
+        selected, _ = QFileDialog.getOpenFileName(self.window, "Open video", "",
+            "Video files (*.mp4 *.avi *.mov *.mkv *.m4v);;All files (*)")
+        if selected:
+            self.guarded(lambda: self._load(lambda service, cancel: service.open_video(Path(selected), cancel)))
 
     def openProject(self) -> None:
-        def choose() -> None:
-            selected, _ = QFileDialog.getOpenFileName(self.window, "Open project", "", "Project manifest (project.json)")
-            if selected:
-                self._load(lambda service, cancel: service.open_project(Path(selected).parent, cancel))
-        self.guarded(choose)
+        if self.busy:
+            return
+        selected, _ = QFileDialog.getOpenFileName(self.window, "Open project", "", "Project manifest (project.json)")
+        if selected:
+            self.guarded(lambda: self._load(lambda service, cancel: service.open_project(Path(selected).parent, cancel)))
 
     def selectVideo(self, index: int) -> None:
         session = self.window._annotation_session
         video_id = self.window.videoSelector.itemData(index)
         if self.busy or session is None or video_id is None:
             return
-        candidate = session.detached()
-        self._load(lambda service, cancel: service.select_video(candidate, video_id, cancel))
+        if video_id == self.window.activeVideoId:
+            return
+        def select():
+            candidate = session.detached()
+            self._load(lambda service, cancel: service.select_video(candidate, video_id, cancel))
+        tracking = getattr(self.window, "trackingActions", None)
+        if tracking and tracking.pending:
+            self.guarded(select)
+            self.window.syncVideoSelector()
+        else:
+            select()
 
     def relinkVideo(self) -> None:
+        tracking = getattr(self.window, "trackingActions", None)
+        if tracking and tracking.pending:
+            return
         session = self.window._annotation_session
         video_id = self.window._annotation_video_id
         if self.busy or session is None or video_id is None:
@@ -141,6 +175,10 @@ class ProjectActions(QObject):
         self._saveCandidate(None, after)
 
     def saveAs(self, after: Callable[[], None] | None = None) -> None:
+        tracking = getattr(self.window, "trackingActions", None)
+        if tracking and tracking.pending:
+            self.window.statusBar().showMessage("Cancel the AI task before Save as")
+            return
         if self.busy or self.window._annotation_session is None:
             return
         selected, _ = QFileDialog.getSaveFileName(self.window, "Choose a NEW project directory", "experiment")
@@ -160,7 +198,9 @@ class ProjectActions(QObject):
                 candidate.save_as(destination)
             return candidate
         def accept(saved: ProjectSession) -> None:
-            self.window._annotation_session = saved
+            if self.window._annotation_session is not session:
+                return
+            session.accept_saved_snapshot(saved)
             self.window._refreshHistoryButtons()
             self.window.statusBar().showMessage(f"Saved: {saved.project_root}")
             self.refresh()
@@ -237,6 +277,13 @@ class ProjectActions(QObject):
                 self._cancel.set()
             return False
         session = self.window._annotation_session
+        tracking = getattr(self.window, "trackingActions", None)
+        if tracking and tracking.pending:
+            def close_after_task():
+                self.close_allowed = True
+                QTimer.singleShot(0, self.window.close)
+            self.guarded(close_after_task)
+            return False
         if session is None or not session.is_dirty:
             return True
         def close() -> None:

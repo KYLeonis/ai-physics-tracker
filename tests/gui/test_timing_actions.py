@@ -435,7 +435,7 @@ def test_save_during_validation_preserves_points_and_applies_permission_to_saved
         release_save.set()
         qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
         qtbot.waitUntil(lambda: not window.timingActions.pending, timeout=5000)
-        assert window._annotation_session is not active_before_save
+        assert window._annotation_session is active_before_save
         assert window._annotation_session.project.observations == (original_point,)
         assert window._measurement_allowed
         assert window.addTrackButton.isEnabled()

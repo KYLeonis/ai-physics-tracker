@@ -5,14 +5,15 @@ mapScreenToPixel 在任意缩放下映射正确、越界返回 None。
 """
 
 import numpy as np
-from PySide6.QtCore import QPointF, QSize
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QPoint, QPointF, QSize, Qt
+from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsPolygonItem
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video import DecodedFrame
 from ai_physics_tracker.gui.video_view import (
     MAX_SCALE,
     MIN_SCALE,
+    MarkerView,
     VideoView,
 )
 
@@ -185,6 +186,46 @@ def test_pinch_gesture_event_scales_in_view_event(qtbot: QtBot) -> None:
     assert abs(view.currentScale() - 1.2**2) < 1e-9
 
 
+def test_marker_source_controls_shape_and_tooltip(qtbot: QtBot) -> None:
+    view = _shown_view(qtbot)
+
+    view.set_markers(
+        [
+            MarkerView(10.0, 12.0, "#e6194b", True, source="manual", frame_index=1),
+            MarkerView(30.0, 32.0, "#e6194b", True, source="dlc", frame_index=1),
+        ]
+    )
+
+    manual, ai = view._marker_items
+    assert isinstance(manual, QGraphicsEllipseItem)
+    assert isinstance(ai, QGraphicsPolygonItem)
+    assert manual.toolTip() == "manual"
+    assert ai.toolTip() == "dlc"
+    assert manual.brush().style() == Qt.BrushStyle.SolidPattern
+    assert ai.brush().style() == Qt.BrushStyle.NoBrush
+
+
+def test_marker_frame_highlight_reuses_items_and_updates_current_state(
+    qtbot: QtBot,
+) -> None:
+    view = _shown_view(qtbot)
+    markers = [
+        MarkerView(10.0, 12.0, "#e6194b", frame_index=1),
+        MarkerView(30.0, 32.0, "#e6194b", frame_index=2),
+    ]
+    view.set_current_frame(1)
+    view.set_markers(markers)
+    items_before = tuple(view._marker_items)
+
+    assert [marker.is_current_frame for marker in view.marker_views()] == [True, False]
+    view.set_current_frame(2)
+
+    assert tuple(view._marker_items) == items_before
+    assert [marker.is_current_frame for marker in view.marker_views()] == [False, True]
+    assert view._marker_items[0].pen().widthF() == 1.2
+    assert view._marker_items[1].pen().widthF() == 2.5
+
+
 def test_calibration_overlay_renders_scale_line_and_axes(qtbot: QtBot) -> None:
     from ai_physics_tracker.gui.video_view import CalibrationView
 
@@ -278,4 +319,3 @@ def test_calibration_origin_mode_click_emits_origin_clicked(qtbot: QtBot) -> Non
     assert len(origin_signals) == 1
     assert abs(origin_signals[0].x() - 25.0) <= 1.0
     assert abs(origin_signals[0].y() - 35.0) <= 1.0
-
