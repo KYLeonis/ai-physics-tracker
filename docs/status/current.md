@@ -3,25 +3,25 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-01（Phase 5 requirements / roadmap / PHASE_5_PLAN 已完成 Proposed 草案；尚未开始实现）
+- 最后更新：2026-09-01（Phase 5 总计划已确认；Subphase 5.0 进行中）
 
 ---
 
 ## Current Phase
 
-**Phase 4 — Deep Learning Tracking** ✅ 已完成；**Phase 5 — AI-assisted Annotation & Refinement** ⬜ 已规划、待用户确认后开始
+**Phase 4 — Deep Learning Tracking** ✅ 已完成；**Phase 5 — AI-assisted Annotation & Refinement** 🚧 进行中
 
 ## Current Subphase
 
-N/A。Phase 5 总计划见 [phase-5-plan.md](phase-5-plan.md)，状态为 **Proposed**；未创建实现分支或 Issue。
+**5.0 — Tracking Pipeline Consolidation** 🚧 进行中。Issue [#17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)，分支 `feat/p5.0-tracking-pipeline`，计划见 [phase-5.0-plan.md](phase-5.0-plan.md)。
 
 ## Current Slice
 
-N/A（规划完成，等待用户批准 5.0）。
+Slice 2：移除旧 coordinator 生命周期，迁移测试与真实 DLC 冒烟脚本到统一 `TrackingJobRunner`。
 
 ## Current Goal
 
-等待用户确认 Phase 5 需求与 Subphase 拆分；确认后只进入 **5.0 — Tracking Pipeline Consolidation**，不提前实现主动学习功能。
+完成 **5.0 — Tracking Pipeline Consolidation**，关闭 F3；F2 与主动学习能力不进入本 Subphase。
 
 ## Recently Completed
 
@@ -60,9 +60,8 @@ N/A（规划完成，等待用户批准 5.0）。
 
 **4.4 已实现取舍**：AI 链路取消重复全文件哈希和缺历史 hash 门禁，保留轻量文件状态、实际模型引用、数据正确性与任务归属校验；抽帧、建集和解析后台化。基础 K-means 选帧留 Phase 5，直接调用 DLC。
 
-**Phase 5 Proposed 决策（待用户确认）**：K-means 初始取帧直接复用 DLC；困难帧由 DLC 数据/primitive + 本项目 ranking/de-dup/diversity 策略层完成；Accept 不成为 label；completed infer result 与 active result 分离；fixed validation 后才跨轮比较；Advisor 只建议、不自动训练。持久化方案在 5.4 冻结，本轮不改 schema/ADR。
+**Phase 5 已确认决策**：K-means 初始取帧直接复用 DLC；困难帧由 DLC 数据/primitive + 本项目 ranking/de-dup/diversity 策略层完成；Accept 不成为 label；completed infer result 与 active result 分离；fixed validation 后才跨轮比较；Advisor 只建议、不自动训练。持久化方案在 5.4 冻结，本轮不改 schema/ADR。
 
 ## Next Recommended Action
 
-停止开发，等待用户确认 [Phase 5 requirements](../spec/phase5-requirements.md) 与 [PHASE_5_PLAN](phase-5-plan.md)。
-确认后：创建 `feat/p5.0-tracking-pipeline` 与 5.0 Issue，先独立处理 F3；不自行开始 5.1。
+执行 [Phase 5.0 plan](phase-5.0-plan.md) Slice 2：收敛旧 coordinator 生命周期并迁移测试/冒烟脚本；完成独立 review 与 CI 后停止，不自行开始 5.1。
