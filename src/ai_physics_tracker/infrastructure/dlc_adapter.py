@@ -413,7 +413,7 @@ class DLCAdapter:
             raise ValueError("Selected snapshot does not belong to this DLC model; retrain or select its config")
         actual_device = detect_device() if request.params.device == "auto" else request.params.device
         request.output_dir.mkdir(parents=True, exist_ok=False)
-        stream = _QueueLogStream(queue, run_id)
+        stream = QueueLogStream(queue, run_id)
         send_progress(queue, run_id, 0, request.frame_count, message="Loading selected model")
         with redirect_stdout(stream), redirect_stderr(stream), _selected_snapshot(request.model_snapshot), _prediction_progress(
             queue, run_id, cancel_event, request.frame_count
@@ -638,7 +638,7 @@ def _model_snapshots(config_path: Path, shuffle: int, trainingsetindex: int) -> 
     return loader.snapshots()
 
 
-class _QueueLogStream(TextIOBase):
+class QueueLogStream(TextIOBase):
     """把 DLC 标准输出转成有界日志行，兼容 tqdm 的回车刷新。"""
 
     def __init__(self, queue: Any, run_id: UUID, line_handler: Any | None = None) -> None:
@@ -669,7 +669,7 @@ class _QueueLogStream(TextIOBase):
         self.pending = ""
 
 
-class _TrainingLogStream(_QueueLogStream):
+class _TrainingLogStream(QueueLogStream):
     """转发 DLC 训练日志，并从真实 epoch 行提取 loss 与学习率。"""
 
     def __init__(self, queue: Any, run_id: UUID) -> None:

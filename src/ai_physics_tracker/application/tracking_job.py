@@ -18,10 +18,10 @@ from ai_physics_tracker.domain.project import Project
 from ai_physics_tracker.domain.track_store import TrackStore
 from ai_physics_tracker.domain.tracking_run import TrackingRun, create_tracking_run, mark_run_completed
 from ai_physics_tracker.infrastructure.engine_adapter import EngineAdapter, TrainingParams, InferenceParams
-from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter, _QueueLogStream, detect_device
+from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter, QueueLogStream, detect_device
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
-from ai_physics_tracker.infrastructure.project_serializer import _tracking_run_from_payload, _tracking_run_to_payload
+from ai_physics_tracker.infrastructure.project_serializer import tracking_run_from_payload, tracking_run_to_payload
 from ai_physics_tracker.infrastructure.task_runner import TaskLog, send_log
 from ai_physics_tracker.infrastructure.task_runner import TaskResult, BackgroundTaskRunner
 
@@ -105,7 +105,7 @@ def run_tracking_worker(run_id: UUID, queue: Any, cancel_event: Any,
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("x", encoding="utf-8") as log:
         messages = _LogQueue(queue, log)
-        output = _QueueLogStream(messages, run_id)
+        output = QueueLogStream(messages, run_id)
         try:
             with redirect_stdout(output), redirect_stderr(output):
                 result = _run_pipeline(run_id, messages, cancel_event, request, adapter)
@@ -205,7 +205,7 @@ def _train(session, run_id, queue, cancel_event, request, adapter):
 
 def _write_result(path: Path, run: TrackingRun, points_path: str | None) -> None:
     temporary = path.with_suffix(".tmp")
-    temporary.write_text(json.dumps({"run": _tracking_run_to_payload(run), "points_path": points_path},
+    temporary.write_text(json.dumps({"run": tracking_run_to_payload(run), "points_path": points_path},
                                     ensure_ascii=False, allow_nan=False), encoding="utf-8")
     temporary.replace(path)
 
@@ -242,7 +242,7 @@ def cancel_tracking_job(handle: Any, request: TrackingRequest) -> Path | None:
     if request.run.task_type != "train" or not ready.is_file():
         return None
     record = json.loads(ready.read_text(encoding="utf-8"))
-    run = _tracking_run_from_payload(record["run"])
+    run = tracking_run_from_payload(record["run"])
     run = replace(run, extra_fields={**run.extra_fields,
         "log_path": f"data/engines/{run.run_id}.log",
         "evaluation": {"status": "cancelled", "reason": "Evaluation cancelled; trained model retained"}})
@@ -269,7 +269,7 @@ def prepare_tracking_candidate(project: Project, request: TrackingRequest,
         raise ProjectSessionError("Unexpected task result path")
     result = json.loads(result_path.read_text(encoding="utf-8"))
     verify_request_files(request)
-    run = _tracking_run_from_payload(result["run"])
+    run = tracking_run_from_payload(result["run"])
     if (run.run_id != request.run.run_id or run.track_id != request.run.track_id
             or run.video_id != request.run.video_id or run.task_type != request.run.task_type):
         raise ProjectSessionError("Task result belongs to another request")
