@@ -294,7 +294,13 @@ def replace_calibration(project: Project, calibration: Calibration) -> Project:
 
 
 def delete_track(project: Project, track_id: UUID) -> Project:
-    """将确认删除的 Track 级联到观测与派生数据。"""
+    """将确认删除的 Track 级联到观测、派生数据与引擎运行记录。
+
+    TrackingRun 以 track 为主体（§7.6），run 不能脱离其 track 存活；
+    保留会在下一次 replace 的聚合校验中被拒绝。删除后经 Undo 恢复
+    track/观测/派生时，run 记录不随之复活（run 注册表是审计日志，
+    不进入撤销快照）。
+    """
 
     if not any(track.track_id == track_id for track in project.tracks):
         raise ValueError(f"unknown track_id: {track_id}")
@@ -305,6 +311,9 @@ def delete_track(project: Project, track_id: UUID) -> Project:
             point for point in project.observations if point.track_id != track_id
         ),
         derived=tuple(item for item in project.derived if item.track_id != track_id),
+        tracking_runs=tuple(
+            run for run in project.tracking_runs if run.track_id != track_id
+        ),
     )
 
 

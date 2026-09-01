@@ -234,10 +234,12 @@ class ProjectSession:
         return track
 
     def remove_track(self, track_id: UUID) -> None:
-        """删除 Track 并级联删除其观测。"""
+        """删除 Track 并级联删除其观测、派生数据与 TrackingRun 记录。"""
 
         candidate = delete_track(self._project, track_id)
-        self._commit_store(TrackStore(candidate.tracks, candidate.observations), candidate.derived)
+        # 提交整个 candidate：runs 级联发生在 delete_track 返回的聚合里，
+        # 只回填 tracks/observations/derived 会把已删除的 run 带回来。
+        self._commit_project(candidate, TrackStore(candidate.tracks, candidate.observations))
 
     def mark_point(
         self,

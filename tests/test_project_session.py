@@ -13,6 +13,7 @@ from ai_physics_tracker.application.project_session import (
     ProjectSessionError,
 )
 from ai_physics_tracker.application.video import VideoStreamInfo
+from ai_physics_tracker.domain.tracking_run import create_tracking_run
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
 
@@ -113,6 +114,34 @@ def test_remove_track_cascades_observations(tmp_path: Path) -> None:
     assert session.project.observations == ()
     with pytest.raises(ProjectSessionError):
         session.mark_point(track.track_id, 0, 2.0, 2.0)
+
+
+def test_remove_track_with_runs_succeeds_and_undo_keeps_runs_deleted(
+    tmp_path: Path,
+) -> None:
+    # review F1 回归：带 TrackingRun 的 track 删除不再被聚合校验拒绝；
+    # undo 恢复 track/观测（数据层），run 注册表是审计日志、不进撤销快照。
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+    session.mark_point(track.track_id, 0, 1.0, 1.0)
+    session.record_tracking_run(
+        create_tracking_run(
+            video.video_id, track.track_id, "train", engine_version="3.0.1-mock"
+        )
+    )
+
+    session.remove_track(track.track_id)
+
+    assert session.tracks == ()
+    assert session.project.observations == ()
+    assert session.project.tracking_runs == ()
+
+    assert session.undo()
+
+    assert session.tracks == (track,)
+    assert len(session.project.observations) == 1
+    assert session.project.tracking_runs == ()
 
 
 def test_dirty_lifecycle_across_save_roundtrip(tmp_path: Path) -> None:
