@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:   Phase 4 — Deep Learning Tracking 🔄
-Last Completed:  Subphase 4.4 — GUI & Integration ✅ 本地验收（2026-09-01）
-Current Subphase: 4.4 — GUI & Integration（本地验收完成，等待平台关卡与集成 CI）
+Last Completed:  Subphase 4.4 — GUI & Integration ✅ 本地验收并合并（2026-09-01）
+Current Subphase: 4.4 — GUI & Integration（等待平台关卡与 push 后 CI）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。

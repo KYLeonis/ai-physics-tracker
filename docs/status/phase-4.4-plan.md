@@ -2,7 +2,7 @@
 
 - Issue：[Issue #15](https://github.com/KYLeonis/ai-physics-tracker/issues/15)。
 - 分支：`feat/p4.4-gui-integration`。
-- 日期 / 状态：2026-09-01 · 本地验收完成；等待 Windows/CUDA 处置及集成 push/CI。
+- 日期 / 状态：2026-09-01 · 本地验收及 `main` 合并完成；等待 Windows/CUDA 处置及 push/CI。
 - 进入基线：`main` / `1ca5bee`，与实时查询的远程 main 一致，工作区干净；4.3 已收尾。
 
 ## Goal
@@ -150,7 +150,7 @@ Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自�
 - 用户批准 D0–D5；AI 链路采用轻量文件状态校验，基础 K-means 选帧留 Phase 5 并直接调用 DLC。
 - 4.4 实现、真实 CPU GUI 组件冒烟、自动化、独立 review 与 macOS Human Review 均已完成。
 - 没有修改项目 schema、依赖版本、CI 或许可证；原始媒体、模型和评价产物不进入 Git。
-- Windows 真机/CUDA 未验证，集成 push/CI 与 Issue 关闭尚未执行；这两项在最终远程收尾前保持可见。
+- Windows 真机/CUDA 未验证，push/CI 与 Issue 关闭尚未执行；这些事项在最终远程收尾前保持可见。
 
 
 ## K-means 范围结论（用户不要求前移）
@@ -164,11 +164,11 @@ Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自�
 - 依据：[DLC 选帧 API](https://deeplabcut.github.io/DeepLabCut/dev/latest-release/reference/deeplabcut/generate_training_dataset/frame_extraction/)；[DLC 标注指南](https://deeplabcut.github.io/DeepLabCut/docs/beginner-guides/labeling.html)。
 
 - 实施确认：用户同意其余方案执行；基础 K-means 不前移，Phase 5 直接调用 DLC。ADR-0012 已记录本轮边界。
-- 主要实现提交：`0b1add2`（后台任务、训练指标/评价、轻量校验）与 `1bb4c51`（Task Panel、生命周期、AI 轨迹）；Human Review 修复为 `0bd96c2`、`23275e9`。尚未合并或推送。
+- 主要实现提交：`0b1add2`（后台任务、训练指标/评价、轻量校验）与 `1bb4c51`（Task Panel、生命周期、AI 轨迹）；Human Review 修复为 `0bd96c2`、`23275e9`；本地 `--no-ff` 合并提交为 `17ae493`。尚未推送。
 - 自动化：合入最新 main 后运行 `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **433 passed in 52.04s**。新增测试覆盖响应性、取消竞争、模型保留、保存身份、导航、旧回调、marker 复用、评价、窗口缩放和面板独立窗口切换。
 - 真实 GUI 组件冒烟：CPU、1 epoch 完成训练/原生评价/推理，得到 train RMSE 46.91 px（n=4）、test RMSE 17.33 px（n=1）；10 帧中 5 AI 插入/5 manual 保留，保存重开通过。指标只证明评价管线可用，不代表模型精度。
 - 评价 CSV、模型、预测与完整日志均在各自 run 目录保留；重复训练使用独立目录，不影响旧模型。
 - 绘制规模检查：10,000 个 AI marker 首次构建约 0.32s；1,000 次当前帧索引高亮约 0.03s。当前帧变化不再重建全部图元。
 - 独立 review：首轮发现提交前遗漏模型/config 轻量复核，以及 mAP/mAR 单位错误；`102fe79` 修复并增加回归，复审确认关闭。当前无阻塞 finding。
 - Human Review：主要工作流通过；窗口最小尺寸与 Chart 中文状态消息的反馈已修复，Chart/AI 保留可缩放独立窗口。用户于 2026-09-01 确认聚焦复验通过。
-- 当前待办：Windows/CUDA 处置、主分支集成、push 后双平台 CI 与 Issue #15 关闭。P44-7/8 完成前不宣称 Phase 4 完成，不开始 Phase 5。
+- 当前待办：Windows/CUDA 处置、push 后双平台 CI 与 Issue #15 关闭。P44-7/8 完成前不宣称 Phase 4 完成，不开始 Phase 5。

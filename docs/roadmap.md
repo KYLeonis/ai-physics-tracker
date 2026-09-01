@@ -3,7 +3,7 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Subphase 4.4 — GUI & Integration（✅ 本地验收，2026-09-01）**
+- 最近完成：**Subphase 4.4 — GUI & Integration（✅ 本地验收并合并，2026-09-01）**
 - 当前阶段：**Phase 4 — Deep Learning Tracking（🔄 核心验收通过；等待 Windows/CUDA 处置与集成 CI）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
