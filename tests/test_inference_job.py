@@ -95,6 +95,18 @@ def test_worker_failure_never_imports_partial_points(tmp_path):
     assert session.project.observations == previous
 
 
+def test_tampered_observation_exchange_is_rejected_before_import(tmp_path):
+    session, trained = session_and_model(tmp_path)
+    run, request = prepare_inference(session, trained.run_id, InferenceParams(0.5))
+    payload = _inference_process_worker(
+        run.run_id, Queue(), Event(), request, MockEngineAdapter()
+    )
+    (request.output_dir / "observations.json").write_text("[]", encoding="utf-8")
+
+    with pytest.raises(ProjectSessionError, match="artifacts changed"):
+        read_inference_result(request, session.project_root, run, payload)
+
+
 def test_model_file_info_detects_replacement_before_prepare(tmp_path):
     session, trained = session_and_model(tmp_path)
     path = session.project_root / "models/snapshot-1.pt"

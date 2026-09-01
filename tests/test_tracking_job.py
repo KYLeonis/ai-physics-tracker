@@ -1,6 +1,8 @@
 """GUI 跟踪任务的请求快照、spawn worker 与候选合并边界测试。"""
 
+from concurrent.futures import CancelledError
 from dataclasses import replace
+import os
 import time
 from pathlib import Path
 
@@ -17,7 +19,20 @@ from ai_physics_tracker.domain.tracking_run import (
 from ai_physics_tracker.infrastructure.engine_adapter import InferenceParams, TrainingParams
 from ai_physics_tracker.infrastructure.mock_engine_adapter import MockEngineAdapter
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
-from ai_physics_tracker.infrastructure.task_runner import BackgroundTaskRunner, TaskResult
+from ai_physics_tracker.infrastructure.task_runner import (
+    BackgroundTaskRunner,
+    TaskProgress,
+    TaskResult,
+)
+
+
+class WaitingInferenceAdapter(MockEngineAdapter):
+    """等待取消信号，验证统一 runner 能回收真实 spawn 进程。"""
+
+    def infer(self, run_id, queue, cancel_event, request):
+        queue.put(TaskProgress(run_id, 0, request.frame_count))
+        cancel_event.wait(10.0)
+        raise CancelledError("Cancelled at test barrier")
 
 
 def _make_session(
@@ -129,6 +144,23 @@ def test_tracking_job_runner_is_the_single_start_facade(
     )
 
 
+def test_lightweight_request_policy_accepts_same_size_and_mtime_replacement(
+    tmp_path: Path,
+    synthetic_video_path: Path,
+) -> None:
+    session, _video, track = _make_session(tmp_path, synthetic_video_path)
+    request = tracking_job.prepare_tracking_request(
+        session, track.track_id, TrainingParams()
+    )
+    media = request.video_path
+    original = media.read_bytes()
+    stamp = media.stat()
+    media.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+    os.utime(media, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+
+    tracking_job.verify_request_files(request)
+
+
 def test_spawn_mock_training_result_is_importable_as_candidate(
     tmp_path: Path, synthetic_video_path: Path
 ) -> None:
@@ -159,6 +191,31 @@ def test_spawn_mock_training_result_is_importable_as_candidate(
     assert completed.status == "completed"
     assert completed.model_snapshot is not None
     assert (request.project_root / completed.model_snapshot).is_file()
+
+
+def test_unified_training_failure_returns_no_importable_candidate(
+    tmp_path: Path,
+    synthetic_video_path: Path,
+) -> None:
+    session, _video, track = _make_session(tmp_path, synthetic_video_path)
+    request = tracking_job.prepare_tracking_request(
+        session,
+        track.track_id,
+        TrainingParams(extra_params={"simulate_failure": "CUDA Driver Error"}),
+    )
+    _register_running(session, request)
+
+    handle = tracking_job.TrackingJobRunner(adapter=MockEngineAdapter()).start(request)
+    messages = _wait_worker(handle)
+    terminal = [message for message in messages if isinstance(message, TaskResult)]
+
+    assert len(terminal) == 1
+    assert not terminal[0].success
+    assert "CUDA Driver Error" in str(terminal[0].error)
+    assert not any(
+        isinstance(message.payload, dict) and message.payload.get("result_path")
+        for message in terminal
+    )
 
 
 def _session_with_model(
@@ -209,6 +266,15 @@ def test_spawn_mock_inference_without_hash_imports_and_keeps_manual_edits(
     messages = _wait_worker(handle)
     result_path = _result_path(messages, request.project_root)
 
+    media_path = request.video_path
+    media_content = media_path.read_bytes()
+    media_stat = media_path.stat()
+    media_path.write_bytes(media_content + b"changed")
+    with pytest.raises(ProjectSessionError, match="Video file changed"):
+        tracking_job.prepare_tracking_candidate(session.project, request, result_path)
+    media_path.write_bytes(media_content)
+    os.utime(media_path, ns=(media_stat.st_atime_ns, media_stat.st_mtime_ns))
+
     model_path = session.project_root / "models/snapshot.pt"
     config_path = session.project_root / "models/config.yaml"
     model_content, config_content = model_path.read_bytes(), config_path.read_bytes()
@@ -219,7 +285,6 @@ def test_spawn_mock_inference_without_hash_imports_and_keeps_manual_edits(
         tracking_job.prepare_tracking_candidate(session.project, request, result_path)
     model_path.write_bytes(model_content)
     config_path.write_bytes(config_content)
-    import os
     os.utime(model_path, ns=(model_stat.st_atime_ns, model_stat.st_mtime_ns))
     os.utime(config_path, ns=(config_stat.st_atime_ns, config_stat.st_mtime_ns))
 
@@ -238,6 +303,45 @@ def test_spawn_mock_inference_without_hash_imports_and_keeps_manual_edits(
     assert len(session.effective_points(track.track_id)) == 5
     completed = next(run for run in session.tracking_runs() if run.run_id == request.run.run_id)
     assert completed.status == "completed"
+
+
+def test_unified_inference_cancel_reaps_worker_without_result(
+    tmp_path: Path,
+    synthetic_video_path: Path,
+) -> None:
+    session, _video, track, trained = _session_with_model(tmp_path, synthetic_video_path)
+    request = tracking_job.prepare_tracking_request(
+        session,
+        track.track_id,
+        InferenceParams(min_confidence=0.5),
+        training_run_id=trained.run_id,
+    )
+    _register_running(session, request)
+    observations = session.project.observations
+    handle = tracking_job.TrackingJobRunner(adapter=WaitingInferenceAdapter()).start(request)
+
+    messages = []
+    deadline = time.monotonic() + 10.0
+    while not any(isinstance(message, TaskProgress) for message in messages):
+        messages.extend(handle.poll_messages(limit=200))
+        if time.monotonic() >= deadline:
+            handle.cancel(timeout_s=1.0)
+            pytest.fail("inference worker did not reach cancellation barrier")
+        time.sleep(0.01)
+    handle.cancel(timeout_s=1.0)
+    deadline = time.monotonic() + 2.0
+    while not any(isinstance(message, TaskResult) for message in messages):
+        messages.extend(handle.poll_messages(limit=200))
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(0.01)
+
+    terminal = [message for message in messages if isinstance(message, TaskResult)]
+    assert not handle.is_alive()
+    assert len(terminal) == 1
+    assert not terminal[0].success
+    assert terminal[0].payload == {"status": "cancelled"}
+    assert session.project.observations == observations
 
 
 def test_reopened_unfinished_run_is_marked_failed_in_memory_until_saved(tmp_path, synthetic_video_path):
