@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from ai_physics_tracker.application import tracking_job
-from ai_physics_tracker.application.project_session import ProjectSession
+from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.domain.tracking_run import (
     create_tracking_run,
@@ -183,6 +183,20 @@ def test_spawn_mock_inference_without_hash_imports_and_keeps_manual_edits(
     )
     messages = _wait_worker(handle)
     result_path = _result_path(messages, request.project_root)
+
+    model_path = session.project_root / "models/snapshot.pt"
+    config_path = session.project_root / "models/config.yaml"
+    model_content, config_content = model_path.read_bytes(), config_path.read_bytes()
+    model_stat, config_stat = model_path.stat(), config_path.stat()
+    model_path.write_bytes(b"changed model")
+    config_path.write_text("changed config", encoding="utf-8")
+    with pytest.raises(ProjectSessionError, match="file changed"):
+        tracking_job.prepare_tracking_candidate(session.project, request, result_path)
+    model_path.write_bytes(model_content)
+    config_path.write_bytes(config_content)
+    import os
+    os.utime(model_path, ns=(model_stat.st_atime_ns, model_stat.st_mtime_ns))
+    os.utime(config_path, ns=(config_stat.st_atime_ns, config_stat.st_mtime_ns))
 
     base_project = session.project
     first_candidate = tracking_job.prepare_tracking_candidate(

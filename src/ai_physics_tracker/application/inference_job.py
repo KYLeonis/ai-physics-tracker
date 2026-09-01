@@ -78,6 +78,7 @@ def _inference_process_worker(
         return {
             "status": "completed", "engine_version": outcome.engine_version,
             "device": outcome.device, "model_file_info": list(before[0][:2]),
+            "config_file_info": list(before[2][:2]),
             "prediction_path": raw_path.name, "prediction_file_info": list(_stamp(raw_path)),
             "observations_file_info": list(_stamp(exchange)),
             "row_count": outcome.row_count, "missing_count": outcome.missing_count,
@@ -311,13 +312,15 @@ def read_inference_result(request: InferenceRequest, project_root: Path,
         raise ProjectSessionError("Invalid prediction counts or confidence")
     extras = {**run.extra_fields, "prediction_path": raw.relative_to(project_root).as_posix(),
         "observations_path": exchange.relative_to(project_root).as_posix(),
-        "model_file_info": payload["model_file_info"], "device": payload["device"],
+        "model_file_info": payload["model_file_info"],
+        "config_file_info": payload["config_file_info"], "device": payload["device"],
         "import_summary": dict(zip(("row_count", "missing_count", "low_confidence_count"), counts))}
     snapshot_ref = run.model_snapshot
     if request.archive_model:
         snapshot_ref = (folder / "model-used.pt").relative_to(project_root).as_posix()
         extras["config_path"] = (folder / "config-used.yaml").relative_to(project_root).as_posix()
         extras["model_file_info"] = list(_stamp(folder / "model-used.pt")[:2])
+        extras["config_file_info"] = list(_stamp(folder / "config-used.yaml")[:2])
     completed = replace(mark_run_completed(run, model_snapshot=snapshot_ref),
                         engine_version=str(payload["engine_version"]), extra_fields=extras)
     return tuple(points), completed

@@ -529,8 +529,8 @@ def _evaluation_metric_unit(name: str) -> str:
     lowered = name.lower()
     if "rmse" in lowered or "error" in lowered:
         return "px"
-    if any(token in lowered for token in ("map", "pck", "precision", "recall", "accuracy")):
-        return "fraction"
+    if lowered in {"map", "mar"}:
+        return "%"
     return "unknown"
 
 

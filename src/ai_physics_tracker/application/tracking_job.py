@@ -174,6 +174,7 @@ def _train(session, run_id, queue, cancel_event, request, adapter):
     snapshot = Path(outcome.snapshot_path).resolve()
     stat = snapshot.stat()
     extras = {**run.extra_fields, "model_file_info": [stat.st_size, stat.st_mtime_ns],
+              "config_file_info": list(_file_info(config_path)),
               "device": actual_device, "requested_device": request.parameters.device}
     ready = replace(mark_run_completed(run, model_snapshot=snapshot.relative_to(request.project_root).as_posix()),
                     run_id=run_id, source_detail=request.run.source_detail, created_at=request.run.created_at,
@@ -216,6 +217,24 @@ def verify_request_files(request: TrackingRequest) -> None:
         raise ProjectSessionError("Video file changed during the task")
 
 
+def _file_info(path: Path) -> tuple[int, int]:
+    stat = path.stat()
+    return stat.st_size, stat.st_mtime_ns
+
+
+def verify_completed_run_files(run: TrackingRun, root: Path) -> None:
+    """提交前复核 run 实际引用的模型/config 轻量状态。"""
+    pairs = ((run.model_snapshot, run.extra_fields.get("model_file_info"), "model"),
+             (run.extra_fields.get("config_path"), run.extra_fields.get("config_file_info"), "config"))
+    for reference, expected, label in pairs:
+        if not reference or expected is None:
+            continue
+        path = Path(reference)
+        path = path.resolve() if path.is_absolute() else (root / path).resolve()
+        if not path.is_file() or list(_file_info(path)) != list(expected):
+            raise ProjectSessionError(f"Task {label} file changed before the result was committed")
+
+
 def cancel_tracking_job(handle: Any, request: TrackingRequest) -> Path | None:
     """后台回收进程；若只取消了评价，保留已成功产出的模型。"""
     handle.cancel(timeout_s=1.0)
@@ -254,6 +273,7 @@ def prepare_tracking_candidate(project: Project, request: TrackingRequest,
     if (run.run_id != request.run.run_id or run.track_id != request.run.track_id
             or run.video_id != request.run.video_id or run.task_type != request.run.task_type):
         raise ProjectSessionError("Task result belongs to another request")
+    verify_completed_run_files(run, request.project_root)
     session = _owned_session(project, request)
     if run.task_type == "infer":
         path = (request.project_root / result["points_path"]).resolve()

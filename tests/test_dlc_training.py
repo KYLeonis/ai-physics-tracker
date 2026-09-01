@@ -15,6 +15,11 @@ from ai_physics_tracker.infrastructure.engine_adapter import TrainingParams
 from ai_physics_tracker.infrastructure.task_runner import TaskLog, TaskProgress
 
 
+def test_evaluation_metric_units_use_percent_for_map_and_mar() -> None:
+    assert dlc_adapter._evaluation_metric_unit("mAP") == "%"
+    assert dlc_adapter._evaluation_metric_unit("mAR") == "%"
+
+
 def _install_fake_dlc(monkeypatch: pytest.MonkeyPatch, **functions: object) -> ModuleType:
     module = ModuleType("deeplabcut")
     module.__version__ = "3.0.1-test"
@@ -219,7 +224,7 @@ def test_evaluate_uses_exact_snapshot_and_returns_native_metrics(tmp_path: Path,
     assert result["test"]["metrics"] == {"rmse": 2.5, "mAP": 0.7}
     assert result["train"]["sample_count"] == 2
     assert result["test"]["sample_count"] == 1
-    assert result["train"]["units"] == {"rmse": "px", "mAP": "fraction"}
+    assert result["train"]["units"] == {"rmse": "px", "mAP": "%"}
     assert result["results_csv"] == str(evaluation_dir / "FakeScorer-results.csv")
     kwargs = calls["evaluate_kwargs"]
     assert isinstance(kwargs, dict)
