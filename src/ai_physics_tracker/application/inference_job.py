@@ -4,10 +4,8 @@ from concurrent.futures import CancelledError
 from copy import deepcopy
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
-import hashlib
 import json
 from pathlib import Path
-import re
 import shutil
 from typing import Any
 from uuid import UUID
@@ -27,11 +25,6 @@ from ai_physics_tracker.infrastructure.engine_adapter import (
 from ai_physics_tracker.infrastructure.task_runner import (
     BackgroundTaskRunner, TaskHandle, TaskMessage, TaskResult,
 )
-
-
-def _sha256(path: Path) -> str:
-    with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def _stamp(path: Path) -> tuple[int, int, int]:
@@ -56,24 +49,15 @@ def _inference_process_worker(
 ) -> JsonObject:
     """大批量结果落盘交换，队列只返回小型摘要，避免退出时等待巨量 IPC。"""
     try:
-        digest = _sha256(request.model_snapshot)
-        if request.model_sha256 is None or digest != request.model_sha256:
-            raise ValueError("Selected training snapshot has changed; retrain or select another run")
-        if request.video_sha256 is None or _sha256(request.video_path) != request.video_sha256:
-            raise ValueError("Video content changed before inference")
-        if request.config_sha256 is None or _sha256(request.config_path) != request.config_sha256:
-            raise ValueError("DLC config changed before inference")
+        files = (request.model_snapshot, request.video_path, request.config_path)
+        before = tuple(_stamp(path) for path in files)
         outcome = adapter.infer(run_id, queue, cancel_event, request)
         if cancel_event.is_set():
             raise CancelledError("Inference cancelled")
         if outcome.model_snapshot.resolve() != request.model_snapshot.resolve():
             raise ValueError("Engine used a different snapshot")
-        if _sha256(request.model_snapshot) != digest:
-            raise ValueError("Model snapshot changed during inference")
-        if _sha256(request.video_path) != request.video_sha256:
-            raise ValueError("Video content changed during inference")
-        if _sha256(request.config_path) != request.config_sha256:
-            raise ValueError("DLC config changed during inference")
+        if tuple(_stamp(path) for path in files) != before:
+            raise ValueError("Inference input files changed during execution")
         if outcome.row_count != request.frame_count:
             raise ValueError("Engine returned an incomplete frame batch")
         if (outcome.missing_count < 0 or outcome.low_confidence_count < 0
@@ -87,19 +71,16 @@ def _inference_process_worker(
                                  (request.config_path, "config-used.yaml")):
                 with source.open("rb") as incoming, (request.output_dir / name).open("xb") as outgoing:
                     shutil.copyfileobj(incoming, outgoing)
-            if _sha256(request.output_dir / "model-used.pt") != digest:
-                raise ValueError("Model changed while archiving the verified legacy snapshot")
         exchange = request.output_dir / "observations.json"
         with exchange.open("x", encoding="utf-8") as stream:
             json.dump([asdict(point) for point in outcome.points], stream,
                       ensure_ascii=False, allow_nan=False, default=str)
         return {
             "status": "completed", "engine_version": outcome.engine_version,
-            "device": outcome.device, "model_sha256": digest,
-            "video_sha256": request.video_sha256,
-            "config_sha256": request.config_sha256,
-            "prediction_path": raw_path.name, "prediction_sha256": _sha256(raw_path),
-            "observations_sha256": _sha256(exchange),
+            "device": outcome.device, "model_file_info": list(before[0][:2]),
+            "config_file_info": list(before[2][:2]),
+            "prediction_path": raw_path.name, "prediction_file_info": list(_stamp(raw_path)),
+            "observations_file_info": list(_stamp(exchange)),
             "row_count": outcome.row_count, "missing_count": outcome.missing_count,
             "low_confidence_count": outcome.low_confidence_count,
         }
@@ -131,6 +112,7 @@ class InferenceCoordinator:
     def prepare_inference(
         self, session: ProjectSession, training_run_id: UUID, params: InferenceParams,
         *, adapter: EngineAdapter | None = None, config_path: Path | None = None,
+        run_id: UUID | None = None,
     ) -> TrackingRun:
         """验证模型来源、视频时序与文件身份，准备一个尚未启动的推理 run。"""
         root = session.project_root
@@ -140,9 +122,6 @@ class InferenceCoordinator:
         trained = next((r for r in session.tracking_runs() if r.run_id == training_run_id), None)
         if trained is None or trained.task_type != "train" or trained.status != "completed":
             raise ProjectSessionError("Select a completed training run")
-        model_digest = trained.extra_fields.get("model_sha256")
-        if not isinstance(model_digest, str) or re.fullmatch(r"[0-9a-fA-F]{64}", model_digest) is None:
-            raise ProjectSessionError("Training run has no verified model hash; retrain before inference")
         track = next((t for t in session.tracks if t.track_id == trained.track_id), None)
         if track is None or track.video_id != trained.video_id:
             raise ProjectSessionError("Training run does not match a current track/video")
@@ -151,9 +130,6 @@ class InferenceCoordinator:
         video_path = session.video_path(video)
         if video_path is None or not video_path.is_file() or not session.can_measure(video.video_id):
             raise ProjectSessionError("Video is missing or its timing is not authorized")
-        media_digest = _sha256(video_path)
-        if video.sha256 is not None and media_digest != video.sha256.lower():
-            raise ProjectSessionError("Video content does not match the registered SHA-256; relink and verify it")
         stored_config = trained.extra_fields.get("config_path")
         if config_path is None and isinstance(stored_config, str):
             config_path = _project_path(root, stored_config)
@@ -174,15 +150,17 @@ class InferenceCoordinator:
         engine = adapter or DLCAdapter()
         run = create_tracking_run(video.video_id, track.track_id, "infer",
             engine=trained.engine, engine_version=trained.engine_version,
-            config=config)
+            config=config, run_id=run_id)
         output_dir = root / "data" / "engines" / str(run.run_id)
         request = InferenceRequest(config_path, video_path.resolve(), snapshot,
             output_dir, track.track_id, timeline,
             run.source_detail, video.frame_count, params,
             shuffle=config["shuffle"], trainingsetindex=config["trainingsetindex"],
-            model_sha256=model_digest.lower(), video_sha256=media_digest, archive_model=archive_model,
-            config_sha256=_sha256(config_path))
-        extras = {"model_sha256": request.model_sha256, "config_sha256": request.config_sha256}
+            archive_model=archive_model)
+        recorded_stamp = trained.extra_fields.get("model_file_info")
+        if recorded_stamp is not None and tuple(recorded_stamp) != _stamp(snapshot)[:2]:
+            raise ProjectSessionError("Selected model file has changed; select a current training run")
+        extras = {"model_file_info": list(_stamp(snapshot)[:2])}
         if not archive_model:
             extras["config_path"] = config_path.relative_to(root).as_posix()
         # legacy 归档尚不存在；失败/取消的 run 不应持有虚构文件引用。
@@ -212,9 +190,7 @@ class InferenceCoordinator:
                 or not any(t.track_id == request.track_id and t.video_id == job.video.video_id for t in session.tracks)
                 or media_path is None or media_path.resolve() != request.video_path
                 or _stamp(request.video_path) != job.media_stamp
-                or _sha256(request.video_path) != request.video_sha256
                 or _stamp(request.config_path) != job.config_stamp
-                or _sha256(request.config_path) != request.config_sha256
                 or _stamp(request.model_snapshot) != job.model_stamp):
             raise ProjectSessionError("Inference context changed; results were not imported")
 
@@ -238,52 +214,12 @@ class InferenceCoordinator:
 
     def _apply_result(self, job: _InferenceJob, run: TrackingRun, payload: JsonObject) -> None:
         self._validate_context(job.session, job)
-        folder = job.request.output_dir
-        raw_name = payload.get("prediction_path")
-        if not isinstance(raw_name, str) or Path(raw_name).name != raw_name:
-            raise ProjectSessionError("Invalid prediction artifact reference")
-        raw = folder / raw_name
-        exchange = folder / "observations.json"
-        if (_sha256(raw) != payload.get("prediction_sha256")
-                or _sha256(exchange) != payload.get("observations_sha256")):
-            raise ProjectSessionError("Inference artifacts changed before import")
-        if job.request.archive_model:
-            if (_sha256(folder / "model-used.pt") != payload.get("model_sha256")
-                    or _sha256(folder / "config-used.yaml") != job.request.config_sha256):
-                raise ProjectSessionError("Archived model/config differs from the inference inputs")
-        records = json.loads(exchange.read_text(encoding="utf-8"))
-        if not isinstance(records, list):
-            raise ProjectSessionError("Invalid observation batch")
-        points = []
-        for record in records:
-            for field in ("point_id", "track_id"):
-                record[field] = UUID(record[field])
-            if record["superseded_by"] is not None:
-                record["superseded_by"] = UUID(record["superseded_by"])
-            for field in ("created_at", "modified_at"):
-                record[field] = datetime.fromisoformat(record[field])
-            record["quality_flags"] = tuple(record["quality_flags"])
-            points.append(TrackPoint(**record))
-        counts = [payload.get(key) for key in ("row_count", "missing_count", "low_confidence_count")]
-        if (any(type(n) is not int or n < 0 for n in counts)
-                or counts[0] != job.request.frame_count or len(points) + counts[1] + counts[2] != counts[0]
-                or any(p.confidence is None or p.confidence < job.request.params.min_confidence for p in points)):
-            raise ProjectSessionError("Invalid prediction counts or confidence")
-        extras = {**run.extra_fields, "prediction_path": raw.relative_to(job.project_root).as_posix(),
-            "prediction_sha256": payload["prediction_sha256"],
-            "observations_path": exchange.relative_to(job.project_root).as_posix(),
-            "observations_sha256": payload["observations_sha256"],
-            "model_sha256": payload["model_sha256"], "device": payload["device"],
-            "video_sha256": payload["video_sha256"],
-            "config_sha256": payload["config_sha256"],
-            "import_summary": dict(zip(("row_count", "missing_count", "low_confidence_count"), counts))}
-        snapshot_ref = run.model_snapshot
-        if job.request.archive_model:
-            snapshot_ref = (folder / "model-used.pt").relative_to(job.project_root).as_posix()
-            extras["config_path"] = (folder / "config-used.yaml").relative_to(job.project_root).as_posix()
-        completed = replace(mark_run_completed(run, model_snapshot=snapshot_ref),
-                            engine_version=str(payload["engine_version"]), extra_fields=extras)
-        job.session.import_engine_points(tuple(points), completed)
+        points, completed = read_inference_result(job.request, job.project_root, run, payload)
+        job.session.import_engine_points(points, completed)
+
+    def prepared_request(self, run_id: UUID) -> InferenceRequest:
+        """返回供独占 spawn worker 使用的请求，不暴露活动会话。"""
+        return self._jobs[run_id].request
 
     def poll_messages(self, session: ProjectSession, run_id: UUID) -> list[TaskMessage]:
         """只允许拥有任务的会话接收结果，进程退出后再排空末尾消息。"""
@@ -354,3 +290,56 @@ class InferenceCoordinator:
         for run_id, job in list(self._jobs.items()):
             if job.session is session:
                 self.cancel_inference(session, run_id)
+
+
+def read_inference_result(request: InferenceRequest, project_root: Path,
+                          run: TrackingRun, payload: JsonObject) -> tuple[tuple[TrackPoint, ...], TrackingRun]:
+    """后台读取已完成推理结果，校验结构/文件状态；不修改活动会话。"""
+    folder = request.output_dir
+    raw_name = payload.get("prediction_path")
+    if not isinstance(raw_name, str) or Path(raw_name).name != raw_name:
+        raise ProjectSessionError("Invalid prediction artifact reference")
+    raw = folder / raw_name
+    exchange = folder / "observations.json"
+    if (list(_stamp(raw)) != payload.get("prediction_file_info")
+            or list(_stamp(exchange)) != payload.get("observations_file_info")):
+        raise ProjectSessionError("Inference artifacts changed before import")
+    points = read_observation_exchange(exchange)
+    counts = [payload.get(key) for key in ("row_count", "missing_count", "low_confidence_count")]
+    if (any(type(n) is not int or n < 0 for n in counts)
+            or counts[0] != request.frame_count or len(points) + counts[1] + counts[2] != counts[0]
+            or any(p.confidence is None or p.confidence < request.params.min_confidence for p in points)):
+        raise ProjectSessionError("Invalid prediction counts or confidence")
+    extras = {**run.extra_fields, "prediction_path": raw.relative_to(project_root).as_posix(),
+        "observations_path": exchange.relative_to(project_root).as_posix(),
+        "model_file_info": payload["model_file_info"],
+        "config_file_info": payload["config_file_info"], "device": payload["device"],
+        "import_summary": dict(zip(("row_count", "missing_count", "low_confidence_count"), counts))}
+    snapshot_ref = run.model_snapshot
+    if request.archive_model:
+        snapshot_ref = (folder / "model-used.pt").relative_to(project_root).as_posix()
+        extras["config_path"] = (folder / "config-used.yaml").relative_to(project_root).as_posix()
+        extras["model_file_info"] = list(_stamp(folder / "model-used.pt")[:2])
+        extras["config_file_info"] = list(_stamp(folder / "config-used.yaml")[:2])
+    completed = replace(mark_run_completed(run, model_snapshot=snapshot_ref),
+                        engine_version=str(payload["engine_version"]), extra_fields=extras)
+    return tuple(points), completed
+
+
+
+def read_observation_exchange(path: Path) -> tuple[TrackPoint, ...]:
+    """后台读取内部观测交换文件，不在 GUI 主线程解析批量数据。"""
+    records = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(records, list):
+        raise ProjectSessionError("Invalid observation batch")
+    points = []
+    for record in records:
+        for field in ("point_id", "track_id"):
+            record[field] = UUID(record[field])
+        if record["superseded_by"] is not None:
+            record["superseded_by"] = UUID(record["superseded_by"])
+        for field in ("created_at", "modified_at"):
+            record[field] = datetime.fromisoformat(record[field])
+        record["quality_flags"] = tuple(record["quality_flags"])
+        points.append(TrackPoint(**record))
+    return tuple(points)

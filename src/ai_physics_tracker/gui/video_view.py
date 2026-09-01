@@ -7,7 +7,7 @@ mapToScene，越界返回 None（data-model.md §6.1：逆映射发生在 GUI
 """
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import (
@@ -19,6 +19,7 @@ from PySide6.QtGui import (
     QPainter,
     QPen,
     QPixmap,
+    QPolygonF,
     QResizeEvent,
     QWheelEvent,
 )
@@ -26,6 +27,7 @@ from PySide6.QtWidgets import (
     QGraphicsEllipseItem,
     QGraphicsItem,
     QGraphicsLineItem,
+    QGraphicsPolygonItem,
     QGraphicsPixmapItem,
     QGraphicsScene,
     QGraphicsSimpleTextItem,
@@ -53,6 +55,8 @@ class MarkerView:
     pixel_y: float
     color: str
     is_current_frame: bool = False
+    source: str = "manual"
+    frame_index: int | None = None
 
 
 @dataclass(frozen=True)
@@ -81,8 +85,10 @@ class VideoView(QGraphicsView):
         self.setScene(self._scene)
         self._pixmap_item: QGraphicsPixmapItem | None = None
         self._placeholder_item: QGraphicsTextItem | None = None
-        self._marker_items: list[QGraphicsEllipseItem] = []
+        self._marker_items: list[QGraphicsItem] = []
         self._marker_views: list[MarkerView] = []
+        self._marker_indices_by_frame: dict[int, tuple[int, ...]] = {}
+        self._current_frame: int | None = None
         self._calibration_items: list[QGraphicsItem] = []
         self._calibration_view: CalibrationView | None = None
         self._calibration_mode: str | None = None
@@ -91,7 +97,7 @@ class VideoView(QGraphicsView):
         self._is_scale_dragging = False
         self._annotation_mode = False
         self._fit_pending = True
-        self.setMinimumSize(320, 240)
+        self.setMinimumSize(240, 160)
         self.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
@@ -139,6 +145,7 @@ class VideoView(QGraphicsView):
         if self._pixmap_item is not None:
             self._scene.removeItem(self._pixmap_item)
             self._pixmap_item = None
+        self._current_frame = None
         self.set_calibration(None)
         self._clear_scale_preview()
         self._scene.setSceneRect(QRectF(0.0, 0.0, 0.0, 0.0))
@@ -337,37 +344,60 @@ class VideoView(QGraphicsView):
         return self._annotation_mode
 
     def set_markers(self, markers: list[MarkerView]) -> None:
-        """整批替换 overlay 标注点（锚定图像像素、屏幕固定大小）。"""
+        """替换 marker 数据并按几何/来源复用现有图元。"""
 
-        for item in self._marker_items:
-            self._scene.removeItem(item)
-        self._marker_items = []
-        self._marker_views = []
-        self._marker_views = list(markers)
+        previous_items = list(self._marker_items)
+        previous_views = list(self._marker_views)
+        reusable: dict[
+            tuple[float, float, str, str], list[tuple[QGraphicsItem, MarkerView]]
+        ] = {}
+        for item, marker in zip(previous_items, previous_views):
+            reusable.setdefault(self._marker_style_key(marker), []).append((item, marker))
+
+        next_items: list[QGraphicsItem] = []
+        next_views: list[MarkerView] = []
         for marker in markers:
-            color = QColor(marker.color)
-            radius = MARKER_DIAMETER_PX / 2.0
-            # rect 以 item 原点为中心；ItemIgnoresTransformations 的绘制
-            # 锚点是原点，必须用 setPos 定位，否则偏移 (1-zoom)×pixel
-            item = QGraphicsEllipseItem(-radius, -radius, MARKER_DIAMETER_PX, MARKER_DIAMETER_PX)
-            item.setPos(marker.pixel_x, marker.pixel_y)
-            # 屏幕固定大小：忽略 view transform（ItemIgnoresTransformations）
-            item.setFlag(
-                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True
+            key = self._marker_style_key(marker)
+            candidates = reusable.get(key)
+            current = self._marker_is_current(marker)
+            view = marker if marker.is_current_frame == current else replace(
+                marker, is_current_frame=current
             )
-            pen = QPen(color)
-            if marker.is_current_frame:
-                pen.setWidthF(2.5)
-                item.setBrush(color)
+            if candidates:
+                item, previous_view = candidates.pop()
+                if previous_view.is_current_frame != view.is_current_frame:
+                    self._update_marker_item(item, view)
             else:
-                pen.setWidthF(1.2)
-                item.setBrush(Qt.BrushStyle.NoBrush)
-            item.setPen(pen)
-            item.setZValue(10.0)
-            if self._annotation_mode or self._calibration_mode is not None:
-                item.setCursor(Qt.CursorShape.CrossCursor)
-            self._scene.addItem(item)
-            self._marker_items.append(item)
+                item = self._create_marker_item(marker)
+                self._update_marker_item(item, view)
+            next_items.append(item)
+            next_views.append(view)
+            if candidates is not None and not candidates:
+                reusable.pop(key, None)
+
+        for items in reusable.values():
+            for item, _marker in items:
+                self._scene.removeItem(item)
+        self._marker_items = next_items
+        self._marker_views = next_views
+        self._rebuild_marker_frame_index()
+
+    def set_current_frame(self, frame_index: int) -> None:
+        """只更新前后当前帧的 marker 高亮，不扫描整条轨迹。"""
+
+        previous_frame = self._current_frame
+        self._current_frame = frame_index
+        affected = set(self._marker_indices_by_frame.get(frame_index, ()))
+        if previous_frame is not None:
+            affected.update(self._marker_indices_by_frame.get(previous_frame, ()))
+        for index in affected:
+            marker = self._marker_views[index]
+            current = marker.frame_index == frame_index
+            if marker.is_current_frame == current:
+                continue
+            marker = replace(marker, is_current_frame=current)
+            self._marker_views[index] = marker
+            self._update_marker_item(self._marker_items[index], marker)
 
     def marker_count(self) -> int:
         return len(self._marker_items)
@@ -376,6 +406,63 @@ class VideoView(QGraphicsView):
         """当前 overlay 的标记视图快照（测试与语义断言用）。"""
 
         return list(self._marker_views)
+
+    @staticmethod
+    def _marker_style_key(marker: MarkerView) -> tuple[float, float, str, str]:
+        return (marker.pixel_x, marker.pixel_y, marker.color, marker.source)
+
+    def _marker_is_current(self, marker: MarkerView) -> bool:
+        if marker.frame_index is None or self._current_frame is None:
+            return marker.is_current_frame
+        return marker.frame_index == self._current_frame
+
+    def _rebuild_marker_frame_index(self) -> None:
+        indexed: dict[int, list[int]] = {}
+        for index, marker in enumerate(self._marker_views):
+            if marker.frame_index is not None:
+                indexed.setdefault(marker.frame_index, []).append(index)
+        self._marker_indices_by_frame = {
+            frame_index: tuple(indices) for frame_index, indices in indexed.items()
+        }
+
+    def _create_marker_item(self, marker: MarkerView) -> QGraphicsItem:
+        radius = MARKER_DIAMETER_PX / 2.0
+        if marker.source == "manual":
+            item: QGraphicsItem = QGraphicsEllipseItem(
+                -radius, -radius, MARKER_DIAMETER_PX, MARKER_DIAMETER_PX
+            )
+        else:
+            item = QGraphicsPolygonItem(
+                QPolygonF(
+                    (
+                        QPointF(0.0, -radius),
+                        QPointF(radius, 0.0),
+                        QPointF(0.0, radius),
+                        QPointF(-radius, 0.0),
+                    )
+                )
+            )
+        # 屏幕固定大小：忽略 view transform（ItemIgnoresTransformations）。
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
+        item.setZValue(10.0)
+        self._scene.addItem(item)
+        return item
+
+    def _update_marker_item(self, item: QGraphicsItem, marker: MarkerView) -> None:
+        # item 原点是 marker 中心，避免缩放后出现 (1-zoom)×pixel 偏移。
+        item.setPos(marker.pixel_x, marker.pixel_y)
+        color = QColor(marker.color)
+        pen = QPen(color)
+        pen.setWidthF(2.5 if marker.is_current_frame else 1.2)
+        item.setPen(pen)
+        # manual 沿用实心当前圆/空心历史圆；AI 与其他来源始终为空心菱形。
+        if marker.source == "manual" and marker.is_current_frame:
+            item.setBrush(color)
+        else:
+            item.setBrush(Qt.BrushStyle.NoBrush)
+        item.setToolTip(marker.source)
+        if self._annotation_mode or self._calibration_mode is not None:
+            item.setCursor(Qt.CursorShape.CrossCursor)
 
     def set_calibration(
         self,

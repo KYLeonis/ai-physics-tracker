@@ -112,13 +112,22 @@ def test_task_runner_cooperative_cancellation() -> None:
     run_id = uuid4()
     handle = runner.start_task(run_id, _dummy_successful_worker, total_steps=50)
 
-    time.sleep(0.05)
-    assert handle.is_alive()
+    messages = []
+    deadline = time.monotonic() + 3.0
+    while time.monotonic() < deadline:
+        messages.extend(handle.poll_messages())
+        if any(isinstance(message, TaskLog) and message.message == "Worker started"
+               for message in messages):
+            break
+        time.sleep(0.01)
+    else:
+        handle.cancel(timeout_s=0)
+        raise AssertionError("worker did not report startup")
 
     handle.cancel(timeout_s=1.0)
     assert not handle.is_alive()
 
-    messages = handle.poll_messages()
+    messages.extend(handle.poll_messages())
     logs = [m for m in messages if isinstance(m, TaskLog)]
     assert any("cancelled" in log.message.lower() for log in logs)
 

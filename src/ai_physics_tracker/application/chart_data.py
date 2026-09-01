@@ -83,7 +83,7 @@ def build_chart_data(
             x_unit="s",
             y_unit="",
             series=(),
-            messages=(f"不支持图表类型 {kind!r}",),
+            messages=(f"Unsupported chart type {kind!r}",),
             pixel_coordinates=False,
         )
 
@@ -100,7 +100,7 @@ def build_chart_data(
             x_unit="s" if kind != "xy" else "",
             y_unit="",
             series=(),
-            messages=(f"未找到视频 {video_id}，暂无图表数据",),
+            messages=(f"Video {video_id} was not found; no chart data available",),
             pixel_coordinates=False,
         )
     if timeline is None:
@@ -111,7 +111,7 @@ def build_chart_data(
             x_unit="s" if kind != "xy" else "",
             y_unit="",
             series=(),
-            messages=(f"视频 {video_id} 缺少 Timeline，暂无图表数据",),
+            messages=(f"Video {video_id} has no timeline; no chart data available",),
             pixel_coordinates=False,
         )
 
@@ -124,13 +124,13 @@ def build_chart_data(
     y_unit = expected_unit
     messages: list[str] = []
     if pixel_coordinates:
-        messages.append("当前视频未标定（未设置标定），使用像素坐标（px；y 轴向下）")
+        messages.append("Video is not calibrated; using pixel coordinates (px, y-axis points down)")
 
     tracks_by_id = {track.track_id: track for track in project.tracks}
     series: list[ChartSeries] = []
     seen_track_ids: set[UUID] = set()
     if not track_ids:
-        messages.append("未选择轨迹，暂无图表数据")
+        messages.append("No tracks selected; no chart data available")
 
     for track_id in track_ids:
         if track_id in seen_track_ids:
@@ -138,37 +138,37 @@ def build_chart_data(
         seen_track_ids.add(track_id)
         track = tracks_by_id.get(track_id)
         if track is None:
-            messages.append(f"未找到轨迹 {track_id}，已忽略")
+            messages.append(f"Track {track_id} was not found and was ignored")
             continue
         if track.video_id != video_id:
-            messages.append(f"轨迹 {track.name!r} 不属于当前视频，已忽略")
+            messages.append(f"Track {track.name!r} does not belong to the current video and was ignored")
             continue
 
         derived = _last_derived(project.derived, track_id, source_kind)
         if derived is None:
             messages.append(
-                f"轨迹 {track.name!r} 缺少 {source_kind} 派生数据，暂无图表数据"
+                f"Track {track.name!r} has no {source_kind} derived data; no chart data available"
             )
             continue
         if derived.status == "stale":
             messages.append(
-                f"轨迹 {track.name!r} 的 {source_kind} 派生数据为 stale，曲线可能已过期"
+                f"Track {track.name!r} has stale {source_kind} derived data; the curve may be outdated"
             )
         elif derived.status != "valid":
             messages.append(
-                f"轨迹 {track.name!r} 的 {source_kind} 状态无效，已忽略"
+                f"Track {track.name!r} has invalid {source_kind} status and was ignored"
             )
             continue
 
         expected_calibration = active_calibration.calibration_id if active_calibration else None
         context_mismatch = derived.calibration_ref != expected_calibration
         if context_mismatch:
-            messages.append(f"轨迹 {track.name!r} 使用的标定不是当前标定，按 stale 显示，请重新计算")
+            messages.append(f"Track {track.name!r} uses a different calibration; shown as stale. Recompute the track")
 
         if derived.unit != expected_unit:
             messages.append(
-                f"轨迹 {track.name!r} 的单位 {derived.unit!r} 与当前图表期望单位 "
-                f"{expected_unit!r} 不兼容，已忽略"
+                f"Track {track.name!r} uses unit {derived.unit!r}, but this chart expects "
+                f"{expected_unit!r}; the incompatible series was ignored"
             )
             continue
 
@@ -179,11 +179,11 @@ def build_chart_data(
         if not frames:
             if source_kind in {"velocity", "acceleration"}:
                 messages.append(
-                    f"轨迹 {track.name!r} 的 {source_kind} 连续点不足，暂无可显示数据"
+                    f"Track {track.name!r} has too few continuous {source_kind} points to display"
                 )
             else:
                 messages.append(
-                    f"轨迹 {track.name!r} 在当前 working_zone 内无有效数据"
+                    f"Track {track.name!r} has no valid data in the current working zone"
                 )
             continue
 
@@ -273,22 +273,22 @@ def _prepare_derived_rows(
 
     if derived.values is None:
         if derived.payload_ref is not None:
-            detail = f"外置派生数据 payload_ref={derived.payload_ref!r} 暂不支持读取"
+            detail = f"external derived payload_ref={derived.payload_ref!r} is not supported"
         else:
-            detail = "派生数据 values=None，暂无可读取的内嵌值"
-        messages.append(f"轨迹 {track.name!r} 的 {derived.kind} {detail}")
+            detail = "derived values are None; no inline values are available"
+        messages.append(f"Track {track.name!r} {derived.kind}: {detail}")
         return None
 
     try:
         raw_frames = tuple(derived.frames)
         raw_values = tuple(derived.values)
     except (TypeError, ValueError):
-        messages.append(f"轨迹 {track.name!r} 的 {derived.kind} 数据结构无法读取")
+        messages.append(f"Track {track.name!r} has unreadable {derived.kind} data")
         return None
 
     if len(raw_frames) != len(raw_values):
         messages.append(
-            f"轨迹 {track.name!r} 的 {derived.kind} frames/values 长度不一致，已忽略"
+            f"Track {track.name!r} has mismatched {derived.kind} frames/values lengths and was ignored"
         )
         return None
 
@@ -298,44 +298,44 @@ def _prepare_derived_rows(
     for raw_frame, raw_value in zip(raw_frames, raw_values):
         if isinstance(raw_frame, bool) or not isinstance(raw_frame, Integral):
             messages.append(
-                f"轨迹 {track.name!r} 的 {derived.kind} 含非法帧号，已忽略"
+                f"Track {track.name!r} has an invalid frame index in {derived.kind} and was ignored"
             )
             return None
         frame = int(raw_frame)
         if frame < 0 or (previous_frame is not None and frame <= previous_frame):
             messages.append(
-                f"轨迹 {track.name!r} 的 {derived.kind} 帧顺序非法，已忽略"
+                f"Track {track.name!r} has invalid frame order in {derived.kind} and was ignored"
             )
             return None
         previous_frame = frame
 
         if isinstance(raw_value, (str, bytes)):
             messages.append(
-                f"轨迹 {track.name!r} 的 {derived.kind} 值不是二维数值，已忽略"
+                f"Track {track.name!r} has non-2D numeric values in {derived.kind} and was ignored"
             )
             return None
         try:
             row = tuple(raw_value)
         except (TypeError, ValueError):
             messages.append(
-                f"轨迹 {track.name!r} 的 {derived.kind} 值不是二维数值，已忽略"
+                f"Track {track.name!r} has non-2D numeric values in {derived.kind} and was ignored"
             )
             return None
         if len(row) != 2:
             messages.append(
-                f"轨迹 {track.name!r} 的 {derived.kind} 值形状不是 2 列，已忽略"
+                f"Track {track.name!r} has values that are not two columns in {derived.kind} and was ignored"
             )
             return None
         try:
             first, second = float(row[0]), float(row[1])
         except (TypeError, ValueError, OverflowError):
             messages.append(
-                f"轨迹 {track.name!r} 的 {derived.kind} 含非数值，已忽略"
+                f"Track {track.name!r} has non-numeric values in {derived.kind} and was ignored"
             )
             return None
         if not isfinite(first) or not isfinite(second):
             messages.append(
-                f"轨迹 {track.name!r} 的 {derived.kind} 含非有限值，已忽略"
+                f"Track {track.name!r} has non-finite values in {derived.kind} and was ignored"
             )
             return None
         if timeline.working_zone[0] <= frame <= timeline.working_zone[1]:

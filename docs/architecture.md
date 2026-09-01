@@ -85,6 +85,12 @@ DLC 模型（dlc-models, PyTorch engine）
 取消/错误不提交半批结果。`effective_points` 是运动学与后台输入校验共同的数据入口，
 `manual_points` 仍仅供人工标注和训练使用。GUI 视觉/按钮接线留到 4.4。
 
+4.4 的 GUI 任务事务见 [ADR-0012](decisions/0012-gui-tracking-task-boundaries.md)：
+TaskPanel/TrackingActions 仅捕获请求和提交候选；spawn worker 独占 DLC、reader、训练/评价/
+推理与日志，结果解析/重合并在后台线程。主线程用会话/媒体代际和 Project 快照身份提交，
+保存保持活动 session 身份。AI 链路采用轻量文件状态，不反复哈希；数据结构、时序、
+snapshot、first-wins 和原子提交校验保留。Manual 圆形、AI 空心菱形，帧高亮索引更新。
+
 ## 4. 运动学计算与可视化（Phase 3/6 起细化）
 
 - 输入：标定后的物理坐标序列 x(t), y(t)；或无标定时的像素坐标

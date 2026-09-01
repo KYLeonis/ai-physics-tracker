@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QDockWidget, QMessageBox, QScrollArea
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video import (
@@ -21,6 +21,33 @@ from ai_physics_tracker.infrastructure.ffprobe_timing import FFprobeTimingProbe
 
 def _window() -> MainWindow:
     return MainWindow(lambda: VideoSession(OpenCVVideoReader()), ProjectRepository(), FFprobeTimingProbe())
+
+
+def test_main_chart_and_ai_panels_allow_window_resizing(qtbot: QtBot) -> None:
+    window = _window()
+    qtbot.addWidget(window)
+    window.show()
+
+    window.resize(900, 520)
+    assert window.size().width() == 900
+    assert window.size().height() == 520
+    assert window.centralWidget().findChild(QScrollArea) is not None
+    assert not window.isFullScreen()
+    assert not window.isMaximized()
+
+    for panel in (window.chartActions.panel, window.trackingActions.panel):
+        assert isinstance(panel.widget(), QScrollArea)
+        assert panel.features() & QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        panel.setFloating(True)
+        panel.resize(640, 480)
+        assert panel.isFloating()
+        assert panel.size().width() == 640
+        assert panel.size().height() == 480
+        panel.setFloating(False)
+
+    window.resize(1100, 760)
+    assert window.size().width() == 1100
+    assert window.size().height() == 760
 
 
 def test_main_window_opens_video_and_navigates_frames(

@@ -99,13 +99,14 @@
    - CI 环境：不安装真实 DLC，通过 `MockEngineAdapter` 覆盖 100% 协议与任务流程测试
 5. 验证设备支持：`python -c "import torch; print('CUDA:', torch.cuda.is_available(), 'MPS:', hasattr(torch.backends, 'mps') and torch.backends.mps.is_available())"`
 
-### Phase 4.3 推理接口与真实验证
+### Phase 4 跟踪接口与真实验证
 
 - 本地已有环境：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q`。
 - 真实 CPU 闭环：`.venv/bin/python scripts/smoke_test_dlc_infer.py`。脚本生成独立实验，
   训练 1 epoch 后全帧推理、导入、重算、保存重开；最终应显示 `PASSED`，10 帧中人工 5 点
   被保护、AI 新增 5 点。输出目录会打印并保留；首次预训练权重可能需要网络下载。
-- GUI 尚无推理按钮；4.4 才接 Task Panel、窗口取消和 AI 视觉样式，当前不要求操作 GUI。
+- 4.4 已接通 Task Panel、训练/推理/取消、模型评价、日志历史和 AI 视觉样式；
+  `.venv/bin/python -m ai_physics_tracker` 可直接进行 GUI 工作流。
 - API 顺序：`prepare_inference(session, training_run_id, InferenceParams(min_confidence=...))`
   → `start_inference(session, run_id)` → 定时 `poll_messages(session, run_id)`。
   项目必须先保存，视频必须具备本次会话时序授权，训练模型必须具有可信 SHA-256。
@@ -123,10 +124,15 @@
   升级 DLC 后必须重跑真实冒烟；不修改安装包源码，不以读帧或耗时模拟进度。
 - 当前真实 DLC 验证仅 macOS CPU；MPS/CUDA 与 Windows 真机仍需另外验收。4.3 集成提交
   `e58b28d` 的 [macOS/Windows Python 3.11 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33380207408) 均通过；CI 使用 mock，不等同 Windows CUDA 验收。
-- **4.4 最新设计修订（用户反馈，尚未实现）**：取消 AI 链路的重复全文件 SHA-256 和缺历史 hash 门禁，
+- **4.4 设计修订（用户反馈，当前工作分支已实现）**：取消 AI 链路的重复全文件 SHA-256 和缺历史 hash 门禁，
   使用轻量文件状态、实际模型引用与会话代际检查；明确不防御大小/修改时间等都相同的内容替换。
-  抽帧、训练集生成、结果解析等必要耗时操作仍需后台化。当前 4.3 实现仍有哈希扫描，
-  此说明是 4.4 的替代方案，详见 `docs/status/phase-4.4-plan.md` D0。依赖下载校验不受此调整影响。
+  抽帧、训练集生成、结果解析等必要耗时操作已后台化。4.4 替代 4.3 AI 任务调用路径，
+  详见 `docs/status/phase-4.4-plan.md` D0；依赖下载校验不受此调整影响。
+- 4.4 可用 `.venv/bin/python scripts/smoke_test_gui_tracking.py` 做 offscreen
+  GUI 组件+真实 CPU 引擎闭环；输出独立项目路径并保留。macOS Human Review 已于
+  2026-09-01 通过，Windows 真机/CUDA 仍待验证。
+  真实短训练记录 epoch/loss/lr，并对确切 snapshot 生成 train/test RMSE（px）及样本量；
+  数值用于验证评价管线，不把 1 epoch/少量样本结果当模型精度结论。
 
 ## 3. 仓库工作流
 

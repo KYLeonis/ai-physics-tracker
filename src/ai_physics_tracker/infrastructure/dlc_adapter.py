@@ -5,12 +5,13 @@ from concurrent.futures import CancelledError
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from io import TextIOBase
 from datetime import UTC, datetime
+from math import isfinite
+import re
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 import cv2
-import numpy as np
 
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.domain.track import TrackPoint
@@ -24,6 +25,15 @@ from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoRea
 from ai_physics_tracker.infrastructure.task_runner import (
     send_log,
     send_progress,
+)
+
+
+_FLOAT_PATTERN = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+_TRAINING_PROGRESS_PATTERN = re.compile(
+    rf"\bEpoch\s+(?P<epoch>\d+)\s*/\s*(?P<total>\d+)\s+"
+    rf"\(\s*lr\s*=\s*(?P<learning_rate>{_FLOAT_PATTERN})\s*\)\s*,\s*"
+    rf"train\s+loss\s+(?P<loss>{_FLOAT_PATTERN})",
+    re.IGNORECASE,
 )
 
 
@@ -112,6 +122,8 @@ class DLCAdapter:
         """导出 active manual 标注点为 DLC labeled-data 结构（PNG 图像与 MultiIndex CSV）。"""
 
         actual_bodyparts = bodyparts or ["target"]
+        if not video_reader.is_open:
+            raise RuntimeError("Cannot export annotations: video reader is not open")
         manual_points = [
             p
             for p in track_points
@@ -143,16 +155,26 @@ class DLCAdapter:
             img_abs = proj_dir / img_rel
 
             # 解码该帧并写入 PNG
-            if video_reader.is_open:
-                try:
-                    decoded = video_reader.read_frame(point.frame_index)
-                    # decoded.pixels_rgb 是 RGB，转为 BGR 供 cv2 写入
-                    bgr = cv2.cvtColor(decoded.pixels_rgb, cv2.COLOR_RGB2BGR)
-                    cv2.imwrite(str(img_abs), bgr)
-                except Exception:
-                    # 若读取器异常，写入空占位图像保证流程完整
-                    placeholder = np.zeros((100, 100, 3), dtype=np.uint8)
-                    cv2.imwrite(str(img_abs), placeholder)
+            try:
+                decoded = video_reader.read_frame(point.frame_index)
+                if decoded.frame_index != point.frame_index:
+                    raise ValueError(
+                        f"reader returned frame {decoded.frame_index} for requested frame "
+                        f"{point.frame_index}"
+                    )
+                # decoded.pixels_rgb 是 RGB，转为 BGR 供 cv2 写入
+                bgr = cv2.cvtColor(decoded.pixels_rgb, cv2.COLOR_RGB2BGR)
+            except Exception as error:
+                raise RuntimeError(
+                    f"Failed to decode frame {point.frame_index} for DLC annotation export: {error}"
+                ) from error
+            try:
+                if not cv2.imwrite(str(img_abs), bgr):
+                    raise OSError("cv2.imwrite returned False")
+            except Exception as error:
+                raise RuntimeError(
+                    f"Failed to write PNG annotation frame {point.frame_index}: {img_abs}: {error}"
+                ) from error
 
             # 对应 bodyparts 列表（单 TrackPoint 填入首个 bodypart，其余补空）
             coords_row = [img_rel]
@@ -174,33 +196,41 @@ class DLCAdapter:
             header_bodyparts.extend([bp, bp])
         header_coords = ["coords"] + ["x", "y"] * len(actual_bodyparts)
 
-        with open(csv_file, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(header_scorer)
-            writer.writerow(header_bodyparts)
-            writer.writerow(header_coords)
-            for row in csv_rows:
-                writer.writerow(row)
+        try:
+            with open(csv_file, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(header_scorer)
+                writer.writerow(header_bodyparts)
+                writer.writerow(header_coords)
+                for row in csv_rows:
+                    writer.writerow(row)
+        except OSError as error:
+            raise RuntimeError(f"Failed to write DLC annotation CSV: {csv_file}") from error
 
         # 同步生成 DLC 所需的 CollectedData_<scorer>.h5 文件
+        h5_file = video_dir / f"CollectedData_{scorer}.h5"
         try:
             import pandas as pd
 
             df = pd.read_csv(csv_file, header=[0, 1, 2], index_col=0)
-            h5_file = video_dir / f"CollectedData_{scorer}.h5"
             df.to_hdf(str(h5_file), key="df_with_missing", mode="w")
-        except (ImportError, Exception):
-            pass
+            if not h5_file.is_file():
+                raise OSError("pandas.to_hdf did not create the output file")
+        except Exception as error:
+            raise RuntimeError(f"Failed to create DLC annotation HDF5: {h5_file}: {error}") from error
 
         return exported_count
 
     def engine_version(self) -> str:
-        """返回已安装的 DeepLabCut 版本，未安装时返回 '3.0.1'。"""
+        """返回已安装的 DeepLabCut 版本，依赖缺失时明确报错。"""
         try:
             import deeplabcut
-            return str(deeplabcut.__version__)
-        except (ImportError, Exception):
-            return "3.0.1"
+        except ImportError as error:
+            raise RuntimeError("DeepLabCut is not installed") from error
+        version = getattr(deeplabcut, "__version__", None)
+        if not isinstance(version, str) or not version.strip():
+            raise RuntimeError("DeepLabCut did not expose a valid version")
+        return version
 
     def create_training_dataset(
         self,
@@ -212,6 +242,9 @@ class DLCAdapter:
         """调用 deeplabcut.create_training_dataset 创建训练集。"""
         try:
             import deeplabcut
+        except ImportError as error:
+            raise RuntimeError("DeepLabCut is required to create a training dataset") from error
+        try:
             deeplabcut.create_training_dataset(
                 str(config_path),
                 num_shuffles=num_shuffles,
@@ -219,14 +252,9 @@ class DLCAdapter:
                 augmenter_type=augmenter_type,
                 userfeedback=False,
             )
-            return True
-        except ImportError:
-            # 未安装 DLC 时创建基础训练集目录保证 mock 流程连贯
-            dataset_dir = config_path.parent / "training-datasets" / f"iteration-0"
-            dataset_dir.mkdir(parents=True, exist_ok=True)
-            return True
-        except Exception as exc:
-            raise RuntimeError(f"DLC create_training_dataset failed: {exc}") from exc
+        except Exception as error:
+            raise RuntimeError(f"DLC create_training_dataset failed: {error}") from error
+        return True
 
     def train(
         self,
@@ -247,6 +275,8 @@ class DLCAdapter:
             device=params.device,
             batch_size=params.batch_size,
             display_iters=params.display_iters,
+            save_iters=params.save_iters,
+            learning_rate=params.learning_rate,
             trainingsetindex=params.trainingsetindex,
         )
         return TrainOutcome(
@@ -256,6 +286,97 @@ class DLCAdapter:
             engine_version=self.engine_version(),
             error_message=outcome_dict.get("error_message"),
         )
+
+    def evaluate(
+        self,
+        config_path: Path,
+        snapshot_path: Path,
+        params: TrainingParams,
+    ) -> dict[str, Any]:
+        """用指定快照执行 DLC 原生评价，并返回 train/test 指标摘要。"""
+
+        config_path = Path(config_path).resolve()
+        snapshot_path = Path(snapshot_path).resolve()
+        if not config_path.is_file():
+            raise ValueError(f"DLC config does not exist: {config_path}")
+        if not snapshot_path.is_file():
+            raise ValueError(f"DLC snapshot does not exist: {snapshot_path}")
+
+        try:
+            import deeplabcut
+            from deeplabcut.pose_estimation_pytorch.data.dlcloader import DLCLoader
+        except ImportError as error:
+            raise RuntimeError("DeepLabCut is required to evaluate a model") from error
+
+        snapshots = _model_snapshots(config_path, params.shuffle, params.trainingsetindex)
+        matches = [
+            index
+            for index, snapshot in enumerate(snapshots)
+            if snapshot.path.resolve() == snapshot_path
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                "Selected snapshot does not belong to this DLC model; "
+                "retrain or select its config"
+            )
+        snapshot_index = matches[0]
+
+        loader = DLCLoader(
+            config_path,
+            shuffle=params.shuffle,
+            trainset_index=params.trainingsetindex,
+        )
+        selected_snapshot = snapshots[snapshot_index]
+        scorer = loader.scorer(selected_snapshot)
+        scores_path = loader.evaluation_folder / f"{scorer}-results.csv"
+        actual_device = detect_device() if params.device == "auto" else params.device
+
+        try:
+            with _selected_evaluation_snapshot(snapshot_path):
+                deeplabcut.evaluate_network(
+                    str(config_path),
+                    shuffles=[params.shuffle],
+                    trainingsetindex=params.trainingsetindex,
+                    snapshotindex=snapshot_index,
+                    device=actual_device,
+                    plotting=False,
+                    show_errors=False,
+                )
+        except Exception as error:
+            raise RuntimeError(f"DLC model evaluation failed: {error}") from error
+
+        if not scores_path.is_file():
+            raise RuntimeError(f"DLC evaluation did not produce its results CSV: {scores_path}")
+        scores = _read_evaluation_scores(scores_path)
+        try:
+            train_samples = int(len(loader.df_train))
+            test_samples = int(len(loader.df_test))
+        except Exception as error:
+            raise RuntimeError(f"DLC evaluation sample counts are unavailable: {error}") from error
+
+        metric_units = {
+            name: _evaluation_metric_unit(name)
+            for split in ("train", "test")
+            for name in scores[split]
+        }
+        return {
+            "status": "completed",
+            "snapshot_path": str(snapshot_path),
+            "snapshot_index": snapshot_index,
+            "device": actual_device,
+            "train": {
+                "metrics": scores["train"],
+                "sample_count": train_samples,
+                "units": {name: metric_units[name] for name in scores["train"]},
+            },
+            "test": {
+                "metrics": scores["test"],
+                "sample_count": test_samples,
+                "units": {name: metric_units[name] for name in scores["test"]},
+            },
+            "metadata": scores["metadata"],
+            "results_csv": str(scores_path),
+        }
 
     def import_results(
         self, prediction_data: Any, track_id: UUID, timeline: Timeline,
@@ -336,6 +457,83 @@ def _selected_snapshot(expected_path: Path):
         utils.get_model_snapshots = original
 
 
+@contextmanager
+def _selected_evaluation_snapshot(expected_path: Path):
+    """复核 DLC 评价阶段实际加载的快照，并在结束后恢复门面函数。"""
+    from deeplabcut.pose_estimation_pytorch.apis import evaluation, utils
+
+    targets = [(utils, "get_model_snapshots")]
+    if hasattr(evaluation, "get_model_snapshots"):
+        targets.append((evaluation, "get_model_snapshots"))
+    originals = [(module, name, getattr(module, name)) for module, name in targets]
+
+    def select(original, *args, **kwargs):
+        selected = original(*args, **kwargs)
+        if len(selected) != 1 or selected[0].path.resolve() != expected_path.resolve():
+            raise ValueError("DLC resolved a different snapshot during evaluation")
+        return selected
+
+    for module, name, original in originals:
+        setattr(module, name, lambda *args, _original=original, **kwargs: select(
+            _original, *args, **kwargs
+        ))
+    try:
+        yield
+    finally:
+        for module, name, original in originals:
+            setattr(module, name, original)
+
+
+def _read_evaluation_scores(path: Path) -> dict[str, dict[str, Any]]:
+    """读取 DLC 原生评价 CSV 中的 train/test 指标和元数据。"""
+    try:
+        with path.open("r", newline="", encoding="utf-8") as stream:
+            rows = list(csv.DictReader(stream))
+    except OSError as error:
+        raise RuntimeError(f"Failed to read DLC evaluation CSV: {path}") from error
+    if not rows:
+        raise RuntimeError(f"DLC evaluation CSV contains no result row: {path}")
+
+    row = rows[0]
+    scores: dict[str, dict[str, Any]] = {"train": {}, "test": {}, "metadata": {}}
+    for raw_name, raw_value in row.items():
+        if raw_name is None:
+            continue
+        name = raw_name.strip()
+        value = _evaluation_csv_value(raw_value)
+        lowered = name.lower()
+        if lowered.startswith("train "):
+            scores["train"][name[6:]] = value
+        elif lowered.startswith("test "):
+            scores["test"][name[5:]] = value
+        else:
+            scores["metadata"][name] = value
+    if not scores["train"] or not scores["test"]:
+        raise RuntimeError(f"DLC evaluation CSV has no train/test metrics: {path}")
+    return scores
+
+
+def _evaluation_csv_value(value: str | None) -> float | str | None:
+    """把评价 CSV 的数值列转为 JSON 可序列化值。"""
+    if value is None or not value.strip():
+        return None
+    try:
+        number = float(value)
+    except ValueError:
+        return value
+    return number if isfinite(number) else None
+
+
+def _evaluation_metric_unit(name: str) -> str:
+    """返回 DLC 原生评价指标的常用单位说明。"""
+    lowered = name.lower()
+    if "rmse" in lowered or "error" in lowered:
+        return "px"
+    if lowered in {"map", "mar"}:
+        return "%"
+    return "unknown"
+
+
 def dlc_train_worker(
     run_id: UUID,
     queue: Any,
@@ -347,6 +545,8 @@ def dlc_train_worker(
     batch_size: int = 8,
     display_iters: int = 10,
     trainingsetindex: int = 0,
+    save_iters: int = 50,
+    learning_rate: float = 0.001,
 ) -> dict[str, Any]:
     """子进程中的 DLC 训练工作入口函数。"""
 
@@ -356,49 +556,63 @@ def dlc_train_worker(
     actual_device = detect_device() if device == "auto" else device
     send_log(queue, run_id, "INFO", f"Detected compute device: {actual_device}")
 
+    stream = _TrainingLogStream(queue, run_id)
     try:
-        import deeplabcut
+        with redirect_stdout(stream), redirect_stderr(stream):
+            import deeplabcut
 
-        send_log(queue, run_id, "INFO", f"DeepLabCut version: {deeplabcut.__version__}")
-        send_log(
-            queue,
-            run_id,
-            "INFO",
-            f"Calling deeplabcut.train_network(epochs={max_epochs}, batch_size={batch_size}, device={actual_device})",
-        )
+            send_log(queue, run_id, "INFO", f"DeepLabCut version: {deeplabcut.__version__}")
+            send_log(
+                queue,
+                run_id,
+                "INFO",
+                f"Calling deeplabcut.train_network(epochs={max_epochs}, batch_size={batch_size}, "
+                f"device={actual_device}, learning_rate={learning_rate}, save_epochs={save_iters})",
+            )
 
-        before = {snapshot.path.resolve(): _snapshot_stamp(snapshot.path)
-                  for snapshot in _model_snapshots(config_path, shuffle, trainingsetindex)}
-        if cancel_event.is_set():
-            return {"status": "cancelled", "epochs_completed": 0}
-        deeplabcut.train_network(
-            str(config_path),
-            shuffle=shuffle,
-            trainingsetindex=trainingsetindex,
-            epochs=max_epochs,
-            batch_size=batch_size,
-            device=actual_device,
-            display_iters=display_iters,
-            save_epochs=max_epochs,
-        )
+            before = {
+                snapshot.path.resolve(): _snapshot_stamp(snapshot.path)
+                for snapshot in _model_snapshots(config_path, shuffle, trainingsetindex)
+            }
+            if cancel_event.is_set():
+                return {"status": "cancelled", "epochs_completed": 0}
+            deeplabcut.train_network(
+                str(config_path),
+                shuffle=shuffle,
+                trainingsetindex=trainingsetindex,
+                epochs=max_epochs,
+                batch_size=batch_size,
+                device=actual_device,
+                display_iters=display_iters,
+                save_epochs=save_iters,
+                pytorch_cfg_updates={"runner.optimizer.params.lr": learning_rate},
+            )
 
-        snapshots = _model_snapshots(config_path, shuffle, trainingsetindex)
-        changed = [snapshot for snapshot in snapshots
-                   if _snapshot_stamp(snapshot.path) != before.get(snapshot.path.resolve())]
-        if not changed:
-            raise RuntimeError("Training returned without creating or updating a model snapshot")
-        # DLC 顺序按 epoch 排列，best 在末尾；只选择本次确实产出的文件。
-        snapshot_path = str(changed[-1].path.resolve())
-        send_log(queue, run_id, "INFO", f"DLC training completed. Snapshot saved: {snapshot_path}")
-        return {"status": "completed", "epochs_completed": max_epochs,
-                "snapshot_path": snapshot_path}
-    except Exception as exc:
-        send_log(queue, run_id, "ERROR", f"DLC training failed: {exc}")
+            snapshots = _model_snapshots(config_path, shuffle, trainingsetindex)
+            changed = [
+                snapshot
+                for snapshot in snapshots
+                if _snapshot_stamp(snapshot.path) != before.get(snapshot.path.resolve())
+            ]
+            if not changed:
+                raise RuntimeError("Training returned without creating or updating a model snapshot")
+            # DLC 顺序按 epoch 排列，best 在末尾；只选择本次确实产出的文件。
+            snapshot_path = str(changed[-1].path.resolve())
+            send_log(queue, run_id, "INFO", f"DLC training completed. Snapshot saved: {snapshot_path}")
+            return {
+                "status": "completed",
+                "epochs_completed": max_epochs,
+                "snapshot_path": snapshot_path,
+            }
+    except Exception as error:
+        send_log(queue, run_id, "ERROR", f"DLC training failed: {error}")
         return {
             "status": "failed",
             "epochs_completed": 0,
-            "error_message": str(exc),
+            "error_message": str(error),
         }
+    finally:
+        stream.flush()
 
 
 def _snapshot_stamp(path: Path) -> tuple[int, int]:
@@ -421,9 +635,17 @@ def _model_snapshots(config_path: Path, shuffle: int, trainingsetindex: int) -> 
 class _QueueLogStream(TextIOBase):
     """把 DLC 标准输出转成有界日志行，兼容 tqdm 的回车刷新。"""
 
-    def __init__(self, queue: Any, run_id: UUID) -> None:
+    def __init__(self, queue: Any, run_id: UUID, line_handler: Any | None = None) -> None:
         self.queue, self.run_id = queue, run_id
+        self.line_handler = line_handler
         self.pending = ""
+
+    def _emit_line(self, line: str) -> None:
+        if line.strip():
+            line = line[:4096]
+            send_log(self.queue, self.run_id, "INFO", line)
+            if self.line_handler is not None:
+                self.line_handler(line)
 
     def write(self, value: str) -> int:
         self.pending += value.replace("\r", "\n")
@@ -432,14 +654,34 @@ class _QueueLogStream(TextIOBase):
                 line, self.pending = self.pending.split("\n", 1)
             else:
                 line, self.pending = self.pending[:4096], self.pending[4096:]
-            if line.strip():
-                send_log(self.queue, self.run_id, "INFO", line[:4096])
+            self._emit_line(line)
         return len(value)
 
     def flush(self) -> None:
         if self.pending.strip():
-            send_log(self.queue, self.run_id, "INFO", self.pending[:4096])
+            self._emit_line(self.pending)
         self.pending = ""
+
+
+class _TrainingLogStream(_QueueLogStream):
+    """转发 DLC 训练日志，并从真实 epoch 行提取 loss 与学习率。"""
+
+    def __init__(self, queue: Any, run_id: UUID) -> None:
+        super().__init__(queue, run_id, line_handler=self._handle_line)
+
+    def _handle_line(self, line: str) -> None:
+        match = _TRAINING_PROGRESS_PATTERN.search(line)
+        if match is None:
+            return
+        send_progress(
+            self.queue,
+            self.run_id,
+            step=int(match.group("epoch")),
+            total_steps=int(match.group("total")),
+            loss=float(match.group("loss")),
+            learning_rate=float(match.group("learning_rate")),
+            message=line,
+        )
 
 
 @contextmanager

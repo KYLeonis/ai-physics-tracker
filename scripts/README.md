@@ -19,3 +19,7 @@
 再经 InferenceCoordinator 使用同一快照推理，检查真实帧进度、5 个新增 AI 点、人工点保护、
 运动学计算及保存重开。默认使用新的临时目录；成功和失败的文件均保留，脚本会打印位置。
 需要本地已安装 DLC/PyTorch/Pandas/PyTables；不用于无 DLC 的 CI，也不代表跟踪精度验收。
+
+`smoke_test_gui_tracking.py`：4.4 的 GUI 组件集成冒烟。在 offscreen 平台创建主窗口，
+使用独立合成视频/项目，通过 Task Panel 启动真实 CPU 训练、评价和推理并验证结果。
+产物保留，不操作用户实验文件。它仅验证接线和数据，不替代 AGENTS.md 的真人 Human Review。

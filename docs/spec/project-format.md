@@ -60,7 +60,16 @@ MyExperiment/                        # 目录名 = 项目可移植单元；避�
 - `TrackingRun.extra_fields` 保存 `config_path`、输出文件相对引用及 SHA-256、行数、导入统计；`model_snapshot` 对项目内模型保存相对路径。仍使用既有可扩展字段和 schema v1，不迁移历史项目。
 - 成功、取消、失败后的产物均保留；重试创建新 run 目录，不自动覆盖或清理旧文件。原始输出可用于检查和重新过滤；清理由用户另行授权。
 - 4.2 历史绝对模型路径仅在仍可验证时读取；失效时提示重新训练或指定可验证配置，不能猜测新位置或默默改用另一模型。
-- “可验证”要求训练记录具有合法 `model_sha256` 且与权重一致；没有哈希的历史记录不能仅凭文件名信任，需重新训练生成可验证记录，不自动修写旧 run。对于可验证但位于项目外的旧式 config/model，推理后在本次 run 目录保存 `config-used.yaml` 与 `model-used.pt` 内容副本；新 run 只引用这些项目内相对路径。此兼容路径会额外占用一份模型空间，不删除或迁移外部原件。
+- 4.4 按用户确认的 ADR-0012 使用轻量文件状态和实际 snapshot 引用；不再要求历史
+  `model_sha256`，旧哈希字段兼容保留。项目外旧式 config/model 仍通过运行归档副本引用，
+  不删除或迁移外部原件。当前文件状态检查不防御保持元数据不变的内容替换。
+- `data/engines/<run_id>.log` 保存完整任务日志；`data/engines/<run_id>/task-result.json`
+  为任务交换记录，不是项目事实源，只有主线程提交后才进入 project.json。失败/取消保留
+  产物，不复用 run 目录；日志 UI 按需读取末尾内容，不把完整日志载入 GUI。
+- 4.4 GUI 的训练工作目录为 `data/engines/<run_id>/dlc_<track_id前8位>/`，每次训练
+  独立，避免 DLC 的 checkpoint 管理影响以前训练 run 引用的模型；评价 CSV 另复制为
+  `data/engines/<run_id>/evaluation.csv`，历史指标/文件不被下一次评价覆盖。
+  4.2 的同步脚本入口仍兼容原有按 Track 复用的训练目录。
 
 ---
 
