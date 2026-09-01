@@ -2,7 +2,6 @@
 
 from dataclasses import replace
 import logging
-import hashlib
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -251,8 +250,7 @@ class TrainingCoordinator:
                             session.update_tracking_run(mark_run_failed(run, "Training returned no existing model snapshot"))
                             continue
                         snapshot_path = Path(snapshot).resolve()
-                        with snapshot_path.open("rb") as model_file:
-                            digest = hashlib.file_digest(model_file, "sha256").hexdigest()
+                        stamp = snapshot_path.stat()
                         if session.project_root is not None:
                             try:
                                 snapshot = snapshot_path.relative_to(session.project_root.resolve()).as_posix()
@@ -261,7 +259,7 @@ class TrainingCoordinator:
                                 snapshot = str(snapshot_path)
                         completed_run = replace(mark_run_completed(run, model_snapshot=snapshot),
                             engine_version=str(payload.get("engine_version") or run.engine_version),
-                            extra_fields={**run.extra_fields, "model_sha256": digest})
+                            extra_fields={**run.extra_fields, "model_file_info": [stamp.st_size, stamp.st_mtime_ns]})
                         session.update_tracking_run(completed_run)
                     elif status_str == "cancelled" or (not msg.success and "cancelled" in str(msg.error).lower()):
                         cancelled_run = mark_run_cancelled(run)

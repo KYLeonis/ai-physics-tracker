@@ -193,3 +193,8 @@ class MockEngineAdapter:
         return InferenceOutcome(parsed.points, path, parsed.row_count, parsed.missing_count,
                                 parsed.low_confidence_count, request.model_snapshot,
                                 self.engine_version(), "cpu")
+
+    def evaluate(self, config_path: Path, snapshot_path: Path, params: TrainingParams) -> dict[str, Any]:
+        """模拟评价指标，供 GUI 生命周期测试使用。"""
+        return {"status": "completed", "unit": "px", "metrics": {"train_rmse": 1.0, "test_rmse": 2.0},
+                "snapshot": snapshot_path.name, "train_samples": 4, "test_samples": 1}

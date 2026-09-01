@@ -1,49 +1,17 @@
 """基于 multiprocessing spawn 模式的安全多进程后台任务框架。"""
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
 import multiprocessing as mp
 from multiprocessing.context import BaseContext
 from queue import Empty
 import time
-from typing import Any, Callable, TypeAlias
+from typing import Any, Callable
 from uuid import UUID
 
 from ai_physics_tracker.domain.types import JsonObject
 
 
-@dataclass(frozen=True)
-class TaskProgress:
-    """任务执行进度消息。"""
-
-    run_id: UUID
-    step: int
-    total_steps: int
-    loss: float | None = None
-    message: str = ""
-
-
-@dataclass(frozen=True)
-class TaskLog:
-    """任务执行日志消息。"""
-
-    run_id: UUID
-    level: str
-    message: str
-    timestamp: str
-
-
-@dataclass(frozen=True)
-class TaskResult:
-    """任务执行最终结果消息。"""
-
-    run_id: UUID
-    success: bool
-    payload: JsonObject | None = None
-    error: str | None = None
-
-
-TaskMessage: TypeAlias = TaskProgress | TaskLog | TaskResult
+from ai_physics_tracker.application.tracking_types import TaskProgress, TaskLog, TaskResult, TaskMessage
 
 
 def _worker_process_entry(
@@ -93,11 +61,11 @@ class TaskHandle:
         self._queue = queue
         self._cancel_event = cancel_event
 
-    def poll_messages(self) -> list[TaskMessage]:
+    def poll_messages(self, limit: int | None = None) -> list[TaskMessage]:
         """非阻塞轮询读取子进程发来的所有最新消息。"""
 
         messages: list[TaskMessage] = []
-        while True:
+        while limit is None or len(messages) < limit:
             try:
                 msg = self._queue.get_nowait()
                 messages.append(msg)
@@ -166,7 +134,14 @@ class BackgroundTaskRunner:
             args=(target_fn, run_id, queue, cancel_event, args, kwargs),
             daemon=False,
         )
-        process.start()
+        try:
+            process.start()
+        except Exception:
+            if process.pid is not None and process.is_alive():
+                process.terminate()
+                process.join(timeout=1.0)
+            queue.close()
+            raise
 
         return TaskHandle(
             run_id=run_id,
@@ -183,6 +158,7 @@ def send_progress(
     total_steps: int,
     loss: float | None = None,
     message: str = "",
+    learning_rate: float | None = None,
 ) -> None:
     """子进程向队列发送进度的便捷工具函数。"""
 
@@ -193,6 +169,7 @@ def send_progress(
             total_steps=total_steps,
             loss=loss,
             message=message,
+            learning_rate=learning_rate,
         )
     )
 

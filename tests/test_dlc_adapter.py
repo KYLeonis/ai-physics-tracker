@@ -2,6 +2,8 @@
 
 import csv
 from pathlib import Path
+import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -12,6 +14,7 @@ from ai_physics_tracker.application.video import DecodedFrame
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.domain.types import utc_now
+from ai_physics_tracker.infrastructure import dlc_adapter
 from ai_physics_tracker.infrastructure.dlc_adapter import (
     DLCAdapter,
     detect_device,
@@ -19,6 +22,17 @@ from ai_physics_tracker.infrastructure.dlc_adapter import (
 from ai_physics_tracker.infrastructure.engine_adapter import EngineAdapter
 from ai_physics_tracker.infrastructure.mock_engine_adapter import MockEngineAdapter
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
+
+
+class _FakeDataFrame:
+    """测试 HDF5 写入边界的最小 DataFrame 替身。"""
+
+    def to_hdf(self, path: str, key: str, mode: str) -> None:
+        Path(path).write_bytes(b"fake hdf5")
+
+
+def _fake_pandas() -> SimpleNamespace:
+    return SimpleNamespace(read_csv=lambda *args, **kwargs: _FakeDataFrame())
 
 
 def test_adapters_satisfy_protocol() -> None:
@@ -57,7 +71,8 @@ def test_dlc_create_project(tmp_path: Path) -> None:
     assert (proj_dir / "dlc-models").is_dir()
 
 
-def test_dlc_export_annotations(tmp_path: Path) -> None:
+def test_dlc_export_annotations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "pandas", _fake_pandas())
     adapter = DLCAdapter()
     video_file = tmp_path / "sample.mp4"
     video_file.touch()
@@ -117,8 +132,8 @@ def test_dlc_export_annotations(tmp_path: Path) -> None:
     mock_reader = MagicMock(spec=OpenCVVideoReader)
     mock_reader.is_open = True
     dummy_pixels = np.zeros((100, 100, 3), dtype=np.uint8)
-    mock_reader.read_frame.return_value = DecodedFrame(
-        frame_index=5,
+    mock_reader.read_frame.side_effect = lambda frame_index: DecodedFrame(
+        frame_index=frame_index,
         pixels_rgb=dummy_pixels,
     )
 
@@ -151,6 +166,7 @@ def test_dlc_export_annotations(tmp_path: Path) -> None:
     img2 = tmp_path / "proj" / "labeled-data" / "sample" / "img00015.png"
     assert img1.is_file()
     assert img2.is_file()
+    assert (tmp_path / "proj" / "labeled-data" / "sample" / "CollectedData_AIPhysicsTracker.h5").is_file()
 
 
 def test_dlc_import_results_dict_records() -> None:
@@ -256,7 +272,7 @@ def test_dlc_import_results_mock_dataframe() -> None:
     assert points[0].source_detail == "dlc:infer:df1"
 
 
-def test_dlc_export_annotations_frame_read_failure_fallback(tmp_path: Path) -> None:
+def test_dlc_export_annotations_frame_read_failure_raises(tmp_path: Path) -> None:
     adapter = DLCAdapter()
     video_file = tmp_path / "fail_video.mp4"
     video_file.touch()
@@ -281,15 +297,135 @@ def test_dlc_export_annotations_frame_read_failure_fallback(tmp_path: Path) -> N
     mock_reader.is_open = True
     mock_reader.read_frame.side_effect = RuntimeError("Decode error")
 
-    count = adapter.export_annotations((point,), mock_reader, config_path)
-    assert count == 1
+    with pytest.raises(RuntimeError, match="Failed to decode frame 10"):
+        adapter.export_annotations((point,), mock_reader, config_path)
 
     img_path = tmp_path / "proj_fail" / "labeled-data" / "fail_video" / "img00010.png"
-    assert img_path.is_file()
-    assert img_path.stat().st_size > 0
+    assert not img_path.exists()
 
 
-def test_dlc_export_annotations_multiple_bodyparts(tmp_path: Path) -> None:
+def test_dlc_export_annotations_requires_open_reader(tmp_path: Path) -> None:
+    adapter = DLCAdapter()
+    video_file = tmp_path / "closed_video.mp4"
+    video_file.touch()
+    config_path = adapter.create_project("proj_closed", "Tester", video_file, tmp_path)
+    point = TrackPoint(
+        point_id=uuid4(),
+        track_id=uuid4(),
+        frame_index=0,
+        time_s=0.0,
+        pixel_x=10.0,
+        pixel_y=20.0,
+        source="manual",
+        visibility="visible",
+        status="active",
+        created_at=utc_now(),
+        modified_at=utc_now(),
+    )
+    reader = MagicMock(spec=OpenCVVideoReader)
+    reader.is_open = False
+
+    with pytest.raises(RuntimeError, match="video reader is not open"):
+        adapter.export_annotations((point,), reader, config_path)
+
+
+def test_dlc_export_annotations_png_write_failure_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(sys.modules, "pandas", _fake_pandas())
+    monkeypatch.setattr(dlc_adapter.cv2, "imwrite", lambda *args, **kwargs: False)
+    adapter = DLCAdapter()
+    video_file = tmp_path / "write_failure.mp4"
+    video_file.touch()
+    config_path = adapter.create_project("proj_png_failure", "Tester", video_file, tmp_path)
+    point = TrackPoint(
+        point_id=uuid4(),
+        track_id=uuid4(),
+        frame_index=0,
+        time_s=0.0,
+        pixel_x=10.0,
+        pixel_y=20.0,
+        source="manual",
+        visibility="visible",
+        status="active",
+        created_at=utc_now(),
+        modified_at=utc_now(),
+    )
+    reader = MagicMock(spec=OpenCVVideoReader)
+    reader.is_open = True
+    reader.read_frame.return_value = DecodedFrame(
+        frame_index=0,
+        pixels_rgb=np.zeros((10, 10, 3), dtype=np.uint8),
+    )
+
+    with pytest.raises(RuntimeError, match="Failed to write PNG"):
+        adapter.export_annotations((point,), reader, config_path)
+
+
+def test_dlc_export_annotations_hdf5_failure_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FailingDataFrame:
+        def to_hdf(self, *args, **kwargs) -> None:
+            raise OSError("HDF5 backend unavailable")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "pandas",
+        SimpleNamespace(read_csv=lambda *args, **kwargs: FailingDataFrame()),
+    )
+    adapter = DLCAdapter()
+    video_file = tmp_path / "hdf_failure.mp4"
+    video_file.touch()
+    config_path = adapter.create_project("proj_hdf_failure", "Tester", video_file, tmp_path)
+    point = TrackPoint(
+        point_id=uuid4(),
+        track_id=uuid4(),
+        frame_index=0,
+        time_s=0.0,
+        pixel_x=10.0,
+        pixel_y=20.0,
+        source="manual",
+        visibility="visible",
+        status="active",
+        created_at=utc_now(),
+        modified_at=utc_now(),
+    )
+    reader = MagicMock(spec=OpenCVVideoReader)
+    reader.is_open = True
+    reader.read_frame.return_value = DecodedFrame(
+        frame_index=0,
+        pixels_rgb=np.zeros((10, 10, 3), dtype=np.uint8),
+    )
+
+    with pytest.raises(RuntimeError, match="Failed to create DLC annotation HDF5"):
+        adapter.export_annotations((point,), reader, config_path)
+
+
+def test_dlc_create_training_dataset_requires_deeplabcut(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(sys.modules, "deeplabcut", None)
+    with pytest.raises(RuntimeError, match="DeepLabCut is required"):
+        DLCAdapter().create_training_dataset(tmp_path / "config.yaml")
+
+
+def test_dlc_engine_version_requires_deeplabcut(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "deeplabcut", None)
+    with pytest.raises(RuntimeError, match="DeepLabCut is not installed"):
+        DLCAdapter().engine_version()
+
+
+def test_dlc_engine_version_rejects_missing_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "deeplabcut", SimpleNamespace())
+    with pytest.raises(RuntimeError, match="valid version"):
+        DLCAdapter().engine_version()
+
+
+def test_dlc_export_annotations_multiple_bodyparts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(sys.modules, "pandas", _fake_pandas())
     adapter = DLCAdapter()
     video_file = tmp_path / "multi_video.mp4"
     video_file.touch()
@@ -310,7 +446,11 @@ def test_dlc_export_annotations_multiple_bodyparts(tmp_path: Path) -> None:
     )
 
     mock_reader = MagicMock(spec=OpenCVVideoReader)
-    mock_reader.is_open = False
+    mock_reader.is_open = True
+    mock_reader.read_frame.return_value = DecodedFrame(
+        frame_index=1,
+        pixels_rgb=np.zeros((100, 100, 3), dtype=np.uint8),
+    )
 
     count = adapter.export_annotations((point,), mock_reader, config_path, bodyparts=["head", "tail"])
     assert count == 1
@@ -380,6 +520,3 @@ def test_mock_engine_adapter_train(tmp_path: Path) -> None:
     outcome_failed = adapter.train(uuid4(), q, cancel_evt, cfg_path, params_fail)
     assert outcome_failed.status == "failed"
     assert outcome_failed.error_message == "Out of memory"
-
-
-

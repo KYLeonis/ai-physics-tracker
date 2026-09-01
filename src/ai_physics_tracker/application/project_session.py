@@ -44,7 +44,7 @@ from ai_physics_tracker.domain.timeline import (
     frame_to_time,
 )
 from ai_physics_tracker.domain.track import Track, TrackPoint
-from ai_physics_tracker.domain.tracking_run import TrackingRun
+from ai_physics_tracker.domain.tracking_run import TrackingRun, mark_run_failed
 from ai_physics_tracker.domain.track_store import (
     BatchWriteResult,
     TrackStore,
@@ -59,6 +59,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ai_physics_tracker.application.kinematics_job import KinematicsResult
+    from ai_physics_tracker.application.tracking_job import TrackingCandidate
 
 
 class ProjectRepositoryPort(Protocol):
@@ -441,7 +442,34 @@ class ProjectSession:
     def load(cls, repository: ProjectRepositoryPort, project_root: Path) -> "ProjectSession":
         """候选会话工厂；失败不触碰当前窗口持有的会话。"""
 
-        return cls(repository, repository.load(project_root), project_root.resolve())
+        session = cls(repository, repository.load(project_root), project_root.resolve())
+        for run in session.tracking_runs():
+            if run.status in {"pending", "running"}:
+                session.update_tracking_run(mark_run_failed(run, "Previous task was interrupted; start a new task"))
+        return session
+
+    def accept_saved_snapshot(self, saved: "ProjectSession") -> None:
+        """更新磁盘保存基线，保持活动会话与保存期间产生的数据。"""
+        if saved.project.project_id != self.project.project_id:
+            raise ProjectSessionError("Saved snapshot belongs to another project")
+        changed = self._current_data_snapshot() != saved._current_data_snapshot()
+        self._project_root = saved.project_root
+        self._saved_project = saved._saved_project
+        self._project = replace(self._project, modified_at=saved.project.modified_at,
+                                ui_state=saved.project.ui_state)
+        # 保存模态窗口期间若后台产生了新数据，保留一次回到该保存点的撤销。
+        self._undo_stack = [saved._current_data_snapshot()] if changed else []
+        self._redo_stack.clear()
+
+    def apply_tracking_candidate(self, candidate: "TrackingCandidate") -> bool:
+        """主线程只接收仍匹配当前快照的后台候选；过期时由调用方重新准备。"""
+        if self._project is not candidate.base_project:
+            return False
+        if candidate.observations_changed:
+            self._commit_project(candidate.project, candidate.store)
+        else:
+            self._project = candidate.project
+        return True
 
     def save_as(self, destination: Path) -> Project:
         """首存或另存，IO 成功后才提交根目录、clean 基线与历史边界。"""

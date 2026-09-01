@@ -206,15 +206,16 @@ def test_tampered_artifact_and_foreign_session_do_not_import(tmp_path):
     assert len(foreign.project.observations) == 1
 
 
-def test_changed_weights_fail_even_when_changed_before_prepare(tmp_path):
+def test_model_file_info_detects_replacement_before_prepare(tmp_path):
     session, trained = session_and_model(tmp_path)
-    (session.project_root / "models/snapshot-1.pt").write_bytes(b"replaced model")
-    coordinator = InferenceCoordinator()
-    run = coordinator.prepare_inference(session, trained.run_id, InferenceParams(0.5), adapter=MockEngineAdapter())
-    handle = coordinator.start_inference(session, run.run_id)
-    poll_finished(coordinator, session, run, handle)
-    assert session.tracking_runs()[-1].status == "failed"
-    assert "snapshot has changed" in session.tracking_runs()[-1].error_message
+    path = session.project_root / "models/snapshot-1.pt"
+    stat = path.stat()
+    session.update_tracking_run(replace(trained, extra_fields={**trained.extra_fields,
+        "model_file_info": [stat.st_size, stat.st_mtime_ns]}))
+    path.write_bytes(b"replaced model")
+    with pytest.raises(ProjectSessionError, match="model file has changed"):
+        InferenceCoordinator().prepare_inference(session, trained.run_id, InferenceParams(0.5), adapter=MockEngineAdapter())
+    assert len(session.tracking_runs()) == 1
 
 
 def test_spawn_start_failure_marks_run_failed(tmp_path):
@@ -241,27 +242,27 @@ def test_equivalent_media_locator_does_not_invalidate_inference(tmp_path):
 
 
 @pytest.mark.parametrize("digest", [None, "", "invalid", "0" * 63])
-def test_unverified_training_run_is_rejected_before_inference(tmp_path, digest):
+def test_legacy_hash_is_not_an_inference_requirement(tmp_path, digest):
     session, trained = session_and_model(tmp_path)
     extras = dict(trained.extra_fields)
     extras["model_sha256"] = digest
     session.update_tracking_run(replace(trained, extra_fields=extras))
-    with pytest.raises(ProjectSessionError, match="verified model hash"):
-        InferenceCoordinator().prepare_inference(session, trained.run_id, InferenceParams(0.5))
-    assert len(session.tracking_runs()) == 1
+    run = InferenceCoordinator().prepare_inference(session, trained.run_id, InferenceParams(0.5), adapter=MockEngineAdapter())
+    assert run.status == "pending"
+    assert session.tracking_runs()[0].extra_fields["model_sha256"] == digest
 
 
-def test_registered_video_hash_rejects_replacement_before_prepare(tmp_path):
+def test_ai_preparation_does_not_rescan_legacy_video_hash(tmp_path):
     session, trained = session_and_model(tmp_path)
     session._project = replace(session.project, videos=tuple(
         replace(video, sha256=hashlib.sha256(b"").hexdigest()) for video in session.project.videos))
     (tmp_path / "sample.mp4").write_bytes(b"replacement video")
-    with pytest.raises(ProjectSessionError, match="registered SHA-256"):
-        InferenceCoordinator().prepare_inference(session, trained.run_id, InferenceParams(0.5))
-    assert len(session.tracking_runs()) == 1
+    run = InferenceCoordinator().prepare_inference(session, trained.run_id, InferenceParams(0.5), adapter=MockEngineAdapter())
+    assert run.status == "pending"
+    assert session.project.videos[0].sha256 == hashlib.sha256(b"").hexdigest()
 
 
-def test_media_hash_detects_replacement_even_with_unchanged_stat(tmp_path):
+def test_lightweight_policy_accepts_media_with_unchanged_stat(tmp_path):
     session, trained = session_and_model(tmp_path)
     media = tmp_path / "sample.mp4"
     media.write_bytes(b"original")
@@ -272,9 +273,9 @@ def test_media_hash_detects_replacement_even_with_unchanged_stat(tmp_path):
     media.write_bytes(b"replaced")
     os.utime(media, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
     messages = coordinator.poll_messages(session, run.run_id)
-    assert session.tracking_runs()[-1].status == "failed"
-    assert not [message for message in messages if isinstance(message, TaskResult)][0].success
-    assert len(session.project.observations) == 1
+    assert session.tracking_runs()[-1].status == "completed"
+    assert [message for message in messages if isinstance(message, TaskResult)][0].success
+    assert len(session.project.observations) == 12
 
 
 def test_verified_external_legacy_model_is_archived_without_absolute_new_refs(tmp_path):
@@ -335,7 +336,7 @@ def test_cancelled_legacy_run_has_no_uncreated_archive_references(tmp_path):
     assert cancelled.config["training_run_id"] == str(trained.run_id)
 
 
-def test_config_hash_rejects_equal_stat_replacement(tmp_path):
+def test_lightweight_policy_accepts_config_with_unchanged_stat(tmp_path):
     session, trained = session_and_model(tmp_path)
     config = session.project_root / "models/config.yaml"
     coordinator = InferenceCoordinator(ImmediateRunner())
@@ -345,5 +346,5 @@ def test_config_hash_rejects_equal_stat_replacement(tmp_path):
     config.write_bytes(b"x" * previous.st_size)
     os.utime(config, ns=(previous.st_atime_ns, previous.st_mtime_ns))
     coordinator.poll_messages(session, run.run_id)
-    assert session.tracking_runs()[-1].status == "failed"
-    assert len(session.project.observations) == 1
+    assert session.tracking_runs()[-1].status == "completed"
+    assert len(session.project.observations) == 12

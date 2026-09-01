@@ -57,11 +57,12 @@ def create_tracking_run(
     config: JsonObject | None = None,
     source_detail: str | None = None,
     model_snapshot: str | None = None,
+    run_id: UUID | None = None,
 ) -> TrackingRun:
     """构造初始 pending 状态的 TrackingRun。"""
 
     now = utc_now()
-    run_id = uuid4()
+    run_id = run_id or uuid4()
     actual_source_detail = source_detail or f"{engine}:{task_type}:{run_id}"
     return TrackingRun(
         run_id=run_id,
@@ -90,6 +91,7 @@ def mark_run_completed(
     run: TrackingRun,
     *,
     model_snapshot: str | None = None,
+    run_id: UUID | None = None,
 ) -> TrackingRun:
     """将 TrackingRun 状态流转为 completed。"""
 
