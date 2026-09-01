@@ -127,6 +127,10 @@
   使用轻量文件状态、实际模型引用与会话代际检查；明确不防御大小/修改时间等都相同的内容替换。
   抽帧、训练集生成、结果解析等必要耗时操作仍需后台化。当前 4.3 实现仍有哈希扫描，
   此说明是 4.4 的替代方案，详见 `docs/status/phase-4.4-plan.md` D0。依赖下载校验不受此调整影响。
+- 4.4 当前本地实现可用 `.venv/bin/python scripts/smoke_test_gui_tracking.py` 做 offscreen
+  GUI 组件+真实 CPU 引擎闭环；输出独立项目路径并保留。它不代替真人 GUI 验收。
+  真实短训练记录 epoch/loss/lr，并对确切 snapshot 生成 train/test RMSE（px）及样本量；
+  数值用于验证评价管线，不把 1 epoch/少量样本结果当模型精度结论。
 
 ## 3. 仓库工作流
 

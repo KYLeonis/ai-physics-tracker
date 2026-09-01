@@ -199,3 +199,20 @@ def test_spawn_mock_inference_without_hash_imports_and_keeps_manual_edits(
     assert len(session.effective_points(track.track_id)) == 5
     completed = next(run for run in session.tracking_runs() if run.run_id == request.run.run_id)
     assert completed.status == "completed"
+
+
+def test_reopened_unfinished_run_is_marked_failed_in_memory_until_saved(tmp_path, synthetic_video_path):
+    session, video, track = _make_session(tmp_path, synthetic_video_path)
+    run = create_tracking_run(video.video_id, track.track_id, "train")
+    session.record_tracking_run(mark_run_running(run))
+    session.save()
+
+    reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+    recovered = reopened.tracking_runs()[-1]
+    assert recovered.status == "failed"
+    assert "interrupted" in recovered.error_message.lower()
+    assert reopened.is_dirty
+
+    reopened.save()
+    persisted = ProjectRepository().load(reopened.project_root).tracking_runs[-1]
+    assert persisted == recovered

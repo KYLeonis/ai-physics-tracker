@@ -186,5 +186,3 @@ class TaskResult:
 
 
 TaskMessage: TypeAlias = TaskProgress | TaskLog | TaskResult
-
-

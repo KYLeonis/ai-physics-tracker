@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 4.4 GUI & Integration
 
-- Issue：计划确认后创建；本轮只设计，不创建实施 Issue。
-- 分支：拟用 `feat/p4.4-gui-integration`，尚未创建。
-- 日期 / 状态：2026-08-31 · 用户认可其余方案；按反馈简化哈希策略，待确认 K-means 是否前移。
+- Issue：[Issue #15](https://github.com/KYLeonis/ai-physics-tracker/issues/15)。
+- 分支：`feat/p4.4-gui-integration`。
+- 日期 / 状态：2026-09-01 · 实现与自动化/真实 CPU 组件验证完成；独立 review 中，尚未 Human Review。
 - 进入基线：`main` / `1ca5bee`，与实时查询的远程 main 一致，工作区干净；4.3 已收尾。
 
 ## Goal
@@ -105,11 +105,11 @@
 
 ## Acceptance Criteria
 
-- [ ] P44-1：AI 流程不再反复全文件哈希且不要求历史 hash；慢抽帧、DLC 初始化和结果解析均不在 GUI 线程执行；用事件屏障验证等待期间 Qt 仍能处理播放/取消，不用易抖动的耗时断言代替线程边界测试。
-- [ ] P44-2：真实训练转发 epoch/loss/lr，参数快照与真实调用一致；解码/依赖/建集失败不会训练占位数据；成功模型有一次可追溯的基本评价。
-- [ ] P44-3：Task Panel 的目标、参数、禁用原因、进度、错误和历史正确；取消在准备/运行/验证阶段可用，进程退出后才落终态，无重复终态或半批导入。
-- [ ] P44-4：保存期间编辑/任务完成不丢失，取消导航不取消任务；确认导航、另存限制、失败回退、关闭回收、旧回调以及重开中断任务均有回归测试。
-- [ ] P44-5：manual/AI 来源可区分且人工优先；多选 overlay、当前帧、缩放、Undo/Redo 正确；全帧轨迹不会逐帧重建全量图元。图表识别新数据并按显式重算展示混合结果。
+- [x] P44-1：AI 流程不再反复全文件哈希且不要求历史 hash；慢抽帧、DLC 初始化和结果解析均不在 GUI 线程执行；用事件屏障验证等待期间 Qt 仍能处理播放/取消，不用易抖动的耗时断言代替线程边界测试。
+- [x] P44-2：真实训练转发 epoch/loss/lr，参数快照与真实调用一致；解码/依赖/建集失败不会训练占位数据；成功模型有一次可追溯的基本评价。
+- [x] P44-3：Task Panel 的目标、参数、禁用原因、进度、错误和历史正确；取消在准备/运行/验证阶段可用，进程退出后才落终态，无重复终态或半批导入。
+- [x] P44-4：保存期间编辑/任务完成不丢失，取消导航不取消任务；确认导航、另存限制、失败回退、关闭回收、旧回调以及重开中断任务均有回归测试。
+- [x] P44-5：manual/AI 来源可区分且人工优先；多选 overlay、当前帧、缩放、Undo/Redo 正确；全帧轨迹不会逐帧重建全量图元。图表识别新数据并按显式重算展示混合结果。
 - [ ] P44-6：用户亲测真实单摆项目，从标注到训练/评价/推理/显示/重算/保存重开全程不离开软件；真实模型进度、取消和交互体验通过 Human Review。
 - [ ] P44-7：405 项基线及新增测试通过，交付提交的 macOS/Windows CI 通过，独立 review 通过；Windows 真机/CUDA 条件按下节落实，不沿用以前的延期为自动豁免。
 - [ ] P44-8：Phase 4 所有 deliverables/AC 有证据，尤其模型评价和 GUI AC-5/6；同步相关文档、Issue 和 Git 状态，完成 Phase 4 后停止，不开始 Phase 5。
@@ -153,7 +153,7 @@ Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自�
 - 本次计划确认不等于 GUI Human Review 通过，也不等于 Windows 例外或 Phase 4 推送授权。实现可按 Slice 调整；保留原始媒体和产物，不通过重写历史回退。
 
 
-## K-means 基础选帧前移提案（尚未批准，不计入现有 AC）
+## K-means 范围结论（用户不要求前移）
 
 - 当前状态：仓库 `src/` 尚无自动选帧入口。DLC 已提供 `extract_frames(mode="automatic", algo="kmeans")` 及可返回帧号的底层选帧函数；本机 3.0.1 使用 MiniBatchKMeans 对缩小后的图像聚类，再从不同类别选帧，并非自动标注坐标。
 - 建议最小范围：增加“自动选帧”、数量输入和“下一待标注帧”；后台返回源视频候选帧号，按原帧号跳转，用现有人工落点完成标注。不新建标注 schema、不换标注器、不写第二套 K-means，也不自动产生 TrackPoint。
@@ -162,3 +162,11 @@ Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自�
 - 样例：点击“自动选 20 帧” → 逐个跳转并标记摆球 → 训练。保持原规划则 4.4 仍手动选帧，Phase 5 再加此入口。
 - 若批准：先同步 roadmap/spec 中基础选帧的阶段归属，再在现有 Slice 2/3 增加适配/GUI导航及取消、帧号映射测试；困难帧发现、主动学习和再训练策略继续留在 Phase 5。未批准前不改 Phase 5 的交付范围、不实现该功能。
 - 依据：[DLC 选帧 API](https://deeplabcut.github.io/DeepLabCut/dev/latest-release/reference/deeplabcut/generate_training_dataset/frame_extraction/)；[DLC 标注指南](https://deeplabcut.github.io/DeepLabCut/docs/beginner-guides/labeling.html)。
+
+- 实施确认：用户同意其余方案执行；基础 K-means 不前移，Phase 5 直接调用 DLC。ADR-0012 已记录本轮边界。
+- 本地实现提交：`0b1add2`（后台任务、训练指标/评价、轻量校验）与 `1bb4c51`（Task Panel、生命周期、AI 轨迹）。未合并、未推送。
+- 自动化：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **428 passed**。新增测试覆盖响应性、取消竞争、模型保留、保存身份、旧回调、marker 复用和评价。
+- 真实 GUI 组件冒烟：CPU、1 epoch 完成训练/原生评价/推理，得到 train RMSE 46.91 px（n=4）、test RMSE 17.33 px（n=1）；10 帧中 5 AI 插入/5 manual 保留，保存重开通过。指标只证明评价管线可用，不代表模型精度。
+- 评价 CSV、模型、预测与完整日志均在各自 run 目录保留；重复训练使用独立目录，不影响旧模型。
+- 绘制规模检查：10,000 个 AI marker 首次构建约 0.32s；1,000 次当前帧索引高亮约 0.03s。当前帧变化不再重建全部图元。
+- 当前待办：独立 review → 处理 findings → 发起真人 Human Review。未完成 P44-6/7/8，不宣称 Phase 4 完成。

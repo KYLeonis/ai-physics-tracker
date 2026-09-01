@@ -231,3 +231,53 @@ def test_cancel_during_evaluation_keeps_model_and_ignores_late_terminal(qtbot, s
     assert recorded.extra_fields["evaluation"]["status"] == "cancelled"
     assert model.is_file()
     assert handle.cancel_calls == 1
+
+
+def test_navigation_cancel_keeps_task_and_confirmed_discard_cancels_before_switch(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    handle = _FakeHandle()
+    window, original, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle))
+    actions = window.trackingActions
+    actions.train()
+    _wait_started(qtbot, actions, handle)
+
+    monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.StandardButton.Cancel)
+    window.projectActions.closeProject()
+    assert actions.pending
+    assert window.analysisSession is original
+    assert handle.cancel_calls == 0
+
+    monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.StandardButton.Discard)
+    window.projectActions.closeProject()
+    qtbot.waitUntil(lambda: not actions.pending, timeout=5000)
+    qtbot.waitUntil(lambda: window.analysisSession is not original, timeout=5000)
+    assert window.analysisSession.project.videos == ()
+    assert handle.cancel_calls == 1
+
+
+def test_file_chooser_cancel_and_context_breaking_actions_do_not_cancel_or_mutate_task(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+):
+    from PySide6.QtWidgets import QFileDialog
+
+    handle = _FakeHandle()
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle))
+    actions = window.trackingActions
+    actions.train()
+    _wait_started(qtbot, actions, handle)
+    root = session.project_root
+
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *args: ("", ""))
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (_ for _ in ()).throw(AssertionError("disabled")))
+    window.projectActions.openProject()
+    window.projectActions.saveAs()
+    window.projectActions.relinkVideo()
+
+    assert actions.pending
+    assert handle.cancel_calls == 0
+    assert session.project_root == root
+    actions.cancel()
+    qtbot.waitUntil(lambda: not actions.pending, timeout=5000)

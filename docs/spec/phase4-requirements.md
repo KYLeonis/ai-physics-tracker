@@ -71,8 +71,8 @@
 
 | # | 验收标准 | 判定方式 | 状态 |
 |---|---------|---------|------|
-| AC-1 | DLCAdapter 可创建 DLC 项目并导出标注数据 | pytest（mock DLC API，验证目录结构和文件内容） | [ ] |
-| AC-2 | TaskRunner 支持启动/进度/完成/取消生命周期 | pytest（后台进程单元测试） | [ ] |
+| AC-1 | DLCAdapter 可创建 DLC 项目并导出标注数据 | pytest（mock DLC API，验证目录结构和文件内容） | [x] |
+| AC-2 | TaskRunner 支持启动/进度/完成/取消生命周期 | pytest（后台进程单元测试） | [x] |
 | AC-3 | 推理结果导入后 TrackPoint 字段正确（source/confidence/first-wins） | pytest（合成 DataFrame → import → 校验） | [x] |
 | AC-4 | confidence 随项目 JSON 持久化（save → load 一致） | pytest | [x] |
 | AC-5 | 在单摆基准视频上：标注 → 训练 → 推理 → 轨迹显示，全流程在软件内完成 | Human Review | [ ] |
