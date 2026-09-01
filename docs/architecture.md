@@ -34,6 +34,7 @@ AI Physics Tracker 是一个单机桌面应用，内部由四层组成：
 - **GUI 与核心分离**：领域/核心层不依赖 Qt，可独立测试；GUI 只做展示与交互。
 - **数据先行**：手工跟踪与 AI 跟踪使用统一数据体系（Phase 1 的核心目标），AI 只是轨迹数据的另一种来源。
 - **适配器隔离**：DeepLabCut/PyTorch 通过适配层接入，未来可替换为其他视觉模型（ONNX/OpenVINO 等）而不影响上层。
+- **分层务实边界**：domain 保持零框架依赖；GUI 不 import infrastructure；application 与 infrastructure 之间允许**公共符号**的相互 import（引擎适配器构造、跨进程值对象），但跨包下划线私有符号、相对导入与各层禁用的第三方包（Qt/OpenCV/DLC）由 `tests/test_layer_boundaries.py` 的 AST 规则强制禁止（Subphase 4.5 R2 review 固化）。
 - **长任务后台化**：训练、推理、视频导出全部为可取消的后台任务，GUI 保持响应。
 
 Phase 2.4 项目候选提交见 [ADR-0006](decisions/0006-project-workflow-and-timing-gate.md)；

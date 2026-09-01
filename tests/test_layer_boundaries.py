@@ -73,8 +73,16 @@ def _violations(
     for path in sorted(PACKAGE_ROOT.rglob("*.py")):
         layer = _layer_of(path)
         for lineno, module, level, names in _collect_imports(path):
-            if level > 0 or module is None:
-                continue  # 相对导入不跨层；本项目 src 一律绝对导入
+            if level > 0:
+                # src 一律绝对导入：相对导入可跨层穿透且方向不可见，直接违规
+                if package_rules and layer is not None:
+                    violations.append(
+                        f"{path.relative_to(PACKAGE_ROOT)}:{lineno} 相对导入："
+                        f"src 必须使用 ai_physics_tracker 绝对导入"
+                    )
+                continue
+            if module is None:
+                continue
             root = module.split(".")[0]
             if root == "ai_physics_tracker":
                 parts = module.split(".")
@@ -93,11 +101,16 @@ def _violations(
                     and layer is not None
                     and target_layer != "root"
                     and target_layer != layer
-                    and any(name.startswith("_") for name in names)
+                    and (
+                        # from X import _name
+                        any(name.startswith("_") for name in names)
+                        # import X._module（Import 语句 names 为空，看模块末段）
+                        or (not names and parts[-1].startswith("_"))
+                    )
                 ):
                     violations.append(
                         f"{path.relative_to(PACKAGE_ROOT)}:{lineno} 跨包私有符号："
-                        f"不得从 {module} import 下划线名称 {names}"
+                        f"不得从 {module} import 下划线名称 {names or parts[-1]}"
                     )
                 continue
             if (
@@ -165,11 +178,13 @@ def test_detector_flags_planted_violations(
     (package / "domain" / "bad.py").write_text(
         "from ai_physics_tracker.application.session import _secret\n"
         "import cv2\n"
-        "from ai_physics_tracker.gui.main_window import MainWindow\n",
+        "from ai_physics_tracker.gui.main_window import MainWindow\n"
+        "from . import sibling\n",
         encoding="utf-8",
     )
     (package / "application" / "uses_dlc.py").write_text(
-        "import deeplabcut\n",
+        "import deeplabcut\n"
+        "import ai_physics_tracker.infrastructure._hidden\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(module, "PACKAGE_ROOT", package)
@@ -186,6 +201,7 @@ def test_detector_flags_planted_violations(
         )
     )
     assert "gui 不得 import" in package_hits or "domain 不得 import" in package_hits
+    assert "相对导入" in package_hits
 
     third_party_hits = "\n".join(
         _violations(
@@ -207,6 +223,7 @@ def test_detector_flags_planted_violations(
         )
     )
     assert "_secret" in private_hits
+    assert "_hidden" in private_hits
 
     confined_hits = "\n".join(
         _violations(

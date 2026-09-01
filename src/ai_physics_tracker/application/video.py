@@ -76,6 +76,16 @@ class VideoReader(Protocol):
 
         ...
 
+    @property
+    def path(self) -> Path:
+        """当前打开视频的本地路径；未打开时抛 VideoOpenError。
+
+        媒体身份属于端口概念：标注导出（labeled-data 目录按视频定位）
+        与溯源校验都依赖它，替代实现必须提供。
+        """
+
+        ...
+
     def open(self, path: Path) -> VideoStreamInfo:
         """打开视频，并先释放此前持有的资源。"""
 
