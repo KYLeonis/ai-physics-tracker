@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-01（Phase 4.4 自动化/真实组件/独立 review 完成，等待 Human Review）
+- 最后更新：2026-09-01（Phase 4.4 首轮 Human Review 反馈已修复，等待聚焦复验）
 
 ---
 
@@ -13,13 +13,13 @@
 
 ## Current Subphase
 
-**4.4 — GUI & Integration** 🔄 本地实现、432 tests、真实 CPU GUI 组件冒烟与独立 review 通过；等待 Human Review。
+**4.4 — GUI & Integration** 🔄 本地实现、433 tests、真实 CPU GUI 组件冒烟与独立 review 通过；窗口缩放和 Chart 英文文案反馈已修复，等待聚焦 Human Review。
 
 计划草案：[phase-4.4-plan.md](phase-4.4-plan.md)。4.3 已完成（[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14) 已关闭；[验收记录](phase-4.3-plan.md)）。
 
 ## Current Slice
 
-Slice 6：自动化、真实 CPU 组件验证与独立 review 完成；停在 Human Review 关卡。
+Slice 6：自动化、真实 CPU 组件验证与独立 review 完成；首轮 Human Review 反馈已修复，停在聚焦复验关卡。
 
 ## Current Goal
 
@@ -27,6 +27,7 @@ Slice 6：自动化、真实 CPU 组件验证与独立 review 完成；停在 Hu
 
 ## Recently Completed
 
+- **4.4 Human Review 反馈修复**（2026-09-01）：Main 右侧控件和 Chart 内容改为可滚动，视频视图降低硬最小尺寸，Chart/AI 保持停靠且不再浮动成独立窗口；主窗口最小高度由约 867 px 降至 490 px，可在 900×520 与 1100×760 间缩放。Chart 动态状态消息全部改为英文；运行时扫描 Main/Chart/AI 用户文案无中文。全回归 **433 passed in 42.87s**。等待用户聚焦复验，尚未合并或 push。
 - **4.4 本地实现与自动化验证**（2026-09-01）：Task Panel、真实训练指标/基本评价、推理、异步取消/保存/切换、AI 菱形及 marker 复用已接通；432 tests 通过。真实 GUI 组件 CPU 冒烟完成 1 epoch 训练/评价/推理，5 AI 插入/5 manual 保留并保存重开；独立 review 的两个 finding 已修复并复审通过。未执行 Human Review、Windows/CUDA、合并或 push。
 - **4.4 进入检查与计划**：`main` / `1ca5bee` 与实时查询远程一致，进入时工作区干净；重新验证 **405 passed in 52.40s**。计划识别并覆盖同步准备/哈希、真实训练指标、保存替换 session、全量 marker 重建、中断任务恢复与基本模型评价缺口；只写计划，不改实现。
 - **4.3 — Inference Pipeline & Track Integration**（✅ 2026-08-31）：真实推理、严格解析、模型 hash 校验、spawn 取消/错误/晚到消息处理、原子导入与 Undo/Redo、人工/AI 生效观测和运动学已接通；405 tests 通过。真实 CPU 合成视频 10 帧推理，5 点导入/5 个人工点保护，保存重开通过；重复推理 0 点导入/10 点跳过，既有派生不变。精简依赖模拟 74 passed / 1 HDF5 测试因无 pandas 跳过。独立审查发现的模型/视频身份、快照索引竞态、legacy 归档引用问题均已修复并复审通过。未改依赖、CI、schema。集成提交 `e58b28d` 已推送；[该提交的 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33380207408) 在 macOS/Windows Python 3.11 上均通过，Issue #14 已关闭。
@@ -60,4 +61,4 @@ Slice 6：自动化、真实 CPU 组件验证与独立 review 完成；停在 Hu
 
 ## Next Recommended Action
 
-请用户执行 4.4 Human Review（启动命令和五步见本轮回复）；亲测通过前不合并/收尾。通过后再核对 Windows/CUDA 条件、Phase 4 文档/AC、push 授权与 CI。K-means 留 Phase 5。
+请用户聚焦复验窗口缩放与 Main/Chart/AI 英文文案；亲测通过前不合并/收尾。通过后再核对 Windows/CUDA 条件、Phase 4 文档/AC、push 授权与 CI。K-means 留 Phase 5。

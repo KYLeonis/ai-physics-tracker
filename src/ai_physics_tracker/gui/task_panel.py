@@ -48,6 +48,10 @@ class TaskPanel(QDockWidget):
         super().__init__("AI tasks", parent)
         self.setObjectName("trackingTasks")
         self.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea)
+        self.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetClosable
+            | QDockWidget.DockWidgetFeature.DockWidgetMovable
+        )
 
         self.contextLabel = QLabel("No video selected · No track selected")
         self.contextLabel.setWordWrap(True)

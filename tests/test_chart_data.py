@@ -249,7 +249,7 @@ def test_stale_and_mixed_units_are_reported_without_unit_conversion() -> None:
     assert len(chart.series) == 1
     assert chart.series[0].status == "stale"
     assert any("stale" in message for message in chart.messages)
-    assert any("不兼容" in message for message in chart.messages)
+    assert any("incompatible" in message for message in chart.messages)
     assert chart.y_unit == "m"
 
 
@@ -265,7 +265,7 @@ def test_uncalibrated_position_uses_pixels_and_marks_y_direction() -> None:
     assert chart.pixel_coordinates is True
     assert chart.x_unit == "px"
     assert chart.y_unit == "px"
-    assert any("未设置标定" in message for message in chart.messages)
+    assert any("not calibrated" in message for message in chart.messages)
 
 
 def test_valid_cache_from_another_calibration_is_displayed_as_stale_without_mutation() -> None:
@@ -278,7 +278,7 @@ def test_valid_cache_from_another_calibration_is_displayed_as_stale_without_muta
     project = replace(project, calibrations=(active, other), derived=(old_result,))
     chart = build_chart_data(project, video_id, (track_id,), "x_t")
     assert chart.series[0].status == "stale"
-    assert any("不是当前标定" in message for message in chart.messages)
+    assert any("different calibration" in message for message in chart.messages)
     assert project.derived[0].status == "valid"
     current = replace(project, derived=(replace(old_result, calibration_ref=active.calibration_id),))
     assert build_chart_data(current, video_id, (track_id,), "x_t").series[0].status == "valid"
@@ -287,10 +287,10 @@ def test_valid_cache_from_another_calibration_is_displayed_as_stale_without_muta
 @pytest.mark.parametrize(
     ("values", "frames", "expected_message"),
     [
-        (None, (1,), "values=None"),
-        (((1.0,),), (1,), "2 列"),
-        (((float("nan"), 1.0),), (1,), "非有限值"),
-        (((1.0, 2.0), (3.0, 4.0)), (2, 1), "帧顺序"),
+        (None, (1,), "values are None"),
+        (((1.0,),), (1,), "not two columns"),
+        (((float("nan"), 1.0),), (1,), "non-finite"),
+        (((1.0, 2.0), (3.0, 4.0)), (2, 1), "frame order"),
     ],
 )
 def test_malformed_derived_data_returns_message_without_crashing(
@@ -345,5 +345,5 @@ def test_missing_short_and_cross_video_tracks_are_isolated() -> None:
 
     chart = build_chart_data(project, video_one, (track_one, track_two), "v_t")
     assert chart.series == ()
-    assert any("连续点不足" in message for message in chart.messages)
-    assert any("不属于当前视频" in message for message in chart.messages)
+    assert any("too few continuous" in message for message in chart.messages)
+    assert any("does not belong to the current video" in message for message in chart.messages)

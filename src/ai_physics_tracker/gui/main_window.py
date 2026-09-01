@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSlider,
     QSpinBox,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -225,6 +226,12 @@ class MainWindow(QMainWindow):
         trackSide = QWidget(self)
         trackSide.setLayout(sideLayout)
         trackSide.setMaximumWidth(260)
+        sideScroll = QScrollArea(self)
+        sideScroll.setWidgetResizable(True)
+        sideScroll.setWidget(trackSide)
+        sideScroll.setMinimumWidth(210)
+        sideScroll.setMaximumWidth(280)
+        sideScroll.setFrameShape(QScrollArea.Shape.NoFrame)
 
         videoColumn = QVBoxLayout()
         videoColumn.addWidget(self.videoSelector)
@@ -238,7 +245,7 @@ class MainWindow(QMainWindow):
 
         mainRow = QHBoxLayout()
         mainRow.addWidget(videoColumnWidget, 1)
-        mainRow.addWidget(trackSide)
+        mainRow.addWidget(sideScroll)
         central = QWidget(self)
         central.setLayout(mainRow)
         self.setCentralWidget(central)

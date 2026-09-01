@@ -2,7 +2,7 @@
 
 - Issue：[Issue #15](https://github.com/KYLeonis/ai-physics-tracker/issues/15)。
 - 分支：`feat/p4.4-gui-integration`。
-- 日期 / 状态：2026-09-01 · 实现、自动化、真实 CPU 组件验证与独立 review 完成；等待 Human Review。
+- 日期 / 状态：2026-09-01 · 首轮 Human Review 反馈已修复；等待窗口缩放与英文文案聚焦复验。
 - 进入基线：`main` / `1ca5bee`，与实时查询的远程 main 一致，工作区干净；4.3 已收尾。
 
 ## Goal
@@ -165,9 +165,10 @@ Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自�
 
 - 实施确认：用户同意其余方案执行；基础 K-means 不前移，Phase 5 直接调用 DLC。ADR-0012 已记录本轮边界。
 - 本地实现提交：`0b1add2`（后台任务、训练指标/评价、轻量校验）与 `1bb4c51`（Task Panel、生命周期、AI 轨迹）。未合并、未推送。
-- 自动化：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **432 passed in 58.84s**。新增测试覆盖响应性、取消竞争、模型保留、保存身份、导航、旧回调、marker 复用和评价。
+- 自动化：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **433 passed in 42.87s**。新增测试覆盖响应性、取消竞争、模型保留、保存身份、导航、旧回调、marker 复用、评价和窗口缩放。
 - 真实 GUI 组件冒烟：CPU、1 epoch 完成训练/原生评价/推理，得到 train RMSE 46.91 px（n=4）、test RMSE 17.33 px（n=1）；10 帧中 5 AI 插入/5 manual 保留，保存重开通过。指标只证明评价管线可用，不代表模型精度。
 - 评价 CSV、模型、预测与完整日志均在各自 run 目录保留；重复训练使用独立目录，不影响旧模型。
 - 绘制规模检查：10,000 个 AI marker 首次构建约 0.32s；1,000 次当前帧索引高亮约 0.03s。当前帧变化不再重建全部图元。
 - 独立 review：首轮发现提交前遗漏模型/config 轻量复核，以及 mAP/mAR 单位错误；`102fe79` 修复并增加回归，复审确认关闭。当前无阻塞 finding。
-- 当前待办：真人 Human Review。未完成 P44-6/7/8，不宣称 Phase 4 完成，也未合并/推送。
+- Human Review 反馈：主要工作流无其他问题；发现窗口被面板最小尺寸撑大、Chart stale 状态消息为中文。已让 Main/Chart/AI 在空间不足时滚动，禁止 Chart/AI 浮动成独立窗口，并把 Chart 动态消息统一为英文；运行时三面板文案扫描无中文。
+- 当前待办：用户聚焦复验窗口缩放与英文文案。未完成 P44-6/7/8，不宣称 Phase 4 完成，也未合并/推送。

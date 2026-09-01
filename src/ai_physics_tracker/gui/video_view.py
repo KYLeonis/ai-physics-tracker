@@ -97,7 +97,7 @@ class VideoView(QGraphicsView):
         self._is_scale_dragging = False
         self._annotation_mode = False
         self._fit_pending = True
-        self.setMinimumSize(320, 240)
+        self.setMinimumSize(240, 160)
         self.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)

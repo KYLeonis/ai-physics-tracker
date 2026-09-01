@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QSpinBox,
+    QScrollArea,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -245,6 +246,10 @@ class ChartPanel(QDockWidget):
         self._help_bubble: QLabel | None = None
         self.setObjectName("kinematicsCharts")
         self.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        self.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetClosable
+            | QDockWidget.DockWidgetFeature.DockWidgetMovable
+        )
         self.trackChoices = QListWidget()
         self.trackChoices.setMaximumHeight(72)
         self.trackChoices.setMaximumWidth(240)
@@ -326,7 +331,10 @@ class ChartPanel(QDockWidget):
         layout.addWidget(self.statusLabel)
         content = QWidget()
         content.setLayout(layout)
-        self.setWidget(content)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content)
+        self.setWidget(scroll)
         self.trackChoices.itemChanged.connect(lambda _item: self.selectionChanged.emit())
         self.positionSource.currentIndexChanged.connect(lambda _index: self.selectionChanged.emit())
         self.windowLength.valueChanged.connect(lambda _value: self.parametersChanged.emit())
