@@ -132,20 +132,26 @@ class DLCAdapter:
         manual_points.sort(key=lambda p: p.frame_index)
 
         proj_dir = config_path.parent
-        # 寻找 labeled-data 目录下的视频子目录
+        # labeled-data 子目录按当前视频 stem 定位（与 create_project 同约定）。
+        # 出现其他视频的子目录时必须拒绝：DLC 建集会把整个 labeled-data
+        # 纳入训练集，静默混入另一段视频的帧会产出无法察觉的错误数据
+        #（review F6）。
+        video_stem = video_reader.path.stem
         labeled_data_root = proj_dir / "labeled-data"
-        if not labeled_data_root.exists():
-            labeled_data_root.mkdir(parents=True, exist_ok=True)
-
-        # 获取或创建默认的视频子目录
-        video_subdirs = [d for d in labeled_data_root.iterdir() if d.is_dir()]
-        if video_subdirs:
-            video_dir = video_subdirs[0]
-        else:
-            video_dir = labeled_data_root / "video"
-            video_dir.mkdir(parents=True, exist_ok=True)
-
-        video_stem = video_dir.name
+        labeled_data_root.mkdir(parents=True, exist_ok=True)
+        foreign_dirs = sorted(
+            entry.name
+            for entry in labeled_data_root.iterdir()
+            if entry.is_dir() and entry.name != video_stem
+        )
+        if foreign_dirs:
+            raise RuntimeError(
+                f"DLC labeled-data contains folders from another video: {foreign_dirs}; "
+                f"expected only {video_stem!r}. Delete the stale folders (or retrain in "
+                f"a fresh project directory) before exporting annotations."
+            )
+        video_dir = labeled_data_root / video_stem
+        video_dir.mkdir(parents=True, exist_ok=True)
         exported_count = 0
         csv_rows: list[list[str]] = []
 
@@ -407,7 +413,7 @@ class DLCAdapter:
             raise ValueError("Selected snapshot does not belong to this DLC model; retrain or select its config")
         actual_device = detect_device() if request.params.device == "auto" else request.params.device
         request.output_dir.mkdir(parents=True, exist_ok=False)
-        stream = _QueueLogStream(queue, run_id)
+        stream = QueueLogStream(queue, run_id)
         send_progress(queue, run_id, 0, request.frame_count, message="Loading selected model")
         with redirect_stdout(stream), redirect_stderr(stream), _selected_snapshot(request.model_snapshot), _prediction_progress(
             queue, run_id, cancel_event, request.frame_count
@@ -632,7 +638,7 @@ def _model_snapshots(config_path: Path, shuffle: int, trainingsetindex: int) -> 
     return loader.snapshots()
 
 
-class _QueueLogStream(TextIOBase):
+class QueueLogStream(TextIOBase):
     """把 DLC 标准输出转成有界日志行，兼容 tqdm 的回车刷新。"""
 
     def __init__(self, queue: Any, run_id: UUID, line_handler: Any | None = None) -> None:
@@ -663,7 +669,7 @@ class _QueueLogStream(TextIOBase):
         self.pending = ""
 
 
-class _TrainingLogStream(_QueueLogStream):
+class _TrainingLogStream(QueueLogStream):
     """转发 DLC 训练日志，并从真实 epoch 行提取 loss 与学习率。"""
 
     def __init__(self, queue: Any, run_id: UUID) -> None:

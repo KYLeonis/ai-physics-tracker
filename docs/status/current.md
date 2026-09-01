@@ -3,31 +3,30 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-01（Phase 4 / Subphase 4.4 完成，双平台 CI 通过）
+- 最后更新：2026-09-01（Phase 4.5 — Engineering Stabilization 完成，等待合并推送确认）
 
 ---
 
 ## Current Phase
 
-**Phase 4 — Deep Learning Tracking** ✅ 已完成（2026-09-01）
+**Phase 4 — Deep Learning Tracking** ✅ 已完成（2026-09-01）；**4.5 工程稳定性 subphase** ✅ 已完成（2026-09-01）
 
 ## Current Subphase
 
-**4.4 — GUI & Integration** ✅ 已完成：`17ae493` 合并到 `main`，Issue #15 已关闭；433 tests、真实 CPU GUI 组件冒烟、独立 review、macOS Human Review 及 macOS/Windows CI 均通过。
-
-验收记录：[phase-4.4-plan.md](phase-4.4-plan.md)。4.3 已完成（[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14) 已关闭；[验收记录](phase-4.3-plan.md)）。
+**4.5 — Engineering Stabilization** ✅ 已完成：Issue [#16](https://github.com/KYLeonis/ai-physics-tracker/issues/16)，验收记录 [phase-4.5-plan.md](phase-4.5-plan.md)，Review Record [phase-4.5-review.md](../reviews/phase-4.5-review.md)。修复 Phase 4 收尾 review 的 F1（删除带 run 的 track 静默失败，含 session 层提交路径）/F6（DLC 导出目录校验）/F5（detached 去 deepcopy，GUI 线程 O(n)→O(1)）/F4（AST 分层测试 + 跨包私有符号转正）；**441 tests passed**（基线 433）。独立 review 因环境 subagent 模型不可用以对抗性自查替代（偏差已在 Review Record 声明）。
 
 ## Current Slice
 
-N/A（Phase 4 已完成，停止并等待下一阶段指令）。
+N/A（4.5 已完成）。
 
 ## Current Goal
 
-Phase 4 目标已交付：软件内完成手工标注、训练/评价、推理、AI 轨迹显示与运动学重算闭环。
+Phase 0–4 工程基础稳定性债务已消化；可安全进入 Phase 5 规划。
 
 ## Recently Completed
 
-- **Phase 4 收尾全库 Review**（2026-09-01，只读）：完成 Architecture / Reliability / Product Boundary review，报告见 [docs/reviews/phase4-architecture-reliability-review.md](reviews/phase4-architecture-reliability-review.md)。433 tests 复跑通过；15 项 finding（Critical 0 / High 1：F1 删除带 TrackingRun 的 Track 静默失败，已复现）。建议先行小型 stabilization subphase（P4.5：F1 修复 + 导出目录校验 + detached 去 deepcopy + 分层测试加固，2–4 天），F2（AI 轨迹整体清除/替换）并入 Phase 5 需求。未修改任何实现代码。
+- **Phase 4.5 — Engineering Stabilization**（✅ 2026-09-01）：S1–S4 四个 Slice 全部完成（分支 `feat/p4.5-stabilization`，5 commits：`1641536`/`0d604ad`/`473ee65`/`e53ab7e`/`1ca4a91`）。F1 修复在实现中发现并覆盖了 review 未点名的 session 层路径（`remove_track` 原 `_commit_store` 回填会把级联删除的 run 带回旧聚合，新测试当场捕获）。
+- **Phase 4 收尾全库 Review**（2026-09-01，只读）：[docs/reviews/phase4-architecture-reliability-review.md](reviews/phase4-architecture-reliability-review.md)。15 项 finding（Critical 0 / High 1）；处置状态已在该报告顶部更新。
 - **Phase 4 — Deep Learning Tracking**（✅ 2026-09-01）：Subphase 4.0–4.4 全部完成；最终 `main` 集成 CI [run 33504579667](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33504579667) 在 macOS/Windows Python 3.11 通过。首轮 Windows CI 暴露两个平台相关测试假设，`51e05b1` 修复为按平台尺寸验证后复跑全绿。Issue #15 已关闭。经用户明确批准，Windows 真机/CUDA 验收延期到 Phase 9 打包前的专门关卡。
 - **4.4 macOS Human Review 通过**（2026-09-01）：用户确认完整 GUI 工作流与最终聚焦复验通过。Main/Chart/AI 可缩放，Chart/AI 可分离为独立窗口并重新停靠，Chart 动态状态消息为英文；无其他交互问题。
 - **4.4 本地实现与自动化验证**（2026-09-01）：Task Panel、真实训练指标/基本评价、推理、异步取消/保存/切换、AI 菱形及 marker 复用已接通；最终本地全回归 **433 passed in 47.47s**。真实 GUI 组件 CPU 冒烟完成 1 epoch 训练/评价/推理，5 AI 插入/5 manual 保留并保存重开；独立 review 的两个 finding 已修复并复审通过；`--no-ff` 合并提交为 `17ae493`。
@@ -62,7 +61,8 @@ Phase 4 目标已交付：软件内完成手工标注、训练/评价、推理�
 
 ## Next Recommended Action
 
-停止开发，等待用户下一条指令。两个候选方向（由用户决定）：
+停止开发，等待用户下一条指令。下一步为 **Phase 5 — AI-assisted Annotation & Refinement** 规划，进入时注意：
 
-1. **P4.5 — Engineering Stabilization**（review 建议，2–4 天，范围见 review §9：F1 删 track 回归修复、F6 导出目录校验、F5 detached 去 deepcopy、F4 分层测试加固；可选 F3 编排双轨收敛）。
-2. **Phase 5 — AI-assisted Annotation & Refinement**：进入时先规划；须把 F2（AI 轨迹整体清除/替换，refinement 闭环前置需求）纳入 Phase 5 需求；基础 K-means 选帧直接调用 DLC，不自行开始实现。
+1. 把 **F2（AI 轨迹整体清除/替换，refinement 闭环前置需求）** 正式纳入 Phase 5 需求；first-wins 之下没有它，"再推理"无法替换旧轨迹。
+2. 建议把 **F3（4.2/4.3 编排双轨收敛到 TrackingJobRunner）** 作为 Phase 5 首个 subphase 的一部分（测试迁移量 ~1–2 天，别与新功能混批）。
+3. 基础 K-means 选帧直接调用 DLC；用户可按 [phase-4.5-plan.md](phase-4.5-plan.md) 末尾的手动验证步骤抽查 F1/F6 行为（替代本环境不可用的独立 review）。

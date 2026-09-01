@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 4 — Deep Learning Tracking（✅ 2026-09-01）**
-- 当前阶段：**Phase 4 已完成；Phase 5 尚未开始，等待用户指令**
+- 最近完成：**Phase 4 — Deep Learning Tracking（✅ 2026-09-01）+ Subphase 4.5 工程稳定性修复（✅ 2026-09-01，[Review](reviews/phase4-architecture-reliability-review.md) findings F1/F4/F5/F6）**
+- 当前阶段：**Phase 4（含 4.5 stabilization）已完成；Phase 5 尚未开始，等待用户指令**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---

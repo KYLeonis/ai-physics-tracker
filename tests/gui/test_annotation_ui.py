@@ -11,6 +11,10 @@ from PySide6.QtCore import QPoint, QPointF, Qt
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
+from ai_physics_tracker.domain.tracking_run import (
+    create_tracking_run,
+    mark_run_completed,
+)
 from ai_physics_tracker.gui.main_window import MainWindow
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
@@ -123,6 +127,30 @@ def test_delete_track_clears_markers_and_selection(
     assert session is not None
     assert session.tracks == ()
     assert session.project.observations == ()
+
+
+def test_delete_track_with_completed_run_removes_track_and_runs(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # review F1 回归：Phase 4 之后任何 track 都可能带 TrackingRun，
+    # 删除必须成功（级联 runs）而不是在 slot 里静默抛错。
+    window = _opened_with_track(qtbot, synthetic_video_path)
+    window._onAnnotationClicked(_inside_point(window, 20.0, 15.0))
+    session = window._annotation_session
+    assert session is not None
+    run = create_tracking_run(
+        window.activeVideoId, window.selectedTrackId, "infer", engine_version="3.0.1-mock"
+    )
+    session.record_tracking_run(run)
+    session.update_tracking_run(mark_run_completed(run))
+
+    window.deleteTrackButton.click()
+
+    assert window.trackList.count() == 0
+    assert window._selected_track_id is None
+    assert session.tracks == ()
+    assert session.project.observations == ()
+    assert session.project.tracking_runs == ()
 
 
 def test_markers_trail_across_frames_with_current_highlight(

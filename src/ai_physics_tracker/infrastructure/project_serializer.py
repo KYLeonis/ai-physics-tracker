@@ -51,7 +51,7 @@ def project_to_payload(project: Project) -> dict[str, object]:
             },
             "derived": [_derived_to_payload(item) for item in project.derived],
             "tracking_runs": [
-                _tracking_run_to_payload(item) for item in project.tracking_runs
+                tracking_run_to_payload(item) for item in project.tracking_runs
             ],
             "registries": _registries_to_payload(project.registries),
             "ui_state": project.ui_state,
@@ -123,7 +123,7 @@ def project_from_payload(payload: dict[str, object]) -> Project:
             for item in _object_sequence(payload.get("derived", []), "derived")
         ),
         tracking_runs=tuple(
-            _tracking_run_from_payload(item)
+            tracking_run_from_payload(item)
             for item in _object_sequence(
                 payload.get("tracking_runs", []), "tracking_runs"
             )
@@ -501,7 +501,9 @@ def _derived_from_payload(payload: dict[str, object]) -> DerivedData:
     )
 
 
-def _tracking_run_to_payload(run: TrackingRun) -> dict[str, object]:
+def tracking_run_to_payload(run: TrackingRun) -> dict[str, object]:
+    """TrackingRun 的 JSON 映射；任务结果交换文件（task-result.json 等）复用。"""
+
     return _merge_extra(
         run.extra_fields,
         {
@@ -526,7 +528,9 @@ def _tracking_run_to_payload(run: TrackingRun) -> dict[str, object]:
     )
 
 
-def _tracking_run_from_payload(payload: dict[str, object]) -> TrackingRun:
+def tracking_run_from_payload(payload: dict[str, object]) -> TrackingRun:
+    """从 JSON 记录重建 TrackingRun；未知键保留在 extra_fields。"""
+
     known = {
         "run_id",
         "video_id",

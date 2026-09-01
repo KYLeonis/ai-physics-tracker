@@ -4,6 +4,7 @@
 - 范围：`main` @ `1466289`（Phase 0–4 全部完成后的工程基础）
 - 性质：只读 review，不修改实现代码；不改 roadmap 既有安排
 - 方法：通读 `src/` 全部四层与 `tests/`、核心 spec（data-model / project-format / phase2–4 requirements）、ADR-0003/0005/0006/0007/0008/0011/0012、workflow/roadmap/status；运行全量测试（**433 passed in 41s**，offscreen）；对可疑点做临时目录内的只读复现与性能测量（见各 finding 的 Evidence）
+- **处置状态（2026-09-01 更新）**：F1/F4/F5/F6 已由 Subphase 4.5（Issue #16）修复，处置记录见 [phase-4.5-review.md](phase-4.5-review.md) 与 [status/phase-4.5-plan.md](../status/phase-4.5-plan.md)；F2/F3 归入 Phase 5；其余按 §10 归属不变。
 
 ---
 

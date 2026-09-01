@@ -653,7 +653,13 @@ class MainWindow(QMainWindow):
             return
         if self._annotation_session is None or self._selected_track_id is None:
             return
-        self._annotation_session.remove_track(self._selected_track_id)
+        try:
+            self._annotation_session.remove_track(self._selected_track_id)
+        except (ProjectSessionError, ValueError) as error:
+            # 域级联已随删除清理 runs；此处兜底保证按钮失败时用户可见原因
+            logger.error("delete track failed", exc_info=True)
+            self.statusBar().showMessage(f"Delete track failed: {error}")
+            return
         self._selected_track_id = None
         self.trackList.setCurrentRow(-1)
         self.trackList.clearSelection()

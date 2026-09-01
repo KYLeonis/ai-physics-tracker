@@ -15,6 +15,7 @@ from ai_physics_tracker.domain.project import (
 )
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
+from ai_physics_tracker.domain.tracking_run import create_tracking_run
 from ai_physics_tracker.domain.video import Video
 
 _NOW = datetime(2026, 8, 29, tzinfo=UTC)
@@ -126,3 +127,25 @@ def test_delete_track_cascades_observations_and_derived_data() -> None:
     assert deleted.tracks == ()
     assert deleted.observations == ()
     assert deleted.derived == ()
+
+
+def test_delete_track_cascades_tracking_runs_and_keeps_other_tracks_runs() -> None:
+    # review F1 回归：run 主体是 track，删除 track 必须级联其 runs，
+    # 否则下一次 replace 的聚合校验会拒绝整个删除操作。
+    project, _ = _project_with_observation()
+    video_id = project.videos[0].video_id
+    other_track = Track(uuid4(), video_id, "other", "#000000", _NOW)
+    project = replace(project, tracks=(*project.tracks, other_track))
+    own_run = create_tracking_run(
+        video_id, project.tracks[0].track_id, "train", engine_version="3.0.1-mock"
+    )
+    other_run = create_tracking_run(
+        video_id, other_track.track_id, "train", engine_version="3.0.1-mock"
+    )
+    project = replace(project, tracking_runs=(own_run, other_run))
+
+    deleted = delete_track(project, project.tracks[0].track_id)
+
+    assert deleted.tracks == (other_track,)
+    assert deleted.observations == ()
+    assert deleted.tracking_runs == (other_run,)

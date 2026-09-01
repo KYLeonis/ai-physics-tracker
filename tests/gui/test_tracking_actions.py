@@ -208,7 +208,7 @@ def test_ordinary_save_keeps_session_identity_and_concurrent_edit_dirty(
 def test_cancel_during_evaluation_keeps_model_and_ignores_late_terminal(qtbot, synthetic_video_path, tmp_path):
     import json
     from ai_physics_tracker.domain.tracking_run import mark_run_completed
-    from ai_physics_tracker.infrastructure.project_serializer import _tracking_run_to_payload
+    from ai_physics_tracker.infrastructure.project_serializer import tracking_run_to_payload
 
     handle = _FakeHandle()
     window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle))
@@ -221,7 +221,7 @@ def test_cancel_during_evaluation_keeps_model_and_ignores_late_terminal(qtbot, s
     model = folder / "model.pt"
     model.write_bytes(b"mock model")
     completed = mark_run_completed(run, model_snapshot=model.relative_to(session.project_root).as_posix())
-    (folder / "model-ready.json").write_text(json.dumps({"run": _tracking_run_to_payload(completed),
+    (folder / "model-ready.json").write_text(json.dumps({"run": tracking_run_to_payload(completed),
                                                        "points_path": None}), encoding="utf-8")
     handle.add_message(TaskResult(run.run_id, False, {"status": "cancelled"}))
     actions.cancel()
