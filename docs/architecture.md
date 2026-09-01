@@ -78,24 +78,27 @@ DLC 模型（dlc-models, PyTorch engine）
 - 模型库（Phase 7）记录模型元数据与来源实验，支持在新视频上复用并补充标注微调。
 - 推理输出必须携带 per-point confidence，供困难帧检测与图表着色使用。
 
-4.3 实现遵循 [ADR-0011](decisions/0011-deeplabcut-integration-architecture.md)：
-`InferenceCoordinator` 捕获媒体/时序/模型请求 → spawn worker 的 `DLCAdapter.infer`
-→ 适配层 `dlc_predictions` 严格解析 → 原始文件与校验后的观测交换文件存入本次 run 目录。
-队列仅传进度、日志和结果摘要；主进程确认上下文及文件哈希未变后，通过
+Phase 4.3/4.4 实现遵循 [ADR-0011](decisions/0011-deeplabcut-integration-architecture.md) 与
+[ADR-0012](decisions/0012-gui-tracking-task-boundaries.md)：`prepare_tracking_request` 捕获不可变项目、
+媒体与参数快照 → `TrackingJobRunner` 启动唯一 spawn worker → `prepare_training` 或
+`prepare_inference` 建立 DLC 输入 → `DLCAdapter` 执行 → 适配层 `dlc_predictions` 严格解析
+→ 原始文件与校验后的观测交换文件存入本次 run 目录。
+队列仅传进度、日志和结果摘要；主进程确认上下文、实际引用与轻量文件状态未变后，通过
 `ProjectSession.import_engine_points` 一次提交观测、run 完成状态和派生失效。
 取消/错误不提交半批结果。`effective_points` 是运动学与后台输入校验共同的数据入口，
 `manual_points` 仍仅供人工标注和训练使用。GUI 视觉/按钮接线留到 4.4。
 
-4.4 的 GUI 任务事务见 [ADR-0012](decisions/0012-gui-tracking-task-boundaries.md)：
 TaskPanel/TrackingActions 仅捕获请求和提交候选；spawn worker 独占 DLC、reader、训练/评价/
 推理与日志，结果解析/重合并在后台线程。主线程用会话/媒体代际和 Project 快照身份提交，
 保存保持活动 session 身份。AI 链路采用轻量文件状态，不反复哈希；数据结构、时序、
 snapshot、first-wins 和原子提交校验保留。Manual 圆形、AI 空心菱形，帧高亮索引更新。
+Phase 5.0 已移除旧 Training/Inference coordinator 的 start/poll/cancel 状态机；prepare/read
+保留为无生命周期状态的模块边界，任务启动、取消、迟到结果与恢复只维护统一 runner 路径。
 
-Phase 5 的 Proposed 目标边界见 [phase5-requirements.md](spec/phase5-requirements.md)：初始取帧复用
+Phase 5 的 Accepted 目标边界见 [phase5-requirements.md](spec/phase5-requirements.md)：初始取帧复用
 DLC uniform/K-means；困难帧使用原始预测的多信号候选与本项目 ranking/de-dup/diversity 策略；
 Accept 不产生 ground truth，Correct 才写 manual；completed infer result 与 active result 分离并显式替换；
-固定 validation series 后再比较 iteration。实现前先按 5.0 收敛旧 coordinator 生命周期（F3）。
+固定 validation series 后再比较 iteration。5.0 收敛旧 coordinator 生命周期（F3）后，后续任务都复用统一 runner。
 
 ## 4. 运动学计算与可视化（Phase 3/6 起细化）
 

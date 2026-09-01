@@ -1,8 +1,7 @@
-"""应用层全帧推理编排：独立进程产出、当前会话校验、原子观测导入。"""
+"""应用层全帧推理边界：准备不可变请求、执行引擎并读取落盘结果。"""
 
 from concurrent.futures import CancelledError
-from copy import deepcopy
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, replace
 from datetime import datetime
 import json
 from pathlib import Path
@@ -12,18 +11,12 @@ from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.tracking_run import (
-    TrackingRun, create_tracking_run, mark_run_running, mark_run_completed,
-    mark_run_failed, mark_run_cancelled,
+    TrackingRun, create_tracking_run, mark_run_completed,
 )
 from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.domain.types import JsonObject
-from ai_physics_tracker.domain.video import Video
-from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter
 from ai_physics_tracker.infrastructure.engine_adapter import (
     EngineAdapter, InferenceParams, InferenceRequest,
-)
-from ai_physics_tracker.infrastructure.task_runner import (
-    BackgroundTaskRunner, TaskHandle, TaskMessage, TaskResult,
 )
 
 
@@ -88,208 +81,92 @@ def _inference_process_worker(
         return {"status": "cancelled"}
 
 
-@dataclass
-class _InferenceJob:
-    session: ProjectSession
-    request: InferenceRequest
-    project_root: Path
-    video: Video
-    timing_detail: str | None
-    media_stamp: tuple[int, int, int]
-    config_stamp: tuple[int, int, int]
-    model_stamp: tuple[int, int, int]
-    adapter: EngineAdapter
-    handle: TaskHandle | None = None
+def prepare_inference(
+    session: ProjectSession,
+    training_run_id: UUID,
+    params: InferenceParams,
+    *,
+    config_path: Path | None = None,
+    run_id: UUID | None = None,
+) -> tuple[TrackingRun, InferenceRequest]:
+    """验证模型、视频时序与文件身份，登记 run 并返回不可变推理请求。"""
+    root = session.project_root
+    if root is None:
+        raise ProjectSessionError("Save the project before inference")
+    root = root.resolve()
+    trained = next((run for run in session.tracking_runs() if run.run_id == training_run_id), None)
+    if trained is None or trained.task_type != "train" or trained.status != "completed":
+        raise ProjectSessionError("Select a completed training run")
+    track = next((item for item in session.tracks if item.track_id == trained.track_id), None)
+    if track is None or track.video_id != trained.video_id:
+        raise ProjectSessionError("Training run does not match a current track/video")
+    if any(
+        run.track_id == trained.track_id and run.status == "running"
+        for run in session.tracking_runs()
+    ):
+        raise ProjectSessionError("This track already has an active engine task")
 
+    video = next(item for item in session.project.videos if item.video_id == trained.video_id)
+    video_path = session.video_path(video)
+    if video_path is None or not video_path.is_file() or not session.can_measure(video.video_id):
+        raise ProjectSessionError("Video is missing or its timing is not authorized")
+    stored_config = trained.extra_fields.get("config_path")
+    if config_path is None and isinstance(stored_config, str):
+        config_path = _project_path(root, stored_config)
+    if config_path is None or not config_path.is_file() or not trained.model_snapshot:
+        raise ProjectSessionError("Training config/snapshot is missing; retrain or supply a verified config")
+    config_path = config_path.resolve()
+    snapshot = _project_path(root, trained.model_snapshot)
+    if not snapshot.is_file():
+        raise ProjectSessionError("Training snapshot is missing; retrain before inference")
 
-class InferenceCoordinator:
-    """单活动推理任务；切换/关闭前由调用者执行 cancel_all，4.4 负责窗口接线。"""
-
-    def __init__(self, task_runner: BackgroundTaskRunner | None = None) -> None:
-        self._runner = task_runner or BackgroundTaskRunner()
-        self._jobs: dict[UUID, _InferenceJob] = {}
-
-    def prepare_inference(
-        self, session: ProjectSession, training_run_id: UUID, params: InferenceParams,
-        *, adapter: EngineAdapter | None = None, config_path: Path | None = None,
-        run_id: UUID | None = None,
-    ) -> TrackingRun:
-        """验证模型来源、视频时序与文件身份，准备一个尚未启动的推理 run。"""
-        root = session.project_root
-        if root is None:
-            raise ProjectSessionError("Save the project before inference")
-        root = root.resolve()
-        trained = next((r for r in session.tracking_runs() if r.run_id == training_run_id), None)
-        if trained is None or trained.task_type != "train" or trained.status != "completed":
-            raise ProjectSessionError("Select a completed training run")
-        track = next((t for t in session.tracks if t.track_id == trained.track_id), None)
-        if track is None or track.video_id != trained.video_id:
-            raise ProjectSessionError("Training run does not match a current track/video")
-        self._require_idle(session, trained.track_id)
-        video = next(v for v in session.project.videos if v.video_id == trained.video_id)
-        video_path = session.video_path(video)
-        if video_path is None or not video_path.is_file() or not session.can_measure(video.video_id):
-            raise ProjectSessionError("Video is missing or its timing is not authorized")
-        stored_config = trained.extra_fields.get("config_path")
-        if config_path is None and isinstance(stored_config, str):
-            config_path = _project_path(root, stored_config)
-        if config_path is None or not config_path.is_file() or not trained.model_snapshot:
-            raise ProjectSessionError("Training config/snapshot is missing; retrain or supply a verified config")
-        config_path = config_path.resolve()
-        snapshot = _project_path(root, trained.model_snapshot)
-        if not snapshot.is_file():
-            raise ProjectSessionError("Training snapshot is missing; retrain before inference")
-        archive_model = not config_path.is_relative_to(root) or not snapshot.is_relative_to(root)
-        timeline = next(t for t in session.project.timelines if t.video_id == video.video_id)
-        config = {
-            **asdict(params), "training_run_id": str(trained.run_id),
-            "shuffle": trained.config.get("shuffle", 1),
-            "trainingsetindex": trained.config.get("trainingsetindex", 0),
-            "timing_detail": session.measurement_timing_detail(video.video_id),
-        }
-        engine = adapter or DLCAdapter()
-        run = create_tracking_run(video.video_id, track.track_id, "infer",
-            engine=trained.engine, engine_version=trained.engine_version,
-            config=config, run_id=run_id)
-        output_dir = root / "data" / "engines" / str(run.run_id)
-        request = InferenceRequest(config_path, video_path.resolve(), snapshot,
-            output_dir, track.track_id, timeline,
-            run.source_detail, video.frame_count, params,
-            shuffle=config["shuffle"], trainingsetindex=config["trainingsetindex"],
-            archive_model=archive_model)
-        recorded_stamp = trained.extra_fields.get("model_file_info")
-        if recorded_stamp is not None and tuple(recorded_stamp) != _stamp(snapshot)[:2]:
-            raise ProjectSessionError("Selected model file has changed; select a current training run")
-        extras = {"model_file_info": list(_stamp(snapshot)[:2])}
-        if not archive_model:
-            extras["config_path"] = config_path.relative_to(root).as_posix()
-        # legacy 归档尚不存在；失败/取消的 run 不应持有虚构文件引用。
-        run = replace(run, model_snapshot=None if archive_model else snapshot.relative_to(root).as_posix(),
-                      extra_fields=extras)
-        job = _InferenceJob(session, request, root, video, config["timing_detail"],
-                            _stamp(request.video_path), _stamp(config_path), _stamp(snapshot), deepcopy(engine))
-        session.record_tracking_run(run)
-        self._jobs[run.run_id] = job
-        return run
-
-    def _require_idle(self, session: ProjectSession, track_id: UUID) -> None:
-        if any(job.handle is not None for job in self._jobs.values()):
-            raise ProjectSessionError("Another inference task is active")
-        if any(r.track_id == track_id and r.status == "running" for r in session.tracking_runs()):
-            raise ProjectSessionError("This track already has an active engine task")
-
-    def _validate_context(self, session: ProjectSession, job: _InferenceJob) -> None:
-        request = job.request
-        video = next((v for v in session.project.videos if v.video_id == job.video.video_id), None)
-        timeline = next((t for t in session.project.timelines if t.video_id == job.video.video_id), None)
-        media_path = session.video_path(job.video)
-        if (session is not job.session or session.project_root != job.project_root
-                or video != job.video or timeline != request.timeline
-                or not session.can_measure(job.video.video_id)
-                or session.measurement_timing_detail(job.video.video_id) != job.timing_detail
-                or not any(t.track_id == request.track_id and t.video_id == job.video.video_id for t in session.tracks)
-                or media_path is None or media_path.resolve() != request.video_path
-                or _stamp(request.video_path) != job.media_stamp
-                or _stamp(request.config_path) != job.config_stamp
-                or _stamp(request.model_snapshot) != job.model_stamp):
-            raise ProjectSessionError("Inference context changed; results were not imported")
-
-    def start_inference(self, session: ProjectSession, run_id: UUID) -> TaskHandle:
-        """启动 spawn worker；启动失败也结束已登记 run，不留下 running 假象。"""
-        job = self._jobs.get(run_id)
-        run = next((r for r in session.tracking_runs() if r.run_id == run_id), None)
-        if job is None or job.session is not session or run is None or run.status != "pending":
-            raise ProjectSessionError("No pending inference job belongs to this session")
-        self._require_idle(session, run.track_id)
-        try:
-            self._validate_context(session, job)
-            handle = self._runner.start_task(run_id, _inference_process_worker, job.request, job.adapter)
-        except Exception as error:
-            session.update_tracking_run(mark_run_failed(run, str(error)))
-            self._jobs.pop(run_id, None)
-            raise ProjectSessionError(f"Cannot start inference: {error}") from error
-        job.handle = handle
-        session.update_tracking_run(mark_run_running(run))
-        return handle
-
-    def _apply_result(self, job: _InferenceJob, run: TrackingRun, payload: JsonObject) -> None:
-        self._validate_context(job.session, job)
-        points, completed = read_inference_result(job.request, job.project_root, run, payload)
-        job.session.import_engine_points(points, completed)
-
-    def prepared_request(self, run_id: UUID) -> InferenceRequest:
-        """返回供独占 spawn worker 使用的请求，不暴露活动会话。"""
-        return self._jobs[run_id].request
-
-    def poll_messages(self, session: ProjectSession, run_id: UUID) -> list[TaskMessage]:
-        """只允许拥有任务的会话接收结果，进程退出后再排空末尾消息。"""
-        job = self._jobs.get(run_id)
-        if job is None or job.handle is None:
-            return []
-        if job.session is not session:
-            self.cancel_inference(job.session, run_id, timeout_s=0)
-            raise ProjectSessionError("Inference belongs to a different session")
-        handle = job.handle
-        messages = handle.poll_messages()
-        if not handle.is_alive():
-            handle.join(timeout_s=0)
-            messages.extend(handle.poll_messages())
-        forwarded: list[TaskMessage] = []
-        for message in messages:
-            if message.run_id != run_id:
-                continue
-            if not isinstance(message, TaskResult):
-                forwarded.append(message)
-                continue
-            run = next((r for r in session.tracking_runs() if r.run_id == run_id), None)
-            if run is None or run.status != "running":
-                continue
-            payload = message.payload or {}
-            try:
-                if payload.get("status") == "cancelled":
-                    session.update_tracking_run(mark_run_cancelled(run))
-                elif message.success and payload.get("status") == "completed":
-                    self._apply_result(job, run, payload)
-                else:
-                    raise ProjectSessionError(message.error or "Inference failed")
-            except Exception as error:
-                session.update_tracking_run(mark_run_failed(run, str(error)))
-            committed = next(r for r in session.tracking_runs() if r.run_id == run_id)
-            # GUI 收到的终态必须对应实际导入，而不是仅表示引擎进程执行成功。
-            forwarded.append(TaskResult(run_id, committed.status == "completed",
-                {**payload, "status": committed.status}, committed.error_message))
-        if not handle.is_alive():
-            run = next((r for r in session.tracking_runs() if r.run_id == run_id), None)
-            if run is not None and run.status == "running":
-                error = f"Inference process exited without a result (exitcode={handle.exitcode})"
-                session.update_tracking_run(mark_run_failed(run, error))
-                forwarded.append(TaskResult(run_id, False, {"status": "failed"}, error))
-            self._jobs.pop(run_id, None)
-        return forwarded
-
-    def is_running(self, run_id: UUID) -> bool:
-        job = self._jobs.get(run_id)
-        return job is not None and job.handle is not None and job.handle.is_alive()
-
-    def cancel_inference(self, session: ProjectSession, run_id: UUID, timeout_s: float = 1.0) -> None:
-        """取消含 pending 在内的任务；所有磁盘产物保留但不导入。"""
-        job = self._jobs.get(run_id)
-        if job is None:
-            return
-        if job.session is not session:
-            raise ProjectSessionError("Inference belongs to a different session")
-        if job.handle is not None:
-            job.handle.cancel(timeout_s=timeout_s)
-        run = next((r for r in session.tracking_runs() if r.run_id == run_id), None)
-        if run is not None and run.status in {"pending", "running"}:
-            session.update_tracking_run(mark_run_cancelled(run))
-        self._jobs.pop(run_id, None)
-
-    def cancel_all(self, session: ProjectSession) -> None:
-        """D1：只回收该会话拥有的全部任务，迟到消息不再应用。"""
-        for run_id, job in list(self._jobs.items()):
-            if job.session is session:
-                self.cancel_inference(session, run_id)
+    archive_model = not config_path.is_relative_to(root) or not snapshot.is_relative_to(root)
+    timeline = next(item for item in session.project.timelines if item.video_id == video.video_id)
+    config = {
+        **asdict(params),
+        "training_run_id": str(trained.run_id),
+        "shuffle": trained.config.get("shuffle", 1),
+        "trainingsetindex": trained.config.get("trainingsetindex", 0),
+        "timing_detail": session.measurement_timing_detail(video.video_id),
+    }
+    run = create_tracking_run(
+        video.video_id,
+        track.track_id,
+        "infer",
+        engine=trained.engine,
+        engine_version=trained.engine_version,
+        config=config,
+        run_id=run_id,
+    )
+    output_dir = root / "data" / "engines" / str(run.run_id)
+    request = InferenceRequest(
+        config_path,
+        video_path.resolve(),
+        snapshot,
+        output_dir,
+        track.track_id,
+        timeline,
+        run.source_detail,
+        video.frame_count,
+        params,
+        shuffle=config["shuffle"],
+        trainingsetindex=config["trainingsetindex"],
+        archive_model=archive_model,
+    )
+    recorded_stamp = trained.extra_fields.get("model_file_info")
+    if recorded_stamp is not None and tuple(recorded_stamp) != _stamp(snapshot)[:2]:
+        raise ProjectSessionError("Selected model file has changed; select a current training run")
+    extras = {"model_file_info": list(_stamp(snapshot)[:2])}
+    if not archive_model:
+        extras["config_path"] = config_path.relative_to(root).as_posix()
+    # legacy 归档尚不存在；失败/取消的 run 不应持有虚构文件引用。
+    run = replace(
+        run,
+        model_snapshot=None if archive_model else snapshot.relative_to(root).as_posix(),
+        extra_fields=extras,
+    )
+    session.record_tracking_run(run)
+    return run, request
 
 
 def read_inference_result(request: InferenceRequest, project_root: Path,

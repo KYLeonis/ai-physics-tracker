@@ -10,9 +10,12 @@ from typing import Any
 from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
-from ai_physics_tracker.application.training_job import TrainingCoordinator
+from ai_physics_tracker.application.training_job import prepare_training
 from ai_physics_tracker.application.inference_job import (
-    InferenceCoordinator, _inference_process_worker, read_inference_result, read_observation_exchange,
+    _inference_process_worker,
+    prepare_inference,
+    read_inference_result,
+    read_observation_exchange,
 )
 from ai_physics_tracker.domain.project import Project
 from ai_physics_tracker.domain.track_store import TrackStore
@@ -129,10 +132,12 @@ def _run_pipeline(run_id, queue, cancel_event, request, adapter):
         points_path = None
     else:
         send_log(queue, run_id, "INFO", "Preparing inference")
-        coordinator = InferenceCoordinator()
-        run = coordinator.prepare_inference(session, request.training_run_id, request.parameters,
-                                            adapter=adapter, run_id=run_id)
-        prepared = coordinator.prepared_request(run_id)
+        run, prepared = prepare_inference(
+            session,
+            request.training_run_id,
+            request.parameters,
+            run_id=run_id,
+        )
         payload = _inference_process_worker(run_id, queue, cancel_event, prepared, adapter)
         if payload["status"] == "cancelled":
             raise CancelledError()
@@ -159,7 +164,7 @@ def _train(session, run_id, queue, cancel_event, request, adapter):
     reader = OpenCVVideoReader()
     try:
         reader.open(path)
-        run, config_path = TrainingCoordinator().prepare_training(
+        run, config_path = prepare_training(
             session, request.run.track_id, reader, parameters, adapter,
             working_dir=request.project_root / "data" / "engines" / str(run_id))
     finally:

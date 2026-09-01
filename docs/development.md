@@ -107,13 +107,14 @@
   被保护、AI 新增 5 点。输出目录会打印并保留；首次预训练权重可能需要网络下载。
 - 4.4 已接通 Task Panel、训练/推理/取消、模型评价、日志历史和 AI 视觉样式；
   `.venv/bin/python -m ai_physics_tracker` 可直接进行 GUI 工作流。
-- API 顺序：`prepare_inference(session, training_run_id, InferenceParams(min_confidence=...))`
-  → `start_inference(session, run_id)` → 定时 `poll_messages(session, run_id)`。
-  项目必须先保存，视频必须具备本次会话时序授权，训练模型必须具有可信 SHA-256。
+- API 顺序：`prepare_tracking_request(...)` → 登记 pending/running run
+  → `TrackingJobRunner.start(request)` → 轮询返回的 `TaskHandle`
+  → `prepare_tracking_candidate(...)` → `session.apply_tracking_candidate(...)`。
+  项目必须先保存，视频必须具备本次会话时序授权；训练与推理只维护这一套生命周期。
   首选项目内 config/model；可验证的外部旧式模型允许显式指定 config，成功后将模型及配置
-  副本归档到本次 run 目录，新引用仍为相对路径。没有模型哈希的旧训练记录需重新训练，
-  不能仅凭相同文件名继续推理。已登记的视频 SHA-256 会复核，内容变化不会混入旧轨迹。
-- `cancel_all(session)` 在切换/关闭前回收该会话任务。推理导入成功会使目标派生 stale；
+  副本归档到本次 run 目录，新引用仍为相对路径。模型/配置/媒体以轻量文件状态与实际引用校验；
+  legacy SHA-256 不是推理前置条件。
+- 切换/关闭由 `TrackingActions` 取消并回收当前 `TaskHandle`。推理导入成功会使目标派生 stale；
   调用既有重算 API 后使用 manual/AI 生效观测，训练标注仍只取 manual。
 - 低于指定阈值及缺测不生成观测，但原始 HDF5/CSV 保留；first-wins 会跳过已有 AI，
   调低阈值再推理只能补空缺，不自动替换旧点。阈值不是模型准确度保证。

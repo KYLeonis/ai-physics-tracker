@@ -86,13 +86,13 @@ def test_prepare_request_captures_lightweight_snapshot_without_engine_setup(
             calls.append("reader")
             raise AssertionError("prepare must not create a video reader")
 
-    class UnexpectedCoordinator:
-        def __init__(self):
-            calls.append("coordinator")
-            raise AssertionError("prepare must not prepare a DLC project")
+    def unexpected_preparation(*args, **kwargs):
+        del args, kwargs
+        calls.append("preparation")
+        raise AssertionError("prepare must not prepare a DLC project")
 
     monkeypatch.setattr(tracking_job, "OpenCVVideoReader", UnexpectedReader)
-    monkeypatch.setattr(tracking_job, "TrainingCoordinator", UnexpectedCoordinator)
+    monkeypatch.setattr(tracking_job, "prepare_training", unexpected_preparation)
 
     request = tracking_job.prepare_tracking_request(
         session, track.track_id, TrainingParams()
@@ -102,6 +102,31 @@ def test_prepare_request_captures_lightweight_snapshot_without_engine_setup(
     assert request.video_path == synthetic_video_path.resolve()
     assert request.video_file_info is not None
     assert calls == []
+
+
+def test_tracking_job_runner_is_the_single_start_facade(
+    tmp_path: Path,
+    synthetic_video_path: Path,
+) -> None:
+    session, _video, track = _make_session(tmp_path, synthetic_video_path)
+    request = tracking_job.prepare_tracking_request(
+        session, track.track_id, TrainingParams()
+    )
+    adapter = MockEngineAdapter()
+
+    class CapturingRunner:
+        def start_task(self, run_id, target, *args):
+            return run_id, target, args
+
+    started = tracking_job.TrackingJobRunner(
+        adapter=adapter, runner=CapturingRunner()
+    ).start(request)
+
+    assert started == (
+        request.run.run_id,
+        tracking_job.run_tracking_worker,
+        (request, adapter),
+    )
 
 
 def test_spawn_mock_training_result_is_importable_as_candidate(
