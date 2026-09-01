@@ -35,7 +35,7 @@
 - **Recommendation**：只补统一路径的最小回归，不恢复旧 coordinator 测试。
 - **Decision**：Fix Before Close——Issue #17 的验收直接要求保留这些边界。
 - **Fix commit**：`ba3d870`
-- **Verification**：新增 runner facade、真实 spawn 推理取消、训练失败、GUI 启动失败、timing/project root/generation 变化取消、media/config/model/observation 篡改拒绝与 unchanged-stat 测试；定向 30 passed，全量 433 passed。
+- **Verification**：新增 runner facade、真实 spawn 推理取消、训练失败、GUI 启动失败、timing/project root/generation 变化取消、media/config/model/observation 篡改拒绝与 unchanged-stat 测试；定向 30 passed，全量 433 passed；[CI run 33531403393](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531403393) 双平台通过。
 - **Re-review**：R2 独立 reviewer 确认 Medium 已关闭。
 - **Status**：Closed
 
@@ -71,5 +71,5 @@
 - [ ] 通过（首轮无 finding）
 - [ ] 需要重做
 
-- 最终结论：旧双轨状态机已删除，唯一生命周期路径及关键边界有自动化与真实 DLC smoke 证据；F3 Closed。
+- 最终结论：旧双轨状态机已删除，唯一生命周期路径及关键边界有本地自动化、真实 DLC smoke 与双平台 CI 证据；F3 Closed。
 - 日期 / 依据轮次：2026-09-02 · R1 + R2

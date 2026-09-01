@@ -3,7 +3,7 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 5.0 — Tracking Pipeline Consolidation（✅ 2026-09-02；Phase 4 Review F3 Closed）**
+- 最近完成：**Phase 5.0 — Tracking Pipeline Consolidation（✅ 2026-09-02；Phase 4 Review F3 Closed；[双平台 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531403393)）**
 - 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；等待用户确认后进入 5.1）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 

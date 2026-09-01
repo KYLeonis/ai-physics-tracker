@@ -25,7 +25,7 @@ N/A（5.0 收尾完成，未开始 5.1）。
 
 ## Recently Completed
 
-- **Phase 5.0 — Tracking Pipeline Consolidation**（✅ 2026-09-02）：删除旧 `TrainingCoordinator` / `InferenceCoordinator` start/poll/cancel 双轨，保留模块级 prepare/read；真实 DLC smoke 已迁移到 request → runner → candidate 并通过（1 epoch、10 帧推理、5 AI inserted / 5 manual preserved）。R1 测试覆盖 finding 由 `ba3d870` 修复，R2 独立复审通过；本地全回归 **433 passed in 53.76s**。F3 Closed；未实现 F2/5.1、未改 schema/依赖/GUI 产品行为。
+- **Phase 5.0 — Tracking Pipeline Consolidation**（✅ 2026-09-02，merge `5569e93`）：删除旧 `TrainingCoordinator` / `InferenceCoordinator` start/poll/cancel 双轨，保留模块级 prepare/read；真实 DLC smoke 已迁移到 request → runner → candidate 并通过（1 epoch、10 帧推理、5 AI inserted / 5 manual preserved）。R1 测试覆盖 finding 由 `ba3d870` 修复，R2 独立复审通过；本地全回归 **433 passed in 53.76s**，[CI run 33531403393](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531403393) 在 macOS/Windows Python 3.11 均通过。F3 Closed；未实现 F2/5.1、未改 schema/依赖/GUI 产品行为。
 - **Phase 5 规划**（2026-09-01，只改文档）：新增 [Phase 5 requirements](../spec/phase5-requirements.md) 与 [PHASE_5_PLAN](phase-5-plan.md)，把 Human-in-the-loop 不变式、DLC 复用边界、代表帧/困难帧、Suggested Frames、fixed validation、规则型 Advisor、F2/F3 和 5.0–5.6 验收路径具体化；未改产品代码、依赖或 schema。规划同步后全回归 **441 passed in 41.74s**（macOS，Python 3.12，Qt offscreen）。
 - **Phase 4.5 — Engineering Stabilization**（✅ 2026-09-01）：S1–S4 四个 Slice 全部完成（分支 `feat/p4.5-stabilization`，5 commits：`1641536`/`0d604ad`/`473ee65`/`e53ab7e`/`1ca4a91`）。F1 修复在实现中发现并覆盖了 review 未点名的 session 层路径（`remove_track` 原 `_commit_store` 回填会把级联删除的 run 带回旧聚合，新测试当场捕获）。
 - **Phase 4 收尾全库 Review**（2026-09-01，只读）：[docs/reviews/phase4-architecture-reliability-review.md](reviews/phase4-architecture-reliability-review.md)。15 项 finding（Critical 0 / High 1）；处置状态已在该报告顶部更新。

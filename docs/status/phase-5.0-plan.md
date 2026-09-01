@@ -45,7 +45,7 @@
 
 - [x] Slice 1：盘点旧 lifecycle 调用者，确认 GUI 已使用统一 runner，旧调用仅存于测试与一个冒烟脚本。
 - [x] Slice 2：收缩 prepare/read 边界，移除旧 lifecycle，并迁移测试与冒烟脚本。
-- [x] Slice 3：定向/全量验证、独立 review 与文档收尾；合并/CI 证据在推送后补记。
+- [x] Slice 3：定向/全量验证、独立 review、文档收尾、合并与双平台 CI。
 
 ## Verification
 
@@ -57,8 +57,8 @@
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：2026-09-02 / 待 `--no-ff` 合并后补记
-- AC 勾选结果：5/5 通过；本地全回归 433 passed，真实 DLC CPU smoke 通过。
+- 完成日期 / 合并 commit：2026-09-02 / `5569e93`
+- AC 勾选结果：5/5 通过；本地全回归 433 passed，真实 DLC CPU smoke 通过；[CI run 33531403393](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531403393) 的 macOS/Windows Python 3.11 均通过。
 - 偏离计划之处及原因：R1 指出旧测试删除后统一路径边界覆盖不足；追加 `ba3d870` 后 R2 通过。无产品范围偏离。
 - 遗留问题：F2 继续由 5.4 处理；5.1 等待用户单独批准后开始。
 - 独立 review 结论：[phase-5.0-review.md](../reviews/phase-5.0-review.md) R2 通过，F3 Closed。
