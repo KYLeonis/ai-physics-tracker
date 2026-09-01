@@ -15,3 +15,9 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | 4.4 | [phase-4.4-plan.md](../status/phase-4.4-plan.md) Result 节（机制建立前的记录） | 修改后通过；2 项 finding 已修复并复审确认 | 2026-09-01 |
 
 > 4.3 / 4.4 的独立 review 发生于本机制建立之前，不回溯补建独立文件；自下一个触发的 subphase 起使用本目录。
+
+## 阶段级专项 Review
+
+| Review | 记录 | 结论 | 日期 |
+| --- | --- | --- | --- |
+| Phase 4 收尾 Architecture / Reliability / Boundary Review | [phase4-architecture-reliability-review.md](phase4-architecture-reliability-review.md) | 只读 review；15 项 finding（Critical 0 / High 1）；建议小型 stabilization subphase（P4.5，2–4 天）后进入 Phase 5 | 2026-09-01 |

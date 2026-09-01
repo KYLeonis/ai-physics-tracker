@@ -27,6 +27,7 @@ Phase 4 目标已交付：软件内完成手工标注、训练/评价、推理�
 
 ## Recently Completed
 
+- **Phase 4 收尾全库 Review**（2026-09-01，只读）：完成 Architecture / Reliability / Product Boundary review，报告见 [docs/reviews/phase4-architecture-reliability-review.md](reviews/phase4-architecture-reliability-review.md)。433 tests 复跑通过；15 项 finding（Critical 0 / High 1：F1 删除带 TrackingRun 的 Track 静默失败，已复现）。建议先行小型 stabilization subphase（P4.5：F1 修复 + 导出目录校验 + detached 去 deepcopy + 分层测试加固，2–4 天），F2（AI 轨迹整体清除/替换）并入 Phase 5 需求。未修改任何实现代码。
 - **Phase 4 — Deep Learning Tracking**（✅ 2026-09-01）：Subphase 4.0–4.4 全部完成；最终 `main` 集成 CI [run 33504579667](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33504579667) 在 macOS/Windows Python 3.11 通过。首轮 Windows CI 暴露两个平台相关测试假设，`51e05b1` 修复为按平台尺寸验证后复跑全绿。Issue #15 已关闭。经用户明确批准，Windows 真机/CUDA 验收延期到 Phase 9 打包前的专门关卡。
 - **4.4 macOS Human Review 通过**（2026-09-01）：用户确认完整 GUI 工作流与最终聚焦复验通过。Main/Chart/AI 可缩放，Chart/AI 可分离为独立窗口并重新停靠，Chart 动态状态消息为英文；无其他交互问题。
 - **4.4 本地实现与自动化验证**（2026-09-01）：Task Panel、真实训练指标/基本评价、推理、异步取消/保存/切换、AI 菱形及 marker 复用已接通；最终本地全回归 **433 passed in 47.47s**。真实 GUI 组件 CPU 冒烟完成 1 epoch 训练/评价/推理，5 AI 插入/5 manual 保留并保存重开；独立 review 的两个 finding 已修复并复审通过；`--no-ff` 合并提交为 `17ae493`。
@@ -61,4 +62,7 @@ Phase 4 目标已交付：软件内完成手工标注、训练/评价、推理�
 
 ## Next Recommended Action
 
-停止开发，等待用户下一条指令。下一阶段为 Phase 5 — AI-assisted Annotation & Refinement；进入时先规划，基础 K-means 选帧直接调用 DLC，不自行开始实现。
+停止开发，等待用户下一条指令。两个候选方向（由用户决定）：
+
+1. **P4.5 — Engineering Stabilization**（review 建议，2–4 天，范围见 review §9：F1 删 track 回归修复、F6 导出目录校验、F5 detached 去 deepcopy、F4 分层测试加固；可选 F3 编排双轨收敛）。
+2. **Phase 5 — AI-assisted Annotation & Refinement**：进入时先规划；须把 F2（AI 轨迹整体清除/替换，refinement 闭环前置需求）纳入 Phase 5 需求；基础 K-means 选帧直接调用 DLC，不自行开始实现。
