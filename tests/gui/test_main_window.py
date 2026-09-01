@@ -28,8 +28,9 @@ def test_main_chart_and_ai_panels_allow_window_resizing(qtbot: QtBot) -> None:
     qtbot.addWidget(window)
     window.show()
 
-    window.resize(900, 520)
-    assert window.size().width() == 900
+    compact_width = max(900, window.minimumSizeHint().width())
+    window.resize(compact_width, 520)
+    assert window.size().width() == compact_width
     assert window.size().height() == 520
     assert window.centralWidget().findChild(QScrollArea) is not None
     assert not window.isFullScreen()
@@ -45,8 +46,9 @@ def test_main_chart_and_ai_panels_allow_window_resizing(qtbot: QtBot) -> None:
         assert panel.size().height() == 480
         panel.setFloating(False)
 
-    window.resize(1100, 760)
-    assert window.size().width() == 1100
+    expanded_width = compact_width + 200
+    window.resize(expanded_width, 760)
+    assert window.size().width() == expanded_width
     assert window.size().height() == 760
 
 

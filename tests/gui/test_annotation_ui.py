@@ -52,9 +52,8 @@ def test_annotation_click_marks_point_and_overlays_it(
 ) -> None:
     window = _opened_with_track(qtbot, synthetic_video_path)
 
-    # 合成视频 64x48，fit 模式下点击中心 → 像素 ≈ (32, 24)
-    center = QPoint(window.videoView.viewport().width() // 2,
-                    window.videoView.viewport().height() // 2)
+    # 从合成视频中心映射点击位置，避免平台布局取整改变 viewport 几何中心。
+    center = window.videoView.mapFromScene(QPointF(32.0, 24.0))
     window._onAnnotationClicked(center)
 
     session = window._annotation_session
