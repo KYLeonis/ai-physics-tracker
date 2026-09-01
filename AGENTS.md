@@ -60,6 +60,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 │   ├── workflow.md      # 开发循环说明书（Phase/Subphase/Slice，细则）
 │   ├── status/current.md # 当前状态：阶段/任务/下一步（会话先读、收尾必更）
 │   ├── templates/       # subphase 计划与 review 模板
+│   ├── reviews/         # 独立 review 记录（每 subphase 一个 Review Record）
 │   └── decisions/       # 架构决策记录（ADR）
 ├── src/                 # 源代码（Phase 1 起填充）
 ├── tests/               # 测试（Phase 1 起填充）
@@ -80,6 +81,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - Phase 1 数据体系规范（**实现前必读**）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md`（持久化与项目目录）、`docs/spec/phase1-requirements.md`（Phase 1 需求与验收标准）
 - Phase 2 视频/GUI 规范：`docs/spec/phase2-requirements.md`；技术栈与分层决策见 ADR-0005
 - 模板：`docs/templates/`（subphase 计划、review）
+- 独立 review 记录（Review Record）：`docs/reviews/`（索引见其 README；生命周期规则以 `docs/workflow.md` §6 为准）
 - 实现参考与前期调研（开源生态地图）：`docs/research/open-source-project-map.md` —— 实现任何模块前先读其对应小节；各项目源码级细节见 `docs/research/raw/`，仓库快照与校验规则见 `docs/research/README.md`
 - 架构决策记录（ADR）：`docs/decisions/NNNN-*.md`（模板见 `docs/decisions/0001-record-architecture-decisions.md`）
 - 各顶层目录内有 `README.md` 说明该目录的用途与约定
@@ -96,11 +98,11 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 
 ```text
 Explore → 需要时 Plan（subphase mini-plan）→ 以 Slice 小步实现
-→ Verify（测试）→ Self-review → 必要时独立 review
+→ Verify（测试）→ Self-review → 必要时独立 review（Review Record 记录于 docs/reviews/）
 → Commit / Integrate → 更新 status → Next
 ```
 
-**不变式**：数据先行（手工/AI 跟踪统一数据体系，Phase 1 核心目标）；代码进 `src/`、测试进 `tests/`、大文件不入库；重大选型记 ADR（§10）；完成当前 Phase 后暂停等待下一条指令。
+**不变式**：数据先行（手工/AI 跟踪统一数据体系，Phase 1 核心目标）；代码进 `src/`、测试进 `tests/`、大文件不入库；重大选型记 ADR（§10）；独立 review 的 Reviewer 默认只读，findings 由实现方处置并记入 `docs/reviews/`（细则见 `docs/workflow.md` §6）；完成当前 Phase 后暂停等待下一条指令。
 
 **何时必须暂停并询问用户**：
 

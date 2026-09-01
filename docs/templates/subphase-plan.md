@@ -43,4 +43,4 @@
 - AC 勾选结果：
 - 偏离计划之处及原因：
 - 遗留问题（移入 `docs/status/current.md` 或下一 subphase）：
-- 独立 review 结论（如有）：
+- 独立 review 结论（如有）：链接 Review Record（`docs/reviews/phase-X.Y-review.md`）并总结最终 Verdict，不重复 findings 清单

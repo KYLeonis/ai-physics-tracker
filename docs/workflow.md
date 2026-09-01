@@ -84,7 +84,7 @@ Agent 动作（在自动化验证全绿之后、合并/收尾之前）：
 
 ## 6. Review
 
-### Self-review（每个 commit 前必做）
+### 6.1 Self-review（每个 commit 前必做）
 
 - [ ] diff 只包含本 Slice 范围内的改动
 - [ ] 验证真实运行过，结果与声称一致
@@ -93,7 +93,7 @@ Agent 动作（在自动化验证全绿之后、合并/收尾之前）：
 - [ ] 新增公开接口/数据结构有 docstring 或文档说明
 - [ ] 暂存区中没有视频/模型/大文件
 
-### 独立 review（用一个全新的 Agent 会话）
+### 6.2 Independent Review（独立审查，用全新的 Agent 会话）
 
 **何时需要**：
 
@@ -102,7 +102,31 @@ Agent 动作（在自动化验证全绿之后、合并/收尾之前）：
 - 核心逻辑改动超过约 500 行；
 - Subphase 收尾时包含关键设计决策。
 
-**怎么做**：开一个新会话，只给它 review 模板（`docs/templates/review.md`）+ diff 范围 + 相关 spec/ADR 路径，**不给实现过程的叙述**（避免确认偏误）。Review 结论写回 subphase Issue 或 plan 的 Result 节。
+**角色分工**：
+
+- **Independent Reviewer 默认只读**：只产出 Findings 与结论，不修改产品代码（`src/`、`tests/`、`scripts/`），也不亲自修复自己提出的问题再自行宣布通过。"只读"不约束 Review Record 本身——Checklist、Findings、Review Log 与复审结论由 Reviewer 填写。
+- **Main / Implementation Agent**：对每条 Finding 做 triage（修 / 不修）、实施修复、运行验证，并同步更新 Review Record。
+
+**流程**：
+
+```text
+Implementation Agent
+  → Independent Review Agent（新会话，只读）→ Findings
+  → Main / Implementation Agent：逐条 Decision（Fix Now / Fix Before Close / Defer / Accept / Not Reproducible）
+  → Fix + Verification
+  → Independent Re-review（新的独立会话）
+  → Final Verdict
+```
+
+**Review Record（长期可追溯记录）**：
+
+- 首轮 review 会话开始时，以 `docs/templates/review.md` 为基础建立 `docs/reviews/phase-X.Y-review.md`；**一个 subphase 一个文件**，贯穿 Scope → Findings → Triage → Fixes → Verification → Re-review → Final Verdict 整个生命周期，不随轮次新建文件。索引见 `docs/reviews/README.md`。
+- Reviewer 会话的输入保持最小：Review Record 模板路径 + diff 范围 + 相关 spec/ADR/plan 路径，**不给实现过程的叙述**（避免确认偏误）。
+- Finding 使用稳定 ID（F1、F2…，按发现顺序编号，不复用；判定不成立的同样保留编号并记 Not Reproducible），逐条记录 Finding / Severity / Evidence / Impact / Recommendation / Decision / Status / Fix commit / Verification / Re-review result，字段定义见模板。
+- **提出问题不等于必须修复**：理论性、低影响、低概率，或修复会明显过度工程的问题，明确记 `Accept` / `Defer` 并写一句理由。本项目是本地桌面科学软件，review 服务于工程质量，不做安全审计或 adversarial audit。
+- 记录只保存工程轨迹——发现了什么、为什么修/不修、采用什么修复、对应哪个 commit、运行了什么验证、复审结果；不保存 Agent 思考过程或对话记录。
+- 收尾对接：subphase Issue 的 Result 只链接 Review Record 并总结最终 Verdict，不复制完整 findings；`docs/status/current.md` 只记录是否通过与文档路径。
+- PR 保持可选；数据格式、数值算法、持久化、AI 生命周期等高风险 subphase 可建议用 PR 便于查看完整 diff，不强制。
 
 ## 7. 什么时候写 ADR
 
@@ -115,7 +139,7 @@ Agent 动作（在自动化验证全绿之后、合并/收尾之前）：
 ## 8. 一个 Subphase 如何结束
 
 1. 逐条核对 mini-plan 的 AC（真实运行，不是读代码确认）。
-2. 需要独立 review 的，先完成并处理 findings。
+2. 需要独立 review 的，先完成并处理 findings，Review Record 收口（全部 finding Closed、Final Verdict 已记录），并在 Issue Result 中链接该记录（§6.2）。
 3. **Integrate**：分支合并回 `main`（用 `--no-ff` 保留 subphase 边界），关闭 Issue，`git push`。
 4. **Record**：需要 ADR 的决策补 ADR；roadmap / architecture.md 有变化则更新。
 5. **更新 `docs/status/current.md`**（必做）：完成项移入 Recently Completed，填写 Next Recommended Action。
@@ -142,6 +166,7 @@ Agent 动作（在自动化验证全绿之后、合并/收尾之前）：
 | Phase | milestone（**可选**） | 一个 Phase 的 subphase 超过 3 个时再考虑创建，不强制 |
 | Subphase | **Issue** | Agent 负责创建与关闭；标题 `Phase 1.1 — data model core`；正文 = mini-plan |
 | Slice | commit | Conventional Commits，落在 subphase 工作分支上 |
+| Review | `docs/reviews/phase-X.Y-review.md` | 触发独立 review 的 subphase 一个文件（§6.2）；Issue Result 只链接并总结 Verdict |
 | Subphase 集成 | merge `--no-ff` → `main` → push | PR **可选**：想在 GitHub 页面看 diff、或配合独立 review 时使用 |
 
 **明确不使用**：Project Board、Git Flow、长期存活的分支、强制 PR。
@@ -182,7 +207,7 @@ status 与仓库实际状态矛盾时，**以仓库为准**，先修正 status �
 开始会话   读 AGENTS.md → docs/status/current.md → 相关文档 → git log
 计划       Subphase = Issue + mini-plan（Goal/Scope/AC/Slices）
 实现       Slice：一句话说得清、一个会话做得完、可独立验证
-提交前     self-review checklist（§6）；关键改动另做独立 review
-收尾       核对 AC → merge --no-ff → push → 更新 status → 写下一步
+提交前     self-review checklist（§6.1）；关键改动另做独立 review（§6.2，记录 docs/reviews/）
+收尾       核对 AC → Review Record 收口 → merge --no-ff → push → 更新 status → 写下一步
 Phase 末   AGENTS.md §11 → 停止等待指令
 ```
