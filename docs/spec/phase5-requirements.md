@@ -1,6 +1,6 @@
 # Phase 5 — AI-assisted Annotation & Refinement 需求规范
 
-> 状态：**Proposed（2026-09-01，等待用户确认后进入实现）**  
+> 状态：**Accepted（2026-09-01；Phase 5.0 已开始）**
 > 本文只定义产品边界、数据语义与验收口径，不代表已经实现。实施顺序见
 > [PHASE_5_PLAN](../status/phase-5-plan.md)。Phase 4 基线见
 > [Phase 4 requirements](phase4-requirements.md)、[ADR-0011](../decisions/0011-deeplabcut-integration-architecture.md)、
@@ -76,6 +76,10 @@ AI 只负责指出“哪些帧值得看”和解释原因；用户负责提供�
 ## 3. 功能需求
 
 ### R0 任务编排单轨化（Review F3）
+
+> **实现状态**：✅ Phase 5.0 于 2026-09-02 完成，F3 Closed；证据见
+> [phase-5.0-plan.md](../status/phase-5.0-plan.md) 与
+> [phase-5.0-review.md](../reviews/phase-5.0-review.md)。
 
 1. Phase 5 新任务接入前，收敛旧 `TrainingCoordinator`/`InferenceCoordinator` 的 start/poll/cancel 生命周期。
 2. 保留统一管线仍使用的 prepare/read helpers；`TrackingJobRunner` 成为唯一长任务生命周期所有者。
@@ -210,4 +214,3 @@ AC-9 不假定每轮必然改善：未改善时必须如实显示并给出停止
 - Monte-Carlo dropout、专用 uncertainty/embedding 主动学习模型；
 - Phase 7 模型库、跨项目 lineage；多目标/多关键点 identity correction；
 - Windows/CUDA 真机验收仍按既有批准延期到 Phase 9 前专门关卡。
-

@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 4 — Deep Learning Tracking（✅ 2026-09-01）+ Subphase 4.5 工程稳定性修复（✅ 2026-09-01，[Review](reviews/phase4-architecture-reliability-review.md) findings F1/F4/F5/F6）**
-- 当前阶段：**Phase 5 需求与总计划已形成 Proposed 草案，等待用户确认后从 5.0 开始实现**
+- 最近完成：**Phase 5.0 — Tracking Pipeline Consolidation（✅ 2026-09-02；Phase 4 Review F3 Closed）**
+- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；等待用户确认后进入 5.1）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -125,7 +125,7 @@ Python 3.11 通过。经用户批准，Windows 真机/CUDA 验收延期到 Phase
 
 ---
 
-## Phase 5 — AI-assisted Annotation & Refinement ⬜
+## Phase 5 — AI-assisted Annotation & Refinement 🔄
 
 **目标**：形成“AI 推荐高价值帧、用户提供正确标签、固定验证集比较迭代结果”的
 Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
@@ -144,7 +144,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 | Subphase | 名称 | 核心交付 |
 | --- | --- | --- |
-| 5.0 | Tracking Pipeline Consolidation | F3：`TrackingJobRunner` 成为唯一长任务生命周期 |
+| 5.0 ✅ | Tracking Pipeline Consolidation | F3：统一 runner/actions/task handle 生命周期，旧 coordinator 已移除 |
 | 5.1 | Representative Frame Selection | DLC uniform/K-means 初始建议帧 |
 | 5.2 | Difficult Frame Mining | 原始预测、多信号候选、排名/去重/多样性、Top N |
 | 5.3 | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复 |
@@ -153,6 +153,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 | 5.6 | Refinement Loop Integration & Acceptance | 单摆端到端闭环与量化验收 |
 
 **验收标准**
+- [x] F3 关闭：旧 coordinator lifecycle 已移除，训练/推理只维护统一 runner/actions/task handle 路径
 - [ ] DLC uniform/K-means 可在 working zone 推荐去重代表帧，不自动创建标签
 - [ ] 困难帧扫描消费指定 infer run 的全帧原始预测；连续低 confidence 片段不会垄断 Top N
 - [ ] Accept 不产生 ground truth，Correct 保留 prediction provenance，Skip 不造坐标；保存重开一致

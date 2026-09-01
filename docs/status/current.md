@@ -3,28 +3,29 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-01（Phase 5 requirements / roadmap / PHASE_5_PLAN 已完成 Proposed 草案；尚未开始实现）
+- 最后更新：2026-09-02（Subphase 5.0 已完成；F3 Closed；等待 5.1 指令）
 
 ---
 
 ## Current Phase
 
-**Phase 4 — Deep Learning Tracking** ✅ 已完成；**Phase 5 — AI-assisted Annotation & Refinement** ⬜ 已规划、待用户确认后开始
+**Phase 4 — Deep Learning Tracking** ✅ 已完成；**Phase 5 — AI-assisted Annotation & Refinement** 🚧 进行中
 
 ## Current Subphase
 
-N/A。Phase 5 总计划见 [phase-5-plan.md](phase-5-plan.md)，状态为 **Proposed**；未创建实现分支或 Issue。
+**5.0 — Tracking Pipeline Consolidation** ✅ 已完成。Issue [#17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)，结果见 [phase-5.0-plan.md](phase-5.0-plan.md) 与 [Review Record](../reviews/phase-5.0-review.md)。
 
 ## Current Slice
 
-N/A（规划完成，等待用户批准 5.0）。
+N/A（5.0 收尾完成，未开始 5.1）。
 
 ## Current Goal
 
-等待用户确认 Phase 5 需求与 Subphase 拆分；确认后只进入 **5.0 — Tracking Pipeline Consolidation**，不提前实现主动学习功能。
+停止开发，等待用户确认是否进入 **5.1 — Representative Frame Selection**。
 
 ## Recently Completed
 
+- **Phase 5.0 — Tracking Pipeline Consolidation**（✅ 2026-09-02）：删除旧 `TrainingCoordinator` / `InferenceCoordinator` start/poll/cancel 双轨，保留模块级 prepare/read；真实 DLC smoke 已迁移到 request → runner → candidate 并通过（1 epoch、10 帧推理、5 AI inserted / 5 manual preserved）。R1 测试覆盖 finding 由 `ba3d870` 修复，R2 独立复审通过；本地全回归 **433 passed in 53.76s**。F3 Closed；未实现 F2/5.1、未改 schema/依赖/GUI 产品行为。
 - **Phase 5 规划**（2026-09-01，只改文档）：新增 [Phase 5 requirements](../spec/phase5-requirements.md) 与 [PHASE_5_PLAN](phase-5-plan.md)，把 Human-in-the-loop 不变式、DLC 复用边界、代表帧/困难帧、Suggested Frames、fixed validation、规则型 Advisor、F2/F3 和 5.0–5.6 验收路径具体化；未改产品代码、依赖或 schema。规划同步后全回归 **441 passed in 41.74s**（macOS，Python 3.12，Qt offscreen）。
 - **Phase 4.5 — Engineering Stabilization**（✅ 2026-09-01）：S1–S4 四个 Slice 全部完成（分支 `feat/p4.5-stabilization`，5 commits：`1641536`/`0d604ad`/`473ee65`/`e53ab7e`/`1ca4a91`）。F1 修复在实现中发现并覆盖了 review 未点名的 session 层路径（`remove_track` 原 `_commit_store` 回填会把级联删除的 run 带回旧聚合，新测试当场捕获）。
 - **Phase 4 收尾全库 Review**（2026-09-01，只读）：[docs/reviews/phase4-architecture-reliability-review.md](reviews/phase4-architecture-reliability-review.md)。15 项 finding（Critical 0 / High 1）；处置状态已在该报告顶部更新。
@@ -60,9 +61,10 @@ N/A（规划完成，等待用户批准 5.0）。
 
 **4.4 已实现取舍**：AI 链路取消重复全文件哈希和缺历史 hash 门禁，保留轻量文件状态、实际模型引用、数据正确性与任务归属校验；抽帧、建集和解析后台化。基础 K-means 选帧留 Phase 5，直接调用 DLC。
 
-**Phase 5 Proposed 决策（待用户确认）**：K-means 初始取帧直接复用 DLC；困难帧由 DLC 数据/primitive + 本项目 ranking/de-dup/diversity 策略层完成；Accept 不成为 label；completed infer result 与 active result 分离；fixed validation 后才跨轮比较；Advisor 只建议、不自动训练。持久化方案在 5.4 冻结，本轮不改 schema/ADR。
+**5.0 已完成取舍**：`TrackingJobRunner` 统一启动、`BackgroundTaskRunner` 管进程/句柄、`TrackingActions` 管轮询/取消触发/活动 session 提交；旧 coordinator lifecycle 已删除。F2 仍由 5.4 处理。
+
+**Phase 5 已确认决策**：K-means 初始取帧直接复用 DLC；困难帧由 DLC 数据/primitive + 本项目 ranking/de-dup/diversity 策略层完成；Accept 不成为 label；completed infer result 与 active result 分离；fixed validation 后才跨轮比较；Advisor 只建议、不自动训练。持久化方案在 5.4 冻结，本轮不改 schema/ADR。
 
 ## Next Recommended Action
 
-停止开发，等待用户确认 [Phase 5 requirements](../spec/phase5-requirements.md) 与 [PHASE_5_PLAN](phase-5-plan.md)。
-确认后：创建 `feat/p5.0-tracking-pipeline` 与 5.0 Issue，先独立处理 F3；不自行开始 5.1。
+停止开发，等待用户确认。若批准进入 5.1：先创建 Representative Frame Selection Issue、分支与 mini-plan；不得自行开始 F2/困难帧/Advisor。

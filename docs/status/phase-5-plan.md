@@ -1,6 +1,6 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Proposed / 等待用户确认**  
+> 状态：**Accepted / Phase 5.0 已完成，等待 5.1 指令**
 > 日期：2026-09-01  
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
@@ -28,6 +28,8 @@
 ## 3. Subphase 计划
 
 ### 5.0 — Tracking Pipeline Consolidation（F3）
+
+**状态**：✅ 2026-09-02 完成；Review F3 Closed。结果见 [phase-5.0-plan.md](phase-5.0-plan.md)。
 
 **目标**：消除 4.2/4.3 遗留长任务生命周期，建立 Phase 5 的单一任务骨架。
 
@@ -151,12 +153,11 @@
 - Human Review：5.1、5.3、5.4、5.6 的交互交付前由用户亲测。
 - 每个 Subphase 运行 `QT_QPA_PLATFORM=offscreen python -m pytest`；Phase 收尾跑双平台 CI。
 
-## 6. 确认后的第一步
+## 6. 当前入口
 
-用户确认后才创建 `feat/p5.0-tracking-pipeline` 分支和 Issue；先完成 5.0 mini-plan，不提前写 5.1 产品代码。
-若要减少 Subphase 数量，可把 5.5/5.6 合并，但不把 F3 与新功能混批。
+5.0 已完成且只处理 F3；未提前写 5.1 产品代码，F2 仍由 5.4 处理。
+下一步必须等待用户确认后，才建立 5.1 Issue 与分支。
 
 ## Result
 
-N/A（待确认的 Phase 5 总计划；尚未开始实现）。
-
+Phase 5 总计划已接受；Phase 5.0 已完成，F3 Closed；等待 5.1 指令。

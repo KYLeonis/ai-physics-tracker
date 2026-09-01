@@ -176,6 +176,50 @@ def test_late_success_after_cancel_is_ignored_and_next_task_can_start(
     assert _active_run(session).status == "cancelled"
 
 
+def test_runner_start_failure_marks_run_failed_and_clears_pending(
+    qtbot,
+    synthetic_video_path: Path,
+    tmp_path: Path,
+) -> None:
+    window, session, _track_id = _opened_window(
+        qtbot, synthetic_video_path, tmp_path, _FakeRunner()
+    )
+
+    window.trackingActions.train()
+    qtbot.waitUntil(lambda: not window.trackingActions.pending, timeout=3000)
+
+    failed = _active_run(session)
+    assert failed.status == "failed"
+    assert "fake runner has no handle" in str(failed.error_message)
+
+
+@pytest.mark.parametrize("change", ["timing", "project_root", "generation"])
+def test_context_change_cancels_unified_task(
+    qtbot,
+    synthetic_video_path: Path,
+    tmp_path: Path,
+    change: str,
+) -> None:
+    handle = _FakeHandle()
+    window, session, _track_id = _opened_window(
+        qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle)
+    )
+    actions = window.trackingActions
+    actions.train()
+    _wait_started(qtbot, actions, handle)
+
+    if change == "timing":
+        session._verified_videos.clear()
+    elif change == "project_root":
+        session.save_as(tmp_path / "moved-project")
+    else:
+        window._delivery_generation += 1
+
+    qtbot.waitUntil(lambda: not actions.pending, timeout=3000)
+    assert handle.cancel_calls == 1
+    assert _active_run(session).status == "cancelled"
+
+
 def test_ordinary_save_keeps_session_identity_and_concurrent_edit_dirty(
     qtbot, synthetic_video_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

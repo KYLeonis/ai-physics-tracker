@@ -1,131 +1,111 @@
-"""训练生命周期与项目持久化 (project.json) 及会话级联测试。"""
+"""统一训练任务与 ProjectSession 持久化边界测试。"""
 
 from pathlib import Path
 import time
-from unittest.mock import MagicMock
-from uuid import uuid4
 
-import numpy as np
 import pytest
 
 from ai_physics_tracker.application.project_session import ProjectSession
-from ai_physics_tracker.application.training_job import TrainingCoordinator
-from ai_physics_tracker.application.video import DecodedFrame, VideoStreamInfo
-from ai_physics_tracker.domain.project import create_project
-from ai_physics_tracker.domain.tracking_run import TrackingRun
+from ai_physics_tracker.application.tracking_job import (
+    TrackingJobRunner,
+    cancel_tracking_job,
+    prepare_tracking_candidate,
+    prepare_tracking_request,
+)
+from ai_physics_tracker.application.video import VideoStreamInfo
+from ai_physics_tracker.domain.tracking_run import mark_run_cancelled, mark_run_running
 from ai_physics_tracker.infrastructure.engine_adapter import TrainingParams
 from ai_physics_tracker.infrastructure.mock_engine_adapter import MockEngineAdapter
-from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
+from ai_physics_tracker.infrastructure.task_runner import TaskResult
 
 
-def _create_session_with_data(tmp_path: Path) -> tuple[ProjectSession, OpenCVVideoReader, Path, Path]:
-    proj_dir = tmp_path / "my_project"
-    video_file = tmp_path / "video.mp4"
-    video_file.touch()
-
-    repo = ProjectRepository()
-    proj = create_project("Cascading Project")
-    session = ProjectSession(repo, proj, project_root=proj_dir)
-
+def _create_session(tmp_path: Path, video_path: Path) -> tuple[ProjectSession, object]:
+    session = ProjectSession.start(ProjectRepository(), "Tracking session test")
     info = VideoStreamInfo(
-        width_px=1920,
-        height_px=1080,
-        fps_container=30.0,
-        frame_count=200,
-        container_format="mp4",
+        width_px=64,
+        height_px=48,
+        fps_container=10.0,
+        frame_count=5,
+        container_format="avi",
         timing_status="cfr",
     )
-    video, timeline = session.register_external_video(video_file, info)
-    track = session.add_track(video.video_id, "TrackA")
-
-    for i in range(4):
-        session.mark_point(track.track_id, frame_index=i * 5, pixel_x=10.0 + i, pixel_y=20.0 + i)
-
-    # 保存初始项目到目录
-    repo.create_from_project(proj_dir, session.project)
-
-    mock_reader = MagicMock(spec=OpenCVVideoReader)
-    mock_reader.is_open = True
-    mock_reader.read_frame.return_value = DecodedFrame(
-        frame_index=0,
-        pixels_rgb=np.zeros((100, 100, 3), dtype=np.uint8),
-    )
-
-    return session, mock_reader, proj_dir, video_file
+    video, _timeline = session.register_external_video(video_path, info)
+    track = session.add_track(video.video_id, "Target")
+    for frame_index in (0, 1, 2, 3):
+        session.mark_point(track.track_id, frame_index, 10.0 + frame_index, 20.0)
+    session.save_as(tmp_path / "project")
+    return session, track
 
 
-def test_tracking_run_persistence_roundtrip_through_session(tmp_path: Path) -> None:
-    session, reader, proj_dir, _ = _create_session_with_data(tmp_path)
-    coordinator = TrainingCoordinator()
-    track = session.tracks[0]
-    adapter = MockEngineAdapter()
+def _wait_for_result(handle, root: Path) -> Path:
+    messages = []
+    deadline = time.monotonic() + 20.0
+    while handle.is_alive() and time.monotonic() < deadline:
+        messages.extend(handle.poll_messages(limit=200))
+        handle.join(timeout_s=0.02)
+    messages.extend(handle.poll_messages(limit=200))
+    if handle.is_alive():
+        handle.cancel(timeout_s=1.0)
+        pytest.fail("tracking worker did not terminate")
+    results = [
+        message
+        for message in messages
+        if isinstance(message, TaskResult)
+        and message.success
+        and message.payload
+        and message.payload.get("result_path")
+    ]
+    assert len(results) == 1
+    return root / results[0].payload["result_path"]
 
-    params = TrainingParams(epochs=4, extra_params={"simulate_delay": 0.01})
-    run, cfg_path = coordinator.prepare_training(
+
+def test_tracking_run_persistence_roundtrip_through_unified_runner(
+    tmp_path: Path,
+    synthetic_video_path: Path,
+) -> None:
+    session, track = _create_session(tmp_path, synthetic_video_path)
+    request = prepare_tracking_request(
         session,
         track.track_id,
-        reader,
-        params=params,
-        adapter=adapter,
+        TrainingParams(epochs=4, extra_params={"simulate_delay": 0.0}),
     )
+    session.record_tracking_run(request.run)
+    session.update_tracking_run(mark_run_running(request.run))
 
-    # 1. 验证 pending 状态持久化
-    repo = ProjectRepository()
-    saved_proj = repo.save(proj_dir, session.project)
-    loaded_proj = repo.load(proj_dir)
-    assert len(loaded_proj.tracking_runs) == 1
-    assert loaded_proj.tracking_runs[0].status == "pending"
+    handle = TrackingJobRunner(adapter=MockEngineAdapter()).start(request)
+    result_path = _wait_for_result(handle, request.project_root)
+    candidate = prepare_tracking_candidate(session.project, request, result_path)
+    assert session.apply_tracking_candidate(candidate)
+    session.save()
 
-    # 2. 启动训练并运行至完成
-    coordinator.start_training(session, run.run_id, cfg_path, MockEngineAdapter)
-    start = time.time()
-    while coordinator.is_running(run.run_id) or (time.time() - start < 2.0):
-        coordinator.poll_messages(session, run.run_id)
-        if not coordinator.is_running(run.run_id):
-            break
-        time.sleep(0.02)
-
-    coordinator.poll_messages(session, run.run_id)
-    completed_run = next(r for r in session.tracking_runs() if r.run_id == run.run_id)
-    assert completed_run.status == "completed"
-
-    # 3. 验证 completed 状态与 snapshot 路径持久化
-    repo.save(proj_dir, session.project)
-    reloaded_proj = repo.load(proj_dir)
-    assert len(reloaded_proj.tracking_runs) == 1
-    reloaded_run = reloaded_proj.tracking_runs[0]
-    assert reloaded_run.status == "completed"
-    assert reloaded_run.model_snapshot is not None
-    assert reloaded_run.completed_at is not None
-    assert reloaded_run.config["epochs"] == 4
+    reloaded = ProjectRepository().load(session.project_root)
+    completed = reloaded.tracking_runs[-1]
+    assert completed.status == "completed"
+    assert completed.model_snapshot is not None
+    assert completed.completed_at is not None
+    assert completed.config["epochs"] == 4
 
 
-def test_session_close_cancels_running_tasks(tmp_path: Path) -> None:
-    session, reader, proj_dir, _ = _create_session_with_data(tmp_path)
-    coordinator = TrainingCoordinator()
-    track = session.tracks[0]
-    adapter = MockEngineAdapter()
-
-    params = TrainingParams(epochs=50, extra_params={"simulate_delay": 0.05})
-    run, cfg_path = coordinator.prepare_training(
+def test_session_close_cancels_unified_runner_and_persists_status(
+    tmp_path: Path,
+    synthetic_video_path: Path,
+) -> None:
+    session, track = _create_session(tmp_path, synthetic_video_path)
+    request = prepare_tracking_request(
         session,
         track.track_id,
-        reader,
-        params=params,
-        adapter=adapter,
+        TrainingParams(epochs=50, extra_params={"simulate_delay": 0.05}),
     )
+    session.record_tracking_run(request.run)
+    running = mark_run_running(request.run)
+    session.update_tracking_run(running)
+    handle = TrackingJobRunner(adapter=MockEngineAdapter()).start(request)
 
-    coordinator.start_training(session, run.run_id, cfg_path, MockEngineAdapter)
-    assert coordinator.is_running(run.run_id)
+    cancel_tracking_job(handle, request)
+    assert not handle.is_alive()
+    session.update_tracking_run(mark_run_cancelled(running))
+    session.save()
 
-    # 模拟会话关闭前调用 cancel_all
-    coordinator.cancel_all(session)
-    assert not coordinator.is_running(run.run_id)
-
-    # 保存后重新加载
-    repo = ProjectRepository()
-    repo.save(proj_dir, session.project)
-    loaded = repo.load(proj_dir)
-    assert len(loaded.tracking_runs) == 1
-    assert loaded.tracking_runs[0].status == "cancelled"
+    loaded = ProjectRepository().load(session.project_root)
+    assert loaded.tracking_runs[-1].status == "cancelled"
