@@ -10,7 +10,10 @@
 """
 
 import ast
+import sys
 from pathlib import Path
+
+import pytest
 
 PACKAGE_ROOT = Path(__file__).parents[1] / "src" / "ai_physics_tracker"
 DLC_ADAPTER = PACKAGE_ROOT / "infrastructure" / "dlc_adapter.py"
@@ -151,11 +154,9 @@ def test_no_cross_package_private_imports() -> None:
 
 
 def test_detector_flags_planted_violations(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # 检测器自检：植入已知违规，确保各规则不是空转
-    import sys
-
     module = sys.modules[__name__]
     package = tmp_path / "ai_physics_tracker"
     (package / "domain").mkdir(parents=True)
