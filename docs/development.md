@@ -123,10 +123,10 @@
   升级 DLC 后必须重跑真实冒烟；不修改安装包源码，不以读帧或耗时模拟进度。
 - 当前真实 DLC 验证仅 macOS CPU；MPS/CUDA 与 Windows 真机仍需另外验收。4.3 集成提交
   `e58b28d` 的 [macOS/Windows Python 3.11 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33380207408) 均通过；CI 使用 mock，不等同 Windows CUDA 验收。
-- **4.4 最新设计修订（用户反馈，尚未实现）**：取消 AI 链路的重复全文件 SHA-256 和缺历史 hash 门禁，
+- **4.4 设计修订（用户反馈，当前工作分支已实现）**：取消 AI 链路的重复全文件 SHA-256 和缺历史 hash 门禁，
   使用轻量文件状态、实际模型引用与会话代际检查；明确不防御大小/修改时间等都相同的内容替换。
-  抽帧、训练集生成、结果解析等必要耗时操作仍需后台化。当前 4.3 实现仍有哈希扫描，
-  此说明是 4.4 的替代方案，详见 `docs/status/phase-4.4-plan.md` D0。依赖下载校验不受此调整影响。
+  抽帧、训练集生成、结果解析等必要耗时操作已后台化。4.4 替代 4.3 AI 任务调用路径，
+  详见 `docs/status/phase-4.4-plan.md` D0；依赖下载校验不受此调整影响。
 - 4.4 当前本地实现可用 `.venv/bin/python scripts/smoke_test_gui_tracking.py` 做 offscreen
   GUI 组件+真实 CPU 引擎闭环；输出独立项目路径并保留。它不代替真人 GUI 验收。
   真实短训练记录 epoch/loss/lr，并对确切 snapshot 生成 train/test RMSE（px）及样本量；
