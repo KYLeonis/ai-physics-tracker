@@ -88,6 +88,8 @@
 4.4 已接通 Task Panel、真实进度/日志、取消、模型评价、推理导入和 AI 轨迹显示。
 macOS Human Review 于 2026-09-01 通过；反馈的窗口缩放和 Chart 英文文案问题修复后完成聚焦复验。
 本地全回归 433 项通过，真实 CPU GUI 组件冒烟完成 1 epoch 训练、评价、推理及保存重开。
+最终 `main` 集成 CI [run 33504579667](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33504579667)
+在 macOS/Windows Python 3.11 通过。经用户批准，Windows 真机/CUDA 验收延期到 Phase 9 打包前。
 
 - **GitHub Actions CI 不安装 DLC/PyTorch**（依赖链过大），DLC 相关测试全部使用 mock adapter
 - 真实 DLC 端到端测试在本地进行：

@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Subphase 4.4 — GUI & Integration（✅ 本地验收并合并，2026-09-01）**
-- 当前阶段：**Phase 4 — Deep Learning Tracking（🔄 核心验收通过；等待 Windows/CUDA 处置与集成 CI）**
+- 最近完成：**Phase 4 — Deep Learning Tracking（✅ 2026-09-01）**
+- 当前阶段：**Phase 4 已完成；Phase 5 尚未开始，等待用户指令**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -99,7 +99,7 @@
 
 ---
 
-## Phase 4 — Deep Learning Tracking 🔄
+## Phase 4 — Deep Learning Tracking ✅
 
 **目标**：接入 DeepLabCut/PyTorch，实现软件内"标注 → 训练 → 跟踪"完整流程。
 
@@ -117,8 +117,8 @@
 
 4.3 Qt-free 推理/导入/运动学衔接的实现与验收见 [4.3 计划](status/phase-4.3-plan.md)。
 4.4 的 Task Panel、AI 视觉样式、模型评价与 macOS Human Review 已通过，见
-[4.4 计划与验收](status/phase-4.4-plan.md)。Phase 4 暂不标记完成：Windows 真机/CUDA
-尚未验证，集成提交的 macOS/Windows CI 也需在 push 后确认。
+[4.4 计划与验收](status/phase-4.4-plan.md)。最终 `main` 集成 CI 在 macOS/Windows
+Python 3.11 通过。经用户批准，Windows 真机/CUDA 验收延期到 Phase 9 打包前；该延期不等同已验证。
 
 **主要技术风险**
 - DeepLabCut 的程序化 API 稳定性与 PyTorch 版本耦合；训练耗时与 GUI 响应（需后台任务框架）；依赖体积。

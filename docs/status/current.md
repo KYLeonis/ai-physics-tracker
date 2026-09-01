@@ -3,32 +3,33 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-01（Phase 4.4 已本地合并，等待 Windows/CUDA 处置和 push/CI）
+- 最后更新：2026-09-01（Phase 4 / Subphase 4.4 完成，双平台 CI 通过）
 
 ---
 
 ## Current Phase
 
-**Phase 4 — Deep Learning Tracking** 🔄 进行中
+**Phase 4 — Deep Learning Tracking** ✅ 已完成（2026-09-01）
 
 ## Current Subphase
 
-**4.4 — GUI & Integration** ✅ 本地验收并以 `17ae493` 合并到 `main`：433 tests、真实 CPU GUI 组件冒烟、独立 review 与 macOS Human Review 均通过。等待 Windows/CUDA 处置及 push/CI 后完成远程收尾。
+**4.4 — GUI & Integration** ✅ 已完成：`17ae493` 合并到 `main`，Issue #15 已关闭；433 tests、真实 CPU GUI 组件冒烟、独立 review、macOS Human Review 及 macOS/Windows CI 均通过。
 
-计划草案：[phase-4.4-plan.md](phase-4.4-plan.md)。4.3 已完成（[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14) 已关闭；[验收记录](phase-4.3-plan.md)）。
+验收记录：[phase-4.4-plan.md](phase-4.4-plan.md)。4.3 已完成（[Issue #14](https://github.com/KYLeonis/ai-physics-tracker/issues/14) 已关闭；[验收记录](phase-4.3-plan.md)）。
 
 ## Current Slice
 
-Slice 6：本地验收完成；停在 Windows/CUDA 处置与 push 授权关卡。
+N/A（Phase 4 已完成，停止并等待下一阶段指令）。
 
 ## Current Goal
 
-在软件内接入 DeepLabCut 3.x（PyTorch 引擎），实现从手工标注到 AI 自动跟踪的完整闭环。
+Phase 4 目标已交付：软件内完成手工标注、训练/评价、推理、AI 轨迹显示与运动学重算闭环。
 
 ## Recently Completed
 
+- **Phase 4 — Deep Learning Tracking**（✅ 2026-09-01）：Subphase 4.0–4.4 全部完成；最终 `main` 集成 CI [run 33504579667](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33504579667) 在 macOS/Windows Python 3.11 通过。首轮 Windows CI 暴露两个平台相关测试假设，`51e05b1` 修复为按平台尺寸验证后复跑全绿。Issue #15 已关闭。经用户明确批准，Windows 真机/CUDA 验收延期到 Phase 9 打包前的专门关卡。
 - **4.4 macOS Human Review 通过**（2026-09-01）：用户确认完整 GUI 工作流与最终聚焦复验通过。Main/Chart/AI 可缩放，Chart/AI 可分离为独立窗口并重新停靠，Chart 动态状态消息为英文；无其他交互问题。
-- **4.4 本地实现与自动化验证**（2026-09-01）：Task Panel、真实训练指标/基本评价、推理、异步取消/保存/切换、AI 菱形及 marker 复用已接通；合入最新 main 后全回归 **433 passed in 52.04s**。真实 GUI 组件 CPU 冒烟完成 1 epoch 训练/评价/推理，5 AI 插入/5 manual 保留并保存重开；独立 review 的两个 finding 已修复并复审通过。本地 `--no-ff` 合并提交为 `17ae493`；未执行 Windows/CUDA 或 push。
+- **4.4 本地实现与自动化验证**（2026-09-01）：Task Panel、真实训练指标/基本评价、推理、异步取消/保存/切换、AI 菱形及 marker 复用已接通；最终本地全回归 **433 passed in 47.47s**。真实 GUI 组件 CPU 冒烟完成 1 epoch 训练/评价/推理，5 AI 插入/5 manual 保留并保存重开；独立 review 的两个 finding 已修复并复审通过；`--no-ff` 合并提交为 `17ae493`。
 - **独立 review 存档机制**（2026-09-01，main）：新增 `docs/reviews/`（每 subphase 一个 Review Record，索引见其 README），`docs/templates/review.md` 升级为生命周期记录模板，流程规则收敛到 `docs/workflow.md` §6；纯文档变更，未改实现代码。
 - **4.4 进入检查与计划**：`main` / `1ca5bee` 与实时查询远程一致，进入时工作区干净；重新验证 **405 passed in 52.40s**。计划识别并覆盖同步准备/哈希、真实训练指标、保存替换 session、全量 marker 重建、中断任务恢复与基本模型评价缺口；只写计划，不改实现。
 - **4.3 — Inference Pipeline & Track Integration**（✅ 2026-08-31）：真实推理、严格解析、模型 hash 校验、spawn 取消/错误/晚到消息处理、原子导入与 Undo/Redo、人工/AI 生效观测和运动学已接通；405 tests 通过。真实 CPU 合成视频 10 帧推理，5 点导入/5 个人工点保护，保存重开通过；重复推理 0 点导入/10 点跳过，既有派生不变。精简依赖模拟 74 passed / 1 HDF5 测试因无 pandas 跳过。独立审查发现的模型/视频身份、快照索引竞态、legacy 归档引用问题均已修复并复审通过。未改依赖、CI、schema。集成提交 `e58b28d` 已推送；[该提交的 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33380207408) 在 macOS/Windows Python 3.11 上均通过，Issue #14 已关闭。
@@ -45,7 +46,7 @@ Slice 6：本地验收完成；停在 Windows/CUDA 处置与 push 授权关卡�
 - **Phase 2 — Video Analysis MVP**（✅ 2026-08-30）。
 - **Phase 1 — Project & Data Foundation**（✅ 2026-08-29）。
 
-## Current Decisions / Blockers
+## Current Decisions / Deferred Checks
 
 **已定决策**
 
@@ -54,10 +55,10 @@ Slice 6：本地验收完成；停在 Windows/CUDA 处置与 push 授权关卡�
 - 训练默认参数（D2）：`epochs=50, batch_size=8, device=auto(cuda→mps→cpu)`，4.4 GUI 已提供配置控件
 - 测试策略：CI 与单元测试使用 `MockEngineAdapter`；真实 CPU GUI 组件闭环通过（`scripts/smoke_test_gui_tracking.py`）
 
-**待处置平台关卡**：Windows 真机/CUDA 尚未验证；集成提交的 macOS/Windows CI 需 push 后运行。按 4.4 计划，这两项不能静默视为通过；若延期，应记录补验节点。
+**已批准延期**：Windows 真机/CUDA 尚未验证；用户明确批准延期到 Phase 9 打包前的专门验收节点。GitHub Actions 的 Windows mock/GUI 测试已通过，但不等同 CUDA 真机验证。
 
 **4.4 已实现取舍**：AI 链路取消重复全文件哈希和缺历史 hash 门禁，保留轻量文件状态、实际模型引用、数据正确性与任务归属校验；抽帧、建集和解析后台化。基础 K-means 选帧留 Phase 5，直接调用 DLC。
 
 ## Next Recommended Action
 
-请用户决定是否将 Windows 真机/CUDA 延期到 Phase 9 打包前的专门验收节点，并明确批准本次 `git push`。获批后 push、等待双平台 CI、关闭 Issue #15；Phase 4 完成后停止，不开始 Phase 5。
+停止开发，等待用户下一条指令。下一阶段为 Phase 5 — AI-assisted Annotation & Refinement；进入时先规划，基础 K-means 选帧直接调用 DLC，不自行开始实现。

@@ -2,7 +2,7 @@
 
 - Issue：[Issue #15](https://github.com/KYLeonis/ai-physics-tracker/issues/15)。
 - 分支：`feat/p4.4-gui-integration`。
-- 日期 / 状态：2026-09-01 · 本地验收及 `main` 合并完成；等待 Windows/CUDA 处置及 push/CI。
+- 日期 / 状态：2026-09-01 · ✅ 完成；已合并、推送、通过双平台 CI，Issue #15 已关闭。
 - 进入基线：`main` / `1ca5bee`，与实时查询的远程 main 一致，工作区干净；4.3 已收尾。
 
 ## Goal
@@ -111,8 +111,8 @@
 - [x] P44-4：保存期间编辑/任务完成不丢失，取消导航不取消任务；确认导航、另存限制、失败回退、关闭回收、旧回调以及重开中断任务均有回归测试。
 - [x] P44-5：manual/AI 来源可区分且人工优先；多选 overlay、当前帧、缩放、Undo/Redo 正确；全帧轨迹不会逐帧重建全量图元。图表识别新数据并按显式重算展示混合结果。
 - [x] P44-6：用户亲测真实单摆项目，从标注到训练/评价/推理/显示/重算/保存重开全程不离开软件；真实模型进度、取消和交互体验通过 Human Review。
-- [ ] P44-7：405 项基线及新增测试通过，交付提交的 macOS/Windows CI 通过，独立 review 通过；Windows 真机/CUDA 条件按下节落实，不沿用以前的延期为自动豁免。
-- [ ] P44-8：Phase 4 所有 deliverables/AC 有证据，尤其模型评价和 GUI AC-5/6；同步相关文档、Issue 和 Git 状态，完成 Phase 4 后停止，不开始 Phase 5。
+- [x] P44-7：405 项基线及新增测试通过，交付提交的 macOS/Windows CI 通过，独立 review 通过；Windows 真机/CUDA 经用户明确批准延期到 Phase 9 打包前。
+- [x] P44-8：Phase 4 所有 deliverables/AC 有证据，尤其模型评价和 GUI AC-5/6；相关文档、Issue 和 Git 状态已同步，Phase 4 完成后停止，不开始 Phase 5。
 
 ## Slices
 
@@ -143,14 +143,15 @@
 | 点击重算、保存并重开同一项目 | 混合轨迹、图表、confidence 和任务历史可恢复；是/否 |
 | 新开短任务，测试 Cancel、关闭/打开的“返回”和“继续” | 返回不丢任务；确认取消后无残留进程/迟到结果；是/否 |
 
-Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自动免除本阶段。没有 Windows 条件不妨碍先实施和完成 macOS 验收，但必须保留未完成项；若用户希望延期后先收尾，届时明确确认例外和补验节点。
+Windows 真机/CUDA 原为 Phase 4 收尾条件。用户于 2026-09-01 明确批准延期到 Phase 9
+打包前的专门验收节点；GitHub Actions Windows 通过不等同 CUDA 真机验证，该待办继续保留。
 
 ## Approval and Result
 
 - 用户批准 D0–D5；AI 链路采用轻量文件状态校验，基础 K-means 选帧留 Phase 5 并直接调用 DLC。
 - 4.4 实现、真实 CPU GUI 组件冒烟、自动化、独立 review 与 macOS Human Review 均已完成。
 - 没有修改项目 schema、依赖版本、CI 或许可证；原始媒体、模型和评价产物不进入 Git。
-- Windows 真机/CUDA 未验证，push/CI 与 Issue 关闭尚未执行；这些事项在最终远程收尾前保持可见。
+- Windows 真机/CUDA 未验证；用户批准延期到 Phase 9 打包前。集成 push/CI 已完成，Issue #15 已关闭。
 
 
 ## K-means 范围结论（用户不要求前移）
@@ -164,11 +165,12 @@ Windows 真机/CUDA 仍为 Phase 4 收尾条件；既有 Phase 2/3 延期不自�
 - 依据：[DLC 选帧 API](https://deeplabcut.github.io/DeepLabCut/dev/latest-release/reference/deeplabcut/generate_training_dataset/frame_extraction/)；[DLC 标注指南](https://deeplabcut.github.io/DeepLabCut/docs/beginner-guides/labeling.html)。
 
 - 实施确认：用户同意其余方案执行；基础 K-means 不前移，Phase 5 直接调用 DLC。ADR-0012 已记录本轮边界。
-- 主要实现提交：`0b1add2`（后台任务、训练指标/评价、轻量校验）与 `1bb4c51`（Task Panel、生命周期、AI 轨迹）；Human Review 修复为 `0bd96c2`、`23275e9`；本地 `--no-ff` 合并提交为 `17ae493`。尚未推送。
-- 自动化：合入最新 main 后运行 `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **433 passed in 52.04s**。新增测试覆盖响应性、取消竞争、模型保留、保存身份、导航、旧回调、marker 复用、评价、窗口缩放和面板独立窗口切换。
+- 主要实现提交：`0b1add2`（后台任务、训练指标/评价、轻量校验）与 `1bb4c51`（Task Panel、生命周期、AI 轨迹）；Human Review 修复为 `0bd96c2`、`23275e9`；`--no-ff` 合并提交为 `17ae493`。
+- 自动化：最终本地运行 `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` → **433 passed in 47.47s**。新增测试覆盖响应性、取消竞争、模型保留、保存身份、导航、旧回调、marker 复用、评价、窗口缩放和面板独立窗口切换。
 - 真实 GUI 组件冒烟：CPU、1 epoch 完成训练/原生评价/推理，得到 train RMSE 46.91 px（n=4）、test RMSE 17.33 px（n=1）；10 帧中 5 AI 插入/5 manual 保留，保存重开通过。指标只证明评价管线可用，不代表模型精度。
 - 评价 CSV、模型、预测与完整日志均在各自 run 目录保留；重复训练使用独立目录，不影响旧模型。
 - 绘制规模检查：10,000 个 AI marker 首次构建约 0.32s；1,000 次当前帧索引高亮约 0.03s。当前帧变化不再重建全部图元。
 - 独立 review：首轮发现提交前遗漏模型/config 轻量复核，以及 mAP/mAR 单位错误；`102fe79` 修复并增加回归，复审确认关闭。当前无阻塞 finding。
 - Human Review：主要工作流通过；窗口最小尺寸与 Chart 中文状态消息的反馈已修复，Chart/AI 保留可缩放独立窗口。用户于 2026-09-01 确认聚焦复验通过。
-- 当前待办：Windows/CUDA 处置、push 后双平台 CI 与 Issue #15 关闭。P44-7/8 完成前不宣称 Phase 4 完成，不开始 Phase 5。
+- 集成 CI：首轮 [run 33503920002](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33503920002) 的 Windows job 暴露窗口宽度和 viewport 中心的跨平台测试假设；`51e05b1` 改为按平台尺寸与已知像素映射验证。最终 [run 33504579667](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33504579667) 在 macOS/Windows Python 3.11 全绿。
+- 最终状态：Issue #15 已关闭，Phase 4 完成。Windows 真机/CUDA 延期到 Phase 9 打包前；停止并等待用户指令，不开始 Phase 5。
