@@ -142,7 +142,9 @@ class DLCAdapter:
         foreign_dirs = sorted(
             entry.name
             for entry in labeled_data_root.iterdir()
-            if entry.is_dir() and entry.name != video_stem
+            # 目标平台 Windows/macOS 默认文件系统均大小写不敏感，按
+            # casefold 比较，避免仅大小写改名的 relink 被误判为另一视频
+            if entry.is_dir() and entry.name.casefold() != video_stem.casefold()
         )
         if foreign_dirs:
             raise RuntimeError(
