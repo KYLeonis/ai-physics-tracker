@@ -131,6 +131,7 @@ def test_dlc_export_annotations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     # 模拟视频读取器
     mock_reader = MagicMock(spec=OpenCVVideoReader)
     mock_reader.is_open = True
+    mock_reader.path = video_file
     dummy_pixels = np.zeros((100, 100, 3), dtype=np.uint8)
     mock_reader.read_frame.side_effect = lambda frame_index: DecodedFrame(
         frame_index=frame_index,
@@ -167,6 +168,49 @@ def test_dlc_export_annotations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert img1.is_file()
     assert img2.is_file()
     assert (tmp_path / "proj" / "labeled-data" / "sample" / "CollectedData_AIPhysicsTracker.h5").is_file()
+
+
+def test_dlc_export_annotations_rejects_foreign_labeled_data_folders(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # review F6 回归：labeled-data 存在其他视频的子目录时必须拒绝导出，
+    # 防止两段视频的帧/坐标被静默混入同一个 DLC 训练集。
+    monkeypatch.setitem(sys.modules, "pandas", _fake_pandas())
+    adapter = DLCAdapter()
+    video_file = tmp_path / "current.mp4"
+    video_file.touch()
+    config_path = adapter.create_project("proj_mix", "Tester", video_file, tmp_path)
+    (tmp_path / "proj_mix" / "labeled-data" / "older_video").mkdir(parents=True)
+
+    point = TrackPoint(
+        point_id=uuid4(),
+        track_id=uuid4(),
+        frame_index=0,
+        time_s=0.0,
+        pixel_x=10.0,
+        pixel_y=20.0,
+        source="manual",
+        visibility="visible",
+        status="active",
+        created_at=utc_now(),
+        modified_at=utc_now(),
+    )
+    mock_reader = MagicMock(spec=OpenCVVideoReader)
+    mock_reader.is_open = True
+    mock_reader.path = video_file
+    mock_reader.read_frame.return_value = DecodedFrame(
+        frame_index=0,
+        pixels_rgb=np.zeros((10, 10, 3), dtype=np.uint8),
+    )
+
+    with pytest.raises(RuntimeError, match=r"another video: \['older_video'\]"):
+        adapter.export_annotations((point,), mock_reader, config_path)
+
+    # 拒绝发生在任何写入之前：目标目录与外来目录都没有新产物
+    assert not (
+        tmp_path / "proj_mix" / "labeled-data" / "current" / "CollectedData_AIPhysicsTracker.csv"
+    ).is_file()
+    assert list((tmp_path / "proj_mix" / "labeled-data" / "older_video").iterdir()) == []
 
 
 def test_dlc_import_results_dict_records() -> None:
@@ -295,6 +339,7 @@ def test_dlc_export_annotations_frame_read_failure_raises(tmp_path: Path) -> Non
     # 读取器抛出异常
     mock_reader = MagicMock(spec=OpenCVVideoReader)
     mock_reader.is_open = True
+    mock_reader.path = video_file
     mock_reader.read_frame.side_effect = RuntimeError("Decode error")
 
     with pytest.raises(RuntimeError, match="Failed to decode frame 10"):
@@ -353,6 +398,7 @@ def test_dlc_export_annotations_png_write_failure_raises(
     )
     reader = MagicMock(spec=OpenCVVideoReader)
     reader.is_open = True
+    reader.path = video_file
     reader.read_frame.return_value = DecodedFrame(
         frame_index=0,
         pixels_rgb=np.zeros((10, 10, 3), dtype=np.uint8),
@@ -393,6 +439,7 @@ def test_dlc_export_annotations_hdf5_failure_raises(
     )
     reader = MagicMock(spec=OpenCVVideoReader)
     reader.is_open = True
+    reader.path = video_file
     reader.read_frame.return_value = DecodedFrame(
         frame_index=0,
         pixels_rgb=np.zeros((10, 10, 3), dtype=np.uint8),
@@ -447,6 +494,7 @@ def test_dlc_export_annotations_multiple_bodyparts(
 
     mock_reader = MagicMock(spec=OpenCVVideoReader)
     mock_reader.is_open = True
+    mock_reader.path = video_file
     mock_reader.read_frame.return_value = DecodedFrame(
         frame_index=1,
         pixels_rgb=np.zeros((100, 100, 3), dtype=np.uint8),

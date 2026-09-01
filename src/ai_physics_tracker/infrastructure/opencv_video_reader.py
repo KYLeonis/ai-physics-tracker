@@ -38,6 +38,14 @@ class OpenCVVideoReader:
             raise VideoOpenError("no video is open")
         return self._info
 
+    @property
+    def path(self) -> Path:
+        """当前打开视频的本地路径；导出/溯源用它确认媒体身份。"""
+
+        if self._path is None:
+            raise VideoOpenError("no video is open")
+        return self._path
+
     def open(self, path: Path) -> VideoStreamInfo:
         """打开本地文件并校验 Timeline 所需的元数据。"""
 

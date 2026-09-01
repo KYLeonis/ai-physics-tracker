@@ -132,20 +132,26 @@ class DLCAdapter:
         manual_points.sort(key=lambda p: p.frame_index)
 
         proj_dir = config_path.parent
-        # 寻找 labeled-data 目录下的视频子目录
+        # labeled-data 子目录按当前视频 stem 定位（与 create_project 同约定）。
+        # 出现其他视频的子目录时必须拒绝：DLC 建集会把整个 labeled-data
+        # 纳入训练集，静默混入另一段视频的帧会产出无法察觉的错误数据
+        #（review F6）。
+        video_stem = video_reader.path.stem
         labeled_data_root = proj_dir / "labeled-data"
-        if not labeled_data_root.exists():
-            labeled_data_root.mkdir(parents=True, exist_ok=True)
-
-        # 获取或创建默认的视频子目录
-        video_subdirs = [d for d in labeled_data_root.iterdir() if d.is_dir()]
-        if video_subdirs:
-            video_dir = video_subdirs[0]
-        else:
-            video_dir = labeled_data_root / "video"
-            video_dir.mkdir(parents=True, exist_ok=True)
-
-        video_stem = video_dir.name
+        labeled_data_root.mkdir(parents=True, exist_ok=True)
+        foreign_dirs = sorted(
+            entry.name
+            for entry in labeled_data_root.iterdir()
+            if entry.is_dir() and entry.name != video_stem
+        )
+        if foreign_dirs:
+            raise RuntimeError(
+                f"DLC labeled-data contains folders from another video: {foreign_dirs}; "
+                f"expected only {video_stem!r}. Delete the stale folders (or retrain in "
+                f"a fresh project directory) before exporting annotations."
+            )
+        video_dir = labeled_data_root / video_stem
+        video_dir.mkdir(parents=True, exist_ok=True)
         exported_count = 0
         csv_rows: list[list[str]] = []
 
