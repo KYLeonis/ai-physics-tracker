@@ -13,7 +13,7 @@
 
 ## Current Subphase
 
-**4.5 — Engineering Stabilization** ✅ 已完成：Issue [#16](https://github.com/KYLeonis/ai-physics-tracker/issues/16)，验收记录 [phase-4.5-plan.md](phase-4.5-plan.md)，Review Record [phase-4.5-review.md](../reviews/phase-4.5-review.md)。修复 Phase 4 收尾 review 的 F1（删除带 run 的 track 静默失败，含 session 层提交路径）/F6（DLC 导出目录校验）/F5（detached 去 deepcopy，GUI 线程 O(n)→O(1)）/F4（AST 分层测试 + 跨包私有符号转正）；**441 tests passed**（基线 433）。独立 review 因环境 subagent 模型不可用以对抗性自查替代（偏差已在 Review Record 声明）。
+**4.5 — Engineering Stabilization** ✅ 已完成：Issue [#16](https://github.com/KYLeonis/ai-physics-tracker/issues/16)，验收记录 [phase-4.5-plan.md](phase-4.5-plan.md)，Review Record [phase-4.5-review.md](../reviews/phase-4.5-review.md)。修复 Phase 4 收尾 review 的 F1（删除带 run 的 track 静默失败，含 session 层提交路径）/F6（DLC 导出目录校验）/F5（detached 去 deepcopy，GUI 线程 O(n)→O(1)）/F4（AST 分层测试 + 跨包私有符号转正）；**441 tests passed**（基线 433），合并提交 `2d0c858`，CI [run 33509422340](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33509422340) macOS/Windows Python 3.11 均通过（首次 macOS leg 为 runner infra 取消、无测试失败日志，重跑即绿）。独立 review 因环境 subagent 模型不可用以对抗性自查替代（偏差已在 Review Record 声明）。
 
 ## Current Slice
 
