@@ -144,6 +144,55 @@ def test_remove_track_with_runs_succeeds_and_undo_keeps_runs_deleted(
     assert session.project.tracking_runs == ()
 
 
+def test_detached_snapshot_is_isolated_from_subsequent_writes(
+    tmp_path: Path,
+) -> None:
+    # review F5：detached 去除 deepcopy 后，隔离性由"frozen + replace()"契约
+    # 保证；本测试固定该契约——任何一侧的原地修改都会在这里暴露。
+    from copy import deepcopy
+
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+    session.mark_point(track.track_id, 0, 1.0, 1.0)
+    snapshot = session.detached()
+    reference = deepcopy(snapshot.project)
+
+    session.mark_point(track.track_id, 1, 2.0, 3.0)
+    session.add_calibration(
+        video_id=video.video_id,
+        scale_end_1_px=(0.0, 0.0),
+        scale_end_2_px=(10.0, 0.0),
+        known_length=1.0,
+    )
+    session.record_tracking_run(
+        create_tracking_run(
+            video.video_id, track.track_id, "train", engine_version="3.0.1-mock"
+        )
+    )
+    session.update_view_state({"frame_index": 7})
+
+    assert snapshot.project == reference
+
+    snapshot.update_view_state({"frame_index": 9})
+    workflow = session.project.ui_state.get("workflow", {})
+    assert workflow.get("frame_index") == 7
+
+
+def test_detached_shares_frozen_project_without_copying(tmp_path: Path) -> None:
+    # review F5 实现契约：detached 必须共享不可变结构（O(1)）。
+    # 退化回 deepcopy 会让 GUI 线程上的成本随观测数线性增长。
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+    session.mark_point(track.track_id, 0, 1.0, 1.0)
+
+    snapshot = session.detached()
+
+    assert snapshot._project is session._project
+    assert snapshot._saved_project is session._saved_project
+
+
 def test_dirty_lifecycle_across_save_roundtrip(tmp_path: Path) -> None:
     repository = ProjectRepository()
     root = tmp_path / "proj"

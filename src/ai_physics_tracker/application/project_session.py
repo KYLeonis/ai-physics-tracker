@@ -108,7 +108,9 @@ class ProjectSession:
     ) -> None:
         self._repository = repository
         self._project = project
-        self._saved_project = deepcopy(project)
+        # Project 及其成员均为 frozen 数据类；保存基线共享引用即可，
+        # 写路径一律 replace() 产生新对象，不原地修改（见 detached()）。
+        self._saved_project = project
         self._project_root = project_root
         self._store = TrackStore(project.tracks, project.observations)
         self._verified_videos: set[UUID] = set()
@@ -434,7 +436,7 @@ class ProjectSession:
                 "project has no root directory; use save-as workflow first"
             )
         self._project = self._repository.save(self._project_root, self._project)
-        self._saved_project = deepcopy(self._project)
+        self._saved_project = self._project
         # 保存点是安全边界：跨保存的回溯会让 dirty 语义混乱
         self._undo_stack.clear()
         self._redo_stack.clear()
@@ -483,16 +485,24 @@ class ProjectSession:
             saved = self._repository.save_as(self._project_root, destination, self._project)
         self._project = saved
         self._project_root = destination
-        self._saved_project = deepcopy(saved)
+        self._saved_project = saved
         self._undo_stack.clear()
         self._redo_stack.clear()
         return saved
 
     def detached(self) -> "ProjectSession":
-        """后台 IO 使用独立快照；活动会话不被工作线程修改。"""
+        """后台 IO 使用独立快照；活动会话不被工作线程修改。
 
-        candidate = ProjectSession(self._repository, deepcopy(self._project), self._project_root)
-        candidate._saved_project = deepcopy(self._saved_project)
+        Project 全链路（含 Track/TrackPoint/Calibration/DerivedData/
+        TrackingRun/元组容器）是 frozen 数据类，写路径只经 replace()
+        产生新聚合，因此这里共享不可变结构而不是 deepcopy——deepcopy
+        使成本随观测数线性增长并在 GUI 线程上放大（review F5）。
+        前提契约：任何代码不得原地修改 ui_state/extra_fields 等 dict，
+        需要变更时先复制再 replace（update_view_state 已遵循）。
+        """
+
+        candidate = ProjectSession(self._repository, self._project, self._project_root)
+        candidate._saved_project = self._saved_project
         candidate._verified_videos = set(self._verified_videos)
         candidate._approximate_timing = dict(self._approximate_timing)
         candidate._undo_stack = list(self._undo_stack)
