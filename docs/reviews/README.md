@@ -15,7 +15,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | 4.4 | [phase-4.4-plan.md](../status/phase-4.4-plan.md) Result 节（机制建立前的记录） | 修改后通过；2 项 finding 已修复并复审确认 | 2026-09-01 |
 | 4.5 | [phase-4.5-review.md](phase-4.5-review.md) | 通过（R1 对抗性自查 + R2 独立 code-reviewer 复审 approve-with-comments；7 项 finding 全部 Closed，R2 的 4 项 Suggestion 已修复） | 2026-09-01 |
 | 5.0 | [phase-5.0-review.md](phase-5.0-review.md) | 修改后通过；R1 测试迁移 finding 已修复，R2 确认 F3 Closed | 2026-09-02 |
-| 5.1 | [phase-5.1-review.md](phase-5.1-review.md) | 修改后通过；3 智能体并发审查识别 7 项 finding（含 P0/P1），全部修复闭环，494 测试全绿 | 2026-09-02 |
+| 5.1 | [phase-5.1-review.md](phase-5.1-review.md) | 修改后通过；3 智能体并发审查识别 7 项 finding 全部闭环，长视频性能优化 46 倍，Human Review 验收通过，495 测试全绿 | 2026-09-02 |
 
 > 4.3 / 4.4 的独立 review 发生于本机制建立之前，不回溯补建独立文件；自下一个触发的 subphase 起使用本目录。
 

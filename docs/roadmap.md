@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 5.0 — Tracking Pipeline Consolidation（✅ 2026-09-02；Issue #17 / Phase 4 Review F3 Closed；[最终双平台 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531730159)）**
-- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；等待用户确认后进入 5.1）**
+- 最近完成：**Phase 5.1 — Representative Frame Selection（✅ 2026-09-02；Human Review 验收通过，62 测试，长视频提速 46 倍）**
+- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.1 已完成，等待进入 5.2）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -145,7 +145,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 | Subphase | 名称 | 核心交付 |
 | --- | --- | --- |
 | 5.0 ✅ | Tracking Pipeline Consolidation | F3：统一 runner/actions/task handle 生命周期，旧 coordinator 已移除 |
-| 5.1 | Representative Frame Selection | DLC uniform/K-means 初始建议帧 |
+| 5.1 ✅ | Representative Frame Selection | DLC uniform/K-means 初始建议帧，自适应抽帧优化与 Human Review 通过 |
 | 5.2 | Difficult Frame Mining | 原始预测、多信号候选、排名/去重/多样性、Top N |
 | 5.3 | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复 |
 | 5.4 | Iteration History & Result Activation | fixed validation/history；F2 clear/activate/replace |
@@ -154,7 +154,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 **验收标准**
 - [x] F3 关闭：旧 coordinator lifecycle 已移除，训练/推理只维护统一 runner/actions/task handle 路径
-- [ ] DLC uniform/K-means 可在 working zone 推荐去重代表帧，不自动创建标签
+- [x] DLC uniform/K-means 可在 working zone 推荐去重代表帧，不自动创建标签（✅ 5.1 完成）
 - [ ] 困难帧扫描消费指定 infer run 的全帧原始预测；连续低 confidence 片段不会垄断 Top N
 - [ ] Accept 不产生 ground truth，Correct 保留 prediction provenance，Skip 不造坐标；保存重开一致
 - [ ] 新 completed infer result 可显式激活/替换，且不丢 manual、旧 run 产物与历史；事务可撤销并使派生 stale

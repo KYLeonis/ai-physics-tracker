@@ -2,7 +2,7 @@
 
 - Issue：Phase 5.1 — Representative Frame Selection（待创建）
 - 分支：`feat/p5.1-representative-frames`
-- 日期 / 状态：2026-09-02 · 进行中
+- 日期 / 状态：2026-09-02 · ✅ 已完成（Human Review 通过）
 
 ## Goal
 
@@ -35,9 +35,9 @@
 - [x] DLC uniform/K-means 在 working zone 返回去重帧号，排除已有 manual 帧，不自动造 TrackPoint（AC-1）
 - [x] 候选不足 N 时返回实际数量；重复帧被去重（AC-1）
 - [x] 后台执行、可取消；结果记录 algorithm/N/seed/zone/cluster_step/excluded_count/actual_n（AC-1）
-- [x] 测试：两种算法、排除已有标签、working zone 约束、seed、取消、不足 N（45 单元测试 + 16 GUI offscreen = 61 测试）
-- [x] 全回归 ≥ 433 passed 不退化（494 passed in 64.60s）
-- [ ] GUI Human Review：建议帧列表出现，点击跳帧，不自动打标（**待用户验收**）
+- [x] 测试：两种算法、排除已有标签、working zone 约束、seed、取消、不足 N（46 单元测试 + 16 GUI offscreen = 62 测试）
+- [x] 全回归 ≥ 433 passed 不退化（495 passed in 38.52s）
+- [x] GUI Human Review：建议帧列表正常显示，双击跳帧并保持标注模式，不自动打标（**用户真机验收通过，2026-09-02**）
 
 ## Relevant Context
 
@@ -56,18 +56,18 @@
 - [x] Slice 1：`FrameSelectionRequest` / `FrameSelectionResult` 数据类
 - [x] Slice 2：DLC Adapter + Mock Adapter `suggest_frames` 实现
 - [x] Slice 3：`FrameSelectionRunner` + `prepare_frame_selection_request` + `run_frame_selection_worker`
-- [x] Slice 4：最小 GUI（Task Panel + TrackingActions）→ **Human Review 待完成**
+- [x] Slice 4：最小 GUI（Task Panel + TrackingActions）+ Human Review 通过
 
 ## Verification
 
 ```bash
-# 单元测试（45 passed）
+# 单元测试（46 passed）
 QT_QPA_PLATFORM=offscreen python -m pytest tests/test_frame_selection.py -v
 
 # GUI offscreen 测试（16 passed）
 QT_QPA_PLATFORM=offscreen python -m pytest tests/gui/test_frame_selection_actions.py -v
 
-# 全回归（494 passed）
+# 全回归（495 passed in 38.52s）
 QT_QPA_PLATFORM=offscreen python -m pytest
 
 # 编译检查
@@ -77,5 +77,6 @@ python -m compileall src
 ## Result
 
 - 3 个并发子智能体审查通过，识别 7 项 Finding（含 P0/P1），全部就地修复闭环（详见 [docs/reviews/phase-5.1-review.md](../reviews/phase-5.1-review.md)）。
-- 61 个新增测试全部通过，全库 494 测试全绿。
-- 当前状态：S1–S4 开发与 Review 闭环完成，等待 Human Review 用户真机体验。
+- 性能深度优化：长视频自适应抽帧步长 + 流式 Grab 跳帧解码 + 实时进度透传反馈，2767 帧 1080p 视频选帧耗时从 7 分钟降至 9 秒（提升约 46 倍）。
+- 62 个新增测试全部通过，全库 495 测试全绿。
+- Human Review：用户真机体验确认建议帧列表、双击跳转、不打标行为均符合预期，验收通过。

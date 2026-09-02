@@ -1,7 +1,7 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Accepted / Phase 5.0 已完成，等待 5.1 指令**
-> 日期：2026-09-01  
+> 状态：**Accepted / Phase 5.1 已完成，等待 5.2 指令**
+> 日期：2026-09-02  
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
 
@@ -43,6 +43,8 @@
 **独立验收**：无新按钮；现有训练/评价/推理 smoke 与全回归不退化，F3 Closed。
 
 ### 5.1 — Representative Frame Selection
+
+**状态**：✅ 2026-09-02 完成；Human Review 验收通过。结果见 [phase-5.1-plan.md](phase-5.1-plan.md)。
 
 **目标**：第一次训练前，用少量分布良好的建议帧减少手工拖时间轴。
 
