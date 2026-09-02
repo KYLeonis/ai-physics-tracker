@@ -11,7 +11,7 @@ candidate pool → normalization + weighted rank → temporal de-duplication →
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from math import isfinite
+from math import ceil, isfinite
 from typing import Any
 
 import numpy as np
@@ -72,8 +72,8 @@ class MiningParams:
             raise ValueError("confidence_threshold must be finite and in [0, 1]")
         for label, value in (("jump_z_threshold", self.jump_z_threshold),
                              ("residual_z_threshold", self.residual_z_threshold)):
-            if self._finite_number(value, label) < 0:
-                raise ValueError(f"{label} must be finite and non-negative")
+            if self._finite_number(value, label) <= 0:
+                raise ValueError(f"{label} must be finite and positive")
         if (type(self.smooth_window_length) is not int or self.smooth_window_length <= 0
                 or self.smooth_window_length % 2 == 0):
             raise ValueError("smooth_window_length must be a positive odd integer")
@@ -167,6 +167,7 @@ class MiningOutcome:
     shortlist: tuple[FrameCandidate, ...]
     pool_size: int
     min_gap_frames: int
+    effective_gap_frames: int  # 最终一轮去重实际使用的间隔（放宽后可能与 min_gap 不同）
     actual_min_gap_frames: int | None
     gap_relaxed: bool
     params_snapshot: dict[str, Any] = field(default_factory=dict)
@@ -214,10 +215,12 @@ def mine_difficult_frames(
             pool_positions.append(position)
             reasons_by_position.append(reasons)
 
-    min_gap_frames = max(1, round(params.min_gap_s * fps_nominal))
+    # ceil 保证换算结果严格不低于请求的最小间隔（0.25 s @ 10 fps → 3 帧）；
+    # round 的半偶舍入会得到 2 帧 = 0.20 s，违反"最小间隔"语义（review M2）
+    min_gap_frames = max(1, ceil(params.min_gap_s * fps_nominal))
     if not pool_positions:
-        return MiningOutcome((), 0, min_gap_frames, None, False,
-                             _snapshot(params, 0, min_gap_frames, None, False,
+        return MiningOutcome((), 0, min_gap_frames, min_gap_frames, None, False,
+                             _snapshot(params, 0, min_gap_frames, min_gap_frames, None, False,
                                        zone_start, zone_end, fps_nominal))
 
     components = _normalized_components(raw, pool_positions)
@@ -234,12 +237,13 @@ def mine_difficult_frames(
 
     ordered = sorted(range(len(pool_positions)),
                      key=lambda pool_index: (-totals[pool_index], pool_positions[pool_index]))
+    shortlist_cap = params.diversity_shortlist_factor * params.top_n
     gap, relaxed = min_gap_frames, False
-    kept = _greedy_temporal_dedup(ordered, pool_positions, gap)
+    kept = _greedy_temporal_dedup(ordered, pool_positions, gap, shortlist_cap)
     while len(kept) < params.top_n and gap > 1:
         gap = max(1, gap // 2)
         relaxed = True
-        kept = _greedy_temporal_dedup(ordered, pool_positions, gap)
+        kept = _greedy_temporal_dedup(ordered, pool_positions, gap, shortlist_cap)
 
     shortlist = tuple(
         FrameCandidate(
@@ -257,9 +261,10 @@ def mine_difficult_frames(
         shortlist=shortlist,
         pool_size=len(pool_positions),
         min_gap_frames=min_gap_frames,
+        effective_gap_frames=gap,
         actual_min_gap_frames=actual_min_gap,
         gap_relaxed=relaxed,
-        params_snapshot=_snapshot(params, len(pool_positions), min_gap_frames,
+        params_snapshot=_snapshot(params, len(pool_positions), min_gap_frames, gap,
                                   actual_min_gap, relaxed, zone_start, zone_end, fps_nominal),
     )
 
@@ -409,6 +414,8 @@ def _percentile_ranks(values: np.ndarray) -> np.ndarray:
     start = 0
     while start < count:
         end = start
+        # 并列分组用精确相等是刻意的：信号已过 floor/量化，同源同值；这不是
+        # 对计算结果的浮点判等（CODE_STANDARD §9.4 针对的是后者）
         while end + 1 < count and sorted_values[end + 1] == sorted_values[start]:
             end += 1
         ranks[start:end + 1] = (start + end) / 2 + 1  # 1-based 平均名次
@@ -419,12 +426,17 @@ def _percentile_ranks(values: np.ndarray) -> np.ndarray:
 
 
 def _greedy_temporal_dedup(
-    ordered_pool_indices: list[int], pool_positions: list[int], gap: int,
+    ordered_pool_indices: list[int], pool_positions: list[int], gap: int, cap: int,
 ) -> list[int]:
-    """按分数顺序贪心选择，与已选帧间隔 >= gap 才保留（连续段不垄断）。"""
+    """按分数顺序贪心选择，与已选帧间隔 >= gap 才保留（连续段不垄断）。
+
+    收集到 cap（shortlist 上限）即早停；cap ≥ top_n，因此放宽判断不受影响。
+    """
     kept: list[int] = []
     kept_frames: list[int] = []
     for pool_index in ordered_pool_indices:
+        if len(kept) >= cap:
+            break
         frame = pool_positions[pool_index]
         if all(abs(frame - kept_frame) >= gap for kept_frame in kept_frames):
             kept.append(pool_index)
@@ -441,13 +453,14 @@ def _min_pairwise_gap(frames: list[int]) -> int | None:
 
 def _snapshot(
     params: MiningParams, pool_size: int, min_gap_frames: int,
-    actual_min_gap_frames: int | None, gap_relaxed: bool,
+    effective_gap_frames: int, actual_min_gap_frames: int | None, gap_relaxed: bool,
     zone_start: int, zone_end: int, fps_nominal: float,
 ) -> dict[str, Any]:
     snapshot: dict[str, Any] = dict(params.to_snapshot())
     snapshot.update({
         "pool_size": pool_size,
         "min_gap_frames": min_gap_frames,
+        "effective_gap_frames": effective_gap_frames,
         "actual_min_gap_frames": actual_min_gap_frames,
         "gap_relaxed": gap_relaxed,
         "zone_start": zone_start,

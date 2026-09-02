@@ -271,6 +271,81 @@ class TestMineDifficultFramesPolicy:
         outcome = self._mine(rows, params=params)
         assert len(outcome.shortlist) <= params.diversity_shortlist_factor * params.top_n
 
+    def test_robust_scores_zscore_branch_hand_computed(self):
+        """MAD>0 主统计路径：z 公式（1.4826 常数）与 3.5 阈值边界被手算值钉住。"""
+        import numpy as np
+
+        from ai_physics_tracker.application.difficult_frames import _robust_scores
+
+        values = np.array([1.0, 1.2, 0.8, 1.1, 0.9, 1.15, 0.85, 10.0])
+        # median = 1.05；|dev| = [.05,.15,.25,.05,.15,.1,.2,8.95] → MAD = 0.15
+        scores, anomalies = _robust_scores(values, 3.5)
+        expected_z = (10.0 - 1.05) / (1.4826 * 0.15)
+        assert scores[-1] == pytest.approx(expected_z, rel=1e-12)
+        assert anomalies[-1] is True or anomalies[-1]  # bool 数组
+        # 正常抖动的 z ≈ ±1.1 < 3.5，不得判异常；负 z 截断为 0
+        assert not anomalies[:7].any()
+        assert scores.min() == pytest.approx(0.0)
+
+    def test_noisy_trajectory_jump_flagged_via_zscore(self):
+        """带噪轨迹（MAD>0）上单点大位移被 z>=3.5 判为 jump 异常。"""
+        rows = []
+        for f in range(100):
+            x = 10.0 + 2.0 * f + (0.4 if f % 2 else -0.4)  # 距离在 1.2/2.8 交替 → MAD>0
+            rows.append(RawPrediction(f, x, 20.0, 0.95))
+        rows[50] = RawPrediction(50, 10.0 + 2.0 * 50 + 25.0, 20.0, 0.95)
+        outcome = self._mine(rows)
+        jump_frames = {c.frame_index for c in outcome.shortlist if "jump_outlier" in c.reasons}
+        assert 50 in jump_frames
+        assert jump_frames <= {49, 50, 51}  # 正常抖动帧不得误报
+
+    def test_single_candidate_pool_degenerates_to_zero_ranks(self):
+        rows = _smooth_trajectory()
+        rows[50] = RawPrediction(50, float("nan"), float("nan"), float("nan"))
+        outcome = self._mine(rows, params=MiningParams(top_n=3))
+        # 池只含缺测帧 50：池内排名无区分度，分量全 0、总分 0，但原因保留
+        assert outcome.pool_size == 1
+        candidate = outcome.shortlist[0]
+        assert candidate.frame_index == 50
+        assert set(candidate.components.values()) == {0.0}
+        assert candidate.total_score == pytest.approx(0.0)
+        assert "missing" in candidate.reasons
+
+    def test_single_frame_zone_and_all_missing_zone(self):
+        rows = _smooth_trajectory()
+        rows[50] = RawPrediction(50, float("nan"), float("nan"), float("nan"))
+        single = self._mine(rows, zone=(50, 50),
+                            params=MiningParams(top_n=2, min_gap_s=0.05))
+        assert [c.frame_index for c in single.shortlist] == [50]
+
+        all_missing = [RawPrediction(f, float("nan"), float("nan"), float("nan"))
+                       for f in range(10)]
+        outcome = self._mine(all_missing, zone=(0, 9), params=MiningParams(top_n=2))
+        assert outcome.pool_size == 10
+        # 全并列 → 归一化 0.5、总分 0.5×权重和；shortlist 是去重排名表（Top N 截断在多样性阶段）
+        assert 2 <= len(outcome.shortlist) <= 4 * 2
+        assert outcome.shortlist[0].total_score == pytest.approx(0.5)
+        frames = sorted(c.frame_index for c in outcome.shortlist)
+        assert all(b - a >= 3 for a, b in zip(frames, frames[1:]))  # gap=3 被遵守
+
+    def test_min_gap_seconds_rounds_up_to_frames(self):
+        """0.25 s @ 10 fps → 3 帧（ceil），不得低于请求的最小间隔（review M2）。"""
+        rows = [RawPrediction(f, 10.0 + 2.0 * f, 20.0, 0.2) for f in range(10)]
+        outcome = self._mine(rows, zone=(0, 9),
+                             params=MiningParams(top_n=2, min_gap_s=0.25))
+        assert outcome.min_gap_frames == 3
+        assert outcome.params_snapshot["effective_gap_frames"] == 3
+
+    def test_effective_gap_recorded_after_relaxation(self):
+        rows = _smooth_trajectory()
+        for frame in range(60, 71):
+            rows[frame] = RawPrediction(frame, 10.0 + 2.0 * frame, 20.0, 0.2)
+        outcome = self._mine(rows, params=MiningParams(top_n=3, min_gap_s=1.0))
+        assert outcome.gap_relaxed is True
+        assert outcome.min_gap_frames == 10
+        assert outcome.effective_gap_frames == 5  # 10 → 5 后凑齐 3 个
+        assert outcome.params_snapshot["effective_gap_frames"] == 5
+
     def test_same_inputs_same_outcome(self):
         rows = _smooth_trajectory()
         rows[40] = RawPrediction(40, 10.0 + 2.0 * 40 + 50.0, 70.0, 0.9)
