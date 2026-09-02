@@ -37,6 +37,61 @@ class ParsedPredictions:
 
 
 @dataclass(frozen=True)
+class RawPrediction:
+    """单帧原始预测（Phase 5.2 mining 输入），字段用内部词汇表。
+
+    任何分量上的 NaN 表示该帧缺测（data-model.md §3.5）——不是 0、不是低值；
+    confidence 为 NaN 时 pixel 坐标通常同样缺测。
+    """
+
+    frame_index: int
+    pixel_x: float
+    pixel_y: float
+    confidence: float
+
+    def __post_init__(self) -> None:
+        if isinstance(self.frame_index, bool) or not isinstance(self.frame_index, Integral):
+            raise ValueError("frame_index must be an integer")
+        if self.frame_index < 0:
+            raise ValueError("frame_index must be non-negative")
+        for label, value in (("pixel_x", self.pixel_x), ("pixel_y", self.pixel_y),
+                             ("confidence", self.confidence)):
+            if isinstance(value, bool) or not isinstance(value, float):
+                raise ValueError(f"{label} must be a float")
+            if not (isnan(value) or isfinite(value)):
+                raise ValueError(f"{label} must be finite or NaN")
+            if label == "confidence" and not isnan(value) and not 0 <= value <= 1:
+                raise ValueError("confidence must be NaN or in [0, 1]")
+
+
+def read_raw_predictions(
+    prediction_data: Any,
+    bodypart: str = "target",
+    *,
+    frame_count: int | None = None,
+) -> tuple[RawPrediction, ...]:
+    """读取全帧原始预测，不过滤低置信度或缺测行（Phase 5.2 R2.2）。
+
+    校验与 parse_predictions 相同：列结构非法、重复帧号、数值非有限且非 NaN、
+    或未覆盖 [0, frame_count) 的批次整体拒绝；缺测以 NaN 保留。
+    """
+
+    if not isinstance(bodypart, str) or not bodypart:
+        raise ValueError("bodypart must be a non-empty string")
+    rows = _load_rows(prediction_data, bodypart)
+    _validate_rows(rows, _validate_frame_count(frame_count))
+    return tuple(
+        RawPrediction(
+            frame_index=row.frame_index,
+            pixel_x=row.pixel_x,
+            pixel_y=row.pixel_y,
+            confidence=row.likelihood,
+        )
+        for row in rows
+    )
+
+
+@dataclass(frozen=True)
 class _PredictionRow:
     frame_index: int
     pixel_x: float

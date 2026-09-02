@@ -22,6 +22,7 @@ from ai_physics_tracker.infrastructure.engine_adapter import (
     TrainOutcome,
     FrameSelectionRequest,
     FrameSelectionResult,
+    RawPrediction,
 )
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.task_runner import (
@@ -446,6 +447,18 @@ class DLCAdapter:
         return InferenceOutcome(parsed.points, prediction_path, parsed.row_count,
                                 parsed.missing_count, parsed.low_confidence_count,
                                 request.model_snapshot, str(deeplabcut.__version__), actual_device)
+
+    def read_raw_predictions(
+        self,
+        prediction_path: Path,
+        bodypart: str = "target",
+        *,
+        frame_count: int | None = None,
+    ) -> tuple[RawPrediction, ...]:
+        """在适配边界读取全帧原始预测（含低置信度与缺测），整批校验（Phase 5.2 R2.2）。"""
+        from ai_physics_tracker.infrastructure.dlc_predictions import read_raw_predictions
+
+        return read_raw_predictions(prediction_path, bodypart, frame_count=frame_count)
 
     def suggest_frames(
         self,

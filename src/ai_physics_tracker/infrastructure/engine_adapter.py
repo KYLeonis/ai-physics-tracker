@@ -11,6 +11,7 @@ from ai_physics_tracker.application.tracking_types import (
     TrainingParams, TrainOutcome, InferenceParams, InferenceRequest, InferenceOutcome,
     FrameSelectionRequest, FrameSelectionResult,
 )
+from ai_physics_tracker.infrastructure.dlc_predictions import RawPrediction
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 
 
@@ -94,4 +95,14 @@ class EngineAdapter(Protocol):
         cancel_event: Any,
     ) -> FrameSelectionResult:
         """按请求参数在 working zone 内建议代表帧号；不修改磁盘、不创建 TrackPoint（Phase 5.1 R1）。"""
+        ...
+
+    def read_raw_predictions(
+        self,
+        prediction_path: Path,
+        bodypart: str = "target",
+        *,
+        frame_count: int | None = None,
+    ) -> tuple[RawPrediction, ...]:
+        """读取预测产物的全帧原始值（含低置信度与缺测），整批校验（Phase 5.2 R2.2）。"""
         ...

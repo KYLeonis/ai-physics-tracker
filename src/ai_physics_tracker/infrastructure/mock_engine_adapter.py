@@ -16,6 +16,7 @@ from ai_physics_tracker.infrastructure.engine_adapter import (
     TrainOutcome,
     FrameSelectionRequest,
     FrameSelectionResult,
+    RawPrediction,
 )
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.task_runner import (
@@ -200,6 +201,18 @@ class MockEngineAdapter:
         """模拟评价指标，供 GUI 生命周期测试使用。"""
         return {"status": "completed", "unit": "px", "metrics": {"train_rmse": 1.0, "test_rmse": 2.0},
                 "snapshot": snapshot_path.name, "train_samples": 4, "test_samples": 1}
+
+    def read_raw_predictions(
+        self,
+        prediction_path: Path,
+        bodypart: str = "target",
+        *,
+        frame_count: int | None = None,
+    ) -> tuple[RawPrediction, ...]:
+        """复用生产解析边界；CI 无需 pandas（CSV 路径不依赖 HDF5）。"""
+        from ai_physics_tracker.infrastructure.dlc_predictions import read_raw_predictions
+
+        return read_raw_predictions(prediction_path, bodypart, frame_count=frame_count)
 
     def suggest_frames(
         self,
