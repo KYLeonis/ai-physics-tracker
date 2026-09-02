@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsLineItem,
     QGraphicsPolygonItem,
+    QGraphicsSimpleTextItem,
     QGraphicsPixmapItem,
     QGraphicsScene,
     QGraphicsSimpleTextItem,
@@ -45,6 +46,8 @@ ZOOM_STEP = 1.25
 FIT_MARGIN_PX = 2.0
 # 标注点的屏幕直径（ItemIgnoresTransformations：不随缩放变化）
 MARKER_DIAMETER_PX = 9.0
+# 手动标注圆圈旁的帧号标签：屏幕固定小字号，便于回溯定位标错帧（用户实测反馈）
+_MARKER_LABEL_FONT_PT = 8.0
 
 
 @dataclass(frozen=True)
@@ -408,8 +411,9 @@ class VideoView(QGraphicsView):
         return list(self._marker_views)
 
     @staticmethod
-    def _marker_style_key(marker: MarkerView) -> tuple[float, float, str, str]:
-        return (marker.pixel_x, marker.pixel_y, marker.color, marker.source)
+    def _marker_style_key(marker: MarkerView) -> tuple[float, float, str, str, int | None]:
+        # frame_index 入 key：不同帧号的图元不互相复用，帧号标签随之创建而非依赖刷新
+        return (marker.pixel_x, marker.pixel_y, marker.color, marker.source, marker.frame_index)
 
     def _marker_is_current(self, marker: MarkerView) -> bool:
         if marker.frame_index is None or self._current_frame is None:
@@ -445,6 +449,16 @@ class VideoView(QGraphicsView):
         # 屏幕固定大小：忽略 view transform（ItemIgnoresTransformations）。
         item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
         item.setZValue(10.0)
+        if marker.source == "manual":
+            # 帧号标签为 marker 子图元，跟随位置移动；文本在 _update_marker_item 刷新
+            label = QGraphicsSimpleTextItem(item)
+            label.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
+            label.setPos(radius + 3.0, -(radius + 13.0))
+            font = QFont()
+            font.setPointSizeF(_MARKER_LABEL_FONT_PT)
+            font.setBold(True)
+            label.setFont(font)
+            label.setZValue(11.0)
         self._scene.addItem(item)
         return item
 
@@ -460,9 +474,20 @@ class VideoView(QGraphicsView):
             item.setBrush(color)
         else:
             item.setBrush(Qt.BrushStyle.NoBrush)
-        item.setToolTip(marker.source)
+        item.setToolTip(
+            f"{marker.source} · frame {marker.frame_index}"
+            if marker.frame_index is not None else marker.source
+        )
         if self._annotation_mode or self._calibration_mode is not None:
             item.setCursor(Qt.CursorShape.CrossCursor)
+        for child in item.childItems():
+            if isinstance(child, QGraphicsSimpleTextItem):
+                child.setText(str(marker.frame_index) if marker.frame_index is not None else "")
+                # 描边式文字：黑色轮廓保证在任意背景上可读
+                child.setBrush(color)
+                outline = QPen(QColor("black"))
+                outline.setWidthF(0.8)
+                child.setPen(outline)
 
     def set_calibration(
         self,
