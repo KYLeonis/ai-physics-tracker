@@ -22,4 +22,4 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 
 | Review | 记录 | 结论 | 日期 |
 | --- | --- | --- | --- |
-| Phase 4 收尾 Architecture / Reliability / Boundary Review | [phase4-architecture-reliability-review.md](phase4-architecture-reliability-review.md) | 只读 review；15 项 finding（Critical 0 / High 1）；建议小型 stabilization subphase（P4.5，2–4 天）后进入 Phase 5 | 2026-09-01 |
+| Phase 4 收尾 Architecture / Reliability / Boundary Review | [phase4-architecture-reliability-review.md](phase4-architecture-reliability-review.md) | 只读 review；F1/F4/F5/F6 已由 4.5 关闭，F3 已由 5.0 关闭，F2 保留在 5.4 | 2026-09-01（处置更新至 2026-09-02） |

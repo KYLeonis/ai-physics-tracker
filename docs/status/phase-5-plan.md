@@ -11,7 +11,7 @@
 
 - `main @ 7e78053`，进入规划时工作区干净且与 `origin/main` 一致。
 - Phase 4 + 4.5 已完成，基线 441 tests；Windows/CUDA 真机验收已批准延至 Phase 9 前。
-- F1/F4/F5/F6 已关闭；Phase 5 接手 F2（结果 clear/activate/replace）、F3（任务双轨）和 F8（消费原始 confidence）。
+- F1/F4/F5/F6 已关闭；Phase 5 规划接手 F2（结果 clear/activate/replace）、F3（任务双轨）和 F8（消费原始 confidence），其中 F3 已由 5.0 关闭。
 - DLC 当前稳定版和本地安装均为 3.0.1；frame extraction、outlier、refinement、fixed split、snapshot resume/evaluation 已复核。
 
 ## 2. 实施原则

@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:    Phase 5 — AI-assisted Annotation & Refinement 🔄
 Last Completed:   Phase 5.0 — Tracking Pipeline Consolidation
-Current Subphase: N/A（等待确认后进入 5.1）
+Current Subphase: N/A（5.0 已完成，等待单独确认 5.1）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -96,7 +96,8 @@ macOS Human Review、433 项本地测试、真实 CPU GUI 组件闭环及 macOS/
 真实短训练只验证管线，不代表模型精度。经用户批准，Windows 真机/CUDA 延期到 Phase 9 打包前；详情见
 [4.4 计划与验收](docs/status/phase-4.4-plan.md)。
 
-Phase 5 已确认 Human-in-the-loop 总计划。5.0 已关闭任务编排双轨 F3；下一步 5.1 才开始
+Phase 5 已确认 Human-in-the-loop 总计划。[Issue #17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)
+已关闭，5.0 已完成任务编排双轨 F3 收敛；下一步 5.1 才开始
 DLC uniform/K-means 代表帧产品能力。困难帧、Suggested Frames、固定 validation、
 推理结果显式替换（F2）和规则型 Training Advisor 仍按后续 Subphase 实施。见
 [Phase 5 requirements](docs/spec/phase5-requirements.md) 与 [PHASE_5_PLAN](docs/status/phase-5-plan.md)。
@@ -131,6 +132,8 @@ DLC uniform/K-means 代表帧产品能力。困难帧、Suggested Frames、固�
 - ✅ 仓库结构、基础文档、Git 初始化、GitHub 远程推送（[KYLeonis/ai-physics-tracker](https://github.com/KYLeonis/ai-physics-tracker)，Private）
 - ✅ src-layout 核心/GUI 包、锁定依赖与自动化测试；GitHub Actions 覆盖 macOS/Windows Python 3.11，最新验证见 current.md
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
+- ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
+- 🔄 Phase 5 进行中：5.0 已完成并关闭 F3，5.1 尚未开始；F2 保留在 5.4
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引

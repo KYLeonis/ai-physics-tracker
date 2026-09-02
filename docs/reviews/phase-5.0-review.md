@@ -1,6 +1,6 @@
 # Review Record — Phase 5.0 Tracking Pipeline Consolidation
 
-- Subphase / Issue：5.0 · [#17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)
+- Subphase / Issue：5.0 · [#17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)（Closed）
 - Review 范围：`feat/p5.0-tracking-pipeline` 的 `db6c735` / `3afa280` / `ba3d870`
 - Context：`docs/spec/phase5-requirements.md` R0/AC-11、`docs/status/phase-5.0-plan.md`、Phase 4 Review F3、ADR-0012
 - 轮次：R1 2026-09-01（首轮）· R2 2026-09-02（修复后复审）
@@ -35,7 +35,7 @@
 - **Recommendation**：只补统一路径的最小回归，不恢复旧 coordinator 测试。
 - **Decision**：Fix Before Close——Issue #17 的验收直接要求保留这些边界。
 - **Fix commit**：`ba3d870`
-- **Verification**：新增 runner facade、真实 spawn 推理取消、训练失败、GUI 启动失败、timing/project root/generation 变化取消、media/config/model/observation 篡改拒绝与 unchanged-stat 测试；定向 30 passed，全量 433 passed；[CI run 33531403393](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531403393) 双平台通过。
+- **Verification**：新增 runner facade、真实 spawn 推理取消、训练失败、GUI 启动失败、timing/project root/generation 变化取消、media/config/model/observation 篡改拒绝与 unchanged-stat 测试；定向 30 passed，全量 433 passed；最终证据提交 `3a4063c` 的 [CI run 33531730159](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531730159) 双平台通过。
 - **Re-review**：R2 独立 reviewer 确认 Medium 已关闭。
 - **Status**：Closed
 
@@ -46,7 +46,7 @@
 - **Impact**：只写“runner 独自拥有生命周期”会误导后续实现者。
 - **Recommendation**：文档统一写为 `TrackingJobRunner + TrackingActions + BackgroundTaskRunner` 是唯一生命周期路径。
 - **Decision**：Fix Before Close——纯文档且能消除歧义。
-- **Fix commit**：收尾文档提交
+- **Fix commit**：`5b36b33`
 - **Verification**：`docs/architecture.md`、5.0 plan 与 roadmap 同步措辞。
 - **Re-review**：R2 确认该项非阻断；实现方按建议收口。
 - **Status**：Closed

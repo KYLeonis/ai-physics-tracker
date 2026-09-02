@@ -13,7 +13,7 @@
 
 ## Current Subphase
 
-**5.0 — Tracking Pipeline Consolidation** ✅ 已完成。Issue [#17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)，结果见 [phase-5.0-plan.md](phase-5.0-plan.md) 与 [Review Record](../reviews/phase-5.0-review.md)。
+**5.0 — Tracking Pipeline Consolidation** ✅ 已完成。Issue [#17](https://github.com/KYLeonis/ai-physics-tracker/issues/17) 已关闭，结果见 [phase-5.0-plan.md](phase-5.0-plan.md) 与 [Review Record](../reviews/phase-5.0-review.md)。
 
 ## Current Slice
 
@@ -25,10 +25,10 @@ N/A（5.0 收尾完成，未开始 5.1）。
 
 ## Recently Completed
 
-- **Phase 5.0 — Tracking Pipeline Consolidation**（✅ 2026-09-02，merge `5569e93`）：删除旧 `TrainingCoordinator` / `InferenceCoordinator` start/poll/cancel 双轨，保留模块级 prepare/read；真实 DLC smoke 已迁移到 request → runner → candidate 并通过（1 epoch、10 帧推理、5 AI inserted / 5 manual preserved）。R1 测试覆盖 finding 由 `ba3d870` 修复，R2 独立复审通过；本地全回归 **433 passed in 53.76s**，[CI run 33531403393](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531403393) 在 macOS/Windows Python 3.11 均通过。F3 Closed；未实现 F2/5.1、未改 schema/依赖/GUI 产品行为。
+- **Phase 5.0 — Tracking Pipeline Consolidation**（✅ 2026-09-02，merge `5569e93`）：删除旧 `TrainingCoordinator` / `InferenceCoordinator` start/poll/cancel 双轨，保留模块级 prepare/read；真实 DLC smoke 已迁移到 request → runner → candidate 并通过（1 epoch、10 帧推理、5 AI inserted / 5 manual preserved）。R1 测试覆盖 finding 由 `ba3d870` 修复，R2 独立复审通过；本地全回归 **433 passed in 53.76s**，最终证据提交 `3a4063c` 的 [CI run 33531730159](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531730159) 在 macOS/Windows Python 3.11 均通过。Issue #17 已关闭，F3 Closed；未实现 F2/5.1、未改 schema/依赖/GUI 产品行为。
 - **Phase 5 规划**（2026-09-01，只改文档）：新增 [Phase 5 requirements](../spec/phase5-requirements.md) 与 [PHASE_5_PLAN](phase-5-plan.md)，把 Human-in-the-loop 不变式、DLC 复用边界、代表帧/困难帧、Suggested Frames、fixed validation、规则型 Advisor、F2/F3 和 5.0–5.6 验收路径具体化；未改产品代码、依赖或 schema。规划同步后全回归 **441 passed in 41.74s**（macOS，Python 3.12，Qt offscreen）。
 - **Phase 4.5 — Engineering Stabilization**（✅ 2026-09-01）：S1–S4 四个 Slice 全部完成（分支 `feat/p4.5-stabilization`，5 commits：`1641536`/`0d604ad`/`473ee65`/`e53ab7e`/`1ca4a91`）。F1 修复在实现中发现并覆盖了 review 未点名的 session 层路径（`remove_track` 原 `_commit_store` 回填会把级联删除的 run 带回旧聚合，新测试当场捕获）。
-- **Phase 4 收尾全库 Review**（2026-09-01，只读）：[docs/reviews/phase4-architecture-reliability-review.md](reviews/phase4-architecture-reliability-review.md)。15 项 finding（Critical 0 / High 1）；处置状态已在该报告顶部更新。
+- **Phase 4 收尾全库 Review**（2026-09-01，只读）：[docs/reviews/phase4-architecture-reliability-review.md](../reviews/phase4-architecture-reliability-review.md)。15 项 finding（Critical 0 / High 1）；处置状态已在该报告顶部更新。
 - **Phase 4 — Deep Learning Tracking**（✅ 2026-09-01）：Subphase 4.0–4.4 全部完成；最终 `main` 集成 CI [run 33504579667](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33504579667) 在 macOS/Windows Python 3.11 通过。首轮 Windows CI 暴露两个平台相关测试假设，`51e05b1` 修复为按平台尺寸验证后复跑全绿。Issue #15 已关闭。经用户明确批准，Windows 真机/CUDA 验收延期到 Phase 9 打包前的专门关卡。
 - **4.4 macOS Human Review 通过**（2026-09-01）：用户确认完整 GUI 工作流与最终聚焦复验通过。Main/Chart/AI 可缩放，Chart/AI 可分离为独立窗口并重新停靠，Chart 动态状态消息为英文；无其他交互问题。
 - **4.4 本地实现与自动化验证**（2026-09-01）：Task Panel、真实训练指标/基本评价、推理、异步取消/保存/切换、AI 菱形及 marker 复用已接通；最终本地全回归 **433 passed in 47.47s**。真实 GUI 组件 CPU 冒烟完成 1 epoch 训练/评价/推理，5 AI 插入/5 manual 保留并保存重开；独立 review 的两个 finding 已修复并复审通过；`--no-ff` 合并提交为 `17ae493`。
@@ -38,7 +38,7 @@ N/A（5.0 收尾完成，未开始 5.1）。
 - **4.3 进入检查与计划**（2026-08-31）：进入时 `main` 工作区干净，HEAD `7ecb4ea` 与实时查询的 origin/main 一致，对应 CI success；本轮重新运行 offscreen 全回归 **341 passed in 22.05s**。已读取 Phase 4 spec/ADR、数据语义、训练 Issue 与相关实现；确认现有融合规则可复用，但运动学计算及后台输入检查仍只读 manual，需在 4.3 接通 AI 生效观测。只新增计划文档，未改实现、依赖、CI 或 schema。
 - **Phase 4.2 — Training Pipeline**（✅ 2026-08-31）：
   - 协议扩展：`EngineAdapter` 协议补齐 `create_training_dataset`、`train` 与 `engine_version`，新增 `TrainingParams` 与 `TrainOutcome` 数据类。
-  - 应用层编排：`TrainingCoordinator` 实现 `prepare_training`（标注抽帧/CSV/H5 导出、DLC 项目目录复用、训练集生成）、`start_training`（spawn 子进程运行）、`poll_messages`（流式日志与进度转发、进程异常退出兜底）与 `cancel_training` / `cancel_all`（D1 策略：关闭或切换会话时安全回收子进程）。
+  - 当时的应用层编排：`TrainingCoordinator` 实现训练准备与 start/poll/cancel 生命周期；其中 prepare 能力现保留为模块级 `prepare_training`，旧生命周期已在 Phase 5.0 删除并由统一 runner 路径取代。
   - 会话级联与持久化：`ProjectSession` 新增 `record_tracking_run`、`update_tracking_run`、`tracking_runs` 接口，全生命周期随 `project.json` 序列化。
   - 依赖与真实验证：`deeplabcut>=3.0,<4.0` 落地为 pyproject 依赖，在 macOS Apple Silicon 上通过真实合成视频单摆训练冒烟测试（1 epoch 生成 snapshot）。
   - 341 项测试全部通过（新增 10 项测试），Review Agent 审查通过。

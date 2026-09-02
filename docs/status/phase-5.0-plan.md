@@ -1,6 +1,6 @@
 # Subphase Plan — Phase 5.0 Tracking Pipeline Consolidation
 
-- Issue：[Phase 5.0 — Tracking Pipeline Consolidation #17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)
+- Issue：[Phase 5.0 — Tracking Pipeline Consolidation #17](https://github.com/KYLeonis/ai-physics-tracker/issues/17)（Closed）
 - 分支：`feat/p5.0-tracking-pipeline`
 - 日期 / 状态：2026-09-01 至 2026-09-02 · 已完成
 
@@ -55,10 +55,10 @@
 - `python -m compileall src scripts/smoke_test_dlc_infer.py`
 - 独立 reviewer 核对只有一个长任务生命周期所有者，且 F2/5.1 未混入。
 
-## Result（收尾时填写）
+## Result
 
 - 完成日期 / 合并 commit：2026-09-02 / `5569e93`
-- AC 勾选结果：5/5 通过；本地全回归 433 passed，真实 DLC CPU smoke 通过；[CI run 33531403393](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531403393) 的 macOS/Windows Python 3.11 均通过。
+- AC 勾选结果：5/5 通过；本地全回归 433 passed，真实 DLC CPU smoke 通过；最终证据提交 `3a4063c` 的 [CI run 33531730159](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33531730159) 在 macOS/Windows Python 3.11 均通过。
 - 偏离计划之处及原因：R1 指出旧测试删除后统一路径边界覆盖不足；追加 `ba3d870` 后 R2 通过。无产品范围偏离。
 - 遗留问题：F2 继续由 5.4 处理；5.1 等待用户单独批准后开始。
 - 独立 review 结论：[phase-5.0-review.md](../reviews/phase-5.0-review.md) R2 通过，F3 Closed。

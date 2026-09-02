@@ -1,7 +1,7 @@
 # Phase 5 — AI-assisted Annotation & Refinement 需求规范
 
-> 状态：**Accepted（2026-09-01；Phase 5.0 已开始）**
-> 本文只定义产品边界、数据语义与验收口径，不代表已经实现。实施顺序见
+> 状态：**Accepted（2026-09-01；Phase 5.0 已完成，等待 5.1）**
+> 本文定义产品边界、数据语义与验收口径；除标明完成的 R0 外，其余需求尚未实现。实施顺序见
 > [PHASE_5_PLAN](../status/phase-5-plan.md)。Phase 4 基线见
 > [Phase 4 requirements](phase4-requirements.md)、[ADR-0011](../decisions/0011-deeplabcut-integration-architecture.md)、
 > [ADR-0012](../decisions/0012-gui-tracking-task-boundaries.md) 与
@@ -53,7 +53,7 @@ AI 只负责指出“哪些帧值得看”和解释原因；用户负责提供�
 - `TrackPoint.source_detail` 可关联 infer run；manual 修正会遮蔽但保留预测。
 - 原始 DLC HDF5/CSV 保存在 run 产物中，可读取被 `min_confidence` 过滤掉的帧，不必把所有低置信度预测写入领域层。
 - `TrackStore.clear_engine_run()` 已有领域实现，但没有 session/GUI 闭环（Review F2）。
-- GUI 已使用统一 `TrackingJobRunner`，但旧 coordinator 仍保留第二套 start/poll/cancel 生命周期（Review F3）。
+- Phase 5.0 已删除旧 coordinator 的 start/poll/cancel 生命周期；训练/推理现统一走 `TrackingJobRunner + TrackingActions + BackgroundTaskRunner`（Review F3 Closed）。
 - 当前 `TrackingRun.config/extra_fields`、run 目录与 project 扩展字段可先承载迭代证据；本规划不先改 schema。
 
 ### 2.2 DLC 能力映射
@@ -82,7 +82,7 @@ AI 只负责指出“哪些帧值得看”和解释原因；用户负责提供�
 > [phase-5.0-review.md](../reviews/phase-5.0-review.md)。
 
 1. Phase 5 新任务接入前，收敛旧 `TrainingCoordinator`/`InferenceCoordinator` 的 start/poll/cancel 生命周期。
-2. 保留统一管线仍使用的 prepare/read helpers；`TrackingJobRunner` 成为唯一长任务生命周期所有者。
+2. 保留统一管线仍使用的 prepare/read helpers；`TrackingJobRunner` 统一启动、`BackgroundTaskRunner` 管进程/句柄、`TrackingActions` 管轮询/取消触发/活动 session 提交，三者构成唯一生命周期路径。
 3. 取消、迟到结果、会话归属、恢复与错误状态只维护一套规则。
 4. 本项是独立 5.0 清理 Subphase，不与主动学习功能混批。
 
@@ -175,7 +175,7 @@ accepted/skipped、training parameters、resume/restart、source/produced snapsh
 
 | Subphase | 名称 | 独立交付 |
 | --- | --- | --- |
-| 5.0 | Tracking Pipeline Consolidation | 处理 F3；统一 `TrackingJobRunner` 生命周期，无新产品能力 |
+| 5.0 ✅ | Tracking Pipeline Consolidation | F3 Closed；统一 runner/actions/task handle 生命周期，无新产品能力 |
 | 5.1 | Representative Frame Selection | DLC uniform/K-means 建议帧；后台、可取消、可复核 |
 | 5.2 | Difficult Frame Mining | 原始预测候选池、可解释评分、时序去重、DLC 视觉多样性、Top N |
 | 5.3 | Suggested Frame Review & Correction | Accept/Correct/Skip、provenance、恢复与 Human Review |
@@ -199,7 +199,7 @@ accepted/skipped、training parameters、resume/restart、source/produced snapsh
 | AC-8 | Advisor 覆盖 labels、resume/restart、epochs、batch size、snapshot，建议有限且不自动训练 | 规则表测试 |
 | AC-9 | 单摆完成一次建议→Correct→再训练→再推理→比较→激活闭环，报告三类 delta | 真实 DLC 记录 |
 | AC-10 | 冻结人工审计集上报告 Precision@N/review yield，并优于 lowest-confidence-only Top N 基线 | 基准实验 |
-| AC-11 | F3 关闭后只维护一套任务生命周期；全回归、独立 review、macOS Human Review 通过 | 架构/回归/Review |
+| AC-11 | F3 关闭后只维护一套任务生命周期；全回归与独立 review 通过；仅当有用户可感知交互变化时追加 macOS Human Review | 架构/回归/Review；交互变化时 Human Review |
 
 AC-9 不假定每轮必然改善：未改善时必须如实显示并给出停止/补标建议；但 Phase 5 收尾前仍需记录
 至少一次冻结基准上可复现的 refinement 改善证据。

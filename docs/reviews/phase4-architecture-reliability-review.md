@@ -291,7 +291,7 @@ Critical 0 个；High 1 个（F1）；值得在 Phase 5 前处理的还有 F2（
 
 **延期并有归属**：
 
-- F2 → Phase 5 需求（refinement 闭环必需）；F8 → Phase 5（confidence 消费）；F3 → P4.5 可选或 Phase 5 首 subphase；F7/F9 → 用户反馈驱动；F10 → Phase 5/6 顺势抽取；F14 → 真实需求出现时。
+- F2 → Phase 5.4（refinement 闭环必需）；F8 → Phase 5（confidence 消费）；F3 → **Closed（Phase 5.0 / Issue #17）**；F7/F9 → 用户反馈驱动；F10 → Phase 5/6 顺势抽取；F14 → 真实需求出现时。
 
 **既有已批准延期（重申，非新发现）**：Windows/CUDA 真机验收延至 Phase 9 打包前（用户明示批准；GitHub Actions Windows mock 测试不等于真机验证）。
 
@@ -299,10 +299,10 @@ Critical 0 个；High 1 个（F1）；值得在 Phase 5 前处理的还有 F2（
 
 ## 11. Phase 5+ Readiness
 
-**可以继续 Phase 5，前提是先完成 P4.5（至少 S1）。** 理由：
+**截至 2026-09-02，P4.5 与 Phase 5.0 均已完成，可以继续 Phase 5.1。** 理由：
 
 1. **数据体系就绪**：统一观测模型、provenance、first-wins/last-wins、confidence 字段、run 溯源——Phase 5 的困难帧检测（低置信度/轨迹异常）所需的全部数据语义已就位，无需 schema 变更。
-2. **并发骨架就绪**：Phase 5 的新任务类型（选帧、困难帧扫描）可直接复用 `TrackingJobRunner` 的独占 worker + 文件交换 + 身份校验模式；前提是先做 F3 收敛，否则每个新任务类型要面临"接哪条栈"的抉择。
+2. **并发骨架就绪**：F3 已由 Phase 5.0 关闭；Phase 5 的新任务类型（选帧、困难帧扫描）可直接复用统一 runner 的独占 worker + 文件交换 + 身份校验模式。
 3. **修正闭环有一个已知缺口（F2）**：再推理被 first-wins 挡住是设计使然，Phase 5 必须把"清除旧 run / 允许覆盖"作为一等需求规划进去，否则闭环在第二个迭代就停摆。
 4. **UI 枢纽化（F10）在 Phase 5 会首次感受到压力**：困难帧面板 + 修正交互会继续加大 MainWindow；建议 Phase 5 的 subphase 划分把"抽取标注/修正服务"作为一个自然切片，而非事后重构。
 
@@ -310,9 +310,9 @@ Critical 0 个；High 1 个（F1）；值得在 Phase 5 前处理的还有 F2（
 
 ### Stabilization Recommendation
 
-- **是否需要专门 stabilization subphase：需要，但很小**（P4.5，2–4 天，范围 = S1–S4；S5 可选）。不需要独立的大修 Phase，不动架构、不动 schema、不动 roadmap。
-- **Phase 5 前必须修**：F1（确定性回归）。S2/S3/S4 强烈建议同批完成（都廉价且被 Phase 5 放大）。
-- **随 Phase 5 自然处理**：F2、F8（Phase 5 需求本体）、F3/S5（Phase 5 首个 subphase 顺手收敛最省）、F10（顺势抽取）。
+- **实际处置**：P4.5 已完成 S1–S4；F3/S5 已在 Phase 5.0 完成，均未引入 schema 或 roadmap 范围变化。
+- **已关闭**：F1/F4/F5/F6 与 F3。
+- **随 Phase 5 自然处理**：F2（5.4）、F8（困难帧输入）与 F10（触及相关模块时顺势抽取）。
 - **明确接受不修**：F7、F9、F11、F12、F13、F15 以及近似时序精度声明——它们要么是文档化的有意取舍，要么影响太小不值得现在的复杂度。
 
 ---
