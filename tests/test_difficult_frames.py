@@ -11,6 +11,8 @@ from math import isnan
 from pathlib import Path
 from uuid import uuid4
 
+import json
+
 import pytest
 
 from ai_physics_tracker.application.difficult_frames import MiningParams
@@ -841,3 +843,54 @@ class TestDifficultFrameWorker:
         after = {p.relative_to(root) for p in root.rglob("*") if p.is_file()}
         added = after - before
         assert added == {Path("data/engines") / str(request_id) / "difficult-frames-result.json"}
+
+
+# ---------------------------------------------------------------------------
+# 终审（R4）—— 稳健性加固回归
+# ---------------------------------------------------------------------------
+
+class TestRobustnessHardening:
+    def test_corrupt_result_json_raises_session_error(self, tmp_path: Path):
+        """损坏/缺键的结果文件统一转成 ProjectSessionError（终审 R4-1）。"""
+        from ai_physics_tracker.application.difficult_frame_job import (
+            read_difficult_frame_result,
+        )
+        from ai_physics_tracker.application.project_session import ProjectSessionError
+
+        request_id = uuid4()
+        out_dir = tmp_path / "data" / "engines" / str(request_id)
+        out_dir.mkdir(parents=True)
+        out_file = out_dir / "difficult-frames-result.json"
+        for content in ("{not valid json", json.dumps({"request_id": "x"})):
+            out_file.write_text(content, encoding="utf-8")
+            with pytest.raises(ProjectSessionError, match="corrupt"):
+                read_difficult_frame_result(tmp_path, request_id)
+
+    def test_robust_scores_clamped_under_extreme_data(self):
+        """损坏预测（巨大像素 × 极小 MAD）下 z 截断为有限值，不溢出（终审 R4-2）。"""
+        import numpy as np
+
+        from ai_physics_tracker.application.difficult_frames import _robust_scores
+
+        scores, anomalies = _robust_scores(np.array([0.0, 1e-5, 1e308]), 3.5)
+        assert np.isfinite(scores).all()
+        assert scores[-1] == pytest.approx(1e12)  # 截断上限
+        assert anomalies[-1]  # 仍判异常
+
+    def test_diversity_progress_messages_carry_mining_run_id(self, tmp_path: Path, synthetic_video_path: Path):
+        """挖掘内复用 suggest_frames 时，进度消息 run_id 改写为挖掘任务 id（终审 R4-3）。"""
+        from ai_physics_tracker.application.difficult_frame_job import (
+            read_difficult_frame_result, run_difficult_frame_worker,
+        )
+
+        session, _run, job = TestDifficultFrameWorker._prepared(
+            tmp_path, synthetic_video_path, top_n=2, low_conf_frames=range(1, 9),
+            params=MiningParams(top_n=2, min_gap_s=0.05))
+        queue = _FakeQueue()
+        request_id = uuid4()
+        run_difficult_frame_worker(request_id, queue, _FakeCancelEvent(), job,
+                                   MockEngineAdapter())
+        mining_ids = {message.run_id for message in queue.items
+                      if hasattr(message, "run_id")}
+        assert mining_ids == {request_id}
+        assert read_difficult_frame_result(session.project_root, request_id).actual_n >= 1

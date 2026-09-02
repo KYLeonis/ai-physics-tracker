@@ -60,13 +60,20 @@ class _UnsetEvent:
 def _load_session(project_dir: Path, run_id: str | None) -> tuple[ProjectSession, UUID]:
     """加载项目并定位 completed infer run；旧 run 缺 prediction_path 时在内存中回填。"""
     root = project_dir.resolve()
-    repository = ProjectRepository()
-    project = repository.load(root)
+    try:
+        project = ProjectRepository().load(root)
+    except Exception as error:
+        raise SystemExit(f"cannot load project at {root}: {error}") from error
     runs = [r for r in project.tracking_runs
             if r.task_type == "infer" and r.status == "completed"]
     if run_id is not None:
-        wanted = UUID(run_id)
+        try:
+            wanted = UUID(run_id)
+        except ValueError as error:
+            raise SystemExit(f"--run is not a valid UUID: {run_id!r}") from error
         runs = [r for r in runs if r.run_id == wanted]
+        if not runs:
+            raise SystemExit(f"no completed inference run with id {wanted}")
     if not runs:
         raise SystemExit("no completed inference run found (use --run to pick one)")
     run = max(runs, key=lambda r: r.created_at)
@@ -94,7 +101,7 @@ def _load_session(project_dir: Path, run_id: str | None) -> tuple[ProjectSession
             run if r.run_id == run.run_id else r for r in project.tracking_runs))
         print(f"[legacy] backfilled prediction_path in memory: "
               f"{run.extra_fields['prediction_path']}")
-    return ProjectSession(repository, project, root), run.run_id
+    return ProjectSession(ProjectRepository(), project, root), run.run_id
 
 
 def _mine(session: ProjectSession, run_id: UUID, params: MiningParams) -> tuple[UUID, DifficultFrameResult]:
@@ -176,7 +183,20 @@ def cmd_emit(args: argparse.Namespace) -> int:
 
 def cmd_score(args: argparse.Namespace) -> int:
     audit_path = Path(args.audit)
-    meta = json.loads(audit_path.with_suffix(".meta.json").read_text(encoding="utf-8"))
+    meta_path = audit_path.with_suffix(".meta.json")
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except OSError as error:
+        raise SystemExit(f"cannot read emit-time meta file {meta_path}: {error}; "
+                         "re-run emit-audit with the same parameters") from error
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"meta file is corrupt: {meta_path}: {error}") from error
+    missing = [key for key in ("run_id", "top_n", "seed", "confidence_threshold",
+                               "min_gap_s", "policy_frames", "baseline_frames")
+               if key not in meta]
+    if missing:
+        raise SystemExit(f"meta file {meta_path} is missing keys: {missing}; "
+                         "re-run emit-audit with the same parameters")
     session, run_id = _load_session(Path(args.project), meta["run_id"])
     params = MiningParams(top_n=meta["top_n"], seed=meta["seed"],
                           confidence_threshold=meta["confidence_threshold"],

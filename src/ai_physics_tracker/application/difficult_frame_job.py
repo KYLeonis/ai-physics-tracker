@@ -5,7 +5,7 @@ ProjectSession；结果只含帧号与解释性分量，不创建 TrackPoint。
 """
 
 from concurrent.futures import CancelledError
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import isfinite
 from pathlib import Path
 from typing import Any
@@ -272,6 +272,18 @@ def run_difficult_frame_worker(
     }
 
 
+class _RemappedRunIdQueue:
+    """把适配器发出的消息 run_id 统一改写为本任务 id（dataclass 消息不可变）。"""
+
+    def __init__(self, queue: Any, run_id: UUID) -> None:
+        self._queue, self._run_id = queue, run_id
+
+    def put(self, message: Any) -> None:
+        if hasattr(message, "run_id") and message.run_id != self._run_id:
+            message = replace(message, run_id=self._run_id)
+        self._queue.put(message)
+
+
 def _apply_visual_diversity(
     adapter: EngineAdapter,
     mining: DifficultFrameMiningRequest,
@@ -304,7 +316,10 @@ def _apply_visual_diversity(
             seed=params.seed,
             candidate_frames=frozenset(candidate.frame_index for candidate in shortlist),
         )
-        selection = adapter.suggest_frames(selection_request, queue, cancel_event)
+        # suggest_frames 的进度消息携带 request.track_id 作为 run_id；
+        # 统一改写为本挖掘任务 id，避免未来 GUI 按任务过滤时串台
+        selection = adapter.suggest_frames(
+            selection_request, _RemappedRunIdQueue(queue, request_id), cancel_event)
         selected = frozenset(selection.suggested_frames)
     except CancelledError:
         raise
@@ -323,30 +338,38 @@ def _apply_visual_diversity(
 
 
 def read_difficult_frame_result(project_root: Path, request_id: UUID) -> DifficultFrameResult:
-    """读取已完成的挖掘结果文件（供 GUI/基准脚本回调使用）。"""
+    """读取已完成的挖掘结果文件（供 GUI/基准脚本回调使用）。
+
+    文件损坏或字段缺失统一转成 ProjectSessionError，调用方按任务失败处理。
+    """
     out_file = (project_root / "data" / "engines" / str(request_id)
                 / "difficult-frames-result.json")
     if not out_file.is_file():
         raise ProjectSessionError(f"Difficult frame result not found: {out_file}")
-    payload = json.loads(out_file.read_text(encoding="utf-8"))
-    candidates = tuple(
-        FrameCandidate(
-            frame_index=int(record["frame_index"]),
-            components={name: float(value) for name, value in record["components"].items()},
-            raw_components={name: float(value) for name, value in record["raw_components"].items()},
-            reasons=tuple(record["reasons"]),
-            total_score=float(record["total_score"]),
+    try:
+        payload = json.loads(out_file.read_text(encoding="utf-8"))
+        candidates = tuple(
+            FrameCandidate(
+                frame_index=int(record["frame_index"]),
+                components={name: float(value) for name, value in record["components"].items()},
+                raw_components={name: float(value) for name, value in record["raw_components"].items()},
+                reasons=tuple(record["reasons"]),
+                total_score=float(record["total_score"]),
+            )
+            for record in payload["candidates"]
         )
-        for record in payload["candidates"]
-    )
-    return DifficultFrameResult(
-        request_id=UUID(payload["request_id"]),
-        run_id=UUID(payload["run_id"]),
-        candidates=candidates,
-        actual_n=int(payload["actual_n"]),
-        diversity_status=str(payload["diversity_status"]),
-        params_snapshot=payload["params_snapshot"],
-    )
+        result = DifficultFrameResult(
+            request_id=UUID(payload["request_id"]),
+            run_id=UUID(payload["run_id"]),
+            candidates=candidates,
+            actual_n=int(payload["actual_n"]),
+            diversity_status=str(payload["diversity_status"]),
+            params_snapshot=payload["params_snapshot"],
+        )
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError, AttributeError) as error:
+        raise ProjectSessionError(
+            f"Difficult frame result is corrupt: {out_file}: {error}") from error
+    return result
 
 
 class DifficultFrameRunner:

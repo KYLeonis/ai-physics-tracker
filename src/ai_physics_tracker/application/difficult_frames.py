@@ -25,6 +25,9 @@ _MAD_TO_SIGMA = 1.4826
 # 残差/距离低于该值（px）视为数值零：完美合成轨迹上 savgol 残差只有浮点噪声，
 # 不归零会在 MAD=0 分支把噪声判成伪异常
 _SIGNAL_FLOOR_PX = 1e-6
+# robust z-score 截断上限：损坏数据（巨大像素值 × 极小 MAD）下的溢出防护；
+# 正常数据的异常 z 远低于此（几十量级），截断不影响任何真实排名
+_Z_SCORE_CAP = 1e12
 
 COMPONENT_UNCERTAINTY = "uncertainty"
 COMPONENT_JUMP = "jump"
@@ -344,8 +347,11 @@ def _robust_scores(values: np.ndarray, threshold: float) -> tuple[np.ndarray, np
     scores = np.zeros(len(values))
     anomalies = np.zeros(len(values), dtype=bool)
     if mad > 0.0:
-        z = (values - median) / (_MAD_TO_SIGMA * mad)
-        scores = np.maximum(z, 0.0)
+        # 极小非零 MAD × 巨大离群值（损坏预测文件）会使 z 溢出为 inf，
+        # 导致候选分量非有限而在结果落盘前崩溃；截断保持排序且有限
+        with np.errstate(over="ignore"):
+            z = (values - median) / (_MAD_TO_SIGMA * mad)
+        scores = np.clip(np.maximum(z, 0.0), 0.0, _Z_SCORE_CAP)
         anomalies = z >= threshold
     else:
         anomalies = values > median
