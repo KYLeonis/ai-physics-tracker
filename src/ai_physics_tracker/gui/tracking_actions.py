@@ -132,6 +132,9 @@ class TrackingActions(QObject):
     def _start(self, parameters, training_run_id=None) -> None:
         if self.pending or self.window.projectActions.busy:
             return
+        if self.window.frameSelectionActions.busy:
+            self.panel.setActivity("Cannot start: frame selection is running")
+            return
         session = self.window.analysisSession
         try:
             request = prepare_tracking_request(session, self.window.selectedTrackId, parameters, training_run_id)

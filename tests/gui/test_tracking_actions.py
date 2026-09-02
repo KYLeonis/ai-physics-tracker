@@ -325,3 +325,24 @@ def test_file_chooser_cancel_and_context_breaking_actions_do_not_cancel_or_mutat
     assert session.project_root == root
     actions.cancel()
     qtbot.waitUntil(lambda: not actions.pending, timeout=5000)
+
+
+def test_frame_selection_running_blocks_training_start(
+    qtbot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    """选帧运行中拒绝启动训练，不登记 run、不启动子进程（runtime review F2 守卫）。"""
+    from uuid import uuid4
+
+    runner = _FakeRunner(_FakeHandle())
+    window, session, _track_id = _opened_window(qtbot, synthetic_video_path, tmp_path, runner)
+    actions = window.trackingActions
+
+    window.frameSelectionActions._request_id = uuid4()
+    try:
+        actions.train()
+        assert runner.calls == 0
+        assert not actions.pending
+        assert session.tracking_runs() == ()
+        assert "frame selection is running" in actions.panel.stageLabel.text()
+    finally:
+        window.frameSelectionActions._request_id = None
