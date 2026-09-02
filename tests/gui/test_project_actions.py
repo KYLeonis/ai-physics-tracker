@@ -168,3 +168,54 @@ def test_missing_video_load_keeps_registered_tracks(opened, qtbot, tmp_path, syn
     assert len(opened._annotation_session.project.observations) == 1
     assert not opened._measurement_allowed and not opened.addTrackButton.isEnabled()
     assert "missing" in opened.statusBar().currentMessage().lower()
+
+
+class TestAutosave:
+    """静默自动保存（用户实测需求：每 10 个标注点 / AI 任务完成后各保存一次）。"""
+
+    def test_autosave_noop_when_project_has_no_save_path(self, qtbot, opened, tmp_path):
+        # 未保存过的项目（无 project_root）不触发自动保存
+        window = opened
+        window.projectActions.autosave("test")
+        assert not window.projectActions.busy
+
+    def test_autosave_writes_dirty_project_and_updates_baseline(
+        self, qtbot, synthetic_video_path, tmp_path
+    ):
+        from ai_physics_tracker.gui.main_window import MainWindow
+        from ai_physics_tracker.application.video_session import VideoSession
+        from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
+        from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
+        from tests.gui.test_frame_selection_actions import _StaticTimingProbe
+
+        win = MainWindow(lambda: VideoSession(OpenCVVideoReader()), ProjectRepository(),
+                         _StaticTimingProbe())
+        qtbot.addWidget(win)
+        assert win.openVideo(synthetic_video_path, show_error=False)
+        win.addTrackButton.click()
+        track_id = win.selectedTrackId
+        session = win.analysisSession
+        session.save_as(tmp_path / "proj")
+        assert not session.is_dirty
+
+        session.mark_point(track_id, 3, 11.0, 12.0)
+        assert session.is_dirty
+        win.projectActions.autosave("unit test")
+        qtbot.waitUntil(lambda: not win.projectActions.busy, timeout=3000)
+        assert not session.is_dirty  # 保存基线已更新
+
+        import json as _json
+        data = _json.loads((tmp_path / "proj" / "project.json").read_text(encoding="utf-8"))
+        assert any(p["frame_index"] == 3 for p in data["observations"])
+
+    def test_every_ten_marks_trigger_one_autosave(self, qtbot, opened):
+        window = opened
+        calls = []
+        window.projectActions.autosave = lambda reason: calls.append(reason)
+        for _ in range(9):
+            window._register_mark_for_autosave()
+        assert calls == []
+        window._register_mark_for_autosave()  # 第 10 个
+        assert calls == ["10 new annotations"]
+        assert window._marks_since_autosave == 0
+

@@ -174,6 +174,43 @@ class ProjectActions(QObject):
             return
         self._saveCandidate(None, after)
 
+    def autosave(self, reason: str) -> None:
+        """静默自动保存（防丢锚点）：无进度对话框、不打断标注模式与播放。
+
+        复用 busy 串行化与其他保存相同的快照/基线语义；仅当项目已有
+        保存路径且确有未保存改动时执行。保存窗口期间的新改动由
+        accept_saved_snapshot 保留，不会丢失。
+        """
+        session = self.window._annotation_session
+        if self.busy or session is None:
+            return
+        if session.project_root is None or not session.is_dirty:
+            return
+        candidate = session.detached()
+        candidate.update_view_state(self.window.captureProjectView())
+        self.busy = True
+        self._cancellable = False
+        self._cancel = Event()
+        self._progress = None
+        self._was_annotating = self.window.videoView.is_annotation_mode()
+        self._prior_session = session
+
+        def save_worker(_cancel: Event) -> ProjectSession:
+            candidate.save()
+            return candidate
+
+        def accept(saved: ProjectSession) -> None:
+            if self.window._annotation_session is not session:
+                return
+            session.accept_saved_snapshot(saved)
+            self.window._refreshHistoryButtons()
+            self.window.statusBar().showMessage(f"Autosaved ({reason}): {saved.project_root}")
+            self.refresh()
+
+        self._completion = accept
+        self._future = self.executor.submit(save_worker, self._cancel)
+        self._timer.start(30)
+
     def saveAs(self, after: Callable[[], None] | None = None) -> None:
         tracking = getattr(self.window, "trackingActions", None)
         if tracking and tracking.pending:

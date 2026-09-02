@@ -321,6 +321,9 @@ class TrackingActions(QObject):
             self.window.analysisChanged.emit()
             if message == "Completed":
                 self.window.statusBar().showMessage("AI task completed. Recompute charts to use updated observations.")
+        if message == "Completed" and self.window.analysisSession is session:
+            # 训练/推理结果已提交：落盘一次，防止未手存丢失（用户实测需求）
+            self.window.projectActions.autosave("AI task completed")
         self._context_key = None
         self.refresh()
         callbacks, self._after_cancel = self._after_cancel, []
@@ -394,9 +397,12 @@ class FrameSelectionActions(QObject):
         self._result_future = None
         self._closed = False
         # 结果/运行中任务所属的 track：Track 列表对同一 track 的重复点击会重发
-        # selectedTrackChanged，只有真正切换 track/project 才取消或清空
+        # selectedTrackChanged，只有真正切换 track/project 才取消或清空；
+        # 结果按 track 缓存，取消选择/切走后重新选中同一 track 时恢复显示
         self._running_track_id = None
         self._result_track_id = None
+        self._cached_result = None
+        self._cached_status = ""
 
         self._poll_timer = QTimer(self)
         self._poll_timer.setInterval(150)
@@ -454,6 +460,8 @@ class FrameSelectionActions(QObject):
         self._job_request = job_request
         self._running_track_id = track_id
         self._result_track_id = None
+        self._cached_result = None
+        self._cached_status = ""
         self.panel.setSuggestResult(None)
         self.panel.setSuggestStatus("Working…")
         self.panel.setSuggestEnabled(False, "Frame selection running")
@@ -513,12 +521,16 @@ class FrameSelectionActions(QObject):
     def _finish_success(self, result) -> None:
         self.panel.setSuggestResult(result)
         self._result_track_id = self._running_track_id
+        self._cached_result = result
+        self._cached_status = self.panel.suggestStatusLabel.text()
         self._reset()
         self._refreshEnabled()
 
     def _finish_error(self, message: str) -> None:
         self.panel.setSuggestStatus(f"Failed: {message}")
         self._result_track_id = None
+        self._cached_result = None
+        self._cached_status = ""
         self._reset()
         self._refreshEnabled()
 
@@ -538,23 +550,27 @@ class FrameSelectionActions(QObject):
         self._result_future = None
 
     def _onSelectedTrackChanged(self, *_args) -> None:
-        """真正切换 track 时才取消任务/清空结果；同一 track 重复点击不破坏状态。"""
+        """按 track 恢复/隐藏建议帧；同一 track 重复点击不破坏状态，切走再切回可恢复。"""
         current = self.window.selectedTrackId
         if self.busy and current != self._running_track_id:
             self._cancel_active_task()
             self._reset()
-        if self._result_track_id is not None and current != self._result_track_id:
-            self._result_track_id = None
+        if current == self._result_track_id and self._cached_result is not None:
+            self.panel.setSuggestResult(self._cached_result)
+            self.panel.setSuggestStatus(self._cached_status)
+        else:
             self.panel.setSuggestResult(None)
             self.panel.setSuggestStatus("")
         self._refreshEnabled()
 
     def _onProjectChanged(self, *_args) -> None:
-        """项目切换无条件取消后台任务并清空建议帧结果。"""
+        """项目切换无条件取消后台任务并清空建议帧结果与缓存。"""
         if self.busy:
             self._cancel_active_task()
             self._reset()
         self._result_track_id = None
+        self._cached_result = None
+        self._cached_status = ""
         self.panel.setSuggestResult(None)
         self.panel.setSuggestStatus("")
         self._refreshEnabled()

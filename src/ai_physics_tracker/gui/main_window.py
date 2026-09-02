@@ -87,6 +87,7 @@ class MainWindow(QMainWindow):
         self._measurement_allowed = False
         self._is_playing = False
         self._has_pending_request = False
+        self._marks_since_autosave = 0  # 每 10 个标注点静默自动保存一次（用户实测需求）
         self._latest_request_id: int | None = None
         self._frame_count = 0
         self._timeline: Timeline | None = None
@@ -1050,6 +1051,14 @@ class MainWindow(QMainWindow):
             return
         self._refreshMarkers()
         self._refreshHistoryButtons()
+        self._register_mark_for_autosave()
+
+    def _register_mark_for_autosave(self) -> None:
+        """每 10 个成功标注点触发一次静默自动保存（用户实测需求）。"""
+        self._marks_since_autosave += 1
+        if self._marks_since_autosave >= 10:
+            self._marks_since_autosave = 0
+            self.projectActions.autosave("10 new annotations")
 
     def _refreshTrackList(self) -> None:
         self.trackList.clear()

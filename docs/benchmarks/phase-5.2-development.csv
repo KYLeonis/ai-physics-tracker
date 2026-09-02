@@ -1,18 +1,18 @@
 frame_index,needs_review,needs_correction,note
-18,,,
-136,,,
-33,,,
-146,,,
-102,,,
-13,,,
-83,,,
-37,,,
-113,,,
-139,,,
-51,,,
-72,,,
-73,,,
-36,,,
-0,,,
-132,,,
-128,,,
+18,1,0,Offset within landmark
+136,1,0,Offset within landmark
+33,1,0,Offset within landmark
+146,1,0,Offset within landmark
+102,0,0,
+13,1,1,Offset outside landmark
+83,1,0,Offset within landmark
+37,0,0,
+113,1,0,Offset within landmark
+139,1,0,Offset within landmark
+51,0,0,
+72,0,0,
+73,1,1,Offset outside landmark
+36,1,1,Offset outside landmark
+0,1,0,Offset within landmark
+132,0,0,
+128,1,0,Offset within landmark

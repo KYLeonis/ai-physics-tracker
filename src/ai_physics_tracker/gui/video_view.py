@@ -453,7 +453,6 @@ class VideoView(QGraphicsView):
             # 帧号标签为 marker 子图元，跟随位置移动；文本在 _update_marker_item 刷新
             label = QGraphicsSimpleTextItem(item)
             label.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
-            label.setPos(radius + 3.0, -(radius + 13.0))
             font = QFont()
             font.setPointSizeF(_MARKER_LABEL_FONT_PT)
             font.setBold(True)
@@ -483,6 +482,10 @@ class VideoView(QGraphicsView):
         for child in item.childItems():
             if isinstance(child, QGraphicsSimpleTextItem):
                 child.setText(str(marker.frame_index) if marker.frame_index is not None else "")
+                # 帧号位于圆圈正上方并按文本宽度居中（用户 HR 反馈）
+                text_rect = child.boundingRect()
+                child.setPos(-text_rect.width() / 2,
+                             -(MARKER_DIAMETER_PX / 2.0 + text_rect.height() + 2.0))
                 # 描边式文字：黑色轮廓保证在任意背景上可读
                 child.setBrush(color)
                 outline = QPen(QColor("black"))

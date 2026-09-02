@@ -325,6 +325,23 @@ class TestFrameSelectionActions:
         win._selected_track_id = other.track_id
         win.selectedTrackChanged.emit(other.track_id)
         assert panel.suggestedFramesList.count() == 0
+        # 切回原 track：缓存恢复显示（HR 反馈：重新选中后保留推荐帧）
+        win._selected_track_id = track_id
+        win.selectedTrackChanged.emit(track_id)
+        assert panel.suggestedFramesList.count() == 3
+
+    def test_deselect_then_reselect_restores_results(self, qtbot, opened_project):
+        """取消选择 Track 再选回：列表清空但缓存恢复（HR 反馈场景）。"""
+        win, session, track_id = self._run_selection_to_success(qtbot, opened_project)
+        panel = win.trackingActions.panel
+        assert panel.suggestedFramesList.count() == 3
+        win._selected_track_id = None
+        win.selectedTrackChanged.emit(None)
+        assert panel.suggestedFramesList.count() == 0
+        win._selected_track_id = track_id
+        win.selectedTrackChanged.emit(track_id)
+        assert panel.suggestedFramesList.count() == 3
+        assert "Suggested 3 frame(s)" in panel.suggestStatusLabel.text()
 
     def test_same_track_click_does_not_cancel_running_task(self, qtbot, opened_project):
         win, _session, track_id = self._run_selection_to_success(qtbot, opened_project)
