@@ -199,10 +199,36 @@ def test_marker_source_controls_shape_and_tooltip(qtbot: QtBot) -> None:
     manual, ai = view._marker_items
     assert isinstance(manual, QGraphicsEllipseItem)
     assert isinstance(ai, QGraphicsPolygonItem)
-    assert manual.toolTip() == "manual"
-    assert ai.toolTip() == "dlc"
+    assert manual.toolTip() == "manual · frame 1"
+    assert ai.toolTip() == "dlc · frame 1"
     assert manual.brush().style() == Qt.BrushStyle.SolidPattern
     assert ai.brush().style() == Qt.BrushStyle.NoBrush
+
+
+def test_manual_markers_carry_frame_number_labels(qtbot: QtBot) -> None:
+    """手动标注圆圈带帧号子标签（回溯定位），AI 菱形不带（用户实测反馈）。"""
+    from PySide6.QtWidgets import QGraphicsSimpleTextItem
+
+    view = _shown_view(qtbot)
+    view.set_markers(
+        [
+            MarkerView(10.0, 12.0, "#e6194b", frame_index=7, source="manual"),
+            MarkerView(30.0, 32.0, "#e6194b", frame_index=8, source="dlc"),
+        ]
+    )
+
+    def _label_text(item) -> str | None:
+        labels = [c for c in item.childItems()
+                  if isinstance(c, QGraphicsSimpleTextItem)]
+        return labels[0].text() if labels else None
+
+    manual, ai = view._marker_items
+    assert _label_text(manual) == "7"
+    assert _label_text(ai) is None
+
+    # 复用同一 manual 图元换帧号时，标签文本随之更新
+    view.set_markers([MarkerView(10.0, 12.0, "#e6194b", frame_index=42, source="manual")])
+    assert _label_text(view._marker_items[0]) == "42"
 
 
 def test_marker_frame_highlight_reuses_items_and_updates_current_state(

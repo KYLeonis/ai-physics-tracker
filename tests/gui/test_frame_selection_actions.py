@@ -282,6 +282,64 @@ class TestFrameSelectionActions:
         window.projectChanged.emit()
         assert panel.suggestedFramesList.count() == 0
 
+    def _run_selection_to_success(self, qtbot, opened_project):
+        win, session, track_id = opened_project
+        actions = win.frameSelectionActions
+        panel = win.trackingActions.panel
+        handle = _FakeHandle()
+        actions.runner = _FakeRunner(handle)
+        actions.requestSuggestion(n_frames=3, algorithm="uniform")
+        qtbot.waitUntil(lambda: actions._handle is handle, timeout=3000)
+        req_id = actions._request_id
+        out_dir = session.project_root / "data" / "engines" / str(req_id)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "frame-selection-result.json").write_text(json.dumps({
+            "request_id": str(req_id),
+            "algorithm": "uniform",
+            "suggested_frames": [1, 3, 4],
+            "actual_n": 3,
+            "excluded_count": 3,
+            "params_snapshot": {"algorithm": "uniform"},
+        }), encoding="utf-8")
+        handle.die()
+        handle.add_message(TaskResult(run_id=req_id, success=True,
+                                      payload={"status": "completed"}))
+        qtbot.waitUntil(lambda: not actions.busy, timeout=3000)
+        assert panel.suggestedFramesList.count() == 3
+        return win, session, track_id
+
+    def test_same_track_reselection_keeps_results(self, qtbot, opened_project):
+        """Track 列表对同一 track 的重复点击不得清空建议帧（用户实测 bug）。"""
+        win, _session, track_id = self._run_selection_to_success(qtbot, opened_project)
+        panel = win.trackingActions.panel
+        # itemClicked 会重发 selectedTrackChanged（selectedTrackId 未变）
+        win._onTrackSelectionChanged()
+        assert panel.suggestedFramesList.count() == 3
+        assert win.frameSelectionActions._result_track_id == track_id
+
+    def test_different_track_selection_clears_results(self, qtbot, opened_project):
+        win, session, track_id = self._run_selection_to_success(qtbot, opened_project)
+        panel = win.trackingActions.panel
+        video = session.project.videos[0]
+        other = session.add_track(video.video_id, "TrackB")
+        win._selected_track_id = other.track_id
+        win.selectedTrackChanged.emit(other.track_id)
+        assert panel.suggestedFramesList.count() == 0
+
+    def test_same_track_click_does_not_cancel_running_task(self, qtbot, opened_project):
+        win, _session, track_id = self._run_selection_to_success(qtbot, opened_project)
+        del track_id
+        actions = win.frameSelectionActions
+        handle = _FakeHandle()
+        actions.runner = _FakeRunner(handle)
+        actions.requestSuggestion(n_frames=2, algorithm="uniform")
+        qtbot.waitUntil(lambda: actions._handle is handle, timeout=3000)
+        win._onTrackSelectionChanged()  # 同一 track 重复点击
+        assert actions.busy
+        assert not handle.cancelled
+        actions._cancel_active_task()  # 清理
+        actions._reset()
+
     def test_async_workflow_success(self, qtbot, opened_project):
         """测试 requestSuggestion -> 后台执行写入结果 -> _poll -> TaskPanel 渲染成功。"""
         win, session, track_id = opened_project
@@ -359,7 +417,8 @@ class TestFrameSelectionActions:
         qtbot.waitUntil(lambda: actions._handle is handle, timeout=3000)
         assert actions.busy
 
-        # 触发 track 切换
+        # 触发 track 切换（真实路径先更新 selectedTrackId 再发信号）
+        win._selected_track_id = None
         win.selectedTrackChanged.emit(None)
         assert not actions.busy
         qtbot.waitUntil(lambda: handle.cancelled, timeout=3000)
