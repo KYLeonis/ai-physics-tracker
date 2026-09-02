@@ -97,6 +97,27 @@ class TestReadRawPredictions:
         assert isnan(rows[5].confidence)
         assert isnan(rows[6].pixel_x)
 
+    def test_hdf5_roundtrip_keeps_low_confidence_and_missing_rows(self, tmp_path: Path):
+        """DLC h5 缺测行以 NaN 落盘（DataFrame 分支）；全帧入口必须保留它们（AC-2）。"""
+        pd = pytest.importorskip("pandas")
+        pytest.importorskip("tables")
+
+        columns = [("MockDLC", "target", "x"), ("MockDLC", "target", "y"),
+                   ("MockDLC", "target", "likelihood")]
+        frame_index = list(range(10))
+        x = [10.0 + f if f not in (5, 6) else float("nan") for f in frame_index]
+        y = [20.0 if f not in (5, 6) else float("nan") for f in frame_index]
+        likelihood = [0.2 if f == 3 else (float("nan") if f in (5, 6) else 0.95)
+                      for f in frame_index]
+        dataframe = pd.DataFrame(list(zip(x, y, likelihood)), index=frame_index,
+                                 columns=pd.MultiIndex.from_tuples(columns))
+        path = tmp_path / "predictions.h5"
+        dataframe.to_hdf(path, key="df_with_missing")
+        rows = read_raw_predictions(path, frame_count=10)
+        assert len(rows) == 10
+        assert rows[3].confidence == pytest.approx(0.2)
+        assert isnan(rows[5].pixel_x) and isnan(rows[6].confidence)
+
     def test_raw_prediction_value_object_validation(self):
         assert RawPrediction(0, 1.0, 2.0, 0.5).frame_index == 0
         with pytest.raises(ValueError, match="confidence"):
@@ -143,7 +164,7 @@ class TestMiningParams:
         ({"smooth_window_length": 6}, "smooth_window_length"),
         ({"smooth_polyorder": 7}, "smooth_polyorder"),
         ({"min_gap_s": 0.0}, "min_gap_s"),
-        ({"weight_jump": -0.1}, "weights"),
+        ({"weight_jump": -0.1}, "weight_jump must be finite"),
         ({"weight_uncertainty": 0.0, "weight_jump": 0.0,
           "weight_residual": 0.0, "weight_prior": 0.0}, "positive"),
     ])
@@ -310,23 +331,25 @@ class TestPrepareDifficultFrameRequest:
         session.save_as(tmp_path / "proj")
         root = session.project_root
 
-        run_dir = root / "data" / "engines" / "artifacts"
+        run = create_tracking_run(
+            video.video_id, track.track_id, "infer", engine="dlc",
+            engine_version="3.0.1-mock", config={},
+        )
+        run_dir = root / "data" / "engines" / str(run.run_id)
         run_dir.mkdir(parents=True)
         prediction_path = _write_prediction_csv(run_dir / "predictions.csv")
         model_path = run_dir / "model-snapshot.pt"
         model_path.write_bytes(b"fake model weights")
         model_stat = model_path.stat()
+        prediction_stat = prediction_path.stat()
 
-        run = create_tracking_run(
-            video.video_id, track.track_id, "infer", engine="dlc",
-            engine_version="3.0.1-mock", config={},
-        )
         run = mark_run_completed(
-            run, model_snapshot="data/engines/artifacts/model-snapshot.pt",
+            run, model_snapshot=f"data/engines/{run.run_id}/model-snapshot.pt",
         )
         run = replace(run, extra_fields={
-            "prediction_path": "data/engines/artifacts/predictions.csv",
+            "prediction_path": f"data/engines/{run.run_id}/predictions.csv",
             "model_file_info": [model_stat.st_size, model_stat.st_mtime_ns],
+            "prediction_file_info": [prediction_stat.st_size, prediction_stat.st_mtime_ns],
         })
         run = replace(run, **run_overrides) if run_overrides else run
         session.record_tracking_run(run)
@@ -426,3 +449,302 @@ class TestPrepareDifficultFrameRequest:
         session.record_tracking_run(escaped)
         with pytest.raises(Exception, match="escapes the project directory"):
             prepare_difficult_frame_request(session, escaped.run_id, MiningParams())
+
+    def test_reject_absolute_prediction_reference(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import prepare_difficult_frame_request
+        from dataclasses import replace
+
+        session, _video, _track, run, prediction_path, _m = \
+            self._make_session_with_infer_run(tmp_path, synthetic_video_path)
+        absolute = replace(run, run_id=uuid4(), extra_fields={
+            **run.extra_fields, "prediction_path": str(prediction_path.resolve())})
+        session.record_tracking_run(absolute)
+        with pytest.raises(Exception, match="project-relative"):
+            prepare_difficult_frame_request(session, absolute.run_id, MiningParams())
+
+    def test_reject_artifact_from_another_run_directory(self, tmp_path: Path, synthetic_video_path: Path):
+        """R2.1 不混合不同 run：指向别的 run 目录的预测产物被拒绝。"""
+        from ai_physics_tracker.application.difficult_frame_job import prepare_difficult_frame_request
+        from dataclasses import replace
+
+        session, _video, _track, run, _p, _m = \
+            self._make_session_with_infer_run(tmp_path, synthetic_video_path)
+        foreign_dir = session.project_root / "data" / "engines" / str(uuid4())
+        foreign_dir.mkdir(parents=True)
+        foreign = replace(run, run_id=uuid4(), extra_fields={
+            **run.extra_fields, "prediction_path": f"data/engines/{foreign_dir.name}/predictions.csv"})
+        session.record_tracking_run(foreign)
+        with pytest.raises(Exception, match="does not belong to this run"):
+            prepare_difficult_frame_request(session, foreign.run_id, MiningParams())
+
+    def test_reject_tampered_prediction_fingerprint(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import prepare_difficult_frame_request
+
+        session, _video, _track, run, prediction_path, _m = \
+            self._make_session_with_infer_run(tmp_path, synthetic_video_path)
+        _write_prediction_csv(prediction_path, frame_count=10)  # 重写 → mtime 变化
+        with pytest.raises(Exception, match="artifact has changed"):
+            prepare_difficult_frame_request(session, run.run_id, MiningParams())
+
+    def test_legacy_run_without_fingerprints_is_tolerated(self, tmp_path: Path, synthetic_video_path: Path):
+        """旧 run 无指纹基线：按现状采集指纹，不拒绝（兼容语义被测试钉住）。"""
+        from ai_physics_tracker.application.difficult_frame_job import prepare_difficult_frame_request
+        from dataclasses import replace
+
+        session, _video, _track, _run, _p, _m = \
+            self._make_session_with_infer_run(tmp_path, synthetic_video_path)
+        legacy_id = uuid4()
+        legacy_dir = session.project_root / "data" / "engines" / str(legacy_id)
+        legacy_dir.mkdir(parents=True)
+        legacy_prediction = _write_prediction_csv(legacy_dir / "predictions.csv")
+        (legacy_dir / "model-snapshot.pt").write_bytes(b"legacy model")
+        legacy = replace(
+            _run, run_id=legacy_id,
+            model_snapshot=f"data/engines/{legacy_id}/model-snapshot.pt",
+            extra_fields={"prediction_path": f"data/engines/{legacy_id}/predictions.csv"},
+        )
+        session.record_tracking_run(legacy)
+        job = prepare_difficult_frame_request(session, legacy_id, MiningParams())
+        stat = legacy_prediction.stat()
+        assert job.prediction_file_info == (stat.st_size, stat.st_mtime_ns)
+
+    def test_reject_missing_model_snapshot_file(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import prepare_difficult_frame_request
+
+        session, _video, _track, run, _p, model_path = \
+            self._make_session_with_infer_run(tmp_path, synthetic_video_path)
+        model_path.unlink()
+        with pytest.raises(Exception, match="model snapshot of this run is missing"):
+            prepare_difficult_frame_request(session, run.run_id, MiningParams())
+
+    def test_reject_missing_video_file(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import prepare_difficult_frame_request
+
+        session, _video, _track, run, _p, _m = \
+            self._make_session_with_infer_run(tmp_path, synthetic_video_path)
+        synthetic_video_path.unlink()
+        with pytest.raises(Exception, match="Video file is missing"):
+            prepare_difficult_frame_request(session, run.run_id, MiningParams())
+
+    def test_reject_run_without_prediction_reference(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import prepare_difficult_frame_request
+        from dataclasses import replace
+
+        session, _video, _track, run, _p, _m = \
+            self._make_session_with_infer_run(tmp_path, synthetic_video_path)
+        no_ref = replace(run, run_id=uuid4(),
+                         extra_fields={"model_file_info": run.extra_fields["model_file_info"]})
+        session.record_tracking_run(no_ref)
+        with pytest.raises(Exception, match="no stored raw prediction artifact"):
+            prepare_difficult_frame_request(session, no_ref.run_id, MiningParams())
+
+
+# ---------------------------------------------------------------------------
+# Slice 3 — 显式候选集（视觉多样性复用 5.1 K-means）
+# ---------------------------------------------------------------------------
+
+class _FakeQueue:
+    """最简 queue：只收集消息，不阻塞。"""
+
+    def __init__(self) -> None:
+        self.items: list = []
+
+    def put(self, item) -> None:
+        self.items.append(item)
+
+
+class _FakeCancelEvent:
+    def __init__(self, *, preset: bool = False) -> None:
+        self._set = preset
+
+    def is_set(self) -> bool:
+        return self._set
+
+    def set(self) -> None:
+        self._set = True
+
+
+class TestFrameSelectionCandidateSet:
+    def _request(self, tmp_path: Path, **overrides):
+        from ai_physics_tracker.application.tracking_types import FrameSelectionRequest
+
+        kwargs = dict(
+            video_id=uuid4(), track_id=uuid4(),
+            video_path=tmp_path / "v.mp4", frame_count=10,
+            zone_start=0, zone_end=9, n_frames=3, algorithm="kmeans",
+            excluded_frames=frozenset(),
+        )
+        kwargs.update(overrides)
+        return FrameSelectionRequest(**kwargs)
+
+    def test_candidate_frames_out_of_range_rejected(self, tmp_path: Path):
+        with pytest.raises(ValueError, match="candidate_frames"):
+            self._request(tmp_path, candidate_frames=frozenset({10}))
+
+    def test_candidate_frames_zone_intersection(self):
+        """显式候选集与 working zone/排除集取交集，不越界、不选排除帧。"""
+        from ai_physics_tracker.infrastructure.mock_engine_adapter import MockEngineAdapter
+
+        request = self._request(
+            Path("/tmp"), frame_count=12, zone_start=4, zone_end=9, algorithm="uniform",
+            excluded_frames=frozenset({5}), candidate_frames=frozenset({1, 5, 6, 8, 11}),
+        )
+        result = MockEngineAdapter().suggest_frames(request, _FakeQueue(), _FakeCancelEvent())
+        assert set(result.suggested_frames) <= {6, 8}
+
+    def test_kmeans_honors_explicit_candidates_on_synthetic_video(self, tmp_path: Path):
+        import cv2
+        import numpy as np
+
+        from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter
+
+        video_path = tmp_path / "motion.mp4"
+        writer = cv2.VideoWriter(str(video_path), cv2.VideoWriter_fourcc(*"mp4v"),
+                                 30.0, (64, 64))
+        for i in range(12):
+            img = np.zeros((64, 64, 3), dtype=np.uint8)
+            cv2.circle(img, (8 + 4 * i, 32), 5, (0, 255, 0), -1)
+            writer.write(img)
+        writer.release()
+
+        candidates = frozenset({2, 5, 8, 11})
+        request = self._request(
+            tmp_path, video_path=video_path, frame_count=12, zone_start=0, zone_end=11,
+            n_frames=2, candidate_frames=candidates, seed=7,
+        )
+        result = DLCAdapter().suggest_frames(request, _FakeQueue(), _FakeCancelEvent())
+        assert set(result.suggested_frames) <= candidates
+        assert len(result.suggested_frames) == result.actual_n
+        repeat = DLCAdapter().suggest_frames(request, _FakeQueue(), _FakeCancelEvent())
+        assert repeat.suggested_frames == result.suggested_frames  # 同 seed 可复现
+
+
+# ---------------------------------------------------------------------------
+# Slice 3 — 后台挖掘 worker / 结果读取
+# ---------------------------------------------------------------------------
+
+class TestDifficultFrameWorker:
+    @staticmethod
+    def _prepared(tmp_path: Path, synthetic_video_path: Path, *, top_n: int = 3,
+                  low_conf_frames=range(1, 9), params: MiningParams | None = None):
+        from ai_physics_tracker.application.difficult_frame_job import (
+            prepare_difficult_frame_request,
+        )
+
+        session, video, track, run, prediction_path, _model = \
+            TestPrepareDifficultFrameRequest._make_session_with_infer_run(
+                tmp_path, synthetic_video_path)
+        # 写入更多低置信度帧，保证 pool > top_n 以触发视觉多样性路径
+        lines = [
+            "scorer,MockDLC,MockDLC,MockDLC",
+            "bodyparts,target,target,target",
+            "coords,x,y,likelihood",
+        ]
+        for frame in range(10):
+            if frame in (5, 6):
+                x, y, likelihood = "NaN", "NaN", "NaN"
+            elif frame in low_conf_frames:
+                x, y, likelihood = f"{10.0 + 2.0 * frame}", "20.0", "0.2"
+            else:
+                x, y, likelihood = f"{10.0 + 2.0 * frame}", "20.0", "0.95"
+            lines.append(f"{frame},{x},{y},{likelihood}")
+        prediction_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        # 重写后同步更新 run 的指纹基线（模拟真实推理完成时的记录语义）
+        from dataclasses import replace as _replace
+
+        stat = prediction_path.stat()
+        session.update_tracking_run(_replace(run, extra_fields={
+            **run.extra_fields,
+            "prediction_file_info": [stat.st_size, stat.st_mtime_ns],
+        }))
+
+        job = prepare_difficult_frame_request(
+            session, run.run_id, params or MiningParams(top_n=top_n, min_gap_s=0.05))
+        return session, run, job
+
+    def test_worker_completes_writes_and_reads_result(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import (
+            read_difficult_frame_result, run_difficult_frame_worker,
+        )
+
+        session, run, job = self._prepared(tmp_path, synthetic_video_path)
+        request_id = uuid4()
+        payload = run_difficult_frame_worker(
+            request_id, _FakeQueue(), _FakeCancelEvent(), job, MockEngineAdapter())
+        assert payload["status"] == "completed"
+
+        result = read_difficult_frame_result(session.project_root, request_id)
+        assert result.run_id == run.run_id
+        assert result.request_id == request_id
+        assert 0 < len(result.candidates) <= 3
+        assert result.actual_n == len(result.candidates)
+        assert result.diversity_status == "applied"  # pool(≈9) > top_n(3)
+        scores = [c.total_score for c in result.candidates]
+        assert scores == sorted(scores, reverse=True)
+        assert all(c.reasons for c in result.candidates)
+        assert result.params_snapshot["diversity_status"] == "applied"
+
+    def test_worker_skips_diversity_when_shortlist_small(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import (
+            read_difficult_frame_result, run_difficult_frame_worker,
+        )
+
+        # 只有 2 个异常帧（NaN 5/6），top_n=3 → shortlist ≤ top_n，无需多样性
+        session, run, job = self._prepared(
+            tmp_path, synthetic_video_path, top_n=3, low_conf_frames=range(0))
+        request_id = uuid4()
+        run_difficult_frame_worker(request_id, _FakeQueue(), _FakeCancelEvent(),
+                                   job, MockEngineAdapter())
+        result = read_difficult_frame_result(session.project_root, request_id)
+        assert result.diversity_status == "not_needed"
+
+    def test_worker_cancelled_before_start(self, tmp_path: Path, synthetic_video_path: Path):
+        from concurrent.futures import CancelledError as _CancelledError
+
+        from ai_physics_tracker.application.difficult_frame_job import run_difficult_frame_worker
+
+        _session, _run, job = self._prepared(tmp_path, synthetic_video_path)
+        with pytest.raises(_CancelledError):
+            run_difficult_frame_worker(uuid4(), _FakeQueue(), _FakeCancelEvent(preset=True),
+                                       job, MockEngineAdapter())
+
+    def test_worker_rejects_tampered_prediction(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import run_difficult_frame_worker
+        from ai_physics_tracker.application.project_session import ProjectSessionError
+
+        session, _run, job = self._prepared(tmp_path, synthetic_video_path)
+        job.mining_request.prediction_path.write_text("tampered", encoding="utf-8")
+        with pytest.raises(ProjectSessionError, match="Prediction file changed"):
+            run_difficult_frame_worker(uuid4(), _FakeQueue(), _FakeCancelEvent(),
+                                       job, MockEngineAdapter())
+
+    def test_worker_deterministic_with_same_seed(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import (
+            read_difficult_frame_result, run_difficult_frame_worker,
+        )
+        from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter
+
+        session, run, job = self._prepared(
+            tmp_path, synthetic_video_path, top_n=3,
+            params=MiningParams(top_n=3, min_gap_s=0.05, seed=11))
+        # 两次运行（真实 DLCAdapter K-means，固定 seed）→ 相同候选帧
+        first_id, second_id = uuid4(), uuid4()
+        run_difficult_frame_worker(first_id, _FakeQueue(), _FakeCancelEvent(), job, DLCAdapter())
+        run_difficult_frame_worker(second_id, _FakeQueue(), _FakeCancelEvent(), job, DLCAdapter())
+        first = read_difficult_frame_result(session.project_root, first_id)
+        second = read_difficult_frame_result(session.project_root, second_id)
+        assert [c.frame_index for c in first.candidates] == [c.frame_index for c in second.candidates]
+
+    def test_worker_writes_only_inside_request_directory(self, tmp_path: Path, synthetic_video_path: Path):
+        from ai_physics_tracker.application.difficult_frame_job import run_difficult_frame_worker
+
+        session, _run, job = self._prepared(tmp_path, synthetic_video_path)
+        root = session.project_root
+        before = {p.relative_to(root) for p in root.rglob("*") if p.is_file()}
+        request_id = uuid4()
+        run_difficult_frame_worker(request_id, _FakeQueue(), _FakeCancelEvent(),
+                                   job, MockEngineAdapter())
+        after = {p.relative_to(root) for p in root.rglob("*") if p.is_file()}
+        added = after - before
+        assert added == {Path("data/engines") / str(request_id) / "difficult-frames-result.json"}

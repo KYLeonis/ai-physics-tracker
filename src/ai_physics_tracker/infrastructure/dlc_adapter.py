@@ -453,7 +453,7 @@ class DLCAdapter:
         prediction_path: Path,
         bodypart: str = "target",
         *,
-        frame_count: int | None = None,
+        frame_count: int,
     ) -> tuple[RawPrediction, ...]:
         """在适配边界读取全帧原始预测（含低置信度与缺测），整批校验（Phase 5.2 R2.2）。"""
         from ai_physics_tracker.infrastructure.dlc_predictions import read_raw_predictions
@@ -466,11 +466,11 @@ class DLCAdapter:
         queue: Any,
         cancel_event: Any,
     ) -> FrameSelectionResult:
-        """在 working zone 内用 DLC uniform/K-means 建议代表帧号（Phase 5.1 R1）。
+        """在 working zone（或显式候选帧集合）内建议代表帧号（Phase 5.1 R1 / 5.2 Slice 3）。
 
         不修改磁盘，不创建 TrackPoint；候选不足 n_frames 时返回实际数量。
-        DLC K-means 依赖 deeplabcut.FrameExtractor 或其底层
-        KmeansbasedFrameselection；uniform 只用 numpy，不依赖 DLC。
+        K-means 用 sklearn MiniBatchKMeans（scipy kmeans2 fallback）、uniform 只用
+        numpy；两者都不经过 DLC 内部接口。
         """
         if cancel_event.is_set():
             raise CancelledError("Frame selection cancelled")
@@ -787,15 +787,33 @@ def _prediction_progress(queue: Any, run_id: UUID, cancel_event: Any, total: int
         InferenceRunner._extract_results = original
 
 
+def _available_frames(request: FrameSelectionRequest, *, apply_cluster_step: bool) -> list[int]:
+    """可选帧序列：显式 candidate_frames 优先，否则整个 working zone 扫描。
+
+    显式候选集只保留 working zone 内且未被排除的帧（5.2 Slice 3 多样性）；
+    cluster_step 仅对 K-means 的 zone 扫描生效，uniform 始终逐帧。
+    """
+    if request.candidate_frames is not None:
+        return sorted(
+            frame for frame in request.candidate_frames
+            if request.zone_start <= frame <= request.zone_end
+            and frame not in request.excluded_frames
+        )
+    step = request.cluster_step if apply_cluster_step else 1
+    return [
+        frame for frame in range(request.zone_start, request.zone_end + 1, step)
+        if frame not in request.excluded_frames
+    ]
+
+
 def _uniform_suggest(request: FrameSelectionRequest) -> list[int]:
-    """均匀选帧：在 working zone 内排除 manual 帧后均匀采样（不依赖 DLC）。
+    """均匀选帧：在可选帧（显式候选集或 working zone）内排除 manual 帧后均匀采样。
 
     当可用帧不足 n_frames 时返回全部可用帧，不补充。
     """
     import numpy as np
 
-    zone_frames = list(range(request.zone_start, request.zone_end + 1))
-    available = [f for f in zone_frames if f not in request.excluded_frames]
+    available = _available_frames(request, apply_cluster_step=False)
     if not available:
         return []
     n = min(request.n_frames, len(available))
@@ -897,34 +915,30 @@ def _extract_frame_features(
 def _kmeans_suggest(
     request: FrameSelectionRequest, cancel_event: Any, queue: Any = None
 ) -> list[int]:
-    """K-means 选帧：调用 DLC 底层逻辑从 working zone 内选取视觉多样帧。
+    """K-means 选帧：从可选帧（显式候选集或 working zone）中选取视觉多样帧。
 
-    DLC 3.x 提供 KmeansbasedFrameselection（或 extract_frames 的 kmeans 路径）。
-    本函数只取帧号，不写 labeled-data 目录。
-
-    优先使用 sklearn/DLC 的 MiniBatchKMeans；不可用时退回 scipy.cluster.vq.kmeans2。
+    主路径 sklearn MiniBatchKMeans；不可用时退回 scipy kmeans2。
     """
     try:
-        return _kmeans_via_dlc(request, cancel_event, queue=queue)
+        return _kmeans_via_sklearn(request, cancel_event, queue=queue)
     except CancelledError:
         raise
     except RuntimeError:
         # 视频打开/解码失败（_extract_frame_features）在 fallback 中必然复现，直接上抛。
         raise
     except Exception:
-        # sklearn 不可用时退回自实现（仅用 numpy/scipy，无 sklearn/DLC 依赖）
+        # sklearn 不可用时退回自实现（仅用 numpy/scipy，无 sklearn 依赖）
         return _kmeans_fallback(request, cancel_event, queue=queue)
 
 
-def _kmeans_via_dlc(
+def _kmeans_via_sklearn(
     request: FrameSelectionRequest, cancel_event: Any, queue: Any = None
 ) -> list[int]:
-    """尝试调用 sklearn / DLC 3.x 底层 MiniBatchKMeans 聚类选帧。"""
+    """sklearn MiniBatchKMeans 聚类选帧；不经过 DLC 内部接口。"""
     import numpy as np
     from sklearn.cluster import MiniBatchKMeans
 
-    zone_frames = list(range(request.zone_start, request.zone_end + 1, request.cluster_step))
-    available = [f for f in zone_frames if f not in request.excluded_frames]
+    available = _available_frames(request, apply_cluster_step=True)
     if not available:
         return []
 
@@ -964,16 +978,15 @@ def _kmeans_via_dlc(
 def _kmeans_fallback(
     request: FrameSelectionRequest, cancel_event: Any, queue: Any = None
 ) -> list[int]:
-    """纯 numpy/scipy K-means 退回实现，不依赖 DLC 内部 API。
+    """纯 numpy/scipy K-means 退回实现，不依赖 sklearn。
 
-    与 _kmeans_via_dlc 逻辑相同，但用 scipy.cluster.vq.kmeans2 替代 sklearn；
-    用于 DLC 内部接口变化时保证 5.1 功能可用。
+    与 _kmeans_via_sklearn 逻辑相同，但用 scipy.cluster.vq.kmeans2 替代 sklearn；
+    用于 sklearn 不可用时保证选帧功能可用。
     """
     import numpy as np
     from scipy.cluster.vq import kmeans2, whiten
 
-    zone_frames = list(range(request.zone_start, request.zone_end + 1, request.cluster_step))
-    available = [f for f in zone_frames if f not in request.excluded_frames]
+    available = _available_frames(request, apply_cluster_step=True)
     if not available:
         return []
 

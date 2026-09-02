@@ -102,7 +102,10 @@ class EngineAdapter(Protocol):
         prediction_path: Path,
         bodypart: str = "target",
         *,
-        frame_count: int | None = None,
+        frame_count: int,
     ) -> tuple[RawPrediction, ...]:
-        """读取预测产物的全帧原始值（含低置信度与缺测），整批校验（Phase 5.2 R2.2）。"""
+        """读取预测产物的全帧原始值（含低置信度与缺测），整批校验（Phase 5.2 R2.2）。
+
+        frame_count 必传：不完整帧批次必须被整体拒绝（AC-2），不允许静默跳过覆盖率校验。
+        """
         ...

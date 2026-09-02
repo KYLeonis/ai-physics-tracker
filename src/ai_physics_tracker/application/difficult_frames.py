@@ -85,10 +85,14 @@ class MiningParams:
             raise ValueError("diversity_shortlist_factor must be a positive integer")
         if type(self.prior_radius_frames) is not int or self.prior_radius_frames < 0:
             raise ValueError("prior_radius_frames must be a non-negative integer")
-        weights = (self.weight_uncertainty, self.weight_jump, self.weight_residual, self.weight_prior)
-        if any(self._finite_number(w, "weight") < 0 for w in weights):
-            raise ValueError("weights must be finite and non-negative")
-        if sum(weights) <= 0:
+        weights = (("weight_uncertainty", self.weight_uncertainty),
+                   ("weight_jump", self.weight_jump),
+                   ("weight_residual", self.weight_residual),
+                   ("weight_prior", self.weight_prior))
+        for label, value in weights:
+            if self._finite_number(value, label) < 0:
+                raise ValueError(f"{label} must be finite and non-negative")
+        if sum(value for _, value in weights) <= 0:
             raise ValueError("at least one weight must be positive")
         if type(self.seed) is not int:
             raise ValueError("seed must be an integer")
@@ -97,7 +101,10 @@ class MiningParams:
     def _finite_number(value: object, label: str) -> float:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError(f"{label} must be a finite number")
-        number = float(value)
+        try:
+            number = float(value)
+        except OverflowError as error:  # 超大整数转 float 溢出，统一 ValueError 语义
+            raise ValueError(f"{label} must be a finite number") from error
         if not isfinite(number):
             raise ValueError(f"{label} must be a finite number")
         return number
