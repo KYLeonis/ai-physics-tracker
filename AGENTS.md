@@ -52,6 +52,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 ├── README.md            # 面向所有人的项目介绍
 ├── AGENTS.md            # 本文件：Agent 开发指南
 ├── CODE_STANDARD.md     # 代码规范（写任何代码前先读）
+├── CODE_OF_CONDUCT.md   # 社区行为准则（Contributor Covenant v2.1，中英双语）
 ├── LICENSE              # 许可证（当前 TBD）
 ├── docs/                # 项目文档
 │   ├── roadmap.md       # 详细路线图（各阶段目标/交付物/验收标准/风险）
