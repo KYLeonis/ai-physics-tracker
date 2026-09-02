@@ -335,13 +335,14 @@ def prepare_frame_selection_request(
     n_frames: int,
     algorithm: str = "kmeans",
     seed: int = 0,
-    cluster_step: int = 1,
+    cluster_step: int | None = None,
     color_mode: str = "rgb",
 ) -> FrameSelectionJobRequest:
     """从活动 session 提取选帧所需的不可变快照（Phase 5.1 R1）。
 
     验证视频文件存在、working zone 合法；
     excluded_frames 取当前 track 的所有 active manual 帧号。
+    自适应计算 cluster_step（默认维持 ~100–300 帧候选池，避免在长视频上全量解码导致数分钟延迟）。
     不调用引擎、不读视频内容。
     """
     if session.project_root is None:
@@ -378,6 +379,13 @@ def prepare_frame_selection_request(
         for p in session.manual_points(track_id)
     )
 
+    total_zone_frames = zone_end - zone_start + 1
+    if cluster_step is not None and cluster_step > 0:
+        actual_cluster_step = cluster_step
+    else:
+        target_candidates = max(50, min(120, n_frames * 10))
+        actual_cluster_step = max(1, total_zone_frames // target_candidates)
+
     sel_request = FrameSelectionRequest(
         video_id=track.video_id,
         track_id=track_id,
@@ -389,7 +397,7 @@ def prepare_frame_selection_request(
         algorithm=algorithm,
         excluded_frames=manual_frames,
         seed=seed,
-        cluster_step=cluster_step,
+        cluster_step=actual_cluster_step,
         color_mode=color_mode,
     )
     stat = video_path.stat()

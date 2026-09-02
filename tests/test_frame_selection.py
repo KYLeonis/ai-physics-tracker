@@ -467,6 +467,16 @@ class TestPrepareFrameSelectionRequest:
         assert sel.zone_end == 9
         assert sel.frame_count == 10
 
+    def test_prepare_adaptive_cluster_step(self, tmp_path: Path, synthetic_video_path: Path):
+        """测试未指定 cluster_step 时自动根据帧数自适应降采样。"""
+        from ai_physics_tracker.application.tracking_job import prepare_frame_selection_request
+
+        session, video, track = self._make_session_with_video_and_track(tmp_path, synthetic_video_path)
+        job_req = prepare_frame_selection_request(
+            session, track.track_id, n_frames=5, algorithm="kmeans"
+        )
+        assert job_req.selection_request.cluster_step >= 1
+
     def test_prepare_unsaved_project_raises(self, tmp_path: Path):
         from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
         from ai_physics_tracker.application.tracking_job import prepare_frame_selection_request

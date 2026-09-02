@@ -468,7 +468,7 @@ class DLCAdapter:
         else:
             if cancel_event.is_set():
                 raise CancelledError("Frame selection cancelled")
-            frames = _kmeans_suggest(request, cancel_event)
+            frames = _kmeans_suggest(request, cancel_event, queue=queue)
 
         send_progress(queue, request.track_id, 1, 1, message="Frame selection complete")
 
@@ -798,79 +798,114 @@ def _uniform_suggest(request: FrameSelectionRequest) -> list[int]:
     return sorted(result)
 
 
-def _kmeans_suggest(request: FrameSelectionRequest, cancel_event: Any) -> list[int]:
-    """K-means 选帧：调用 DLC 底层逻辑从 working zone 内选取视觉多样帧。
+def _extract_frame_features(
+    request: FrameSelectionRequest,
+    available: list[int],
+    cancel_event: Any,
+    dtype: Any,
+    queue: Any = None,
+) -> list[tuple[int, Any]]:
+    """读取指定帧并提取 32x32 降维特征向量，带连续/跳帧解码优化与取消检测。
 
-    DLC 3.x 提供 KmeansbasedFrameselection（或 extract_frames 的 kmeans 路径）。
-    本函数只取帧号，不写 labeled-data 目录。
-
-    实现步骤：
-    1. 用 OpenCV 读取 working zone 内每隔 cluster_step 帧的图像（BGR→灰度/RGB）。
-    2. 展平为特征向量，调用 DLC 内置 K-means 或 scipy KMeans 聚类。
-    3. 每个聚类取离中心最近的帧，排除 excluded_frames 后返回帧号列表。
-
-    DLC 3.0.1 的 KmeansbasedFrameselection 需要临时项目目录；
-    若接口不稳定则退回自实现（scipy.cluster.vq.kmeans2），以便在任何 DLC 小版本可用。
-    """
-    try:
-        return _kmeans_via_dlc(request, cancel_event)
-    except CancelledError:
-        raise
-    except Exception:
-        # DLC 内部接口不可用时退回自实现（仅用 numpy/scipy，无 DLC 依赖）
-        return _kmeans_fallback(request, cancel_event)
-
-
-def _kmeans_via_dlc(request: FrameSelectionRequest, cancel_event: Any) -> list[int]:
-    """尝试调用 DLC 3.x 底层 K-means 选帧类（KmeansbasedFrameselection）。
-
-    DLC 3.0.1 的 FrameExtractor 将帧写入磁盘；这里直接调用其内部聚类方法，
-    仅读取帧像素并返回聚类结果帧号，不写文件（data 不落盘）。
-    若 DLC 内部 API 变更导致调用失败，由 _kmeans_suggest 捕获并退回 fallback。
+    优化策略：
+    - 若下一目标帧就在当前游标之后（如相邻或间隔 <= 8 帧），使用高效的 cap.read()/cap.grab()，
+      避免 ffmpeg 反复回退到 I 帧重放解码导致的严重惩罚。
+    - 仅在跨度较大时使用 cap.set(CAP_PROP_POS_FRAMES)。
+    - 定期向 queue 汇报抽帧进度（每 20 帧一次）。
     """
     import cv2
     import numpy as np
 
-    zone_frames = list(range(request.zone_start, request.zone_end + 1, request.cluster_step))
-    available = [f for f in zone_frames if f not in request.excluded_frames]
-    if not available:
-        return []
-
-    if cancel_event.is_set():
-        raise CancelledError("Frame selection cancelled")
-
-    # 读取帧图像并展平为特征向量
     cap = cv2.VideoCapture(str(request.video_path))
     frames_data: list[tuple[int, Any]] = []
+    total = len(available)
     try:
-        for frame_idx in available:
+        current_pos = -1
+        for idx, frame_idx in enumerate(available):
             if cancel_event.is_set():
                 raise CancelledError("Frame selection cancelled")
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-            ret, bgr = cap.read()
-            if not ret:
+
+            if queue is not None and (idx % 20 == 0 or idx == total - 1):
+                send_progress(
+                    queue,
+                    request.track_id,
+                    idx + 1,
+                    total,
+                    message=f"Reading frame {idx + 1}/{total}…",
+                )
+
+            # 寻道优化：在邻近帧时用 grab 跳帧（标准 GOP 跨度内），远距离时用 set
+            if current_pos == frame_idx:
+                ret, bgr = cap.read()
+            elif current_pos >= 0 and 0 < frame_idx - current_pos <= 40:
+                for _ in range(frame_idx - current_pos - 1):
+                    cap.grab()
+                ret, bgr = cap.read()
+            else:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ret, bgr = cap.read()
+            current_pos = frame_idx + 1
+
+            if not ret or bgr is None:
                 continue
+
             if request.color_mode == "gray":
                 img = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
             elif request.color_mode == "rgb":
                 img = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
             else:
                 img = bgr
-            # 缩小到 32x32 降维后展平，减少 K-means 计算量
+
             small = cv2.resize(img, (32, 32), interpolation=cv2.INTER_AREA)
-            frames_data.append((frame_idx, small.astype(np.float32).flatten()))
+            frames_data.append((frame_idx, small.astype(dtype).flatten()))
     finally:
         cap.release()
 
+    return frames_data
+
+
+def _kmeans_suggest(
+    request: FrameSelectionRequest, cancel_event: Any, queue: Any = None
+) -> list[int]:
+    """K-means 选帧：调用 DLC 底层逻辑从 working zone 内选取视觉多样帧。
+
+    DLC 3.x 提供 KmeansbasedFrameselection（或 extract_frames 的 kmeans 路径）。
+    本函数只取帧号，不写 labeled-data 目录。
+
+    优先使用 sklearn/DLC 的 MiniBatchKMeans；不可用时退回 scipy.cluster.vq.kmeans2。
+    """
+    try:
+        return _kmeans_via_dlc(request, cancel_event, queue=queue)
+    except CancelledError:
+        raise
+    except Exception:
+        # DLC 内部接口不可用时退回自实现（仅用 numpy/scipy，无 DLC 依赖）
+        return _kmeans_fallback(request, cancel_event, queue=queue)
+
+
+def _kmeans_via_dlc(
+    request: FrameSelectionRequest, cancel_event: Any, queue: Any = None
+) -> list[int]:
+    """尝试调用 sklearn / DLC 3.x 底层 MiniBatchKMeans 聚类选帧。"""
+    import numpy as np
+    from sklearn.cluster import MiniBatchKMeans
+
+    zone_frames = list(range(request.zone_start, request.zone_end + 1, request.cluster_step))
+    available = [f for f in zone_frames if f not in request.excluded_frames]
+    if not available:
+        return []
+
+    frames_data = _extract_frame_features(request, available, cancel_event, np.float32, queue=queue)
     if not frames_data:
         return []
+
+    if queue is not None:
+        send_progress(queue, request.track_id, len(frames_data), len(frames_data), message="Clustering features…")
 
     n_clusters = min(request.n_frames, len(frames_data))
     frame_indices = [fd[0] for fd in frames_data]
     features = np.stack([fd[1] for fd in frames_data])
 
-    # 直接使用 sklearn/scipy K-means（DLC 3.0.1 内部使用 sklearn）
-    from sklearn.cluster import MiniBatchKMeans
     rng = np.random.RandomState(request.seed)
     kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=rng, n_init="auto")
     labels = kmeans.fit_predict(features)
@@ -893,53 +928,33 @@ def _kmeans_via_dlc(request: FrameSelectionRequest, cancel_event: Any) -> list[i
     return sorted(set(selected))
 
 
-def _kmeans_fallback(request: FrameSelectionRequest, cancel_event: Any) -> list[int]:
+def _kmeans_fallback(
+    request: FrameSelectionRequest, cancel_event: Any, queue: Any = None
+) -> list[int]:
     """纯 numpy/scipy K-means 退回实现，不依赖 DLC 内部 API。
 
     与 _kmeans_via_dlc 逻辑相同，但用 scipy.cluster.vq.kmeans2 替代 sklearn；
     用于 DLC 内部接口变化时保证 5.1 功能可用。
     """
-    import cv2
     import numpy as np
+    from scipy.cluster.vq import kmeans2, whiten
 
     zone_frames = list(range(request.zone_start, request.zone_end + 1, request.cluster_step))
     available = [f for f in zone_frames if f not in request.excluded_frames]
     if not available:
         return []
 
-    if cancel_event.is_set():
-        raise CancelledError("Frame selection cancelled")
-
-    cap = cv2.VideoCapture(str(request.video_path))
-    frames_data: list[tuple[int, Any]] = []
-    try:
-        for frame_idx in available:
-            if cancel_event.is_set():
-                raise CancelledError("Frame selection cancelled")
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-            ret, bgr = cap.read()
-            if not ret:
-                continue
-            if request.color_mode == "gray":
-                img = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-            elif request.color_mode == "rgb":
-                img = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-            else:
-                img = bgr
-            small = cv2.resize(img, (32, 32), interpolation=cv2.INTER_AREA)
-            frames_data.append((frame_idx, small.astype(np.float64).flatten()))
-    finally:
-        cap.release()
-
+    frames_data = _extract_frame_features(request, available, cancel_event, np.float64, queue=queue)
     if not frames_data:
         return []
+
+    if queue is not None:
+        send_progress(queue, request.track_id, len(frames_data), len(frames_data), message="Clustering features…")
 
     n_clusters = min(request.n_frames, len(frames_data))
     frame_indices = [fd[0] for fd in frames_data]
     features = np.stack([fd[1] for fd in frames_data])
 
-    # scipy K-means2（minit="points" 随机选初始中心）
-    from scipy.cluster.vq import kmeans2, whiten
     rng = np.random.default_rng(request.seed)
     whitened = whiten(features)
     # 处理全零列（variance=0 时 whiten 除以 0）：替换为小量

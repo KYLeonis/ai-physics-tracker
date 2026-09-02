@@ -467,10 +467,16 @@ class FrameSelectionActions(QObject):
         if self._handle is None:
             return
 
-        # 消费消息并捕获取消与错误
+        # 消费消息并更新进度或捕获取消与错误
         messages = self._handle.poll_messages(limit=200)
         for message in messages:
-            if isinstance(message, TaskResult):
+            if isinstance(message, TaskProgress):
+                if message.message:
+                    self.panel.setSuggestStatus(message.message)
+                elif message.total_steps > 0:
+                    pct = int(100 * message.step / message.total_steps)
+                    self.panel.setSuggestStatus(f"Working… {pct}%")
+            elif isinstance(message, TaskResult):
                 payload = message.payload or {}
                 if payload.get("status") == "cancelled":
                     self._finish_error("Frame selection cancelled")
