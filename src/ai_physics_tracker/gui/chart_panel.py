@@ -164,6 +164,29 @@ class ChartPlot(pg.PlotWidget):
             self.frameRequested.emit(min(candidates)[2])
 
 
+class _PanelWheelForwarder(QObject):
+    """内容被裁剪时把图表视口上的普通滚轮转发给面板滚动条（HR 反馈）。
+
+    Ctrl+滚轮放行给 pyqtgraph 缩放；滚动条无滚动余量时也放行，
+    保持图表默认滚轮行为不变。
+    """
+
+    def __init__(self, scroll: QScrollArea, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._scroll = scroll
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # noqa: N802 (Qt 命名)
+        if event.type() == QEvent.Type.Wheel and not event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            bar = self._scroll.verticalScrollBar()
+            if bar.minimum() != bar.maximum():
+                # 每滚轮刻度固定 40px：singleStep 随平台/布局变化（可能为 0），
+                # 不能作为滚动步长依据
+                scroll_px = int(event.angleDelta().y() * 40 / 120)
+                bar.setValue(bar.value() - scroll_px)
+                return True
+        return False
+
+
 class ChartPanel(QDockWidget):
     """五个图表与独立的 Track 勾选/计算设置；不复用标注列表的选择模式。"""
 
@@ -330,6 +353,7 @@ class ChartPanel(QDockWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(content)
+        self._scroll_area = scroll
         self.setWidget(scroll)
         self.trackChoices.itemChanged.connect(lambda _item: self.selectionChanged.emit())
         self.positionSource.currentIndexChanged.connect(lambda _index: self.selectionChanged.emit())
@@ -339,6 +363,13 @@ class ChartPanel(QDockWidget):
         self.cancelButton.clicked.connect(self.cancelRequested)
         self.fitButton.clicked.connect(lambda: self.currentPlot.fitData())
         self.tabs.currentChanged.connect(lambda _index: self.updateStatus())
+        # dock 过矮时控制区可能被滚出视口，而滚轮悬在图上默认被 pyqtgraph
+        # 消费（缩放），面板滚动条收不到事件，macOS 覆盖式滚动条又不可见，
+        # 用户会彻底失去滚回顶部的途径（HR 反馈）。内容被裁剪时接管图表上的
+        # 普通滚轮用于滚动面板；Ctrl+滚轮仍交给图表缩放；内容完整时行为不变。
+        self._wheel_filter = _PanelWheelForwarder(self._scroll_area)
+        for plot in self.plots.values():
+            plot.viewport().installEventFilter(self._wheel_filter)
 
     @property
     def currentPlot(self) -> ChartPlot:

@@ -8,7 +8,7 @@ from threading import Event
 import pytest
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QImage, QPainterPath
-from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
+from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
@@ -613,3 +613,57 @@ def test_two_tracked_objects_overlay_and_current_chart_png_in_one_session(
     assert not QImage(str(target)).isNull()
     assert window.analysisSession.project == before
     assert window.videoView.marker_count() == 10
+
+
+def test_chart_panel_wheel_scrolls_back_to_controls_when_clipped(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    """dock 过矮裁剪内容时，图表上的普通滚轮滚动面板（HR 反馈）。
+
+    根因：滚轮悬在 pyqtgraph 图上默认被图表消费（缩放），面板滚动条收不到
+    事件，控制区被滚出视口后无法滚回。修复为内容被裁剪时转发普通滚轮。
+    """
+    from PySide6.QtCore import QEvent, QPoint
+    from PySide6.QtGui import QWheelEvent
+
+    from ai_physics_tracker.application.video_timing import TimingReport
+
+    window = MainWindow(
+        lambda: VideoSession(OpenCVVideoReader()), ProjectRepository(),
+        _StaticProbe(TimingReport(status="cfr", reason="test", frame_count=5,
+                                  fps_measured=10.0, fps_reference=10.0)),
+    )
+    qtbot.addWidget(window)
+    panel = window.chartActions.panel
+    scroll = panel._scroll_area
+    bar = scroll.verticalScrollBar()
+
+    # 把面板压到内容被裁剪的高度，并把视图滚到底（顶部控制区不可见）
+    window.show()
+    panel.setFloating(True)
+    panel.resize(panel.width(), 260)
+    qtbot.waitUntil(lambda: bar.minimum() != bar.maximum(), timeout=2000)
+    bar.setValue(bar.maximum())
+    assert bar.value() == bar.maximum()
+
+    # 图表视口上的普通滚轮 → 面板向上滚动（控制区回到可见范围）。
+    # 必须经 QApplication.sendEvent（走 notify 过滤器链）；widget.event()
+    # 会绕过事件过滤器，不代表真实鼠标路径。
+    plot = panel.currentPlot
+    def wheel_event(dy: int) -> QWheelEvent:
+        return QWheelEvent(QPoint(10, 10), QPoint(), QPoint(0, 0), QPoint(0, dy),
+                           Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier,
+                           Qt.ScrollPhase.NoScrollPhase, False)
+    # angleDelta.y()=+120 为向上滚一档（朝控制区方向）
+    assert QApplication.sendEvent(plot.viewport(), wheel_event(120)) is True
+    assert bar.value() < bar.maximum()
+
+    # 滚动条无余量（内容完整）时放行给图表缩放路径，不被过滤器消费。
+    # 用独立的小型 scroll area 确定性构造零滚动范围（真实面板内容有
+    # pyqtgraph 最小尺寸，靠 resize 归零范围不可靠）。
+    from PySide6.QtWidgets import QScrollArea, QWidget as _QWidget
+    fit_scroll = QScrollArea()
+    fit_scroll.setWidget(_QWidget())
+    from ai_physics_tracker.gui.chart_panel import _PanelWheelForwarder
+    passthrough = _PanelWheelForwarder(fit_scroll)
+    assert passthrough.eventFilter(plot.viewport(), wheel_event(120)) is False
