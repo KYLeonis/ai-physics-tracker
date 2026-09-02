@@ -590,6 +590,27 @@ class TestDLCAdapterSuggestFramesSynthetic:
         with pytest.raises(CancelledError):
             adapter.suggest_frames(req, _FakeQueue(), cancel)
 
+    def test_dlc_adapter_kmeans_unopenable_video_raises(self, tmp_path: Path):
+        """选帧对打不开的视频必须报错，而不是静默返回空建议（runtime review F1）。"""
+        from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter
+
+        video_path = tmp_path / "garbage.mp4"
+        video_path.write_bytes(b"this is not a video file")
+        adapter = DLCAdapter()
+        req = FrameSelectionRequest(
+            video_id=uuid4(),
+            track_id=uuid4(),
+            video_path=video_path,
+            frame_count=10,
+            zone_start=0,
+            zone_end=9,
+            n_frames=3,
+            algorithm="kmeans",
+            excluded_frames=frozenset(),
+        )
+        with pytest.raises(RuntimeError, match="Cannot open video"):
+            adapter.suggest_frames(req, _FakeQueue(), _FakeCancelEvent())
+
 
 # ---------------------------------------------------------------------------
 # FrameSelectionRunner 测试

@@ -49,7 +49,8 @@ def detect_device() -> str:
             return "cuda"
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return "mps"
-    except (ImportError, Exception):
+    except Exception:
+        # 设备探测失败不得让训练/推理失败，静默回落 CPU。
         pass
     return "cpu"
 
@@ -812,11 +813,19 @@ def _extract_frame_features(
       避免 ffmpeg 反复回退到 I 帧重放解码导致的严重惩罚。
     - 仅在跨度较大时使用 cap.set(CAP_PROP_POS_FRAMES)。
     - 定期向 queue 汇报抽帧进度（每 20 帧一次）。
+
+    视频无法打开或候选帧全部解码失败时抛 RuntimeError，不静默返回空结果。
     """
     import cv2
     import numpy as np
 
     cap = cv2.VideoCapture(str(request.video_path))
+    if not cap.isOpened():
+        cap.release()
+        raise RuntimeError(
+            f"Cannot open video for frame selection: {request.video_path}; "
+            "the file may be missing, unreadable, or use an unsupported codec"
+        )
     frames_data: list[tuple[int, Any]] = []
     total = len(available)
     try:
@@ -861,6 +870,14 @@ def _extract_frame_features(
     finally:
         cap.release()
 
+    if not frames_data:
+        # 全部候选解码失败属于系统性故障（文件损坏/中途不可读），
+        # 必须报错而不是当作"没有可建议帧"静默返回空结果。
+        raise RuntimeError(
+            f"None of the {total} candidate frames could be decoded from "
+            f"{request.video_path}; the video may be corrupt"
+        )
+
     return frames_data
 
 
@@ -878,8 +895,11 @@ def _kmeans_suggest(
         return _kmeans_via_dlc(request, cancel_event, queue=queue)
     except CancelledError:
         raise
+    except RuntimeError:
+        # 视频打开/解码失败（_extract_frame_features）在 fallback 中必然复现，直接上抛。
+        raise
     except Exception:
-        # DLC 内部接口不可用时退回自实现（仅用 numpy/scipy，无 DLC 依赖）
+        # sklearn 不可用时退回自实现（仅用 numpy/scipy，无 sklearn/DLC 依赖）
         return _kmeans_fallback(request, cancel_event, queue=queue)
 
 

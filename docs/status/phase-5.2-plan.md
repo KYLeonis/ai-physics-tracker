@@ -40,6 +40,19 @@
 - 不在冻结审计集结果出来后反向调权；未优于基线时如实记录并回到开发集调整后重新冻结
   一份新的、带版本号的审计集，旧结果保留。
 
+## Deferred Findings（顺带完成项）
+
+来自 [runtime review](../reviews/phase-5.0-5.1-runtime-review.md)（Issue [#18](https://github.com/KYLeonis/ai-physics-tracker/issues/18)，F1/F2/F3a/F5 已在 5.2 开工前修复）。以下三项随本 Subphase 或 5.3 顺带完成，不改变本计划 scope：
+
+- **F3b**：`dlc_adapter.py` 的 `_kmeans_via_dlc` 实际不经过 DLC（sklearn 直连），改名
+  `_kmeans_via_sklearn` 并修正相关 docstring（含模块级"依赖 DLC FrameExtractor"的过时描述）
+  → 随 **Slice 3** 触碰 `dlc_adapter.py` 时顺带，不单独占用提交。
+- **F4**：选帧无用户取消入口、取消结果显示为 "Failed: Frame selection cancelled"
+  → 随 **5.3** 处理：本 Subphase 明确不新增 GUI，且 5.2 的 mining 任务落地后，
+  取消交互应在 5.3 为"选帧/mining 后台任务"统一设计一次（含非 Failed 措辞）。
+- **F6**：`task_panel.py` 算法下拉用 `"k" in text` 启发式映射算法 ID
+  → 随 **5.3** 改为 `addItem(data=...)` 显式映射；纯实现细节，行为不变。
+
 ## Proposed Defaults and Semantics
 
 这些值是待本计划批准的第一版默认值；全部进入结果参数快照，后续只能在开发集上调整：

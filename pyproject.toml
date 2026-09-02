@@ -14,6 +14,7 @@ dependencies = [
     "opencv-python-headless>=4.8,<5",
     "PySide6-Essentials>=6.5,<7",
     "scipy>=1.12,<2.0",
+    "scikit-learn>=1.2,<2",
     "pyqtgraph>=0.13,<0.14",
     "deeplabcut>=3.0,<4.0",
 ]
