@@ -106,6 +106,32 @@
 - 附带产出（用户 HR 反馈修复，`27f676a`）：建议帧按 track 缓存恢复、静默自动保存
   （每 10 标注点 / AI 任务完成）、帧号标签移至正上方
 
+### R4 — 2026-09-02 · 收尾终审（稳健性专项）
+
+- 执行方式说明：本轮计划由两个独立 subagent 并行审查，但 subagent 模型 provider
+  （builtin:bigmodel-coding-plan）在会话内不可用而全部启动失败；降级为由主 agent 按
+  同一审查清单自查（探针脚本验证疑点 + 只读代码走查），已如实披露执行方式差异。
+- 范围：5.2 全部交付物（策略/job/benchmark/适配器边界）+ 收尾期 GUI 修复。
+
+**已直修（轻量，commit `74510db`）**：
+
+| # | Severity | 问题（探针验证） | 修复 |
+| --- | --- | --- | --- |
+| 1 | Medium | 损坏预测（巨大像素值 × 极小非零 MAD）使 robust z 溢出为 inf → 候选分量非有限，worker 在结果落盘前崩溃 | `_robust_scores` 截断 z 至 1e12（正常数据异常 z 为几十量级，不影响排名）+ `np.errstate` 抑制警告；回归测试锁定 |
+| 2 | Low | `read_difficult_frame_result` 对损坏/缺键 JSON 抛裸 `JSONDecodeError`/`KeyError` | 统一包裹为 `ProjectSessionError("...corrupt...")`，调用方按任务失败处理；测试锁定 |
+| 3 | Low | 挖掘内复用 `suggest_frames` 时进度消息携带 `track_id` 作为 run_id，未来 GUI 按任务过滤会串台 | `_RemappedRunIdQueue` 统一改写为挖掘任务 id；测试断言全部消息 run_id 一致 |
+| 4 | Low | benchmark CLI 对损坏 project.json / 非法 `--run` / 缺失损坏 meta.json 抛原始 traceback | 友好 `SystemExit` 提示重跑 emit-audit |
+
+**探针验证无问题（记录在案）**：空 frozenset 候选集三路（mock/DLC-uniform）一致返回空；
+`_load_rows` 校验阻断重复/越界/不完整批次；`allow_nan=False` 与原子 tmp+replace 落盘路径
+在异常下无半写文件；`.gitignore` 覆盖 `docs/benchmarks/*.meta.json`，盲评无泄漏路径。
+
+**延期项（不阻塞收尾）**：
+
+- 建议帧结果缓存不随 manual 标注失效：用户对建议帧标注后重选 track，列表仍显示旧建议
+  （含已标注帧）。无害但语义不精确 → 5.3 审核队列（Accept/Skip 抑制）统一解决。
+- 5.3 GUI 接入 mining 任务时，需按 `_RemappedRunIdQueue` 之后的 run_id 过滤消息（已就绪）。
+
 ## Final Verdict
 
 - [x] 修改后通过（R1/R2 findings 全部处置；R2.5 真实数据语义修正；R3 基准达成）
@@ -113,5 +139,5 @@
 - [ ] 需要重做
 
 - 最终结论：代码、工具链与真实数据基准全部收口——policy 在两项指标上严格优于基线
-  （AC-10），575 测试全绿，5.2 正式完成。
-- 日期 / 依据轮次：2026-09-02 · R1 + R2 + R2.5 + R3
+  （AC-10），R4 终审 4 项轻量加固直修后 581 测试全绿，5.2 正式完成。
+- 日期 / 依据轮次：2026-09-02 · R1 + R2 + R2.5 + R3 + R4
