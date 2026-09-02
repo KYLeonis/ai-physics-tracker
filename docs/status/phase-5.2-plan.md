@@ -69,6 +69,11 @@
 | visual diversity | 从时间去重后的高分 shortlist（最多 `4N`）中复用 K-means 选至多 N 帧；最终候选仍按总分排序 |
 | benchmark 指标 | `Precision@N = needs_review / actual_n`；`review_yield = needs_correction / actual_n` |
 
+**实现期语义细化（2026-09-02，真实数据验证后确定）**：好模型可能没有任何触发
+（AI_test2 真实 run：148 帧全部高于阈值、无 jump/residual 异常），触发式候选池为空会让
+审核队列死路。最终语义：触发池不足 `top_n` 时按连续加权筛查分数补齐，补齐帧原因如实
+标注 `screening`，与触发帧共用同一池/归一化/排名；`screening_fill_count` 进入参数快照。
+
 实现前先为新目录建立 `docs/benchmarks/README.md` 约定；开发集、冻结审计集与报告分别使用
 `phase-5.2-development.csv`、`phase-5.2-audit-v1.csv` 和 `phase-5.2-report.md`。审计表取困难帧
 策略 Top N 与基线 Top N 的候选并集，打乱并隐藏来源/排名后再人工判定；每行只记录
