@@ -595,7 +595,10 @@ class FrameSelectionActions(QObject):
         elif session is None or track_id is None:
             self.panel.setSuggestEnabled(False, "Select a track first")
         elif session.project_root is None:
-            self.panel.setSuggestEnabled(False, "Save the project first")
+            # 首次选帧必须先保存项目：tooltip 之外给出可见提示（用户 HR 反馈）
+            self.panel.setSuggestEnabled(
+                False, "Save the project first — frame selection needs a saved project",
+                hint=True)
         else:
             self.panel.setSuggestEnabled(True)
 

@@ -468,8 +468,9 @@ class VideoView(QGraphicsView):
         pen = QPen(color)
         pen.setWidthF(2.5 if marker.is_current_frame else 1.2)
         item.setPen(pen)
-        # manual 沿用实心当前圆/空心历史圆；AI 与其他来源始终为空心菱形。
-        if marker.source == "manual" and marker.is_current_frame:
+        # 当前帧实心、历史帧空心（manual 圆与 AI 菱形一致；HR 反馈：多帧场景
+        # 仅加粗边框不够醒目）
+        if marker.is_current_frame:
             item.setBrush(color)
         else:
             item.setBrush(Qt.BrushStyle.NoBrush)

@@ -432,10 +432,20 @@ class TaskPanel(QDockWidget):
         else:
             self.suggestStatusLabel.hide()
 
-    def setSuggestEnabled(self, enabled: bool, reason: str = "") -> None:
-        """控制"建议帧"按钮可用状态及 tooltip。"""
+    def setSuggestEnabled(self, enabled: bool, reason: str = "", *, hint: bool = False) -> None:
+        """控制"建议帧"按钮可用状态及 tooltip。
+
+        hint=True 时把禁用原因作为可见状态文案显示（如"首次选帧需要保存"）；
+        恢复可用时若状态栏仍显示该提示则清除，不吞掉结果状态。
+        """
         self.suggestButton.setEnabled(enabled)
         self.suggestButton.setToolTip(reason if not enabled else "")
+        if hint and not enabled:
+            self._suggest_hint = reason
+            self.setSuggestStatus(reason)
+        elif enabled and getattr(self, "_suggest_hint", "") and self.suggestStatusLabel.text() == self._suggest_hint:
+            self._suggest_hint = ""
+            self.setSuggestStatus("")
 
     def _onSuggestClicked(self) -> None:
         n = self.nFramesSpinBox.value()

@@ -225,6 +225,23 @@ class TestTaskPanelSuggestControls:
         panel.setSuggestStatus("")
         assert not panel.suggestStatusLabel.isVisible()
 
+    def test_unsaved_project_shows_visible_save_hint(self, qtbot, window):
+        """未保存项目：禁用原因作为可见文案显示，保存后清除（HR 反馈）。"""
+        panel = window.trackingActions.panel
+        reason = "Save the project first — frame selection needs a saved project"
+        panel.setSuggestEnabled(False, reason, hint=True)
+        assert panel.suggestStatusLabel.text() == reason
+        assert panel.suggestStatusLabel.isVisible()
+        # 恢复可用：提示被清除，且不吞掉此后的结果状态
+        panel.setSuggestEnabled(True)
+        assert not panel.suggestStatusLabel.isVisible()
+        result = FrameSelectionResult(
+            request_algorithm="uniform", suggested_frames=(5,),
+            actual_n=1, excluded_count=0, params_snapshot={},
+        )
+        panel.setSuggestResult(result)
+        assert panel.suggestStatusLabel.isVisible()
+
     def test_suggest_frames_not_creating_track_points_invariant(self, qtbot, opened_project):
         """严格不变式：建议帧结果展示后，session 中 manual 点数严格不变，绝不自动打标。"""
         win, session, track_id = opened_project

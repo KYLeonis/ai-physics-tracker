@@ -201,7 +201,22 @@ def test_marker_source_controls_shape_and_tooltip(qtbot: QtBot) -> None:
     assert isinstance(ai, QGraphicsPolygonItem)
     assert manual.toolTip() == "manual · frame 1"
     assert ai.toolTip() == "dlc · frame 1"
+    # 当前帧实心（manual 圆与 AI 菱形一致；HR 反馈：仅加粗边框不够醒目）
     assert manual.brush().style() == Qt.BrushStyle.SolidPattern
+    assert ai.brush().style() == Qt.BrushStyle.SolidPattern
+
+
+def test_non_current_markers_are_hollow(qtbot: QtBot) -> None:
+    view = _shown_view(qtbot)
+    view.set_markers(
+        [
+            MarkerView(10.0, 12.0, "#e6194b", frame_index=1, source="manual"),
+            MarkerView(30.0, 32.0, "#e6194b", frame_index=1, source="dlc"),
+        ]
+    )
+    view.set_current_frame(5)  # 两者都非当前帧
+    manual, ai = view._marker_items
+    assert manual.brush().style() == Qt.BrushStyle.NoBrush
     assert ai.brush().style() == Qt.BrushStyle.NoBrush
 
 
