@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-02（Subphase 5.1 完成并通过 Human Review，等待进入 5.2）
+- 最后更新：2026-09-02（Subphase 5.2 Mini-plan 已起草，等待用户确认）
 
 ---
 
@@ -14,7 +14,7 @@
 | Phase | Phase 5 — AI-assisted Annotation & Refinement | 🚧 进行中 |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
-| Subphase | 5.2 — Difficult Frame Mining | ⬜ 待开始 |
+| Subphase | 5.2 — Difficult Frame Mining | 📝 规划待确认 |
 
 ## Recently Completed
 
@@ -33,7 +33,8 @@
 
 ## Current Goal
 
-Subphase 5.1 正式收尾完成。等待用户指令进入 **Phase 5.2 — Difficult Frame Mining**。
+已完成 **Phase 5.2 — Difficult Frame Mining** Mini-plan 草案；尚未创建 Issue、开发分支或产品代码，
+等待用户确认范围、默认评分语义和人工审计集约定。
 
 ## Current Decisions / Deferred Checks
 
@@ -47,7 +48,10 @@ Subphase 5.1 正式收尾完成。等待用户指令进入 **Phase 5.2 — Diffi
 
 ## Next Recommended Action
 
-等待用户下一条指令进入 **Phase 5.2 — Difficult Frame Mining**：
-1. 建立 `docs/status/phase-5.2-plan.md`（Mini-plan）。
-2. 创建开发分支 `feat/p5.2-difficult-frames`。
-3. 按照 spec R2 / AC-2 开发困难帧挖掘算法（消费已完成推理 run 的原始置信度与轨迹跳变，进行多信号打分、时间去重与 Top N 挑选）。
+请用户审阅并确认 [Phase 5.2 Mini-plan](phase-5.2-plan.md)，重点确认：
+
+1. 第一版四信号权重与 `0.25 s` 时间去重默认值。
+2. 开发集调参、冻结审计集只做最终评估的数据隔离规则。
+3. 审计表最小字段：`frame_index / needs_review / needs_correction / note`。
+
+确认后才创建 GitHub Issue、建立 `feat/p5.2-difficult-frames` 分支并执行 Slice 1；确认前不写产品代码。

@@ -1,6 +1,6 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Accepted / Phase 5.1 已完成，等待 5.2 指令**
+> 状态：**Accepted / Phase 5.2 Mini-plan 待确认**
 > 日期：2026-09-02  
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
@@ -157,9 +157,10 @@
 
 ## 6. 当前入口
 
-5.0 已完成且只处理 F3；未提前写 5.1 产品代码，F2 仍由 5.4 处理。
-下一步必须等待用户确认后，才建立 5.1 Issue 与分支。
+5.0、5.1 已完成；5.2 Mini-plan 草案见
+[phase-5.2-plan.md](phase-5.2-plan.md)。下一步必须等待用户确认该草案后，才建立 5.2 Issue、
+分支并开始 Slice 1。F2 仍由 5.4 处理。
 
 ## Result
 
-Phase 5 总计划已接受；Phase 5.0 已完成，F3 Closed；等待 5.1 指令。
+Phase 5 总计划已接受；Phase 5.0、5.1 已完成；Phase 5.2 Mini-plan 等待用户确认。
