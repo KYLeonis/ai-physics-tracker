@@ -10,6 +10,8 @@ from PySide6.QtCore import QObject, QTimer, Qt
 from ai_physics_tracker.application.tracking_job import (
     prepare_tracking_request, run_tracking_worker, prepare_tracking_candidate,
     cancel_tracking_job, read_task_log, verify_request_files, TrackingJobRunner,
+    prepare_frame_selection_request, run_frame_selection_worker,
+    read_frame_selection_result, FrameSelectionRunner, FrameSelectionJobRequest,
 )
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
 from ai_physics_tracker.application.tracking_types import TaskProgress, TaskLog, TaskResult
@@ -350,4 +352,211 @@ class TrackingActions(QObject):
         elif self._start_future is not None:
             start, request = self._start_future, self._request
             self._executor.submit(lambda: cancel_tracking_job(start.result(), request))
+        self._executor.shutdown(wait=False, cancel_futures=False)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.1 — 代表帧选取 GUI 编排
+# ---------------------------------------------------------------------------
+
+from uuid import uuid4 as _uuid4
+from concurrent.futures import ThreadPoolExecutor as _ThreadPoolExecutor
+
+
+class FrameSelectionActions(QObject):
+    """管理 Task Panel 中代表帧选取请求、后台任务和结果展示（Phase 5.1）。
+
+    遵循与 TrackingActions 相同的设计规则：
+    - GUI 线程只修改活动会话；worker 只持有冻结快照。
+    - 结果通过 _poll_timer 轮询，不在 worker 线程触碰 Qt 对象。
+    - 建议帧不创建 TrackPoint；双击列表项通知 MainWindow 跳帧。
+    """
+
+    def __init__(
+        self,
+        window: "MainWindow",
+        panel: TaskPanel,
+        adapter=None,
+        runner=None,
+    ) -> None:
+        super().__init__(window)
+        self.window = window
+        self.panel = panel
+        self._backend = FrameSelectionRunner(adapter, runner)
+        self._executor = _ThreadPoolExecutor(max_workers=1, thread_name_prefix="frame-sel")
+        self._request_id = None
+        self._job_request: FrameSelectionJobRequest | None = None
+        self._handle = None
+        self._start_future = None
+        self._result_future = None
+        self._closed = False
+
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(150)
+        self._poll_timer.timeout.connect(self._poll)
+        self._poll_timer.start()
+
+        self.panel.suggestFramesRequested.connect(self.requestSuggestion)
+        self.panel.suggestedFrameJumped.connect(self._onFrameJumped)
+        window.selectedTrackChanged.connect(self._onContextChanged)
+        window.projectChanged.connect(self._onContextChanged)
+        window.analysisChanged.connect(self._onAnalysisChanged)
+        window.closing.connect(self.shutdown)
+
+        self._refreshEnabled()
+
+    @property
+    def adapter(self):
+        return self._backend.adapter
+
+    @adapter.setter
+    def adapter(self, value):
+        self._backend.adapter = value
+
+    @property
+    def runner(self):
+        return self._backend.runner
+
+    @runner.setter
+    def runner(self, value):
+        self._backend.runner = value
+
+    @property
+    def busy(self) -> bool:
+        return self._request_id is not None
+
+    def requestSuggestion(self, n_frames: int, algorithm: str) -> None:
+        """用户点击"建议帧"时触发，发起后台选帧任务（Phase 5.1）。"""
+        if self.busy or self._closed or self.window.trackingActions.pending or self.window.projectActions.busy:
+            return
+        session = self.window.analysisSession
+        track_id = self.window.selectedTrackId
+        if session is None or track_id is None:
+            self.panel.setSuggestStatus("No track selected")
+            return
+        try:
+            job_request = prepare_frame_selection_request(
+                session, track_id, n_frames, algorithm=algorithm
+            )
+        except Exception as error:
+            self.panel.setSuggestStatus(f"Cannot start: {error}")
+            return
+
+        request_id = _uuid4()
+        self._request_id = request_id
+        self._job_request = job_request
+        self.panel.setSuggestResult(None)
+        self.panel.setSuggestStatus("Working…")
+        self.panel.setSuggestEnabled(False, "Frame selection running")
+        self._start_future = self._executor.submit(self._backend.start, job_request, request_id)
+
+    def _poll(self) -> None:
+        if self._closed or not self.busy:
+            return
+        # 等待 start_future 完成以获取 handle
+        if self._start_future is not None:
+            if not self._start_future.done():
+                return
+            try:
+                self._handle = self._start_future.result()
+                self._start_future = None
+            except Exception as error:
+                self._finish_error(str(error))
+                return
+
+        if self._handle is None:
+            return
+
+        # 消费消息并捕获取消与错误
+        messages = self._handle.poll_messages(limit=200)
+        for message in messages:
+            if isinstance(message, TaskResult):
+                payload = message.payload or {}
+                if payload.get("status") == "cancelled":
+                    self._finish_error("Frame selection cancelled")
+                    return
+                elif not message.success:
+                    self._finish_error(message.error or "Frame selection failed")
+                    return
+
+        # 检查后台进程是否结束
+        if not self._handle.is_alive():
+            if self._result_future is None:
+                request_id = self._request_id
+                project_root = self._job_request.project_root if self._job_request else None
+                if project_root is not None:
+                    self._result_future = self._executor.submit(
+                        read_frame_selection_result, project_root, request_id
+                    )
+        if self._result_future is not None and self._result_future.done():
+            try:
+                result = self._result_future.result()
+                self._finish_success(result)
+            except Exception as error:
+                self._finish_error(str(error))
+
+    def _finish_success(self, result) -> None:
+        self.panel.setSuggestResult(result)
+        self._reset()
+        self._refreshEnabled()
+
+    def _finish_error(self, message: str) -> None:
+        self.panel.setSuggestStatus(f"Failed: {message}")
+        self._reset()
+        self._refreshEnabled()
+
+    def _cancel_active_task(self) -> None:
+        handle = self._handle
+        start = self._start_future
+        if handle is not None:
+            self._executor.submit(handle.cancel)
+        elif start is not None:
+            self._executor.submit(lambda: start.result().cancel() if start.done() else None)
+
+    def _reset(self) -> None:
+        self._request_id = None
+        self._job_request = None
+        self._handle = None
+        self._start_future = None
+        self._result_future = None
+
+    def _onContextChanged(self, *_args) -> None:
+        """track/project 切换时取消后台任务并清空建议帧结果。"""
+        if self.busy:
+            self._cancel_active_task()
+            self._reset()
+        self.panel.setSuggestResult(None)
+        self.panel.setSuggestStatus("")
+        self._refreshEnabled()
+
+    def _onAnalysisChanged(self, *_args) -> None:
+        """项目保存或分析状态更新时刷新按钮可用性。"""
+        self._refreshEnabled()
+
+    def _onFrameJumped(self, frame_index: int) -> None:
+        """双击建议帧列表项时，通知 MainWindow 跳帧（frame_index 是 0-based）。"""
+        self.window.jumpToFrame(frame_index)
+
+    def _refreshEnabled(self) -> None:
+        session = self.window.analysisSession
+        track_id = self.window.selectedTrackId
+        if self.busy:
+            self.panel.setSuggestEnabled(False, "Frame selection running")
+        elif self.window.trackingActions.pending:
+            self.panel.setSuggestEnabled(False, "An AI tracking task is active")
+        elif self.window.projectActions.busy:
+            self.panel.setSuggestEnabled(False, "Project operation in progress")
+        elif session is None or track_id is None:
+            self.panel.setSuggestEnabled(False, "Select a track first")
+        elif session.project_root is None:
+            self.panel.setSuggestEnabled(False, "Save the project first")
+        else:
+            self.panel.setSuggestEnabled(True)
+
+    def shutdown(self) -> None:
+        self._closed = True
+        self._poll_timer.stop()
+        if self.busy:
+            self._cancel_active_task()
+        self._reset()
         self._executor.shutdown(wait=False, cancel_futures=False)

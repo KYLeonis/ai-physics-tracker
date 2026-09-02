@@ -14,6 +14,8 @@ from ai_physics_tracker.infrastructure.engine_adapter import (
     InferenceOutcome,
     TrainingParams,
     TrainOutcome,
+    FrameSelectionRequest,
+    FrameSelectionResult,
 )
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.task_runner import (
@@ -198,3 +200,58 @@ class MockEngineAdapter:
         """模拟评价指标，供 GUI 生命周期测试使用。"""
         return {"status": "completed", "unit": "px", "metrics": {"train_rmse": 1.0, "test_rmse": 2.0},
                 "snapshot": snapshot_path.name, "train_samples": 4, "test_samples": 1}
+
+    def suggest_frames(
+        self,
+        request: FrameSelectionRequest,
+        queue: Any,
+        cancel_event: Any,
+    ) -> FrameSelectionResult:
+        """确定性 mock 选帧：在 working zone 内排除 manual 帧后均匀采样（不依赖 DLC/Qt）。
+
+        结果由 seed 控制，保证测试可复现；两种 algorithm 均按此路径返回，
+        便于 CI 在无 DLC 环境下测试任务生命周期与 GUI 逻辑。
+        """
+        from concurrent.futures import CancelledError as _CancelledError
+        import math
+
+        if cancel_event.is_set():
+            raise _CancelledError("Frame selection cancelled")
+
+        send_progress(queue, request.track_id, 0, 1, message="Mock frame selection started")
+
+        zone_frames = list(range(request.zone_start, request.zone_end + 1))
+        available = [f for f in zone_frames if f not in request.excluded_frames]
+
+        n = min(request.n_frames, len(available))
+        if n == 0 or not available:
+            selected: list[int] = []
+        else:
+            # 均匀间隔采样，seed 不影响 uniform 实现（mock 保持两种 algorithm 均可测试）
+            step = len(available) / n
+            selected = sorted({available[math.floor(i * step)] for i in range(n)})
+
+        if cancel_event.is_set():
+            raise _CancelledError("Frame selection cancelled")
+
+        send_progress(queue, request.track_id, 1, 1, message="Mock frame selection complete")
+
+        zone_excl = set(range(request.zone_start, request.zone_end + 1)) & set(request.excluded_frames)
+        params_snapshot: dict = {
+            "algorithm": request.algorithm,
+            "n_frames": request.n_frames,
+            "seed": request.seed,
+            "zone_start": request.zone_start,
+            "zone_end": request.zone_end,
+            "cluster_step": request.cluster_step,
+            "color_mode": request.color_mode,
+            "excluded_count": len(zone_excl),
+            "actual_n": len(selected),
+        }
+        return FrameSelectionResult(
+            request_algorithm=request.algorithm,
+            suggested_frames=tuple(selected),
+            actual_n=len(selected),
+            excluded_count=len(zone_excl),
+            params_snapshot=params_snapshot,
+        )

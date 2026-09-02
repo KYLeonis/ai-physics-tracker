@@ -42,7 +42,7 @@ from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
 from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.gui.timing_actions import TimingActions
-from ai_physics_tracker.gui.tracking_actions import TrackingActions
+from ai_physics_tracker.gui.tracking_actions import TrackingActions, FrameSelectionActions
 from ai_physics_tracker.gui.chart_actions import ChartActions
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time, clamp_to_working_zone
 from ai_physics_tracker.gui.video_view import CalibrationView, MarkerView, VideoView
@@ -275,6 +275,9 @@ class MainWindow(QMainWindow):
         viewMenu = self.menuBar().addMenu("View")
         self.chartActions = ChartActions(self)
         self.trackingActions = TrackingActions(self)
+        self.frameSelectionActions = FrameSelectionActions(
+            self, self.trackingActions.panel
+        )
         self.chartActions.panel.raise_()
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         viewMenu.addAction(self.chartActions.panel.toggleViewAction())
@@ -374,6 +377,17 @@ class MainWindow(QMainWindow):
         self.drawScaleButton.setChecked(False)
         self.setOriginButton.setChecked(False)
         self._requestFrame(clamp_to_working_zone(frame_index, self._timeline))
+        return True
+
+    def jumpToFrame(self, frame_index: int) -> bool:
+        """建议帧跳帧（Phase 5.1）：跳转到指定帧，并在有选中 Track 时保持标注模式。"""
+        if not self.seekFrame(frame_index):
+            return False
+        if self._selected_track_id is not None and self._measurement_allowed and not self.projectActions.busy:
+            self.videoView.set_annotation_mode(True)
+            self.statusBar().showMessage(
+                f"Jumped to frame {frame_index}. Click video to annotate target for selected track."
+            )
         return True
 
     def refreshAnalysisHistory(self) -> None:

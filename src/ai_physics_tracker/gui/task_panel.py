@@ -23,7 +23,9 @@ from PySide6.QtWidgets import (
 )
 
 from ai_physics_tracker.domain.tracking_run import TrackingRun
-from ai_physics_tracker.application.tracking_types import InferenceParams, TrainingParams
+from ai_physics_tracker.application.tracking_types import (
+    InferenceParams, TrainingParams, FrameSelectionResult,
+)
 
 
 _RUN_ID_ROLE = Qt.ItemDataRole.UserRole
@@ -43,6 +45,8 @@ class TaskPanel(QDockWidget):
     inferRequested = Signal()
     cancelRequested = Signal()
     runSelected = Signal(object)
+    suggestFramesRequested = Signal(int, str)   # (n_frames, algorithm)
+    suggestedFrameJumped = Signal(int)           # 用户点击建议帧，发出帧号
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("AI tasks", parent)
@@ -74,6 +78,35 @@ class TaskPanel(QDockWidget):
         self.trainReasonLabel = QLabel()
         self.trainReasonLabel.setWordWrap(True)
         self.trainReasonLabel.hide()
+
+        # --- 建议帧（Phase 5.1）---
+        self.nFramesSpinBox = QSpinBox()
+        self.nFramesSpinBox.setRange(1, 200)
+        self.nFramesSpinBox.setValue(10)
+        self.algorithmComboBox = QComboBox()
+        self.algorithmComboBox.addItems(["K-means", "Uniform"])
+        self.suggestButton = QPushButton("Suggest Frames")
+        self.suggestStatusLabel = QLabel("")
+        self.suggestStatusLabel.setWordWrap(True)
+        self.suggestStatusLabel.hide()
+        self.suggestedFramesList = QListWidget()
+        self.suggestedFramesList.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        self.suggestedFramesList.setMinimumHeight(52)
+        self.suggestedFramesList.setMaximumHeight(120)
+        self.suggestedFramesList.setToolTip(
+            "Double-click a frame to jump to it. Annotate it manually—suggestions do not create labels."
+        )
+        suggestForm = QFormLayout()
+        suggestForm.addRow("Frames to suggest", self.nFramesSpinBox)
+        suggestForm.addRow("Algorithm", self.algorithmComboBox)
+        suggestLayout = QVBoxLayout()
+        suggestLayout.addLayout(suggestForm)
+        suggestLayout.addWidget(self.suggestButton)
+        suggestLayout.addWidget(self.suggestStatusLabel)
+        suggestLayout.addWidget(self.suggestedFramesList)
+        suggestGroup = QGroupBox("Suggest Representative Frames")
+        suggestGroup.setLayout(suggestLayout)
+
 
         self.confidenceSpinBox = QDoubleSpinBox()
         self.confidenceSpinBox.setRange(0.0, 1.0)
@@ -132,6 +165,7 @@ class TaskPanel(QDockWidget):
         historyLayout.addWidget(self.logText, 1)
 
         left = QVBoxLayout()
+        left.addWidget(suggestGroup)
         left.addWidget(trainGroup)
         left.addWidget(self.trainReasonLabel)
         middle = QVBoxLayout()
@@ -160,6 +194,8 @@ class TaskPanel(QDockWidget):
         self.inferButton.clicked.connect(lambda: self.inferRequested.emit())
         self.cancelButton.clicked.connect(lambda: self.cancelRequested.emit())
         self.historyList.currentItemChanged.connect(self._onHistorySelected)
+        self.suggestButton.clicked.connect(self._onSuggestClicked)
+        self.suggestedFramesList.itemDoubleClicked.connect(self._onSuggestedFrameDoubleClicked)
 
     def trainingParameters(self) -> TrainingParams:
         """返回当前训练控件的不可变参数快照。"""
@@ -365,3 +401,49 @@ class TaskPanel(QDockWidget):
         if run.error_message:
             details.append(f"error={run.error_message}")
         return "\n".join(details)
+
+    # --- 建议帧公共接口（Phase 5.1）---
+
+    def setSuggestResult(self, result: FrameSelectionResult | None) -> None:
+        """用建议帧结果更新列表；None 表示清空。
+
+        列表只显示帧号，双击发出 suggestedFrameJumped 信号（跳帧）；
+        不自动创建 TrackPoint，用户需手动标注。
+        """
+        self.suggestedFramesList.clear()
+        if result is None:
+            return
+        for frame in result.suggested_frames:
+            item = QListWidgetItem(f"Frame {frame}  (double-click to jump)")
+            item.setData(Qt.ItemDataRole.UserRole, frame)
+            self.suggestedFramesList.addItem(item)
+        excluded = result.excluded_count
+        actual = result.actual_n
+        self.setSuggestStatus(
+            f"Suggested {actual} frame(s) · {excluded} existing label(s) excluded · "
+            f"algorithm={result.request_algorithm}"
+        )
+
+    def setSuggestStatus(self, message: str) -> None:
+        """显示或隐藏建议帧区域的状态标签。"""
+        if message.strip():
+            self.suggestStatusLabel.setText(message)
+            self.suggestStatusLabel.show()
+        else:
+            self.suggestStatusLabel.hide()
+
+    def setSuggestEnabled(self, enabled: bool, reason: str = "") -> None:
+        """控制"建议帧"按钮可用状态及 tooltip。"""
+        self.suggestButton.setEnabled(enabled)
+        self.suggestButton.setToolTip(reason if not enabled else "")
+
+    def _onSuggestClicked(self) -> None:
+        n = self.nFramesSpinBox.value()
+        algo_text = self.algorithmComboBox.currentText()
+        algorithm = "kmeans" if "k" in algo_text.lower() else "uniform"
+        self.suggestFramesRequested.emit(n, algorithm)
+
+    def _onSuggestedFrameDoubleClicked(self, item: QListWidgetItem) -> None:
+        frame = item.data(Qt.ItemDataRole.UserRole)
+        if isinstance(frame, int):
+            self.suggestedFrameJumped.emit(frame)

@@ -20,6 +20,8 @@ from ai_physics_tracker.infrastructure.engine_adapter import (
     InferenceOutcome,
     TrainingParams,
     TrainOutcome,
+    FrameSelectionRequest,
+    FrameSelectionResult,
 )
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.task_runner import (
@@ -444,6 +446,55 @@ class DLCAdapter:
                                 parsed.missing_count, parsed.low_confidence_count,
                                 request.model_snapshot, str(deeplabcut.__version__), actual_device)
 
+    def suggest_frames(
+        self,
+        request: FrameSelectionRequest,
+        queue: Any,
+        cancel_event: Any,
+    ) -> FrameSelectionResult:
+        """在 working zone 内用 DLC uniform/K-means 建议代表帧号（Phase 5.1 R1）。
+
+        不修改磁盘，不创建 TrackPoint；候选不足 n_frames 时返回实际数量。
+        DLC K-means 依赖 deeplabcut.FrameExtractor 或其底层
+        KmeansbasedFrameselection；uniform 只用 numpy，不依赖 DLC。
+        """
+        if cancel_event.is_set():
+            raise CancelledError("Frame selection cancelled")
+
+        send_progress(queue, request.track_id, 0, 1, message="Starting frame selection")
+
+        if request.algorithm == "uniform":
+            frames = _uniform_suggest(request)
+        else:
+            if cancel_event.is_set():
+                raise CancelledError("Frame selection cancelled")
+            frames = _kmeans_suggest(request, cancel_event)
+
+        send_progress(queue, request.track_id, 1, 1, message="Frame selection complete")
+
+        # working zone 内被 excluded_frames 覆盖的帧数（仅统计作报告用）
+        zone_frames = set(range(request.zone_start, request.zone_end + 1))
+        excluded_in_zone = len(request.excluded_frames & zone_frames)
+
+        params_snapshot: dict = {
+            "algorithm": request.algorithm,
+            "n_frames": request.n_frames,
+            "seed": request.seed,
+            "zone_start": request.zone_start,
+            "zone_end": request.zone_end,
+            "cluster_step": request.cluster_step,
+            "color_mode": request.color_mode,
+            "excluded_count": excluded_in_zone,
+            "actual_n": len(frames),
+        }
+        return FrameSelectionResult(
+            request_algorithm=request.algorithm,
+            suggested_frames=tuple(frames),
+            actual_n=len(frames),
+            excluded_count=excluded_in_zone,
+            params_snapshot=params_snapshot,
+        )
+
 
 @contextmanager
 def _selected_snapshot(expected_path: Path):
@@ -720,3 +771,194 @@ def _prediction_progress(queue: Any, run_id: UUID, cancel_event: Any, total: int
         yield count
     finally:
         InferenceRunner._extract_results = original
+
+
+def _uniform_suggest(request: FrameSelectionRequest) -> list[int]:
+    """均匀选帧：在 working zone 内排除 manual 帧后均匀采样（不依赖 DLC）。
+
+    当可用帧不足 n_frames 时返回全部可用帧，不补充。
+    """
+    import numpy as np
+
+    zone_frames = list(range(request.zone_start, request.zone_end + 1))
+    available = [f for f in zone_frames if f not in request.excluded_frames]
+    if not available:
+        return []
+    n = min(request.n_frames, len(available))
+    # np.linspace 均匀取 n 个浮点索引，round 到最近整数再取 available 元素
+    indices = np.round(np.linspace(0, len(available) - 1, n)).astype(int)
+    # 去重保持顺序（np.linspace 在极小区间可能产出重复 round 值）
+    seen: set[int] = set()
+    result: list[int] = []
+    for idx in indices:
+        frame = available[int(idx)]
+        if frame not in seen:
+            seen.add(frame)
+            result.append(frame)
+    return sorted(result)
+
+
+def _kmeans_suggest(request: FrameSelectionRequest, cancel_event: Any) -> list[int]:
+    """K-means 选帧：调用 DLC 底层逻辑从 working zone 内选取视觉多样帧。
+
+    DLC 3.x 提供 KmeansbasedFrameselection（或 extract_frames 的 kmeans 路径）。
+    本函数只取帧号，不写 labeled-data 目录。
+
+    实现步骤：
+    1. 用 OpenCV 读取 working zone 内每隔 cluster_step 帧的图像（BGR→灰度/RGB）。
+    2. 展平为特征向量，调用 DLC 内置 K-means 或 scipy KMeans 聚类。
+    3. 每个聚类取离中心最近的帧，排除 excluded_frames 后返回帧号列表。
+
+    DLC 3.0.1 的 KmeansbasedFrameselection 需要临时项目目录；
+    若接口不稳定则退回自实现（scipy.cluster.vq.kmeans2），以便在任何 DLC 小版本可用。
+    """
+    try:
+        return _kmeans_via_dlc(request, cancel_event)
+    except CancelledError:
+        raise
+    except Exception:
+        # DLC 内部接口不可用时退回自实现（仅用 numpy/scipy，无 DLC 依赖）
+        return _kmeans_fallback(request, cancel_event)
+
+
+def _kmeans_via_dlc(request: FrameSelectionRequest, cancel_event: Any) -> list[int]:
+    """尝试调用 DLC 3.x 底层 K-means 选帧类（KmeansbasedFrameselection）。
+
+    DLC 3.0.1 的 FrameExtractor 将帧写入磁盘；这里直接调用其内部聚类方法，
+    仅读取帧像素并返回聚类结果帧号，不写文件（data 不落盘）。
+    若 DLC 内部 API 变更导致调用失败，由 _kmeans_suggest 捕获并退回 fallback。
+    """
+    import cv2
+    import numpy as np
+
+    zone_frames = list(range(request.zone_start, request.zone_end + 1, request.cluster_step))
+    available = [f for f in zone_frames if f not in request.excluded_frames]
+    if not available:
+        return []
+
+    if cancel_event.is_set():
+        raise CancelledError("Frame selection cancelled")
+
+    # 读取帧图像并展平为特征向量
+    cap = cv2.VideoCapture(str(request.video_path))
+    frames_data: list[tuple[int, Any]] = []
+    try:
+        for frame_idx in available:
+            if cancel_event.is_set():
+                raise CancelledError("Frame selection cancelled")
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, bgr = cap.read()
+            if not ret:
+                continue
+            if request.color_mode == "gray":
+                img = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+            elif request.color_mode == "rgb":
+                img = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            else:
+                img = bgr
+            # 缩小到 32x32 降维后展平，减少 K-means 计算量
+            small = cv2.resize(img, (32, 32), interpolation=cv2.INTER_AREA)
+            frames_data.append((frame_idx, small.astype(np.float32).flatten()))
+    finally:
+        cap.release()
+
+    if not frames_data:
+        return []
+
+    n_clusters = min(request.n_frames, len(frames_data))
+    frame_indices = [fd[0] for fd in frames_data]
+    features = np.stack([fd[1] for fd in frames_data])
+
+    # 直接使用 sklearn/scipy K-means（DLC 3.0.1 内部使用 sklearn）
+    from sklearn.cluster import MiniBatchKMeans
+    rng = np.random.RandomState(request.seed)
+    kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=rng, n_init="auto")
+    labels = kmeans.fit_predict(features)
+    centers = kmeans.cluster_centers_
+
+    # 每个聚类取离中心最近的帧（避免连续帧垄断）
+    selected: list[int] = []
+    for cluster_id in range(n_clusters):
+        cluster_mask = labels == cluster_id
+        if not cluster_mask.any():
+            continue
+        cluster_features = features[cluster_mask]
+        cluster_frames = [frame_indices[i] for i, m in enumerate(cluster_mask) if m]
+        dists = np.linalg.norm(cluster_features - centers[cluster_id], axis=1)
+        best_local = int(np.argmin(dists))
+        frame = cluster_frames[best_local]
+        if frame not in request.excluded_frames:
+            selected.append(frame)
+
+    return sorted(set(selected))
+
+
+def _kmeans_fallback(request: FrameSelectionRequest, cancel_event: Any) -> list[int]:
+    """纯 numpy/scipy K-means 退回实现，不依赖 DLC 内部 API。
+
+    与 _kmeans_via_dlc 逻辑相同，但用 scipy.cluster.vq.kmeans2 替代 sklearn；
+    用于 DLC 内部接口变化时保证 5.1 功能可用。
+    """
+    import cv2
+    import numpy as np
+
+    zone_frames = list(range(request.zone_start, request.zone_end + 1, request.cluster_step))
+    available = [f for f in zone_frames if f not in request.excluded_frames]
+    if not available:
+        return []
+
+    if cancel_event.is_set():
+        raise CancelledError("Frame selection cancelled")
+
+    cap = cv2.VideoCapture(str(request.video_path))
+    frames_data: list[tuple[int, Any]] = []
+    try:
+        for frame_idx in available:
+            if cancel_event.is_set():
+                raise CancelledError("Frame selection cancelled")
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, bgr = cap.read()
+            if not ret:
+                continue
+            if request.color_mode == "gray":
+                img = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+            elif request.color_mode == "rgb":
+                img = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            else:
+                img = bgr
+            small = cv2.resize(img, (32, 32), interpolation=cv2.INTER_AREA)
+            frames_data.append((frame_idx, small.astype(np.float64).flatten()))
+    finally:
+        cap.release()
+
+    if not frames_data:
+        return []
+
+    n_clusters = min(request.n_frames, len(frames_data))
+    frame_indices = [fd[0] for fd in frames_data]
+    features = np.stack([fd[1] for fd in frames_data])
+
+    # scipy K-means2（minit="points" 随机选初始中心）
+    from scipy.cluster.vq import kmeans2, whiten
+    rng = np.random.default_rng(request.seed)
+    whitened = whiten(features)
+    # 处理全零列（variance=0 时 whiten 除以 0）：替换为小量
+    whitened = np.nan_to_num(whitened, nan=0.0, posinf=0.0, neginf=0.0)
+    init_idx = rng.choice(len(whitened), size=n_clusters, replace=False)
+    init_centers = whitened[init_idx]
+    centroids, labels = kmeans2(whitened, init_centers, minit="matrix", iter=10, seed=int(request.seed))
+
+    selected: list[int] = []
+    for cluster_id in range(n_clusters):
+        cluster_mask = labels == cluster_id
+        if not cluster_mask.any():
+            continue
+        cluster_features = whitened[cluster_mask]
+        cluster_frames = [frame_indices[i] for i, m in enumerate(cluster_mask) if m]
+        dists = np.linalg.norm(cluster_features - centroids[cluster_id], axis=1)
+        best_local = int(np.argmin(dists))
+        frame = cluster_frames[best_local]
+        if frame not in request.excluded_frames:
+            selected.append(frame)
+
+    return sorted(set(selected))

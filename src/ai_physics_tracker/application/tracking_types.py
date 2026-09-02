@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from math import isfinite
 from pathlib import Path
-from typing import TypeAlias
+from typing import Any, TypeAlias
 from uuid import UUID
 
 from ai_physics_tracker.domain.timeline import Timeline
@@ -186,3 +186,55 @@ class TaskResult:
 
 
 TaskMessage: TypeAlias = TaskProgress | TaskLog | TaskResult
+
+
+@dataclass(frozen=True)
+class FrameSelectionRequest:
+    """代表帧选取请求；Qt-free，不含会话或 Qt 对象（Phase 5.1 R1）。
+
+    working zone 由 [zone_start, zone_end] 闭区间定义（0-based，与领域层 working_zone 一致）。
+    excluded_frames 为已有 active manual 帧号集合，结果中不会出现这些帧号。
+    """
+
+    video_id: UUID
+    track_id: UUID
+    video_path: Path
+    frame_count: int                   # video 全帧数（用于越界校验）
+    zone_start: int                    # working zone 起始帧（含）
+    zone_end: int                      # working zone 结束帧（含）
+    n_frames: int                      # 期望返回的建议帧数
+    algorithm: str                     # "kmeans" | "uniform"
+    excluded_frames: frozenset[int]    # 已有 active manual 帧号
+    seed: int = 0
+    cluster_step: int = 1              # K-means 聚类步长，控制扫描帧密度
+    color_mode: str = "rgb"            # 颜色空间，供 DLC K-means 使用
+
+    def __post_init__(self) -> None:
+        if self.algorithm not in {"kmeans", "uniform"}:
+            raise ValueError(f"algorithm must be 'kmeans' or 'uniform', got {self.algorithm!r}")
+        if self.n_frames <= 0:
+            raise ValueError("n_frames must be positive")
+        if self.cluster_step <= 0:
+            raise ValueError("cluster_step must be positive")
+        if not (0 <= self.zone_start <= self.zone_end < self.frame_count):
+            raise ValueError(
+                f"working zone [{self.zone_start}, {self.zone_end}] is out of range "
+                f"for frame_count={self.frame_count}"
+            )
+        if self.color_mode not in {"rgb", "bgr", "gray"}:
+            raise ValueError(f"color_mode must be 'rgb', 'bgr' or 'gray', got {self.color_mode!r}")
+
+
+@dataclass(frozen=True)
+class FrameSelectionResult:
+    """代表帧选取结果；只含帧号与元信息，不含 TrackPoint（Phase 5.1 R1）。
+
+    suggested_frames 为去重、排序后的 0-based 帧号元组；
+    actual_n 可能小于请求的 n_frames（working zone 内可用帧不足时）。
+    """
+
+    request_algorithm: str
+    suggested_frames: tuple[int, ...]  # 去重、排序后的帧号
+    actual_n: int                      # 实际返回帧数
+    excluded_count: int                # 本次排除的 manual 帧数（working zone 内）
+    params_snapshot: dict[str, Any]    # 完整参数快照，可写入日志/TrackingRun.extra_fields

@@ -21,6 +21,7 @@ from ai_physics_tracker.domain.project import Project
 from ai_physics_tracker.domain.track_store import TrackStore
 from ai_physics_tracker.domain.tracking_run import TrackingRun, create_tracking_run, mark_run_completed
 from ai_physics_tracker.infrastructure.engine_adapter import EngineAdapter, TrainingParams, InferenceParams
+from ai_physics_tracker.infrastructure.engine_adapter import FrameSelectionRequest, FrameSelectionResult
 from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter, QueueLogStream, detect_device
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
@@ -313,3 +314,172 @@ class TrackingJobRunner:
 
     def start(self, request: TrackingRequest):
         return self.runner.start_task(request.run.run_id, run_tracking_worker, request, self.adapter)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.1 — 代表帧选取后台任务
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class FrameSelectionJobRequest:
+    """代表帧选取后台请求；封装 session 快照供子进程使用，不含活动会话对象。"""
+
+    selection_request: FrameSelectionRequest
+    project_root: Path
+    video_file_info: tuple[int, int]  # (st_size, st_mtime_ns)，用于视频文件完整性校验
+
+
+def prepare_frame_selection_request(
+    session: "ProjectSession",
+    track_id: UUID,
+    n_frames: int,
+    algorithm: str = "kmeans",
+    seed: int = 0,
+    cluster_step: int = 1,
+    color_mode: str = "rgb",
+) -> FrameSelectionJobRequest:
+    """从活动 session 提取选帧所需的不可变快照（Phase 5.1 R1）。
+
+    验证视频文件存在、working zone 合法；
+    excluded_frames 取当前 track 的所有 active manual 帧号。
+    不调用引擎、不读视频内容。
+    """
+    if session.project_root is None:
+        raise ProjectSessionError("Save the project before requesting frame suggestions")
+
+    track = next((t for t in session.tracks if t.track_id == track_id), None)
+    if track is None:
+        raise ProjectSessionError("Track not found")
+
+    video = next((v for v in session.project.videos if v.video_id == track.video_id), None)
+    if video is None:
+        raise ProjectSessionError("Video not found for the selected track")
+
+    video_path = session.video_path(video)
+    if video_path is None or not video_path.is_file():
+        raise ProjectSessionError("Video file is missing; cannot request frame suggestions")
+
+    # working zone 从 project.timelines 取（与领域层契约一致）
+    timeline = next((t for t in session.project.timelines if t.video_id == track.video_id), None)
+    if timeline is None:
+        raise ProjectSessionError("Timeline not found for the selected video")
+
+    zone = timeline.working_zone  # (start_frame, end_frame) or None
+    if zone is not None:
+        zone_start, zone_end = int(zone[0]), int(zone[1])
+    else:
+        zone_start, zone_end = 0, video.frame_count - 1
+
+    frame_count = video.frame_count
+
+    # 当前 track 的所有 active manual 帧号作为排除集
+    manual_frames = frozenset(
+        p.frame_index
+        for p in session.manual_points(track_id)
+    )
+
+    sel_request = FrameSelectionRequest(
+        video_id=track.video_id,
+        track_id=track_id,
+        video_path=video_path.resolve(),
+        frame_count=frame_count,
+        zone_start=zone_start,
+        zone_end=zone_end,
+        n_frames=n_frames,
+        algorithm=algorithm,
+        excluded_frames=manual_frames,
+        seed=seed,
+        cluster_step=cluster_step,
+        color_mode=color_mode,
+    )
+    stat = video_path.stat()
+    return FrameSelectionJobRequest(
+        selection_request=sel_request,
+        project_root=session.project_root,
+        video_file_info=(stat.st_size, stat.st_mtime_ns),
+    )
+
+
+def run_frame_selection_worker(
+    request_id: UUID,
+    queue: Any,
+    cancel_event: Any,
+    job_request: FrameSelectionJobRequest,
+    adapter: EngineAdapter,
+) -> dict[str, Any]:
+    """后台 worker：校验视频文件、调用 adapter.suggest_frames、序列化结果（Phase 5.1）。
+
+    结果写入 `data/engines/<request_id>/frame-selection-result.json`；
+    取消通过 status: cancelled 优雅返回，错误通过 ProjectSessionError 上报。
+    """
+    # 轻量文件完整性校验（不读内容，只比 stat）
+    sel = job_request.selection_request
+    try:
+        stat = sel.video_path.stat()
+    except OSError as error:
+        raise ProjectSessionError(f"Video file is inaccessible: {error}") from error
+    if (stat.st_size, stat.st_mtime_ns) != tuple(job_request.video_file_info):
+        raise ProjectSessionError("Video file changed before frame selection started")
+
+    try:
+        result: FrameSelectionResult = adapter.suggest_frames(sel, queue, cancel_event)
+    except CancelledError:
+        return {"status": "cancelled"}
+
+    # 序列化结果到项目目录（params_snapshot 原样写入，供日志与 TrackingRun.extra_fields 使用）
+    out_dir = job_request.project_root / "data" / "engines" / str(request_id)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / "frame-selection-result.json"
+    payload = {
+        "request_id": str(request_id),
+        "algorithm": result.request_algorithm,
+        "suggested_frames": list(result.suggested_frames),
+        "actual_n": result.actual_n,
+        "excluded_count": result.excluded_count,
+        "params_snapshot": result.params_snapshot,
+    }
+    tmp = out_file.with_suffix(".tmp")
+    tmp.write_text(
+        json.dumps(payload, ensure_ascii=False, allow_nan=False),
+        encoding="utf-8",
+    )
+    tmp.replace(out_file)
+    return {
+        "status": "completed",
+        "result_path": out_file.relative_to(job_request.project_root).as_posix(),
+    }
+
+
+def read_frame_selection_result(
+    project_root: Path,
+    request_id: UUID,
+) -> FrameSelectionResult:
+    """从磁盘读取已完成的代表帧选取结果（供 GUI 回调使用）。"""
+    out_file = project_root / "data" / "engines" / str(request_id) / "frame-selection-result.json"
+    if not out_file.is_file():
+        raise ProjectSessionError(f"Frame selection result not found: {out_file}")
+    payload = json.loads(out_file.read_text(encoding="utf-8"))
+    return FrameSelectionResult(
+        request_algorithm=payload["algorithm"],
+        suggested_frames=tuple(int(f) for f in payload["suggested_frames"]),
+        actual_n=payload["actual_n"],
+        excluded_count=payload["excluded_count"],
+        params_snapshot=payload["params_snapshot"],
+    )
+
+
+class FrameSelectionRunner:
+    """应用层封装代表帧选取后台任务；复用 BackgroundTaskRunner（Phase 5.1）。
+
+    调用方负责提供 request_id（UUID），便于 GUI 层将结果与请求对应。
+    """
+
+    def __init__(self, adapter: EngineAdapter | None = None, runner: Any = None) -> None:
+        self.adapter: EngineAdapter = adapter or DLCAdapter()
+        self.runner = runner or BackgroundTaskRunner()
+
+    def start(self, job_request: FrameSelectionJobRequest, request_id: UUID) -> Any:
+        """启动后台选帧任务，返回 task handle（与 BackgroundTaskRunner 约定一致）。"""
+        return self.runner.start_task(
+            request_id, run_frame_selection_worker, job_request, self.adapter
+        )

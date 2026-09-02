@@ -9,6 +9,7 @@ from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.application.tracking_types import (
     TrainingParams, TrainOutcome, InferenceParams, InferenceRequest, InferenceOutcome,
+    FrameSelectionRequest, FrameSelectionResult,
 )
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 
@@ -84,4 +85,13 @@ class EngineAdapter(Protocol):
 
     def engine_version(self) -> str:
         """返回引擎版本号字符串（如 '3.0.1'）。"""
+        ...
+
+    def suggest_frames(
+        self,
+        request: FrameSelectionRequest,
+        queue: Any,
+        cancel_event: Any,
+    ) -> FrameSelectionResult:
+        """按请求参数在 working zone 内建议代表帧号；不修改磁盘、不创建 TrackPoint（Phase 5.1 R1）。"""
         ...
