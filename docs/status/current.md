@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-02（Subphase 5.2 Mini-plan 已起草，等待用户确认）
+- 最后更新：2026-09-02（5.1 运行时审查补漏已合并本地 main；5.2 Mini-plan 待确认）
 
 ---
 
@@ -18,6 +18,7 @@
 
 ## Recently Completed
 
+- **5.1 运行时审查补漏**（✅ 2026-09-02，Issue [#18](https://github.com/KYLeonis/ai-physics-tracker/issues/18)）：独立全面审查（报告见 [phase-5.0-5.1-runtime-review.md](../reviews/phase-5.0-5.1-runtime-review.md)）后修复 4 项——选帧对打不开/损坏视频显式报错（F1）、选帧运行中禁止启动训练/推理（F2）、pyproject 显式声明 scikit-learn（F3a）、`detect_device` 异常写法（F5）；全回归 **497 passed**。F3b/F4/F6 作为顺带项记入 5.2 plan §Deferred Findings。
 - **Phase 5.1 — Representative Frame Selection**（✅ 2026-09-02，开发、审查、性能优化与 Human Review 全闭环）：
   - S1：`FrameSelectionRequest` + `FrameSelectionResult` Qt-free 数据类（`application/tracking_types.py`）
   - S2：`EngineAdapter` Protocol 新增 `suggest_frames`；`DLCAdapter`（uniform / K-means + scipy fallback，流式 Grab 解码优化）；`MockEngineAdapter` 确定性实现
@@ -53,5 +54,7 @@
 1. 第一版四信号权重与 `0.25 s` 时间去重默认值。
 2. 开发集调参、冻结审计集只做最终评估的数据隔离规则。
 3. 审计表最小字段：`frame_index / needs_review / needs_correction / note`。
+4. 新增的 §Deferred Findings 顺带项安排（F3b 随 Slice 3；F4/F6 随 5.3）。
 
 确认后才创建 GitHub Issue、建立 `feat/p5.2-difficult-frames` 分支并执行 Slice 1；确认前不写产品代码。
+注意：`fix/p5.1-frame-selection-robustness` 已合并本地 main，**尚未 push 到 origin**（push 需用户确认）。
