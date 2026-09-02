@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-02（5.2 代码与基准工具链完成，冻结审计集待用户标注；合并提交待 push）
+- 最后更新：2026-09-02（**5.2 全部完成，AC-10 达成**；GUI HR 第二轮进行中；合并提交待 push）
 
 ---
 
@@ -14,8 +14,8 @@
 | Phase | Phase 5 — AI-assisted Annotation & Refinement | 🚧 进行中 |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
-| Subphase | 5.2 — Difficult Frame Mining | 🚧 代码与工具链完成；冻结审计集待用户标注（AC-10） |
-| Subphase | 5.3 — Suggested Frame Review & Correction | ⬜ 未开始 |
+| Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-02, AC-10 达成；HR 第二轮修复待验收) |
+| Subphase | 5.3 — Suggested Frame Review & Correction | ⬜ 未开始（含每帧删除标注交互） |
 
 ## Recently Completed
 
@@ -42,10 +42,9 @@
 
 ## Current Goal
 
-完成 5.2 的最后一项 AC：**冻结审计集比较（AC-10）**。需要用户：
-① 人工标注开发集审计表 `docs/benchmarks/phase-5.2-development.csv`（17 帧）；
-② 运行 score → 按结果在开发集调参（如 `confidence_threshold`，真实 run 池占比 2759/2767 偏高）；
-③ 从**不同的 infer run** emit 冻结审计集 v1 → 标注 → score → 写报告，回填 Review Record R3。
+**5.2 已收口**（AC-10：policy 0.800/0.300 vs baseline 0.600/0.000，报告
+`docs/benchmarks/phase-5.2-report.md`）。当前等待：①用户完成 GUI HR 第二轮验收
+（建议帧缓存恢复 / 自动保存 / 帧号正上方）；②确认 push。
 
 ## Current Decisions / Deferred Checks
 
@@ -63,13 +62,9 @@
 
 ## Next Recommended Action
 
-**等待用户标注开发集审计表**（这是 5.2 收尾的前置条件）：
-
-1. 打开 `docs/benchmarks/phase-5.2-development.csv`，按 `docs/benchmarks/README.md` 约定逐帧
-   在应用中跳转核对（视频 `P002.mp4`，项目 `experiment/AI_test1`），填写
-   `needs_review / needs_correction / note`。
-2. 运行 `python scripts/benchmark_difficult_frames.py score --project experiment/AI_test1 --audit docs/benchmarks/phase-5.2-development.csv`。
-3. 把结果发回会话：按开发集指标决定是否调参、何时 emit 冻结审计集 v1（需不同 infer run）。
-
-代码状态：`feat/p5.2-difficult-frames` 已完成全部实现 slice 与两轮独立审查修复，
-**待合并 push（需用户确认）**；Issue #19 保持开放至 AC-10 完成。
+1. **用户完成 GUI HR 第二轮**：重启应用（`.venv/bin/python -m ai_physics_tracker`）后验证
+   ①建议帧在取消选择/切走再选回后恢复；②每 10 个标注点与 AI 任务完成后状态栏出现
+   Autosaved 且无弹窗；③帧号位于圆圈正上方居中。反馈后处置并收尾。
+2. **确认 push**：本地 main 领先 origin（5.2 全部提交 + HR 修复）。
+3. push 后关闭 Issue #19，进入 5.3 规划（含每帧删除标注交互、Accept/Correct/Skip、
+   `confidence_threshold` 分位数自适应候选）。

@@ -94,11 +94,14 @@
   都不返回重复帧、不越过 working zone、不选已排除帧。
 - [x] mining 通过统一后台 runner 可取消；取消、错误与迟到结果不修改活动项目、不留下可被
   误读为 completed 的结果。
-- [ ] 真实单摆开发集与冻结审计集完成版本化记录；在未查看冻结标签的前提下运行一次最终
+- [x] 真实单摆开发集与冻结审计集完成版本化记录；在未查看冻结标签的前提下运行一次最终
   比较，困难帧策略的 `Precision@N` 与 review yield 均高于 lowest-confidence-only 基线
   （Phase 5 AC-10）。若未超过，保留失败证据并暂停收尾，不通过调参覆盖结果。
-  —— **进行中**：开发集审计表已从真实 2767 帧单摆 run 生成（`docs/benchmarks/`），
-  等待用户人工标注 → score → 开发集调参 → 从不同 infer run emit 冻结审计集 v1。
+  —— **已达成（2026-09-02）**：规范训练模型（defaults 50/8/mps，20 manual 帧）的 infer run
+  上，policy Precision@N=0.800 / review_yield=0.300，基线 0.600 / 0.000，两项均优；
+  3 个 needs_correction 帧全部为策略独有候选（残差/跳变信号捕获 confidence 漏检）。
+  证据：[phase-5.2-report.md](../benchmarks/phase-5.2-report.md)。经讨论简化：单一已标注
+  审计集作为 AC-10 证据（单视频基准，多视频泛化留待 5.6/后续阶段）。
 - [x] 定向测试、`QT_QPA_PLATFORM=offscreen python -m pytest`、`python -m compileall src scripts`
   与独立 numerical/application boundary review 全部通过；本 Subphase 无 GUI 变化，不触发
   Human Review。
@@ -158,10 +161,10 @@ Independent Review 聚焦：数值退化情况、pipeline 顺序、run/file iden
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：代码与工具链 2026-09-02（`d67f57d` / `7af74a0` / `9c14405` /
-  `dcb6819` / `5feefd1`）；**整体收尾待冻结审计集 AC-10 完成后补记**
-- AC 勾选结果：除"真实开发集/冻结审计集比较（AC-10）"外全部勾选；AC-10 进行中
-  （开发集审计表已生成，等待人工标注）
+- 完成日期 / 合并 commit：2026-09-02 代码与工具链（`d67f57d` / `7af74a0` / `9c14405` /
+  `dcb6819` / `5feefd1` / `fddc391` / `9b5ae46` / `27f676a`）；AC-10 于 2026-09-02 达成
+- AC 勾选结果：全部勾选（AC-10 证据见 `docs/benchmarks/phase-5.2-report.md`：
+  policy 0.800/0.300 vs baseline 0.600/0.000）
 - 偏离计划之处及原因：
   - 冻结审计集比较需要人工标注，无法在本轮会话内完成 → 工具链交付 + 明示交接，
     Review Record R3 记录待办

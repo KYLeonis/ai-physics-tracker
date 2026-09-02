@@ -23,9 +23,9 @@
 - [x] pipeline 顺序固定；连续异常段不垄断 Top N；放宽如实记录（AC-3）
 - [x] 视觉多样性只复用 5.1 K-means（显式候选集）；失败按分数补齐并记录 diversity_status
 - [x] 统一后台 runner、取消、原子结果；worker 不持有活动 session，不创建 TrackPoint
-- [ ] 真实单摆开发集标注 + 冻结审计集 v1 与 lowest-confidence 基线比较（AC-10）
-  —— **待用户人工标注**：开发集审计表已生成（`docs/benchmarks/phase-5.2-development.csv`，
-  17 帧），标注后运行 score；冻结审计集须在开发集调参完成后从**不同的 infer run** emit。
+- [x] 真实单摆审计集标注 + 与 lowest-confidence 基线比较（AC-10）
+  —— 已达成，见 R3：policy 0.800/0.300 vs baseline 0.600/0.000（单一已标注审计集作为
+  证据的范围简化见 R3 说明）。
 
 **质量**
 
@@ -91,18 +91,27 @@
 - 处置：`fddc391` 增加 screening 补齐语义（见 plan §Proposed Defaults 细化注记），
   队列不再空转；571 tests 全绿
 
-### R3 — 待办 · 冻结审计集评估
+### R3 — 2026-09-02 · 真实基准评估（AC-10 达成）
 
-- 开发集审计表已生成并入库（真实 2767 帧单摆 run）；**等待用户标注**后 score；
-  开发集调参完成后从不同 infer run emit `phase-5.2-audit-v1.csv` 并写
-  `phase-5.2-report.md`，AC-10 结论回填本节。
+- 测试床：`experiment/AI_test2`（用户按产品路径标注 20 帧、默认参数 50/8/mps 训练并推理的
+  148 帧单摆视频；规范模型，非 epochs=1 测试模型）
+- 结果（[phase-5.2-report.md](../benchmarks/phase-5.2-report.md)）：
+  - policy **Precision@N=0.800 / review_yield=0.300**
+  - baseline **Precision@N=0.600 / review_yield=0.000**
+  - 两项均严格优于 lowest-confidence-only 基线 → **AC-10 达成**
+  - 3 个 `needs_correction` 帧（13/36/73，标注 "outside landmark"）全部为策略独有候选——
+    残差/跳变信号捕获了纯置信度漏检的真实错误
+- 范围说明：单视频基准（经与用户讨论简化：跳过开发集调参，单一已标注审计集作为证据；
+  多视频泛化验证留待 5.6 端到端验收）
+- 附带产出（用户 HR 反馈修复，`27f676a`）：建议帧按 track 缓存恢复、静默自动保存
+  （每 10 标注点 / AI 任务完成）、帧号标签移至正上方
 
 ## Final Verdict
 
-- [x] 修改后通过（R1/R2 findings 全部处置；代码、测试与工具链收口）
+- [x] 修改后通过（R1/R2 findings 全部处置；R2.5 真实数据语义修正；R3 基准达成）
 - [ ] 通过（首轮无 finding）
 - [ ] 需要重做
 
-- 最终结论：代码路径与基准工具链通过审查；AC-10 的真实数据比较因需要人工标注，
-  作为明示遗留项由用户完成后回填 R3，5.2 方可整体收尾。
-- 日期 / 依据轮次：2026-09-02 · R1 + R2（R3 待补）
+- 最终结论：代码、工具链与真实数据基准全部收口——policy 在两项指标上严格优于基线
+  （AC-10），575 测试全绿，5.2 正式完成。
+- 日期 / 依据轮次：2026-09-02 · R1 + R2 + R2.5 + R3
