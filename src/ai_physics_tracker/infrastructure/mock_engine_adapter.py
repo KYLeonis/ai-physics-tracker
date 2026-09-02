@@ -16,6 +16,7 @@ from ai_physics_tracker.infrastructure.engine_adapter import (
     TrainOutcome,
     FrameSelectionRequest,
     FrameSelectionResult,
+    RawPrediction,
 )
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.task_runner import (
@@ -201,6 +202,18 @@ class MockEngineAdapter:
         return {"status": "completed", "unit": "px", "metrics": {"train_rmse": 1.0, "test_rmse": 2.0},
                 "snapshot": snapshot_path.name, "train_samples": 4, "test_samples": 1}
 
+    def read_raw_predictions(
+        self,
+        prediction_path: Path,
+        bodypart: str = "target",
+        *,
+        frame_count: int,
+    ) -> tuple[RawPrediction, ...]:
+        """复用生产解析边界；CI 无需 pandas（CSV 路径不依赖 HDF5）。"""
+        from ai_physics_tracker.infrastructure.dlc_predictions import read_raw_predictions
+
+        return read_raw_predictions(prediction_path, bodypart, frame_count=frame_count)
+
     def suggest_frames(
         self,
         request: FrameSelectionRequest,
@@ -220,8 +233,16 @@ class MockEngineAdapter:
 
         send_progress(queue, request.track_id, 0, 1, message="Mock frame selection started")
 
-        zone_frames = list(range(request.zone_start, request.zone_end + 1))
-        available = [f for f in zone_frames if f not in request.excluded_frames]
+        if request.candidate_frames is not None:
+            # 显式候选集（5.2 Slice 3 多样性）：与 DLC 适配器同语义，取与 zone 的交集
+            available = sorted(
+                frame for frame in request.candidate_frames
+                if request.zone_start <= frame <= request.zone_end
+                and frame not in request.excluded_frames
+            )
+        else:
+            zone_frames = list(range(request.zone_start, request.zone_end + 1))
+            available = [f for f in zone_frames if f not in request.excluded_frames]
 
         n = min(request.n_frames, len(available))
         if n == 0 or not available:

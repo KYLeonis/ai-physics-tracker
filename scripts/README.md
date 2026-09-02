@@ -23,3 +23,8 @@
 `smoke_test_gui_tracking.py`：4.4 的 GUI 组件集成冒烟。在 offscreen 平台创建主窗口，
 使用独立合成视频/项目，通过 Task Panel 启动真实 CPU 训练、评价和推理并验证结果。
 产物保留，不操作用户实验文件。它仅验证接线和数据，不替代 AGENTS.md 的真人 Human Review。
+
+`benchmark_difficult_frames.py {emit-audit|score}`：Phase 5.2 困难帧基准入口。
+`emit-audit` 从本地项目的 completed infer run 生成盲评审计表（打乱、隐藏来源），
+`score` 在人工标注后确定性重算两种策略并写比较报告；用法与标注约定见
+`docs/benchmarks/README.md`。

@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 5.2 Difficult Frame Mining
 
-- Issue：待计划确认后创建
+- Issue：[#19](https://github.com/KYLeonis/ai-physics-tracker/issues/19)
 - 分支：`feat/p5.2-difficult-frames`
-- 日期 / 状态：2026-09-02 · 📝 规划待确认
+- 日期 / 状态：2026-09-02 · 🚧 代码与基准工具链完成；冻结审计集待用户标注（见 Result）
 
 ## Goal
 
@@ -77,22 +77,24 @@
 
 ## Acceptance Criteria
 
-- [ ] 指定 completed infer run 的 HDF5/CSV 被全帧读取；低于导入阈值与缺测帧仍进入
+- [x] 指定 completed infer run 的 HDF5/CSV 被全帧读取；低于导入阈值与缺测帧仍进入
   mining 输入，重复/越界/不完整帧批次被整体拒绝（AC-2）。
-- [ ] request/result 同时绑定 run/video/track/model snapshot/raw artifact；run 不匹配、文件缺失
+- [x] request/result 同时绑定 run/video/track/model snapshot/raw artifact；run 不匹配、文件缺失
   或文件指纹变化时拒绝执行/读取，不混合不同 run（R2.1、R8.2）。
-- [ ] 四类信号均有合成轨迹测试；每个候选保存 finite component scores、触发原因、总分与
+- [x] 四类信号均有合成轨迹测试；每个候选保存 finite component scores、触发原因、总分与
   run id，同输入/参数/seed 得到相同结果（AC-4）。
-- [ ] 测试固定 pipeline 顺序；连续低 confidence/长 gap 不能垄断 Top N，候选不足时只放宽
+- [x] 测试固定 pipeline 顺序；连续低 confidence/长 gap 不能垄断 Top N，候选不足时只放宽
   时间间隔并报告 `actual_n` 与实际间隔（AC-3）。
-- [ ] K-means 只复用现有 5.1 路径并支持显式候选帧集合；visual path 与 temporal fallback
+- [x] K-means 只复用现有 5.1 路径并支持显式候选帧集合；visual path 与 temporal fallback
   都不返回重复帧、不越过 working zone、不选已排除帧。
-- [ ] mining 通过统一后台 runner 可取消；取消、错误与迟到结果不修改活动项目、不留下可被
+- [x] mining 通过统一后台 runner 可取消；取消、错误与迟到结果不修改活动项目、不留下可被
   误读为 completed 的结果。
 - [ ] 真实单摆开发集与冻结审计集完成版本化记录；在未查看冻结标签的前提下运行一次最终
   比较，困难帧策略的 `Precision@N` 与 review yield 均高于 lowest-confidence-only 基线
   （Phase 5 AC-10）。若未超过，保留失败证据并暂停收尾，不通过调参覆盖结果。
-- [ ] 定向测试、`QT_QPA_PLATFORM=offscreen python -m pytest`、`python -m compileall src scripts`
+  —— **进行中**：开发集审计表已从真实 2767 帧单摆 run 生成（`docs/benchmarks/`），
+  等待用户人工标注 → score → 开发集调参 → 从不同 infer run emit 冻结审计集 v1。
+- [x] 定向测试、`QT_QPA_PLATFORM=offscreen python -m pytest`、`python -m compileall src scripts`
   与独立 numerical/application boundary review 全部通过；本 Subphase 无 GUI 变化，不触发
   Human Review。
 
@@ -114,16 +116,18 @@
 
 ## Slices
 
-- [ ] Slice 1 — Raw prediction + run identity：公开全帧 raw prediction 值对象/读取入口；从活动
+- [x] Slice 1 — Raw prediction + run identity：公开全帧 raw prediction 值对象/读取入口；从活动
   session 验证 completed infer run、working zone、snapshot、预测产物路径与文件指纹，形成不可变请求；
-  用 HDF5/CSV、低阈值、缺测、错误 run/文件的定向测试证明 AC-2。
-- [ ] Slice 2 — Pure mining policy：在一个新的内聚 application 模块实现四类 component、
+  用 HDF5/CSV、低阈值、缺测、错误 run/文件的定向测试证明 AC-2。（`d67f57d`）
+- [x] Slice 2 — Pure mining policy：在一个新的内聚 application 模块实现四类 component、
   robust normalization、weighted rank 与时间去重/放宽；用单点 jump、平滑残差、连续低置信度、
-  长 gap、prior Correct 邻域和退化轨迹固定数值行为。
-- [ ] Slice 3 — Diversity + background job：给 5.1 selector 增加可选显式候选集合，复用其
-  K-means；接入 `BackgroundTaskRunner`、取消、原子 JSON 结果与结果身份校验，并验证不修改项目。
-- [ ] Slice 4 — Benchmark + close：先用开发集定参，再冻结真实单摆审计集并与最低 confidence
-  基线比较；运行全回归，完成独立 review/复审、Review Record、文档同步、合并与 CI。
+  长 gap、prior Correct 邻域和退化轨迹固定数值行为。（`7af74a0` + 审查修复 `dcb6819`）
+- [x] Slice 3 — Diversity + background job：给 5.1 selector 增加可选显式候选集合，复用其
+  K-means；接入 `BackgroundTaskRunner`、取消、原子 JSON 结果与结果身份校验，并验证不修改项目；
+  顺带完成 F3b 改名（`_kmeans_via_sklearn`）。（`9c14405`）
+- [x] Slice 4 — Benchmark + close：benchmark 工具链（`application/benchmark.py` +
+  `scripts/benchmark_difficult_frames.py`）与真实开发集审计表已交付；开发集标注、调参与
+  冻结审计集比较待用户完成后收尾。（`5feefd1`）
 
 ## Verification
 
@@ -149,8 +153,16 @@ Independent Review 聚焦：数值退化情况、pipeline 顺序、run/file iden
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：
-- AC 勾选结果：
+- 完成日期 / 合并 commit：代码与工具链 2026-09-02（`d67f57d` / `7af74a0` / `9c14405` /
+  `dcb6819` / `5feefd1`）；**整体收尾待冻结审计集 AC-10 完成后补记**
+- AC 勾选结果：除"真实开发集/冻结审计集比较（AC-10）"外全部勾选；AC-10 进行中
+  （开发集审计表已生成，等待人工标注）
 - 偏离计划之处及原因：
-- 遗留问题：Accept/Skip 抑制与 Correct provenance 由 5.3 持久化；5.2 request 已预留显式集合输入。
-- 独立 review 结论：
+  - 冻结审计集比较需要人工标注，无法在本轮会话内完成 → 工具链交付 + 明示交接，
+    Review Record R3 记录待办
+  - 真实 run（5.1 时代产物）`extra_fields` 为空 → benchmark CLI 内置内存回填
+    （不修改用户数据），同时 prepare 的 legacy 容忍分支被测试钉住
+- 遗留问题：Accept/Skip 抑制与 Correct provenance 由 5.3 持久化；5.2 request 已预留显式集合输入；
+  `#18` F4/F6 顺带项仍按计划随 5.3 处理；`_file_info` 双实现待下次共同触碰时合并（review S1）
+- 独立 review 结论：R1 request-changes（H1 身份绑定）+ R2 approve-with-comments（覆盖/舍入）
+  全部修复闭环，见 [phase-5.2-review.md](../reviews/phase-5.2-review.md)；全回归 566 passed

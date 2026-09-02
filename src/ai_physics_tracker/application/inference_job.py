@@ -191,6 +191,8 @@ def read_inference_result(request: InferenceRequest, project_root: Path,
         "observations_path": exchange.relative_to(project_root).as_posix(),
         "model_file_info": payload["model_file_info"],
         "config_file_info": payload["config_file_info"], "device": payload["device"],
+        # 预测产物指纹基线：后续消费（如 5.2 mining）可发现推理后被替换的文件
+        "prediction_file_info": list(_stamp(raw)[:2]),
         "import_summary": dict(zip(("row_count", "missing_count", "low_confidence_count"), counts))}
     snapshot_ref = run.model_snapshot
     if request.archive_model:

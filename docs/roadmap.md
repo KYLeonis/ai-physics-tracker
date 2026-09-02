@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 5.1 — Representative Frame Selection（✅ 2026-09-02；Human Review 验收通过，62 测试，长视频提速 46 倍）**
-- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.1 已完成，等待进入 5.2）**
+- 最近完成：**Phase 5.2 代码与基准工具链（2026-09-02；566 测试全绿，真实单摆开发集审计表已生成）**
+- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.2 代码完成，冻结审计集待用户标注后收尾，然后进入 5.3）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -146,7 +146,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 | --- | --- | --- |
 | 5.0 ✅ | Tracking Pipeline Consolidation | F3：统一 runner/actions/task handle 生命周期，旧 coordinator 已移除 |
 | 5.1 ✅ | Representative Frame Selection | DLC uniform/K-means 初始建议帧，自适应抽帧优化与 Human Review 通过 |
-| 5.2 | Difficult Frame Mining | 原始预测、多信号候选、排名/去重/多样性、Top N |
+| 5.2 🚧 | Difficult Frame Mining | 全帧原始预测读取、四信号可解释评分、时间去重/多样性、后台任务与基准工具链（冻结审计集 AC-10 待用户标注） |
 | 5.3 | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复 |
 | 5.4 | Iteration History & Result Activation | fixed validation/history；F2 clear/activate/replace |
 | 5.5 | Training Advisor & Retraining | 规则建议、DLC resume/restart 与跨轮比较 |

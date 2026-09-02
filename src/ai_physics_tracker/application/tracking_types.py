@@ -194,6 +194,9 @@ class FrameSelectionRequest:
 
     working zone 由 [zone_start, zone_end] 闭区间定义（0-based，与领域层 working_zone 一致）。
     excluded_frames 为已有 active manual 帧号集合，结果中不会出现这些帧号。
+    candidate_frames 为 None 时在整个 working zone 内采样（5.1 语义）；
+    显式给出时只在候选帧 ∩ working zone − excluded_frames 内选取
+    （5.2 视觉多样性对既有 shortlist 的复用，Phase 5.2 Slice 3）。
     """
 
     video_id: UUID
@@ -208,6 +211,7 @@ class FrameSelectionRequest:
     seed: int = 0
     cluster_step: int = 1              # K-means 聚类步长，控制扫描帧密度
     color_mode: str = "rgb"            # 颜色空间，供 DLC K-means 使用
+    candidate_frames: frozenset[int] | None = None  # 显式候选帧集合（5.2 多样性）
 
     def __post_init__(self) -> None:
         if self.algorithm not in {"kmeans", "uniform"}:
@@ -223,6 +227,10 @@ class FrameSelectionRequest:
             )
         if self.color_mode not in {"rgb", "bgr", "gray"}:
             raise ValueError(f"color_mode must be 'rgb', 'bgr' or 'gray', got {self.color_mode!r}")
+        if self.candidate_frames is not None and any(
+            type(f) is not int or not 0 <= f < self.frame_count for f in self.candidate_frames
+        ):
+            raise ValueError("candidate_frames must contain in-range frame indices")
 
 
 @dataclass(frozen=True)
