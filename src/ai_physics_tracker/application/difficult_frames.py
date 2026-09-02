@@ -36,6 +36,9 @@ REASON_LOW_CONFIDENCE = "low_confidence"
 REASON_JUMP_OUTLIER = "jump_outlier"
 REASON_RESIDUAL_OUTLIER = "residual_outlier"
 REASON_PRIOR_NEIGHBORHOOD = "prior_correction_neighborhood"
+# 池不足 top_n 时的补齐来源：无触发原因，按连续筛查分数排名（产品语义：
+# 队列不空，用户总能拿到"相对最值得看"的帧；原因如实标注）
+REASON_SCREENING = "screening"
 
 
 @dataclass(frozen=True)
@@ -206,6 +209,7 @@ def mine_difficult_frames(
 
     pool_positions: list[int] = []
     reasons_by_position: list[tuple[str, ...]] = []
+    fill_positions: list[int] = []
     for position in range(frame_count):
         frame = zone_frame(position)
         if frame in manual_frames:
@@ -214,14 +218,28 @@ def mine_difficult_frames(
         if reasons:
             pool_positions.append(position)
             reasons_by_position.append(reasons)
+        else:
+            fill_positions.append(position)
 
     # ceil 保证换算结果严格不低于请求的最小间隔（0.25 s @ 10 fps → 3 帧）；
     # round 的半偶舍入会得到 2 帧 = 0.20 s，违反"最小间隔"语义（review M2）
     min_gap_frames = max(1, ceil(params.min_gap_s * fps_nominal))
-    if not pool_positions:
+    available = len(pool_positions) + len(fill_positions)
+    if available == 0:
         return MiningOutcome((), 0, min_gap_frames, min_gap_frames, None, False,
                              _snapshot(params, 0, min_gap_frames, min_gap_frames, None, False,
-                                       zone_start, zone_end, fps_nominal))
+                                       zone_start, zone_end, fps_nominal, 0))
+
+    if len(pool_positions) < params.top_n and fill_positions:
+        # 好模型可能没有任何触发：按连续筛查分数补齐至 top_n，原因如实标注
+        # screening；补齐帧与触发帧进入同一池、同一归一化与排名
+        screened = _screening_fill(raw, fill_positions, params)
+        deficit = min(params.top_n - len(pool_positions), len(fill_positions))
+        for position in sorted(screened[:deficit]):
+            pool_positions.append(position)
+            reasons_by_position.append((REASON_SCREENING,))
+    screening_count = sum(1 for reasons in reasons_by_position
+                          if reasons == (REASON_SCREENING,))
 
     components = _normalized_components(raw, pool_positions)
     weights = {
@@ -265,7 +283,8 @@ def mine_difficult_frames(
         actual_min_gap_frames=actual_min_gap,
         gap_relaxed=relaxed,
         params_snapshot=_snapshot(params, len(pool_positions), min_gap_frames, gap,
-                                  actual_min_gap, relaxed, zone_start, zone_end, fps_nominal),
+                                  actual_min_gap, relaxed, zone_start, zone_end,
+                                  fps_nominal, screening_count),
     )
 
 
@@ -386,6 +405,27 @@ def _residual_signals(
     return raw, flags
 
 
+def _screening_fill(
+    raw: dict[str, np.ndarray], fill_positions: list[int], params: MiningParams,
+) -> list[int]:
+    """按连续分量的加权分数对未触发帧排名（降序，帧号打破并列）。
+
+    归一化在未触发帧集合内做 percentile rank；仅用于挑选补齐顺序，
+    最终池内排名仍由统一的池内归一化决定。
+    """
+    weights = {
+        COMPONENT_UNCERTAINTY: params.weight_uncertainty,
+        COMPONENT_JUMP: params.weight_jump,
+        COMPONENT_RESIDUAL: params.weight_residual,
+        COMPONENT_PRIOR: params.weight_prior,
+    }
+    scores = np.zeros(len(fill_positions))
+    for name, weight in weights.items():
+        scores += weight * _percentile_ranks(raw[name][fill_positions])
+    return [position for position, _score in
+            sorted(zip(fill_positions, scores), key=lambda item: (-item[1], item[0]))]
+
+
 def _reasons_for(flags: dict[str, np.ndarray], position: int) -> tuple[str, ...]:
     return tuple(name for name, mask in flags.items() if bool(mask[position]))
 
@@ -454,11 +494,12 @@ def _min_pairwise_gap(frames: list[int]) -> int | None:
 def _snapshot(
     params: MiningParams, pool_size: int, min_gap_frames: int,
     effective_gap_frames: int, actual_min_gap_frames: int | None, gap_relaxed: bool,
-    zone_start: int, zone_end: int, fps_nominal: float,
+    zone_start: int, zone_end: int, fps_nominal: float, screening_count: int = 0,
 ) -> dict[str, Any]:
     snapshot: dict[str, Any] = dict(params.to_snapshot())
     snapshot.update({
         "pool_size": pool_size,
+        "screening_fill_count": screening_count,
         "min_gap_frames": min_gap_frames,
         "effective_gap_frames": effective_gap_frames,
         "actual_min_gap_frames": actual_min_gap_frames,

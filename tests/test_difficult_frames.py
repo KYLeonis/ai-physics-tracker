@@ -242,26 +242,44 @@ class TestMineDifficultFramesPolicy:
         assert prior_frames  # 28..32 中至少一个进入 shortlist
         assert all(28 <= f <= 32 for f in prior_frames)
 
-    def test_manual_frames_excluded_from_pool(self):
+    def test_manual_frames_excluded_from_candidates(self):
         rows = _smooth_trajectory()
         for frame in (60, 61, 62):
             rows[frame] = RawPrediction(frame, 10.0 + 2.0 * frame, 20.0, 0.2)
         outcome = self._mine(rows, manual=frozenset({60, 61, 62}))
-        assert outcome.pool_size == 0  # 唯一异常帧已有 manual 标注 → 池为空
-        assert outcome.shortlist == ()
+        candidates = [c.frame_index for c in outcome.shortlist]
+        assert all(f not in {60, 61, 62} for f in candidates)  # manual 帧绝不出现
+        # 唯一触发帧被排除后，其余候选全部来自 screening 补齐
+        assert all(c.reasons == ("screening",) for c in outcome.shortlist)
 
-    def test_empty_pool_for_clean_trajectory(self):
+    def test_clean_trajectory_filled_by_screening_rank(self):
+        """好模型可能零触发：用连续筛查分数补齐到 top_n，原因如实标注（产品语义）。"""
         outcome = self._mine(_smooth_trajectory())
-        assert outcome.pool_size == 0
-        assert outcome.shortlist == ()
-        assert outcome.actual_min_gap_frames is None
+        assert len(outcome.shortlist) == 5  # top_n
+        assert all(c.reasons == ("screening",) for c in outcome.shortlist)
+        assert outcome.params_snapshot["screening_fill_count"] == 5
+        # 补齐按加权筛查分数挑选：完全平坦的轨迹内按帧号打破并列
+        frames = [c.frame_index for c in outcome.shortlist]
+        assert frames == sorted(frames)
+
+    def test_screening_fill_prefers_higher_uncertainty(self):
+        """补齐顺序跟随连续分量：置信度略低的帧先于置信度高的帧。"""
+        rows = [
+            RawPrediction(f, 10.0 + 2.0 * f, 20.0, 0.99 if f % 2 else 0.95)
+            for f in range(20)
+        ]
+        outcome = self._mine(rows, zone=(0, 19),
+                             params=MiningParams(top_n=2, min_gap_s=0.05))
+        frames = {c.frame_index for c in outcome.shortlist}
+        assert frames <= {f for f in range(20) if f % 2 == 0}  # 0.95 的偶数帧优先
 
     def test_zone_bounds_respected(self):
         rows = _smooth_trajectory()
         rows[5] = RawPrediction(5, 10.0 + 2.0 * 5 + 80.0, 90.0, 0.95)
         outcome = self._mine(rows, zone=(50, 99))
+        # 异常在 zone 外不触发；zone 内候选全部来自 screening 补齐且不越界
         assert all(50 <= c.frame_index <= 99 for c in outcome.shortlist)
-        assert outcome.pool_size == 0  # 异常在 zone 外，不进入池
+        assert all("jump_outlier" not in c.reasons for c in outcome.shortlist)
 
     def test_shortlist_capped_by_diversity_factor(self):
         rows = [
@@ -299,17 +317,17 @@ class TestMineDifficultFramesPolicy:
         assert 50 in jump_frames
         assert jump_frames <= {49, 50, 51}  # 正常抖动帧不得误报
 
-    def test_single_candidate_pool_degenerates_to_zero_ranks(self):
+    def test_single_triggered_candidate_joins_screening_fill(self):
         rows = _smooth_trajectory()
         rows[50] = RawPrediction(50, float("nan"), float("nan"), float("nan"))
         outcome = self._mine(rows, params=MiningParams(top_n=3))
-        # 池只含缺测帧 50：池内排名无区分度，分量全 0、总分 0，但原因保留
-        assert outcome.pool_size == 1
-        candidate = outcome.shortlist[0]
-        assert candidate.frame_index == 50
-        assert set(candidate.components.values()) == {0.0}
-        assert candidate.total_score == pytest.approx(0.0)
-        assert "missing" in candidate.reasons
+        # 触发帧 50 + 2 个补齐帧；触发帧在池内归一化后分量非零
+        assert outcome.pool_size == 3
+        by_frame = {c.frame_index: c for c in outcome.shortlist}
+        assert "missing" in by_frame[50].reasons
+        assert by_frame[50].raw_components["uncertainty"] == pytest.approx(1.0)
+        screening = [c for c in outcome.shortlist if c.reasons == ("screening",)]
+        assert len(screening) == 2
 
     def test_single_frame_zone_and_all_missing_zone(self):
         rows = _smooth_trajectory()
