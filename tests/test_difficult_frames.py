@@ -153,6 +153,138 @@ class TestMiningParams:
 
 
 # ---------------------------------------------------------------------------
+# Slice 2 — 纯挖掘策略
+# ---------------------------------------------------------------------------
+
+def _smooth_trajectory(frame_count: int = 100, *, confidence: float = 0.95,
+                       step_px: float = 2.0) -> list[RawPrediction]:
+    """匀速直线合成轨迹（CODE_STANDARD §9.7：解析已知解）。"""
+    return [
+        RawPrediction(f, 10.0 + step_px * f, 20.0, float(confidence))
+        for f in range(frame_count)
+    ]
+
+
+class TestMineDifficultFramesPolicy:
+    @staticmethod
+    def _mine(rows, *, params=None, zone=(0, 99), fps=10.0, prior=frozenset(), manual=frozenset()):
+        from ai_physics_tracker.application.difficult_frames import mine_difficult_frames
+
+        return mine_difficult_frames(
+            tuple(rows), zone_start=zone[0], zone_end=zone[1], fps_nominal=fps,
+            params=params or MiningParams(top_n=5),
+            prior_correct_frames=prior, manual_frames=manual,
+        )
+
+    def test_single_jump_point_ranks_first_with_reasons(self):
+        rows = _smooth_trajectory()
+        rows[40] = RawPrediction(40, 10.0 + 2.0 * 40 + 50.0, 70.0, 0.95)
+        outcome = self._mine(rows)
+        assert outcome.pool_size >= 1
+        # MAD=0 分支下跳变帧两侧 link 同样异常：39/40/41 并列，帧号打破并列
+        top = outcome.shortlist[0]
+        assert top.frame_index in {39, 40, 41}
+        assert "jump_outlier" in top.reasons
+        assert "residual_outlier" in top.reasons
+        assert top.raw_components["jump"] == pytest.approx(1.0)
+        assert 0.0 <= top.components["jump"] <= 1.0
+        flagged = {c.frame_index for c in outcome.shortlist if "jump_outlier" in c.reasons}
+        assert flagged <= {39, 40, 41}
+        assert 40 in {c.frame_index for c in outcome.shortlist}
+
+    def test_consecutive_low_confidence_burst_does_not_monopolize_top_n(self):
+        """连续异常段不垄断 Top N：不足时才放宽间隔并如实记录（AC-3）。"""
+        rows = _smooth_trajectory()
+        for frame in range(60, 71):
+            rows[frame] = RawPrediction(frame, 10.0 + 2.0 * frame, 20.0, 0.2)
+        params = MiningParams(top_n=3, min_gap_s=1.0)  # 10 fps → 初始间隔 10 帧
+        outcome = self._mine(rows, params=params)
+        frames = [c.frame_index for c in outcome.shortlist]
+        assert frames == [60, 65, 70]
+        assert outcome.gap_relaxed is True
+        assert outcome.actual_min_gap_frames == 5
+        assert outcome.params_snapshot["actual_min_gap_frames"] == 5
+
+    def test_missing_frames_enter_pool_with_missing_reason(self):
+        rows = _smooth_trajectory()
+        rows[50] = RawPrediction(50, float("nan"), float("nan"), float("nan"))
+        outcome = self._mine(rows)
+        missing = [c for c in outcome.shortlist if c.frame_index == 50]
+        assert missing and "missing" in missing[0].reasons
+        assert missing[0].raw_components["uncertainty"] == pytest.approx(1.0)
+
+    def test_prior_correction_neighborhood_flagged(self):
+        rows = _smooth_trajectory()
+        outcome = self._mine(rows, prior=frozenset({30}))
+        prior_frames = {c.frame_index for c in outcome.shortlist
+                        if "prior_correction_neighborhood" in c.reasons}
+        assert prior_frames  # 28..32 中至少一个进入 shortlist
+        assert all(28 <= f <= 32 for f in prior_frames)
+
+    def test_manual_frames_excluded_from_pool(self):
+        rows = _smooth_trajectory()
+        for frame in (60, 61, 62):
+            rows[frame] = RawPrediction(frame, 10.0 + 2.0 * frame, 20.0, 0.2)
+        outcome = self._mine(rows, manual=frozenset({60, 61, 62}))
+        assert outcome.pool_size == 0  # 唯一异常帧已有 manual 标注 → 池为空
+        assert outcome.shortlist == ()
+
+    def test_empty_pool_for_clean_trajectory(self):
+        outcome = self._mine(_smooth_trajectory())
+        assert outcome.pool_size == 0
+        assert outcome.shortlist == ()
+        assert outcome.actual_min_gap_frames is None
+
+    def test_zone_bounds_respected(self):
+        rows = _smooth_trajectory()
+        rows[5] = RawPrediction(5, 10.0 + 2.0 * 5 + 80.0, 90.0, 0.95)
+        outcome = self._mine(rows, zone=(50, 99))
+        assert all(50 <= c.frame_index <= 99 for c in outcome.shortlist)
+        assert outcome.pool_size == 0  # 异常在 zone 外，不进入池
+
+    def test_shortlist_capped_by_diversity_factor(self):
+        rows = [
+            RawPrediction(f, 10.0 + 2.0 * f, 20.0, 0.2) for f in range(100)
+        ]
+        params = MiningParams(top_n=3, min_gap_s=0.05)  # 间隔 1 帧不约束
+        outcome = self._mine(rows, params=params)
+        assert len(outcome.shortlist) <= params.diversity_shortlist_factor * params.top_n
+
+    def test_same_inputs_same_outcome(self):
+        rows = _smooth_trajectory()
+        rows[40] = RawPrediction(40, 10.0 + 2.0 * 40 + 50.0, 70.0, 0.9)
+        for frame in (60, 62, 64):
+            rows[frame] = RawPrediction(frame, 10.0 + 2.0 * frame, 20.0, 0.3)
+        first = self._mine(rows)
+        second = self._mine(rows)
+        assert first == second
+
+    def test_rejects_non_contiguous_predictions(self):
+        rows = _smooth_trajectory()
+        rows.pop(50)
+        with pytest.raises(ValueError, match="contiguous"):
+            self._mine(rows, zone=(0, 98))
+
+    def test_rejects_zone_out_of_range(self):
+        with pytest.raises(ValueError, match="working zone"):
+            self._mine(_smooth_trajectory(), zone=(0, 100))
+
+    def test_component_scores_finite_and_normalized(self):
+        rows = _smooth_trajectory()
+        rows[40] = RawPrediction(40, 10.0 + 2.0 * 40 + 50.0, 70.0, 0.9)
+        for frame in range(60, 71):
+            rows[frame] = RawPrediction(frame, 10.0 + 2.0 * frame, 20.0, 0.3)
+        outcome = self._mine(rows)
+        for candidate in outcome.shortlist:
+            assert candidate.reasons
+            for value in candidate.components.values():
+                assert -1e-12 <= value <= 1.0 + 1e-12
+            for value in candidate.raw_components.values():
+                assert value == value and abs(value) != float("inf")
+            assert candidate.total_score >= 0.0
+
+
+# ---------------------------------------------------------------------------
 # Slice 1 — prepare_difficult_frame_request
 # ---------------------------------------------------------------------------
 
