@@ -101,6 +101,13 @@ DLC uniform/K-means；困难帧使用原始预测的多信号候选与本项目 
 Accept 不产生 ground truth，Correct 才写 manual；completed infer result 与 active result 分离并显式替换；
 固定 validation series 后再比较 iteration。5.0 收敛旧 coordinator 生命周期（F3）后，后续任务都复用统一 runner。
 
+已交付：5.1 代表帧选取（`FrameSelectionRequest/Result` + `DLCAdapter.suggest_frames` 的
+uniform/K-means 路径 + `FrameSelectionActions`，支持显式候选帧集合）；5.2 困难帧挖掘
+（`application/difficult_frames.py` 纯策略：四信号 + robust z + percentile rank + 时间去重 +
+screening 补齐；`difficult_frame_job.py` 的 run/产物身份绑定与后台 worker；`benchmark.py` 与
+`scripts/benchmark_difficult_frames.py` 的盲评基准工具链）。挖掘 worker 不持有活动
+ProjectSession，结果只含帧号与解释性分量，不创建 TrackPoint。
+
 ## 4. 运动学计算与可视化（Phase 3/6 起细化）
 
 - 输入：标定后的物理坐标序列 x(t), y(t)；或无标定时的像素坐标

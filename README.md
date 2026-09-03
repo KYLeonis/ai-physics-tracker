@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:    Phase 5 — AI-assisted Annotation & Refinement 🔄
-Last Completed:   Phase 5.1 — Representative Frame Selection
-Current Subphase: N/A（5.1 已完成，等待单独确认 5.2）
+Last Completed:   Phase 5.2 — Difficult Frame Mining（AC-10 真实基准达成）
+Current Subphase: N/A（5.2 已完成，5.3 待规划）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -96,8 +96,8 @@ macOS Human Review、433 项本地测试、真实 CPU GUI 组件闭环及 macOS/
 真实短训练只验证管线，不代表模型精度。经用户批准，Windows 真机/CUDA 延期到 Phase 9 打包前；详情见
 [4.4 计划与验收](docs/status/phase-4.4-plan.md)。
 
-Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道收敛；5.1 完成了基于 DLC uniform/K-means 的代表帧选取（含长视频自适应抽帧与流式 Grab 解码优化，真机验收通过）。
-下一步 5.2 将开展困难帧挖掘（消费原始预测与轨迹跳变）。详见
+Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道收敛；5.1 完成了基于 DLC uniform/K-means 的代表帧选取（含长视频自适应抽帧与流式 Grab 解码优化，真机验收通过）；5.2 完成了困难帧挖掘——全帧原始预测读取、四信号可解释评分、时间去重与视觉多样性、后台任务与真实单摆基准（策略 Precision@N=0.800 / review yield=0.300，优于最低置信度基线 0.600/0.000）。
+下一步 5.3 将实现审核队列（Accept/Correct/Skip 与 provenance）。详见
 [Phase 5 requirements](docs/spec/phase5-requirements.md) 与 [PHASE_5_PLAN](docs/status/phase-5-plan.md)。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
@@ -111,7 +111,7 @@ Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道�
 | Phase 2 | Video Analysis MVP | ✅ 已完成（2026-08-30，Windows 真机验收延后） |
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
-| Phase 5 | AI-assisted Annotation & Refinement | 🔄 5.1 已完成，等待 5.2 |
+| Phase 5 | AI-assisted Annotation & Refinement | 🔄 5.0–5.2 已完成，5.3 待规划 |
 | Phase 6 | Advanced Physics Analysis | ⬜ |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
@@ -131,7 +131,7 @@ Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道�
 - ✅ src-layout 核心/GUI 包、锁定依赖与自动化测试；GitHub Actions 覆盖 macOS/Windows Python 3.11，最新验证见 current.md
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
-- 🔄 Phase 5 进行中：5.0 已完成并关闭 F3，5.1 尚未开始；F2 保留在 5.4
+- 🔄 Phase 5 进行中：5.0 关闭 F3；5.1 代表帧选取与 5.2 困难帧挖掘已完成（真实基准 AC-10 达成）；F2 保留在 5.4
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引

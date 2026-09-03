@@ -91,7 +91,7 @@
 ### DeepLabCut 安装注意（Phase 4 已落地）
 
 1. 创建独立环境（venv，Python 3.11–3.12）
-2. 安装依赖：`pip install -e .`（`pyproject.toml` 包含 `deeplabcut>=3.0,<4.0`）
+2. 安装依赖：`pip install -e .`（`pyproject.toml` 包含 `deeplabcut>=3.0,<4.0`；5.2 起显式声明 `scikit-learn`，此前为 DLC 传递依赖，见 Issue #18）
 3. 本地验证：`python scripts/smoke_test_dlc_train.py`（单摆合成视频 1 epoch 冒烟验证）
 4. 设备探测与计算加速：
    - macOS (Apple Silicon)：自动使用 MPS 加速（降级为 CPU 稳定运行）
