@@ -38,6 +38,7 @@ class MockEngineAdapter:
         self.created_projects: list[Path] = []
         self.exported_counts: list[int] = []
         self.created_datasets: list[Path] = []
+        self.created_dataset_splits: list[tuple[list[int] | None, list[int] | None]] = []
 
     def engine_version(self) -> str:
         """返回 Mock 引擎版本。"""
@@ -87,9 +88,12 @@ class MockEngineAdapter:
         num_shuffles: int = 1,
         net_type: str = "resnet_50",
         augmenter_type: str = "default",
+        train_indices: list[int] | None = None,
+        test_indices: list[int] | None = None,
     ) -> bool:
         """模拟生成 DLC 训练集。"""
         self.created_datasets.append(config_path)
+        self.created_dataset_splits.append((train_indices, test_indices))
         dataset_dir = config_path.parent / "training-datasets" / "iteration-0"
         dataset_dir.mkdir(parents=True, exist_ok=True)
         return True

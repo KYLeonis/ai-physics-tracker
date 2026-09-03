@@ -93,10 +93,15 @@ def main() -> None:
         video_reader.close()
         print(f"Exported {exported_count} frames to DLC labeled-data")
 
-        # 4. 创建训练数据集
-        print("Creating training dataset...")
-        adapter.create_training_dataset(config_path, num_shuffles=1)
-        print("Training dataset created successfully")
+        # 4. 创建训练数据集（包含显式 fixed split: 3 train, 2 test）
+        print("Creating training dataset with fixed split...")
+        adapter.create_training_dataset(
+            config_path,
+            num_shuffles=1,
+            train_indices=[0, 1, 2],
+            test_indices=[3, 4],
+        )
+        print("Training dataset created successfully with fixed split")
 
         # 5. 执行 1 epoch 真实训练（CPU 模式冒烟）
         from multiprocessing import Event, Queue

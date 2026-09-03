@@ -250,19 +250,28 @@ class DLCAdapter:
         num_shuffles: int = 1,
         net_type: str = "resnet_50",
         augmenter_type: str = "default",
+        train_indices: list[int] | None = None,
+        test_indices: list[int] | None = None,
     ) -> bool:
-        """调用 deeplabcut.create_training_dataset 创建训练集。"""
+        """调用 deeplabcut.create_training_dataset 创建训练集，支持显式切分索引。"""
         try:
             import deeplabcut
         except ImportError as error:
             raise RuntimeError("DeepLabCut is required to create a training dataset") from error
         try:
+            kwargs: dict[str, Any] = {
+                "num_shuffles": num_shuffles,
+                "net_type": net_type,
+                "augmenter_type": augmenter_type,
+                "userfeedback": False,
+            }
+            if train_indices is not None and test_indices is not None:
+                kwargs["trainIndices"] = [list(train_indices)] * num_shuffles
+                kwargs["testIndices"] = [list(test_indices)] * num_shuffles
+
             deeplabcut.create_training_dataset(
                 str(config_path),
-                num_shuffles=num_shuffles,
-                net_type=net_type,
-                augmenter_type=augmenter_type,
-                userfeedback=False,
+                **kwargs,
             )
         except Exception as error:
             raise RuntimeError(f"DLC create_training_dataset failed: {error}") from error

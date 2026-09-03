@@ -13,6 +13,11 @@ from ai_physics_tracker.domain.tracking_run import (
     TrackingRun,
     create_tracking_run,
 )
+from ai_physics_tracker.application.refinement_history import (
+    RefinementIterationInfo,
+    ValidationLabelSnapshot,
+    attach_refinement_iteration,
+)
 from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter
 from ai_physics_tracker.infrastructure.engine_adapter import (
     EngineAdapter,
@@ -96,9 +101,96 @@ def prepare_training(
         config_path,
     )
 
+    sorted_manual_points = sorted(manual_points, key=lambda p: p.frame_index)
+
+    # Phase 5.4: 检查当前 Track 的 refinement 状态与 active validation series
+    ref_state = session.get_refinement_state(track_id)
+    active_series = ref_state.active_series
+    train_indices: list[int] | None = None
+    test_indices: list[int] | None = None
+    training_label_snapshots: list[ValidationLabelSnapshot] = []
+
+    if active_series is not None:
+        valid, invalid_reason = session.validate_active_validation_series(track_id)
+        if not valid:
+            raise ProjectSessionError(
+                f"Active validation series '{active_series.name}' is invalid: {invalid_reason}. "
+                f"Please create a new validation series or deactivate it before training."
+            )
+        val_frame_set = set(active_series.frame_indices)
+        train_indices = [
+            i for i, p in enumerate(sorted_manual_points) if p.frame_index not in val_frame_set
+        ]
+        test_indices = [
+            i for i, p in enumerate(sorted_manual_points) if p.frame_index in val_frame_set
+        ]
+        if not train_indices:
+            raise ProjectSessionError(
+                f"All active manual points belong to validation series '{active_series.name}'. "
+                f"At least one manual point must be available for training."
+            )
+        for i in train_indices:
+            p = sorted_manual_points[i]
+            training_label_snapshots.append(
+                ValidationLabelSnapshot(
+                    point_id=p.point_id,
+                    frame_index=p.frame_index,
+                    pixel_x=p.pixel_x,
+                    pixel_y=p.pixel_y,
+                    modified_at=p.modified_at.isoformat(),
+                )
+            )
+        validation_series_id = active_series.series_id
+    else:
+        for p in sorted_manual_points:
+            training_label_snapshots.append(
+                ValidationLabelSnapshot(
+                    point_id=p.point_id,
+                    frame_index=p.frame_index,
+                    pixel_x=p.pixel_x,
+                    pixel_y=p.pixel_y,
+                    modified_at=p.modified_at.isoformat(),
+                )
+            )
+        validation_series_id = None
+
     actual_adapter.create_training_dataset(
         config_path=config_path,
         num_shuffles=actual_params.shuffle,
+        train_indices=train_indices,
+        test_indices=test_indices,
+    )
+
+    completed_train_runs = [
+        r
+        for r in session.tracking_runs()
+        if r.track_id == track_id and r.task_type == "train" and r.status == "completed"
+    ]
+    iteration_index = len(completed_train_runs)
+    previous_training_run_id = completed_train_runs[-1].run_id if completed_train_runs else None
+    source_infer_run_id = ref_state.active_infer_run_id
+
+    review_summary_dict: dict[str, Any] | None = None
+    if source_infer_run_id is not None:
+        rev_sum = session.get_review_summary(source_infer_run_id)
+        if rev_sum is not None:
+            review_summary_dict = {
+                "total_candidates": rev_sum.total_candidates,
+                "reviewed_count": rev_sum.reviewed_count,
+                "pending_count": rev_sum.pending_count,
+                "accepted_count": rev_sum.accepted_count,
+                "skipped_count": rev_sum.skipped_count,
+                "corrected_count": rev_sum.corrected_count,
+                "is_complete": rev_sum.is_complete,
+            }
+
+    iter_info = RefinementIterationInfo(
+        iteration_index=iteration_index,
+        previous_training_run_id=previous_training_run_id,
+        source_infer_run_id=source_infer_run_id,
+        validation_series_id=validation_series_id,
+        training_labels=tuple(training_label_snapshots),
+        review_summary=review_summary_dict,
     )
 
     run = create_tracking_run(
@@ -109,13 +201,14 @@ def prepare_training(
         engine_version=actual_adapter.engine_version(),
         config=actual_params.to_config(),
     )
+    run = attach_refinement_iteration(run, iter_info)
     if session.project_root is not None:
         try:
             relative_config = config_path.resolve().relative_to(session.project_root.resolve()).as_posix()
         except ValueError:
             relative_config = None
         if relative_config is not None:
-            run = replace(run, extra_fields={"config_path": relative_config})
+            run = replace(run, extra_fields={**run.extra_fields, "config_path": relative_config})
     session.record_tracking_run(run)
 
     return run, config_path
