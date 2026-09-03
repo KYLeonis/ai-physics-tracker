@@ -205,3 +205,81 @@ def test_manage_validation_dialog_workflow(
 
     ref_state_after = session.get_refinement_state(track_id)
     assert ref_state_after.active_series is None
+
+
+# ---------------------------------------------------------------------------
+# 合并后复审（R2）——按钮矩阵与历史标注加固
+# ---------------------------------------------------------------------------
+
+def test_activation_buttons_disabled_while_track_has_pending_run(
+    qtbot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    """当前 track 有 pending/running run 时禁用四个激活按钮（review F-2 GUI 缓解）。"""
+    win, session, track_id, video = _open_with_track(qtbot, tmp_path, synthetic_video_path)
+    pending = replace(create_tracking_run(video.video_id, track_id, "infer", engine="dlc"),
+                      status="running")
+    session.record_tracking_run(pending)
+    win.trackingActions._context_key = None
+    win.trackingActions.refresh()
+
+    panel = win.trackingActions.panel
+    assert not panel.activateButton.isEnabled()
+    assert not panel.replaceButton.isEnabled()
+    assert not panel.clearActivationButton.isEnabled()
+    assert not panel.manageValidationButton.isEnabled()
+    assert "AI task is active" in panel.replaceButton.toolTip()
+
+    # 任务结束后恢复
+    session.update_tracking_run(replace(pending, status="completed"))
+    win.trackingActions._context_key = None
+    win.trackingActions.refresh()
+    assert panel.manageValidationButton.isEnabled()
+
+
+def test_activation_buttons_disabled_during_project_busy(
+    qtbot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    """autosave/项目操作进行中（project_busy）禁用激活按钮（review F-3）。"""
+    win, _session, _track_id, _video = _open_with_track(qtbot, tmp_path, synthetic_video_path)
+    panel = win.trackingActions.panel
+    panel.setContext("v", "t", None, None, busy=False, project_busy=True)
+    assert not panel.clearActivationButton.isEnabled()
+    panel.setContext("v", "t", None, None, busy=False, project_busy=False)
+    assert panel.manageValidationButton.isEnabled()
+
+
+def test_history_labels_other_track_active_run(
+    qtbot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    """项目级 history 对其他 track 的 active run 标注 Active (other track)（review F-4）。"""
+    win, session, track_id, video = _open_with_track(qtbot, tmp_path, synthetic_video_path)
+    panel = win.trackingActions.panel
+    other = session.add_track(video.video_id, "TrackB")
+    run_b = _create_fake_completed_run(session, other.track_id, video.video_id, (1, 2, 3))
+    session.activate_infer_run(other.track_id, run_b.run_id)
+
+    win.trackingActions._context_key = None
+    win.trackingActions.refresh()
+    # 选中 Track 1 时，TrackB 的 active run 不应显示为 Not active
+    labels = [panel.historyList.item(i).text()
+              for i in range(panel.historyList.count())]
+    assert any("Active (other track)" in text for text in labels)
+    assert not any("Not active" in text and str(run_b.run_id)[:8] in text
+                   for text in labels)
+
+
+def _open_with_track(qtbot, tmp_path, synthetic_video_path):
+    win = MainWindow(lambda: VideoSession(OpenCVVideoReader()), ProjectRepository(),
+                     _StaticTimingProbe())
+    qtbot.addWidget(win)
+    win.show()
+    assert win.openVideo(synthetic_video_path, show_error=False)
+    win.addTrackButton.click()
+    track_id = win.selectedTrackId
+    session = win.analysisSession
+    session.mark_point(track_id, 1, 10.0, 10.0)
+    session.save_as(tmp_path / "proj")
+    video = session.project.videos[0]
+    win.trackingActions._context_key = None
+    win.trackingActions.refresh()
+    return win, session, track_id, video

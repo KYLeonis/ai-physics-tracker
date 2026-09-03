@@ -261,7 +261,9 @@ class TaskPanel(QDockWidget):
         self._active_run_id: UUID | None = None
         self._current_track_id: UUID | None = None
         self._busy: bool = False
+        self._project_busy: bool = False
         self._runs_by_id: dict[UUID, TrackingRun] = {}
+        self._active_run_ids_by_track: dict[UUID, UUID] = {}
 
         self.activeRunLabel = QLabel("Active AI: None")
         self.activeValidationLabel = QLabel("Validation: None")
@@ -370,13 +372,19 @@ class TaskPanel(QDockWidget):
         train_reason: str | None,
         infer_reason: str | None,
         busy: bool,
+        project_busy: bool = False,
     ) -> None:
-        """更新当前目标及训练/推理按钮的可用状态和禁用原因。"""
+        """更新当前目标及训练/推理按钮的可用状态和禁用原因。
+
+        project_busy 表示项目级操作（含静默自动保存）进行中：激活/替换/清除
+        按钮随之禁用，避免"可点击但被静默忽略"（review F-3）。
+        """
 
         video = video_name.strip() or "No video selected"
         track = track_name.strip() or "No track selected"
         self.contextLabel.setText(f"Video: {video} · Track: {track}")
         self._busy = busy
+        self._project_busy = project_busy
         self._setReason(self.trainButton, self.trainReasonLabel, train_reason, busy)
         self._setReason(self.inferButton, self.inferReasonLabel, infer_reason, busy)
         self.cancelButton.setEnabled(busy)
@@ -386,9 +394,15 @@ class TaskPanel(QDockWidget):
         self,
         runs: tuple[TrackingRun, ...],
         track_id: UUID | None,
+        active_run_ids_by_track: dict[UUID, UUID] | None = None,
     ) -> None:
-        """更新当前 Track 的可用训练模型和项目级任务历史。"""
+        """更新当前 Track 的可用训练模型和项目级任务历史。
 
+        active_run_ids_by_track 为各 Track 的 active infer run 映射，用于在
+        项目级 historyList 中正确标注其他 Track 的 Active 结果（review F-4）。
+        """
+        if active_run_ids_by_track is not None:
+            self._active_run_ids_by_track = active_run_ids_by_track
         self._current_track_id = track_id
         selected_model_id = self.selectedTrainingRunId()
         with QSignalBlocker(self.modelList):
@@ -511,14 +525,29 @@ class TaskPanel(QDockWidget):
             self.replaceRunRequested.emit(run_id)
 
     def _updateActivationButtonStates(self) -> None:
-        if self._busy:
-            self.activateButton.setEnabled(False)
-            self.replaceButton.setEnabled(False)
-            self.clearActivationButton.setEnabled(False)
-            self.manageValidationButton.setEnabled(False)
+        track_runs = [
+            run for run in self._runs_by_id.values()
+            if run.track_id == self._current_track_id
+        ]
+        track_busy = any(run.status in {"pending", "running"} for run in track_runs)
+        if self._busy or self._project_busy or track_busy:
+            # 当前 track 有 pending/running run 时领域层会拒绝全部激活操作
+            # （review F-2 GUI 缓解）：禁用并给出原因，不再"可点击但必失败"
+            reason = (
+                "An AI task is active on this track"
+                if track_busy else
+                "A project operation is in progress"
+                if self._project_busy else
+                "An AI task is running"
+            )
+            for button in (self.activateButton, self.replaceButton,
+                           self.clearActivationButton, self.manageValidationButton):
+                button.setEnabled(False)
+                button.setToolTip(reason)
             return
 
         self.manageValidationButton.setEnabled(self._current_track_id is not None)
+        self.manageValidationButton.setToolTip("")
 
         item = self.historyList.currentItem()
         run_id = self._itemRunId(item)
@@ -540,15 +569,29 @@ class TaskPanel(QDockWidget):
         if is_completed_infer and not is_active:
             if has_active_obs:
                 self.activateButton.setEnabled(False)
+                self.activateButton.setToolTip("")
                 self.replaceButton.setEnabled(True)
+                self.replaceButton.setToolTip("")
             else:
                 self.activateButton.setEnabled(True)
+                self.activateButton.setToolTip("")
                 self.replaceButton.setEnabled(False)
+                self.replaceButton.setToolTip("")
         else:
             self.activateButton.setEnabled(False)
+            self.activateButton.setToolTip("")
             self.replaceButton.setEnabled(False)
+            # legacy_inferred 状态下选中被推断 run：Replace 因 is_active 被禁，
+            # 说明升级为显式 active 的路径（review F-7）
+            if (is_active and self._active_status == "legacy_inferred"):
+                self.replaceButton.setToolTip(
+                    "Legacy active run: use Clear, then Activate to make it explicit")
+            else:
+                self.replaceButton.setToolTip("")
 
-        self.clearActivationButton.setEnabled(has_active_obs)
+        clear_enabled = has_active_obs
+        self.clearActivationButton.setEnabled(clear_enabled)
+        self.clearActivationButton.setToolTip("" if clear_enabled else "No active AI observations to clear")
 
     def setRefinementInfo(
         self,
@@ -626,6 +669,11 @@ class TaskPanel(QDockWidget):
         if run.task_type == "infer":
             if run.run_id == self._active_run_id:
                 status_str = "Active"
+            elif (run.track_id != self._current_track_id
+                  and run.run_id == self._active_run_ids_by_track.get(run.track_id)):
+                # 项目级 historyList：其他 Track 正在使用的结果不能标成
+                # "Not active" 误导用户（review F-4）
+                status_str = "Active (other track)"
             elif run.status == "completed":
                 status_str = "Completed · Not active"
             else:
@@ -654,6 +702,11 @@ class TaskPanel(QDockWidget):
                 details.append(f"{key}={run.extra_fields[key]}")
         if run.error_message:
             details.append(f"error={run.error_message}")
+        iter_info = run.extra_fields.get("refinement_iteration_v1")
+        if isinstance(iter_info, dict) and iter_info.get("validation_series_id"):
+            # 跨轮比较只认同一 validation series；展示所用 series 供用户核对
+            # （review：plan AC"不同 series 不宣称可直接比较"）
+            details.append(f"validation_series={iter_info['validation_series_id']}")
         return "\n".join(details)
 
     # --- 建议帧公共接口（Phase 5.1）---

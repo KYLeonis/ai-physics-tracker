@@ -1720,7 +1720,12 @@ class ProjectSession:
         track_id: UUID,
         run_id: UUID,
     ) -> ActivationRecord:
-        """用指定的 completed infer run 替换当前 Track 的活动 AI 结果。"""
+        """用指定的 completed infer run 替换当前 Track 的活动 AI 结果（ADR-0014：须已有结果）。"""
+        status, _active_run_id, _ = self.get_track_activation_status(track_id)
+        if status == "none":
+            raise ProjectSessionError(
+                "Track has no active AI result; use activate_infer_run instead of replace"
+            )
         return self._activate_or_replace_infer_run(track_id, run_id, action="replace")
 
     def clear_active_ai_observations(
@@ -1823,8 +1828,18 @@ class ProjectSession:
         timeline = next((t for t in self._project.timelines if t.video_id == target_run.video_id), None)
         if video is None or timeline is None:
             raise ProjectSessionError("Video or timeline missing for run")
+        if not self.can_measure(target_run.video_id):
+            # 与 import_engine_points 同一授权口径（review L-6）：激活重建的观测
+            # 同样依赖已核实的 CFR 时间轴
+            raise ProjectSessionError("Video timing is not authorized for activation")
 
-        points = read_observation_exchange(obs_file)
+        try:
+            points = read_observation_exchange(obs_file)
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError, AttributeError,
+                OSError) as error:
+            raise ProjectSessionError(
+                f"Observation artifact for run {run_id} is unreadable: {obs_file}: {error}"
+            ) from error
         for p in points:
             if (
                 p.track_id != track_id
@@ -1840,6 +1855,13 @@ class ProjectSession:
 
         candidate_store = TrackStore(self._store.tracks, self._store.observations)
         act_cnt, sup_cnt = candidate_store.replace_track_engine_points(track_id, points)
+        manual_cnt = len(
+            [
+                p
+                for p in self._store.observations
+                if p.track_id == track_id and p.source == "manual" and p.status == "active"
+            ]
+        )
 
         ref_state = extract_refinement_state(track)
         status, prev_inferred_id, _ = self.get_track_activation_status(track_id)
@@ -1853,7 +1875,8 @@ class ProjectSession:
             from_run_id=prev_run_id,
             to_run_id=run_id,
             point_count=act_cnt,
-            manual_preserved_count=sup_cnt,
+            manual_preserved_count=manual_cnt,
+            superseded_count=sup_cnt,
         )
         new_ref_state = replace(
             ref_state,

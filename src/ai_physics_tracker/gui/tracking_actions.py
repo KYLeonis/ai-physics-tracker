@@ -15,6 +15,7 @@ from ai_physics_tracker.application.tracking_job import (
     prepare_frame_selection_request, run_frame_selection_worker,
     read_frame_selection_result, FrameSelectionRunner, FrameSelectionJobRequest,
 )
+from ai_physics_tracker.application.refinement_history import extract_refinement_state
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
 from ai_physics_tracker.application.tracking_types import TaskProgress, TaskLog, TaskResult
 from ai_physics_tracker.gui.task_panel import TaskPanel
@@ -150,9 +151,19 @@ class TrackingActions(QObject):
             validation_valid=val_valid,
             validation_reason=val_reason,
         )
-        self.panel.setRuns(runs, track_id)
+        # 项目级 historyList 需要知道每个 track 的 active run 才能正确标注
+        # "Active (other track)"（review F-4）
+        active_by_track: dict = {}
+        if session:
+            active_by_track = {
+                t.track_id: extract_refinement_state(t).active_infer_run_id
+                for t in session.tracks
+                if extract_refinement_state(t).active_infer_run_id is not None
+            }
+        self.panel.setRuns(runs, track_id, active_run_ids_by_track=active_by_track)
         self.panel.setContext(video.display_name if video else "No video", track.name if track else "No track",
-                              train_reason, infer_reason, self.pending)
+                              train_reason, infer_reason, self.pending,
+                              project_busy=self.window.projectActions.busy)
         self.window.projectActions.refresh()
 
     def train(self) -> None:
@@ -161,8 +172,17 @@ class TrackingActions(QObject):
     def infer(self) -> None:
         self._start(self.panel.inferenceParameters(), self.panel.selectedTrainingRunId())
 
+    def _interaction_blocked(self) -> bool:
+        """激活/验证集操作的统一互斥口径，与 refresh() 的禁用原因对齐（review F-5）。"""
+        return bool(
+            self.pending
+            or self.window.projectActions.busy
+            or self.window.frameSelectionActions.busy
+            or (hasattr(self.window, "reviewActions") and self.window.reviewActions.busy)
+        )
+
     def activateRun(self, run_id: UUID) -> None:
-        if self.pending or self.window.projectActions.busy:
+        if self._interaction_blocked():
             return
         session = self.window.analysisSession
         track_id = self.window.selectedTrackId
@@ -170,11 +190,12 @@ class TrackingActions(QObject):
             return
         track = next((t for t in session.tracks if t.track_id == track_id), None)
         track_name = track.name if track else "selected track"
+        manual_count = len(session.manual_points(track_id))
         reply = QMessageBox.question(
             self.window,
             "Activate Tracking Result",
             f"Activate AI tracking result from run {str(run_id)[:8]} on track '{track_name}'?\n\n"
-            "Existing manual points will take precedence and be preserved.",
+            f"{manual_count} manual point(s) will take precedence and be preserved.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
         )
@@ -184,7 +205,7 @@ class TrackingActions(QObject):
             rec = session.activate_infer_run(track_id, run_id)
             self.window.statusBar().showMessage(
                 f"Activated run {str(run_id)[:8]}: {rec.point_count} active points, "
-                f"{rec.manual_preserved_count} superseded by manual"
+                f"{rec.superseded_count} superseded by manual"
             )
             self.window._refreshMarkers()
             self.window._refreshHistoryButtons()
@@ -193,20 +214,38 @@ class TrackingActions(QObject):
         self._context_key = None
         self.refresh()
 
+    def _replace_dialog_text(self, session, track_id: UUID, run_id: UUID) -> str:
+        """替换确认的 from/to run 与影响面统计（plan AC 第 5 条，review F-1）。"""
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        track_name = track.name if track else "selected track"
+        status, active_run_id, _ = session.get_track_activation_status(track_id)
+        from_part = f"run {str(active_run_id)[:8]}" if active_run_id else f"current result ({status})"
+        manual_count = len(session.manual_points(track_id))
+        target_run = next((r for r in session.tracking_runs() if r.run_id == run_id), None)
+        target_count = None
+        if target_run is not None:
+            summary = target_run.extra_fields.get("prediction_summary_v1")
+            if isinstance(summary, dict):
+                target_count = summary.get("eligible_count")
+        counts = f"{manual_count} manual point(s) will remain preserved"
+        if target_count is not None:
+            counts += f"; about {target_count} prediction point(s) will be loaded"
+        return (
+            f"Replace {from_part} with run {str(run_id)[:8]} on track '{track_name}'?\n\n"
+            f"All previous AI observations for this track will be replaced. {counts}."
+        )
+
     def replaceRun(self, run_id: UUID) -> None:
-        if self.pending or self.window.projectActions.busy:
+        if self._interaction_blocked():
             return
         session = self.window.analysisSession
         track_id = self.window.selectedTrackId
         if not session or not track_id:
             return
-        track = next((t for t in session.tracks if t.track_id == track_id), None)
-        track_name = track.name if track else "selected track"
         reply = QMessageBox.question(
             self.window,
             "Replace Active Tracking Result",
-            f"Replace current active AI tracking result with run {str(run_id)[:8]} on track '{track_name}'?\n\n"
-            "All previous AI observations for this track will be replaced. Existing manual points will remain preserved.",
+            self._replace_dialog_text(session, track_id, run_id),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
         )
@@ -216,7 +255,7 @@ class TrackingActions(QObject):
             rec = session.replace_active_infer_run(track_id, run_id)
             self.window.statusBar().showMessage(
                 f"Replaced active run with {str(run_id)[:8]}: {rec.point_count} active points, "
-                f"{rec.manual_preserved_count} superseded by manual"
+                f"{rec.superseded_count} superseded by manual"
             )
             self.window._refreshMarkers()
             self.window._refreshHistoryButtons()
@@ -226,7 +265,7 @@ class TrackingActions(QObject):
         self.refresh()
 
     def clearActivation(self) -> None:
-        if self.pending or self.window.projectActions.busy:
+        if self._interaction_blocked():
             return
         session = self.window.analysisSession
         track_id = self.window.selectedTrackId
@@ -234,11 +273,16 @@ class TrackingActions(QObject):
             return
         track = next((t for t in session.tracks if t.track_id == track_id), None)
         track_name = track.name if track else "selected track"
+        ai_count = len([
+            p for p in session.project.observations
+            if p.track_id == track_id and p.source != "manual" and p.status == "active"
+        ])
+        manual_count = len(session.manual_points(track_id))
         reply = QMessageBox.question(
             self.window,
             "Clear Active AI Result",
             f"Clear all active AI tracking observations for track '{track_name}'?\n\n"
-            "Manual points will NOT be deleted.",
+            f"{ai_count} AI point(s) will be removed; {manual_count} manual point(s) will NOT be deleted.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -257,7 +301,7 @@ class TrackingActions(QObject):
         self.refresh()
 
     def manageValidation(self) -> None:
-        if self.pending or self.window.projectActions.busy:
+        if self._interaction_blocked():
             return
         from ai_physics_tracker.gui.validation_dialog import ManageValidationDialog
 

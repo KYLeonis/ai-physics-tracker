@@ -130,6 +130,8 @@ def test_dlc_export_annotations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
     # 模拟视频读取器
     mock_reader = MagicMock(spec=OpenCVVideoReader)
+    mock_reader.info.frame_count = 20
+    mock_reader.info.frame_count = 20
     mock_reader.is_open = True
     mock_reader.path = video_file
     dummy_pixels = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -196,6 +198,8 @@ def test_dlc_export_annotations_rejects_foreign_labeled_data_folders(
         modified_at=utc_now(),
     )
     mock_reader = MagicMock(spec=OpenCVVideoReader)
+    mock_reader.info.frame_count = 20
+    mock_reader.info.frame_count = 20
     mock_reader.is_open = True
     mock_reader.path = video_file
     mock_reader.read_frame.return_value = DecodedFrame(
@@ -338,6 +342,8 @@ def test_dlc_export_annotations_frame_read_failure_raises(tmp_path: Path) -> Non
 
     # 读取器抛出异常
     mock_reader = MagicMock(spec=OpenCVVideoReader)
+    mock_reader.info.frame_count = 20
+    mock_reader.info.frame_count = 20
     mock_reader.is_open = True
     mock_reader.path = video_file
     mock_reader.read_frame.side_effect = RuntimeError("Decode error")
@@ -368,6 +374,7 @@ def test_dlc_export_annotations_requires_open_reader(tmp_path: Path) -> None:
         modified_at=utc_now(),
     )
     reader = MagicMock(spec=OpenCVVideoReader)
+    reader.info.frame_count = 20
     reader.is_open = False
 
     with pytest.raises(RuntimeError, match="video reader is not open"):
@@ -397,6 +404,7 @@ def test_dlc_export_annotations_png_write_failure_raises(
         modified_at=utc_now(),
     )
     reader = MagicMock(spec=OpenCVVideoReader)
+    reader.info.frame_count = 20
     reader.is_open = True
     reader.path = video_file
     reader.read_frame.return_value = DecodedFrame(
@@ -438,6 +446,7 @@ def test_dlc_export_annotations_hdf5_failure_raises(
         modified_at=utc_now(),
     )
     reader = MagicMock(spec=OpenCVVideoReader)
+    reader.info.frame_count = 20
     reader.is_open = True
     reader.path = video_file
     reader.read_frame.return_value = DecodedFrame(
@@ -493,6 +502,8 @@ def test_dlc_export_annotations_multiple_bodyparts(
     )
 
     mock_reader = MagicMock(spec=OpenCVVideoReader)
+    mock_reader.info.frame_count = 20
+    mock_reader.info.frame_count = 20
     mock_reader.is_open = True
     mock_reader.path = video_file
     mock_reader.read_frame.return_value = DecodedFrame(
