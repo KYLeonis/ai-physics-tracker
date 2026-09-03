@@ -268,6 +268,12 @@ class DLCAdapter:
             if (train_indices is None) ^ (test_indices is None):
                 raise ValueError("train_indices and test_indices must both be provided or both be None")
             if train_indices is not None and test_indices is not None:
+                from deeplabcut.utils import auxiliaryfunctions
+
+                total_split = len(train_indices) + len(test_indices)
+                if total_split > 0:
+                    fraction = round(len(train_indices) / total_split, 2)
+                    auxiliaryfunctions.edit_config(str(config_path), {"TrainingFraction": [fraction]})
                 kwargs["trainIndices"] = [list(train_indices) for _ in range(num_shuffles)]
                 kwargs["testIndices"] = [list(test_indices) for _ in range(num_shuffles)]
 
