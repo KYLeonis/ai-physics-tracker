@@ -17,7 +17,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtTest import QTest
 
 from ai_physics_tracker.application.difficult_frame_job import (
@@ -431,3 +431,280 @@ def test_track_switch_cancels_active_mining_r8(test_window: MainWindow, tmp_path
     window.selectedTrackChanged.emit(None)
     assert not window.reviewActions.busy
     qtbot.waitUntil(lambda: fake_handle.cancelled, timeout=3000)
+
+
+def _inside_point(window: MainWindow, pixel_x: float, pixel_y: float) -> QPoint:
+    return window.videoView.mapFromScene(QPointF(pixel_x, pixel_y))
+
+
+def test_accept_and_skip_gui_contract_ac3(test_window: MainWindow, tmp_path: Path):
+    """AC-3: Accept 只记录 accepted，Skip 只记录 skipped；二者均不修改 TrackPoint。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    panel = window.trackingActions.panel
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.40),
+        components={"uncertainty": 0.6},
+        raw_components={},
+        reasons=("low_confidence",),
+        total_score=0.75,
+    )
+    c2 = ReviewCandidate(
+        frame_index=2,
+        prediction=ReviewPredictionSnapshot(14.0, 24.0, 0.30),
+        components={"jump": 0.8},
+        raw_components={},
+        reasons=("jump",),
+        total_score=0.85,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1, c2))
+    session.set_active_review_batch(valid_run.run_id, batch)
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    initial_obs = session.project.observations
+    ctrl = window.reviewActions.controller
+    assert ctrl is not None
+
+    # 点击 Accept 候选 1
+    panel.reviewAcceptButton.click()
+    QTest.qWait(20)
+    assert session.project.observations == initial_obs
+    assert ctrl.state.reviewed_frames[1].disposition == "accepted"
+
+    # 点击 Skip 候选 2
+    panel.reviewSkipButton.click()
+    QTest.qWait(20)
+    assert session.project.observations == initial_obs
+    assert ctrl.state.reviewed_frames[2].disposition == "skipped"
+
+    # 验证完成统计提示
+    summary = ctrl.summary
+    assert summary.pending_count == 0
+    assert summary.accepted_count == 1
+    assert summary.skipped_count == 1
+    assert "Review Complete" in panel.reviewProgressLabel.text()
+
+
+def test_correct_mode_toggle_and_esc_cancel_ac4(test_window: MainWindow, tmp_path: Path):
+    """AC-4: Correct 进入一次性模式，Esc 取消不产生坐标，不弄脏 session。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    panel = window.trackingActions.panel
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.40),
+        components={},
+        raw_components={},
+        reasons=(),
+        total_score=0.5,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1,))
+    session.set_active_review_batch(valid_run.run_id, batch)
+    session.save()
+    assert not session.is_dirty
+
+    window.reviewActions.onRunSelected(valid_run.run_id)
+    assert not window.reviewActions.is_correcting
+
+    # 进入 Correct 模式
+    panel.reviewCorrectButton.click()
+    assert window.reviewActions.is_correcting
+    assert panel.reviewCorrectButton.text() == "Click Video..."
+    assert not session.is_dirty  # 尚未落点，不应弄脏
+
+    # Esc 取消
+    window._exitAnnotationMode()
+    assert not window.reviewActions.is_correcting
+    assert panel.reviewCorrectButton.text() == "Correct (C)"
+    assert not session.is_dirty
+    assert 1 not in session.get_suggested_frame_review(valid_run.run_id).reviewed_frames
+
+
+def test_correct_mode_video_click_atomic_submission_ac4(test_window: MainWindow, tmp_path: Path, qtbot):
+    """AC-4: 点击视频一次性提交 manual point + corrected disposition，并退出 Correct 模式。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    track_id = window.selectedTrackId
+    assert track_id is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    panel = window.trackingActions.panel
+
+    # 使用帧 3（此前无 manual point）
+    assert session.effective_point(track_id, 3) is None
+    req_id = uuid4()
+    c1 = ReviewCandidate(
+        frame_index=3,
+        prediction=ReviewPredictionSnapshot(15.0, 25.0, 0.45),
+        components={},
+        raw_components={},
+        reasons=("uncertainty",),
+        total_score=0.6,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1,))
+    session.set_active_review_batch(valid_run.run_id, batch)
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    # 启动 Correct 模式
+    panel.reviewCorrectButton.click()
+    assert window.reviewActions.is_correcting
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 3, timeout=3000)
+
+    # 模拟视频画面点击
+    click_pos = _inside_point(window, 20.0, 30.0)
+    window._onAnnotationClicked(click_pos)
+    QTest.qWait(20)
+
+    # 验证退出 Correct 模式
+    assert not window.reviewActions.is_correcting
+    assert panel.reviewCorrectButton.text() == "Correct (C)"
+
+    # 验证 manual point 已原子创建
+    pt = session.effective_point(track_id, 3)
+    assert pt is not None
+    assert pt.source == "manual"
+    assert abs(pt.pixel_x - 20.0) <= 1.0
+    assert abs(pt.pixel_y - 30.0) <= 1.0
+
+    # 验证 review disposition 为 corrected
+    st = session.get_suggested_frame_review(valid_run.run_id)
+    assert st is not None
+    rec = st.reviewed_frames[3]
+    assert rec.disposition == "corrected"
+    assert rec.manual_point_id == pt.point_id
+
+    # 验证 dirty 与 undo
+    assert session.is_dirty
+    assert session.can_undo
+
+
+def test_delete_manual_point_gui_interaction_and_revert_ac7(test_window: MainWindow, tmp_path: Path, qtbot):
+    """AC-7: 当前帧有 manual 点时删除按钮使能，点击删除恢复 pending，Undo 可恢复。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    track_id = window.selectedTrackId
+    assert track_id is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    panel = window.trackingActions.panel
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(
+        frame_index=3,
+        prediction=ReviewPredictionSnapshot(15.0, 25.0, 0.45),
+        components={},
+        raw_components={},
+        reasons=(),
+        total_score=0.5,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1,))
+    session.set_active_review_batch(valid_run.run_id, batch)
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    # 帧 3 当前无 manual point -> 删除按钮禁用
+    window.seekFrame(3)
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 3, timeout=3000)
+    assert not window.deletePointButton.isEnabled()
+    assert not panel.deleteManualPointButton.isEnabled()
+
+    # 通过 Correct 在帧 3 添加 manual point
+    panel.reviewCorrectButton.click()
+    click_pos = _inside_point(window, 25.0, 35.0)
+    window._onAnnotationClicked(click_pos)
+    QTest.qWait(20)
+
+    # 此时帧 3 具备 manual point -> 删除按钮使能
+    assert window.deletePointButton.isEnabled()
+    assert panel.deleteManualPointButton.isEnabled()
+
+    # 点击删除
+    window.deletePointButton.click()
+    QTest.qWait(20)
+
+    # 验证 manual point 已被删除，且候选恢复为 pending
+    assert session.effective_point(track_id, 3) is None
+    summary = session.get_review_summary(valid_run.run_id)
+    assert summary.corrected_count == 0
+    assert summary.pending_count == 1
+    assert not window.deletePointButton.isEnabled()
+    assert not panel.deleteManualPointButton.isEnabled()
+
+    # Undo 删除 -> 恢复 manual point 与 corrected disposition
+    window.undoButton.click()
+    QTest.qWait(20)
+    assert session.effective_point(track_id, 3) is not None
+    summary = session.get_review_summary(valid_run.run_id)
+    assert summary.corrected_count == 1
+    assert window.deletePointButton.isEnabled()
+    assert panel.deleteManualPointButton.isEnabled()
+
+
+def test_save_and_reopen_restores_review_state_ac5(test_window: MainWindow, tmp_path: Path, qtbot):
+    """AC-5: 保存并重开后恢复 active batch、已提交 disposition 与 Correct 点。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    track_id = window.selectedTrackId
+    assert track_id is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    panel = window.trackingActions.panel
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.40),
+        components={},
+        raw_components={},
+        reasons=(),
+        total_score=0.5,
+    )
+    c2 = ReviewCandidate(
+        frame_index=2,
+        prediction=ReviewPredictionSnapshot(14.0, 24.0, 0.30),
+        components={},
+        raw_components={},
+        reasons=(),
+        total_score=0.6,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1, c2))
+    session.set_active_review_batch(valid_run.run_id, batch)
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    # Accept 候选 1
+    panel.reviewAcceptButton.click()
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 2, timeout=3000)
+
+    # Correct 候选 2
+    panel.reviewCorrectButton.click()
+    click_pos = _inside_point(window, 18.0, 28.0)
+    window._onAnnotationClicked(click_pos)
+    QTest.qWait(20)
+
+    # 保存
+    session.save()
+    proj_root = session.project_root
+
+    # 重开项目
+    window.projectActions._load(lambda service, cancel: service.open_project(proj_root, cancel))
+    qtbot.waitUntil(lambda: window.analysisSession is not None, timeout=3000)
+    new_session = window.analysisSession
+    assert new_session is not None
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    ctrl = window.reviewActions.controller
+    assert ctrl is not None
+    assert ctrl.count == 2
+    summary = ctrl.summary
+    assert summary.accepted_count == 1
+    assert summary.corrected_count == 1
+    assert summary.pending_count == 0
+

@@ -79,6 +79,7 @@ class DifficultFrameReviewActions(QObject):
         self.panel.reviewAcceptRequested.connect(self.acceptCurrent)
         self.panel.reviewSkipRequested.connect(self.skipCurrent)
         self.panel.reviewCorrectRequested.connect(self.startCorrectCurrent)
+        self.panel.deleteManualPointRequested.connect(self.deleteCurrentManualPoint)
         self.panel.reviewCandidateJumpRequested.connect(self.jumpToFrame)
         window.selectedTrackChanged.connect(self.onSelectedTrackChanged)
         window.projectChanged.connect(self.onProjectChanged)
@@ -388,11 +389,46 @@ class DifficultFrameReviewActions(QObject):
             self.jumpToFrame(self._controller.current_frame_index)
         self._sync_panel_with_controller()
 
+    @property
+    def is_correcting(self) -> bool:
+        return self._controller is not None and self._controller.is_correcting
+
     def startCorrectCurrent(self) -> None:
-        if self._controller is None:
+        if self._controller is None or self._controller.current_candidate is None:
             return
+        c = self._controller.current_candidate
+        if self.window.presented_frame_index != c.frame_index:
+            self.window.seekFrame(c.frame_index)
         self._controller.set_correcting(True)
+        self.window.videoView.set_annotation_mode(True)
+        self.window.statusBar().showMessage(
+            f"Correct Mode: Click on video to place corrected point for Frame {c.frame_index} (Esc to cancel)"
+        )
         self._sync_panel_with_controller()
+
+    def cancelCorrectMode(self) -> None:
+        if self._controller is not None and self._controller.is_correcting:
+            self._controller.set_correcting(False)
+            self._sync_panel_with_controller()
+
+    def handleCorrectClick(self, pixel_x: float, pixel_y: float) -> bool:
+        if not self.is_correcting:
+            return False
+        ctrl = self._controller
+        if ctrl is None or ctrl.current_candidate is None:
+            return False
+        c = ctrl.current_candidate
+        ctrl.correct_current(pixel_x, pixel_y, auto_advance=True)
+        if ctrl.current_frame_index is not None:
+            self.jumpToFrame(ctrl.current_frame_index)
+        self._sync_panel_with_controller()
+        self.window.statusBar().showMessage(
+            f"Frame {c.frame_index} corrected at ({pixel_x:.1f}, {pixel_y:.1f})"
+        )
+        return True
+
+    def deleteCurrentManualPoint(self) -> None:
+        self.window._deleteCurrentManualPoint()
 
     def onSelectedTrackChanged(self, *_args) -> None:
         current = self.window.selectedTrackId

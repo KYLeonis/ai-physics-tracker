@@ -112,7 +112,7 @@ TrackingRun.extra_fields["suggested_frame_review_v1"]
 - [x] **Slice 2 — Mining entry + queue controller**：复用 Task history 的 run 选择，接入 5.2
   background mining、身份复核、保存 active batch、同 run suppression、取消和上下文切换；
   用 application/GUI offscreen 测试证明 AC-1、AC-2、AC-8、AC-9，并顺带关闭 F4/F6。
-- [ ] **Slice 3 — Review/Correct/delete GUI**：实现审核区、导航、一次性 Correct 模式、完成统计
+- [x] **Slice 3 — Review/Correct/delete GUI**：实现审核区、导航、一次性 Correct 模式、完成统计
   和当前帧 manual 删除；刷新 dirty/Undo/Redo/marker/autosave 状态，用 GUI 测试证明 AC-2–AC-7。
 - [ ] **Slice 4 — Reliability matrix + review gate**：覆盖保存重开、中途退出、项目/video/track/run
   切换、候选已手工修改、取消/失败/迟到、Undo/Redo 交错；运行全回归与独立 review，修复并

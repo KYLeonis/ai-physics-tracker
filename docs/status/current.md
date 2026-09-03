@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 Slice 2 已完成，全部 611 测试通过；下一步进入 Slice 3**）
+- 最后更新：2026-09-03（**5.3 Slice 3 已完成，全部 616 测试通过；下一步释放 Subagents 审查并进入 Slice 4**）
 
 ---
 
@@ -15,10 +15,15 @@
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
-| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1-2 已完成；下一步 Slice 3） |
+| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1-3 已完成；下一步 Slice 4） |
 
 ## Recently Completed
 
+- **Phase 5.3 Slice 3 — Review/Correct/delete GUI (2026-09-03)**：
+  - 实现一次性 Correct 模式交互流：点击 Correct 按钮或按 C 键进入修正模式，画面点击即提交 manual point + 记录 `corrected` 状态 + 自动退出，按 Esc 或切换项干净取消且不产生脏状态。
+  - 实现当前帧 manual 点删除交互：仅当当前帧存在 active manual 点时使能删除按钮，删除后恢复原 AI 观测并将对应候选回滚为 pending；支持 Undo/Redo 恢复；明确提示保存后不可恢复。
+  - 实现完成统计展示（🎉 Review Complete）、候选状态与 AI 原始预测快照信息联动展示。
+  - 增加 5 个 GUI offscreen 测试（`tests/gui/test_suggested_frame_review_actions.py`），验证 AC-2–AC-7；全量回归 **616 passed**。
 - **Phase 5.3 Slice 2 — Mining entry + queue controller (2026-09-03)**：
   - 在 `TaskPanel` 与 `DifficultFrameReviewActions` 中实现挖掘发起与审核面板联动，支持 Top N 与 Min Gap 参数配置及中性取消（AC-9，F4）。
   - 实现基于 Task history 的 run 选中与合法性校验（仅限当前 Track 的 completed infer run，AC-1）。
@@ -82,5 +87,6 @@
 
 ## Next Recommended Action
 
-1. 提交 Slice 2 变更（Conventional Commit: `feat: implement mining entry and review queue controller (Phase 5.3 Slice 2)`）。
-2. 开始 Phase 5.3 Slice 3 — Review/Correct/delete GUI：实现审核工作区、一次性 Correct 模式与当前帧 manual 删除，刷新 dirty/Undo/Redo/marker 状态。
+1. 提交 Slice 3 变更（Conventional Commit: `feat: implement review, correct, and manual point deletion GUI (Phase 5.3 Slice 3)`）。
+2. 执行独立 Review（2 个并发 Reviewer 子智能体审查 Slice 1-3 健壮性）。
+3. 进入 Phase 5.3 Slice 4 — Reliability matrix + review gate：全量边界测试与 Human Review。

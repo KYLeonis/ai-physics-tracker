@@ -58,6 +58,7 @@ class TaskPanel(QDockWidget):
     reviewSkipRequested = Signal()
     reviewCorrectRequested = Signal()
     reviewCandidateJumpRequested = Signal(int)
+    deleteManualPointRequested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("AI tasks", parent)
@@ -190,13 +191,19 @@ class TaskPanel(QDockWidget):
         self.reviewAcceptButton = QPushButton("Accept (A)")
         self.reviewSkipButton = QPushButton("Skip (S)")
         self.reviewCorrectButton = QPushButton("Correct (C)")
+        self.deleteManualPointButton = QPushButton("Delete Manual")
         self.reviewAcceptButton.setEnabled(False)
         self.reviewSkipButton.setEnabled(False)
         self.reviewCorrectButton.setEnabled(False)
+        self.deleteManualPointButton.setEnabled(False)
+        self.deleteManualPointButton.setToolTip(
+            "Delete active manual point on current track at current frame (Undoable before save; non-recoverable after save)"
+        )
         actionRow = QHBoxLayout()
         actionRow.addWidget(self.reviewAcceptButton)
         actionRow.addWidget(self.reviewSkipButton)
         actionRow.addWidget(self.reviewCorrectButton)
+        actionRow.addWidget(self.deleteManualPointButton)
 
         self.reviewCandidatesList = QListWidget()
         self.reviewCandidatesList.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
@@ -293,6 +300,7 @@ class TaskPanel(QDockWidget):
         self.reviewAcceptButton.clicked.connect(lambda: self.reviewAcceptRequested.emit())
         self.reviewSkipButton.clicked.connect(lambda: self.reviewSkipRequested.emit())
         self.reviewCorrectButton.clicked.connect(lambda: self.reviewCorrectRequested.emit())
+        self.deleteManualPointButton.clicked.connect(lambda: self.deleteManualPointRequested.emit())
         self.reviewCandidatesList.itemDoubleClicked.connect(self._onReviewCandidateDoubleClicked)
 
     def trainingParameters(self) -> TrainingParams:
@@ -611,6 +619,9 @@ class TaskPanel(QDockWidget):
             self.reviewAcceptButton.setEnabled(False)
             self.reviewSkipButton.setEnabled(False)
             self.reviewCorrectButton.setEnabled(False)
+            self.reviewCorrectButton.setText("Correct (C)")
+            self.reviewCorrectButton.setStyleSheet("")
+            self.deleteManualPointButton.setEnabled(False)
             self.reviewCandidatesList.clear()
             return
 
@@ -621,9 +632,14 @@ class TaskPanel(QDockWidget):
         skp = summary.skipped_count
         cor = summary.corrected_count
 
-        self.reviewProgressLabel.setText(
-            f"Review: {rev}/{tot} reviewed ({pen} pending · {acc} accepted · {skp} skipped · {cor} corrected)"
-        )
+        if pen == 0 and tot > 0:
+            self.reviewProgressLabel.setText(
+                f"🎉 Review Complete: all {tot} reviewed ({acc} accepted · {skp} skipped · {cor} corrected)"
+            )
+        else:
+            self.reviewProgressLabel.setText(
+                f"Review: {rev}/{tot} reviewed ({pen} pending · {acc} accepted · {skp} skipped · {cor} corrected)"
+            )
 
         curr = controller.current_candidate
         idx = controller.current_index
@@ -636,19 +652,28 @@ class TaskPanel(QDockWidget):
                     f"conf={curr.prediction.confidence:.2f}"
                 )
             reasons_str = ", ".join(curr.reasons) if curr.reasons else "none"
+            guidance = "\n👉 Correct mode: click video to place point (Esc to cancel)" if controller.is_correcting else ""
             self.candidateDetailsLabel.setText(
                 f"Candidate {idx + 1}/{tot} (Frame {curr.frame_index}) · Status: {disp.upper()}\n"
                 f"AI: {pred_str} · Score: {curr.total_score:.3f}\n"
-                f"Reasons: {reasons_str}"
+                f"Reasons: {reasons_str}{guidance}"
             )
             self.reviewAcceptButton.setEnabled(True)
             self.reviewSkipButton.setEnabled(True)
             self.reviewCorrectButton.setEnabled(True)
+            if controller.is_correcting:
+                self.reviewCorrectButton.setText("Click Video...")
+                self.reviewCorrectButton.setStyleSheet("font-weight: bold; background-color: #ffe0b2;")
+            else:
+                self.reviewCorrectButton.setText("Correct (C)")
+                self.reviewCorrectButton.setStyleSheet("")
         else:
             self.candidateDetailsLabel.setText("No candidate selected")
             self.reviewAcceptButton.setEnabled(False)
             self.reviewSkipButton.setEnabled(False)
             self.reviewCorrectButton.setEnabled(False)
+            self.reviewCorrectButton.setText("Correct (C)")
+            self.reviewCorrectButton.setStyleSheet("")
 
         self.reviewPrevButton.setEnabled(controller.can_navigate_previous)
         self.reviewNextButton.setEnabled(controller.can_navigate_next)
