@@ -67,7 +67,8 @@
 
 1. **用户确认 5.3 mini-plan**：重点批准
    `TrackingRun.extra_fields["suggested_frame_review_v1"]` 持久化约定、审核事务的 scoped
-   Undo/Redo，以及“删除当前 active manual 点并恢复 AI 点”的交互语义。
+   Undo/Redo，以及“删除当前 active manual 点并恢复 AI 点；保存前可 Undo、保存后不可恢复”
+   的交互语义。
 2. 批准后：新增 ADR-0013 → 创建 GitHub Issue 并同步计划 → 建立
    `feat/p5.3-suggested-frame-review` → 从 Slice 1 开始实现。
 3. **另行确认 push**：本地 `main` 含 Windows CI 修复 `351ea1b`，目前领先 `origin/main` 1 commit；

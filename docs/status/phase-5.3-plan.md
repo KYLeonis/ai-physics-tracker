@@ -24,6 +24,8 @@
   Accept/Skip 的帧，新 infer run 可重新评估，Correct 的 manual point 长期保留。
 - 增加“删除当前帧人工点”交互：只允许删除当前 Track/当前帧的 active manual point，
   恢复被该点遮蔽的 AI observation；若该点来自 Correct，同时把对应候选恢复为 pending。
+- 删除沿用现有 `TrackStore.delete_manual_point` 的硬删除语义：下一次保存前可 Undo；保存会清空
+  Undo/Redo，保存后不能从项目内恢复该 manual 点。UI 必须明确提示这个边界。
 - Accept/Skip/Correct/删除均进入同一 Undo/Redo 历史边界；点、disposition 和 marker 一起恢复。
 - 完成 5.2 遗留 F4/F6：代表帧与 mining 都有可见取消入口，取消显示 `Cancelled` 而非
   `Failed`；算法下拉使用 item data 显式保存算法 ID。
@@ -77,7 +79,7 @@ TrackingRun.extra_fields["suggested_frame_review_v1"]
 - [ ] Undo/Redo 对 Accept、Skip、Correct 与删除人工点均保持原子：disposition、manual/AI
   生效关系、DerivedData stale 状态和 marker 一致，不回滚无关 TrackingRun 生命周期。
 - [ ] 删除操作只删除当前 Track/当前帧 active manual point并恢复其直接遮蔽的 AI 点；没有
-  manual 点时禁用；删除 Correct 点会把其候选恢复为 pending，且可 Undo。
+  manual 点时禁用；删除 Correct 点会把其候选恢复为 pending，且可 Undo；UI 明示保存后不可恢复。
 - [ ] 同一 infer run 的后续 mining 不再建议已 Accept/Skip 帧；新 infer run 可重新建议；现有
   manual 帧（包括 Correct）继续由 5.2 规则排除（R2.8）。
 - [ ] 代表帧选取与困难帧 mining 都可由用户取消，取消态不显示为失败；算法 ID 不依赖显示文本。
