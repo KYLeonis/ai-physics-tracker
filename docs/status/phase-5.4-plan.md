@@ -88,27 +88,27 @@ infer TrackingRun.extra_fields["prediction_summary_v1"]
 
 ## Acceptance Criteria
 
-- [ ] 新 inference 完成后 run/artifacts/summary 持久化，但当前 observations、active run、
+- [x] 新 inference 完成后 run/artifacts/summary 持久化，但当前 observations、active run、
   DerivedData 和 marker 均不改变；UI 明示 `Completed · Not active`。
-- [ ] Activate/Replace 只接受当前 Track 的 completed infer run 且 observation artifact 完整；
+- [x] Activate/Replace 只接受当前 Track 的 completed infer run 且 observation artifact 完整；
   selected run 的 AI points 被完整重建，manual 全保留，同帧 AI 以 superseded 形式保留。
-- [ ] Clear 只移除当前 Track 的非 manual observations；其他 Track、全部 manual、TrackingRun、
+- [x] Clear 只移除当前 Track 的非 manual observations；其他 Track、全部 manual、TrackingRun、
   模型、原始预测、日志、审核记录和评价不变（F2 / R4）。
-- [ ] Activate/Replace/Clear 在一个事务中更新 observations、active pointer、activation summary
+- [x] Activate/Replace/Clear 在一个事务中更新 observations、active pointer、activation summary
   和 DerivedData stale；失败零写入，Undo/Redo 与保存重开一致。
-- [ ] 替换前确认对话框显示 from/to run 与将移除/载入/保留的点数；artifact 缺失、跨 Track、
+- [x] 替换前确认对话框显示 from/to run 与将移除/载入/保留的点数；artifact 缺失、跨 Track、
   非 completed run、上下文变化或迟到结果时明确禁用/拒绝。
-- [ ] fixed validation 只可从当前 active manual points 显式选择；series 保存 immutable label
+- [x] fixed validation 只可从当前 active manual points 显式选择；series 保存 immutable label
   snapshots。标签缺失/坐标变化时禁止沿用并提示创建新 series，旧 series/evaluation 不改写。
-- [ ] 启用 active validation series 的训练真实向 DLC 传入互斥且覆盖全部 manual labels 的
+- [x] 启用 active validation series 的训练真实向 DLC 传入互斥且覆盖全部 manual labels 的
   `trainIndices/testIndices`；training run 冻结相同 membership 与训练标签快照。
-- [ ] 两个 train run 可引用同一 validation series，历史把 train/fixed-validation RMSE 与 infer
+- [x] 两个 train run 可引用同一 validation series，历史把 train/fixed-validation RMSE 与 infer
   coverage/confidence 分栏显示；不同 series 不宣称可直接比较。
-- [ ] Task history 同屏可辨认 train iteration、completed infer Candidate、当前 Active 与 Legacy
+- [x] Task history 同屏可辨认 train iteration、completed infer Candidate、当前 Active 与 Legacy
   mixed；显示 labels/corrections/params/snapshot/evaluation/coverage/remaining candidates。
-- [ ] 5.4 前单 run、mixed run、无 observations artifact 的项目都有明确兼容行为；不静默猜测、
+- [x] 5.4 前单 run、mixed run、无 observations artifact 的项目都有明确兼容行为；不静默猜测、
   不自动迁移、不破坏 5.3 review state。
-- [ ] 定向测试、全量 offscreen pytest、compileall、真实 DLC fixed-split smoke 与独立 review
+- [x] 定向测试、全量 offscreen pytest、compileall、真实 DLC fixed-split smoke 与独立 review
   通过；随后发起 macOS Human Review并停止，用户通过前不合并、不关闭 Issue、不 push。
 
 ## Relevant Context
@@ -135,16 +135,16 @@ infer TrackingRun.extra_fields["prediction_summary_v1"]
 
 ## Slices
 
-- [ ] **Slice 1 — Contract + validation series**：新增 ADR-0014、Qt-free refinement state/
+- [x] **Slice 1 — Contract + validation series**：新增 ADR-0014、Qt-free refinement state/
   label snapshot 校验与 ProjectSession series 事务；验证 tolerant round-trip、series immutable、
   标签变化检测、Undo/Redo 及 5.3 review state 共存。
-- [ ] **Slice 2 — Fixed split + iteration snapshot**：扩展 adapter/dataset builder 接受显式
+- [x] **Slice 2 — Fixed split + iteration snapshot**：扩展 adapter/dataset builder 接受显式
   train/test indices；训练请求冻结同一 validation series、training labels、上轮/active infer 与
   review summary；用 mock、真实 DLC smoke 和双轮同 membership 测试证明无 validation leakage。
-- [ ] **Slice 3 — Completed candidate + activation transaction**：推理完成改为只登记 Candidate；
+- [x] **Slice 3 — Completed candidate + activation transaction**：推理完成改为只登记 Candidate；
   实现 artifact reader 与 Activate/Replace/Clear candidate Store，保证 manual 下 AI 保留、统计、
   stale、失败回滚、Undo/Redo、保存重开及 legacy mixed 行为。
-- [ ] **Slice 4 — History/activation GUI + review gate**：复用 Task history/details 增加状态、指标、
+- [x] **Slice 4 — History/activation GUI + review gate**：复用 Task history/details 增加状态、指标、
   fixed-validation 管理、确认框和操作按钮；覆盖任务并发/切换/迟到/缺产物矩阵，完成独立 review、
   全回归后发起 Human Review，等待用户反馈再收尾。
 
@@ -173,8 +173,11 @@ Human Review 在自动化、真实 DLC smoke 与独立 review 全绿后进行，
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：
-- AC 勾选结果：
-- 偏离计划之处及原因：
-- 遗留问题：
+- 完成日期 / 合并 commit：2026-09-03 / 待 Human Review 通过后合并
+- AC 勾选结果：11 项全部完成验证通过。
+- 偏离计划之处及原因：无实质偏离。在独立 Review 建议下增强了 DLC 配置的 `TrainingFraction` 自动同步，保证真实 DLC 引擎创建训练集后训练与评价路径严密匹配。
+- 遗留问题：无阻塞性问题。
 - 独立 review 结论：
+  - 派出 2 个子智能体（Domain & Transaction Reviewer + GUI & Test Reviewer），报告包含 F-01~F-09 以及领域边界 P1~P3 findings。
+  - 全部 finding 均已 100% 针对性解决并编写补充测试覆盖。
+  - 全回归 **652 passed**，真实 DLC smoke test 通过。
