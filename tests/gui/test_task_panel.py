@@ -100,3 +100,102 @@ def test_activity_progress_unknown_state_and_bounded_log(qtbot: QtBot) -> None:
         panel.appendLog(str(index))
     assert panel.logText.document().blockCount() <= 2_000
     assert "2499" in panel.logText.toPlainText()
+
+
+def test_task_panel_activation_controls_and_state_transitions(qtbot: QtBot) -> None:
+    from ai_physics_tracker.application.refinement_history import (
+        RefinementState,
+        ValidationLabelSnapshot,
+        ValidationSeries,
+    )
+
+    panel = _panel(qtbot)
+    video_id = uuid4()
+    track_id = uuid4()
+
+    run1 = mark_run_completed(create_tracking_run(video_id, track_id, "infer"))
+    run2 = mark_run_completed(create_tracking_run(video_id, track_id, "infer"))
+
+    panel.setRuns((run1, run2), track_id)
+    panel.setRefinementInfo(
+        active_status="none",
+        active_run_id=None,
+        ref_state=None,
+        validation_valid=False,
+        validation_reason=None,
+    )
+
+    assert "None" in panel.activeRunLabel.text()
+    assert "None" in panel.activeValidationLabel.text()
+    assert not panel.activateButton.isEnabled()
+    assert not panel.replaceButton.isEnabled()
+    assert not panel.clearActivationButton.isEnabled()
+
+    # Select Run 1 (candidate, not active, no other active run)
+    panel.historyList.setCurrentRow(0)
+    assert panel.activateButton.isEnabled()
+    assert not panel.replaceButton.isEnabled()
+    assert not panel.clearActivationButton.isEnabled()
+
+    # Click Activate
+    emitted_activate = []
+    panel.activateRunRequested.connect(emitted_activate.append)
+    panel.activateButton.click()
+    assert emitted_activate == [run1.run_id]
+
+    # Now simulate Run 1 becoming active
+    val_series = ValidationSeries(
+        series_id=uuid4(),
+        name="Test Series",
+        created_at="2026-09-03T12:00:00Z",
+        label_snapshots=(
+            ValidationLabelSnapshot(uuid4(), 1, 10.0, 20.0, "2026-09-03T12:00:00Z"),
+            ValidationLabelSnapshot(uuid4(), 3, 30.0, 40.0, "2026-09-03T12:00:00Z"),
+        ),
+    )
+    ref_state = RefinementState(
+        active_infer_run_id=run1.run_id,
+        active_validation_series_id=val_series.series_id,
+        validation_series=(val_series,),
+    )
+    panel.setRefinementInfo(
+        active_status="active",
+        active_run_id=run1.run_id,
+        ref_state=ref_state,
+        validation_valid=True,
+        validation_reason=None,
+    )
+
+    assert str(run1.run_id)[:8] in panel.activeRunLabel.text()
+    assert "Test Series" in panel.activeValidationLabel.text()
+    assert "2 frames, Valid" in panel.activeValidationLabel.text()
+
+    # Since row 0 (Run 1) is active: Activate and Replace disabled, Clear enabled
+    assert not panel.activateButton.isEnabled()
+    assert not panel.replaceButton.isEnabled()
+    assert panel.clearActivationButton.isEnabled()
+
+    # Select Run 2 (completed, not active, but track HAS active run): Replace enabled!
+    panel.historyList.setCurrentRow(1)
+    assert not panel.activateButton.isEnabled()
+    assert panel.replaceButton.isEnabled()
+    assert panel.clearActivationButton.isEnabled()
+
+    # Click Replace
+    emitted_replace = []
+    panel.replaceRunRequested.connect(emitted_replace.append)
+    panel.replaceButton.click()
+    assert emitted_replace == [run2.run_id]
+
+    # Click Clear
+    emitted_clear = []
+    panel.clearActivationRequested.connect(lambda: emitted_clear.append(True))
+    panel.clearActivationButton.click()
+    assert emitted_clear == [True]
+
+    # Click Validation
+    emitted_val = []
+    panel.manageValidationRequested.connect(lambda: emitted_val.append(True))
+    panel.manageValidationButton.click()
+    assert emitted_val == [True]
+

@@ -59,6 +59,10 @@ class TaskPanel(QDockWidget):
     reviewCorrectRequested = Signal()
     reviewCandidateJumpRequested = Signal(int)
     deleteManualPointRequested = Signal()
+    activateRunRequested = Signal(object)
+    replaceRunRequested = Signal(object)
+    clearActivationRequested = Signal()
+    manageValidationRequested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("AI tasks", parent)
@@ -253,8 +257,38 @@ class TaskPanel(QDockWidget):
         activityLayout.addWidget(self.progressBar)
         activityLayout.addWidget(self.metricsLabel)
 
+        self._active_status: str = "none"
+        self._active_run_id: UUID | None = None
+        self._runs_by_id: dict[UUID, TrackingRun] = {}
+
+        self.activeRunLabel = QLabel("Active AI: None")
+        self.activeValidationLabel = QLabel("Validation: None")
+        self.activeValidationLabel.setWordWrap(True)
+
+        activationActionRow = QHBoxLayout()
+        self.activateButton = QPushButton("Activate")
+        self.activateButton.setEnabled(False)
+        self.replaceButton = QPushButton("Replace Active")
+        self.replaceButton.setEnabled(False)
+        self.clearActivationButton = QPushButton("Clear AI")
+        self.clearActivationButton.setEnabled(False)
+        self.manageValidationButton = QPushButton("Validation...")
+
+        activationActionRow.addWidget(self.activateButton)
+        activationActionRow.addWidget(self.replaceButton)
+        activationActionRow.addWidget(self.clearActivationButton)
+        activationActionRow.addWidget(self.manageValidationButton)
+
+        self.activateButton.clicked.connect(self._onActivateClicked)
+        self.replaceButton.clicked.connect(self._onReplaceClicked)
+        self.clearActivationButton.clicked.connect(self.clearActivationRequested)
+        self.manageValidationButton.clicked.connect(self.manageValidationRequested)
+
         historyLayout = QVBoxLayout()
-        historyLayout.addWidget(QLabel("Task history"))
+        historyLayout.addWidget(QLabel("Task history & activation"))
+        historyLayout.addWidget(self.activeRunLabel)
+        historyLayout.addWidget(self.activeValidationLabel)
+        historyLayout.addLayout(activationActionRow)
         historyLayout.addWidget(self.historyList)
         historyLayout.addWidget(self.logText, 1)
 
@@ -376,6 +410,7 @@ class TaskPanel(QDockWidget):
         if self.modelList.currentItem() is None and self.modelList.count():
             self.modelList.setCurrentRow(self.modelList.count() - 1)
         current_history = self._itemRunId(self.historyList.currentItem())
+        self._runs_by_id = {run.run_id: run for run in runs}
         with QSignalBlocker(self.historyList):
             self.historyList.clear()
             for run in runs:
@@ -385,6 +420,7 @@ class TaskPanel(QDockWidget):
                 self.historyList.addItem(item)
                 if run.run_id == current_history:
                     self.historyList.setCurrentItem(item)
+        self._updateActivationButtonStates()
 
     def setActivity(
         self,
@@ -455,6 +491,85 @@ class TaskPanel(QDockWidget):
         run_id = self._itemRunId(item)
         if run_id is not None:
             self.runSelected.emit(run_id)
+        self._updateActivationButtonStates()
+
+    def _onActivateClicked(self) -> None:
+        item = self.historyList.currentItem()
+        run_id = self._itemRunId(item)
+        if run_id is not None:
+            self.activateRunRequested.emit(run_id)
+
+    def _onReplaceClicked(self) -> None:
+        item = self.historyList.currentItem()
+        run_id = self._itemRunId(item)
+        if run_id is not None:
+            self.replaceRunRequested.emit(run_id)
+
+    def _updateActivationButtonStates(self) -> None:
+        item = self.historyList.currentItem()
+        run_id = self._itemRunId(item)
+        run = self._runs_by_id.get(run_id) if run_id else None
+
+        is_completed_infer = (
+            run is not None
+            and run.task_type == "infer"
+            and run.status == "completed"
+        )
+        is_active = (run_id is not None and run_id == self._active_run_id)
+        has_active_obs = self._active_status in ("active", "legacy_inferred", "legacy_mixed")
+
+        if is_completed_infer and not is_active:
+            if has_active_obs:
+                self.activateButton.setEnabled(False)
+                self.replaceButton.setEnabled(True)
+            else:
+                self.activateButton.setEnabled(True)
+                self.replaceButton.setEnabled(False)
+        else:
+            self.activateButton.setEnabled(False)
+            self.replaceButton.setEnabled(False)
+
+        self.clearActivationButton.setEnabled(has_active_obs)
+
+    def setRefinementInfo(
+        self,
+        active_status: str,
+        active_run_id: UUID | None,
+        ref_state: Any | None,
+        validation_valid: bool,
+        validation_reason: str | None,
+    ) -> None:
+        """更新当前 Track 的 AI 激活状态与固定验证集状态。"""
+        self._active_status = active_status
+        self._active_run_id = active_run_id
+
+        if active_status == "active" and active_run_id is not None:
+            self.activeRunLabel.setText(f"Active AI: <b>{str(active_run_id)[:8]}</b>")
+        elif active_status == "legacy_inferred" and active_run_id is not None:
+            self.activeRunLabel.setText(f"Active AI: <b>{str(active_run_id)[:8]}</b> (legacy)")
+        elif active_status == "legacy_mixed":
+            self.activeRunLabel.setText("Active AI: <b>Legacy mixed</b>")
+        else:
+            self.activeRunLabel.setText("Active AI: None")
+
+        active_series = getattr(ref_state, "active_series", None) if ref_state else None
+        if active_series:
+            n_frames = len(active_series.label_snapshots)
+            status_desc = "Valid" if validation_valid else f"Invalid ({validation_reason or 'modified'})"
+            self.activeValidationLabel.setText(
+                f"Validation: <b>'{active_series.name}'</b> ({n_frames} frames, {status_desc})"
+            )
+        else:
+            self.activeValidationLabel.setText("Validation: None")
+
+        for index in range(self.historyList.count()):
+            item = self.historyList.item(index)
+            r_id = self._itemRunId(item)
+            r = self._runs_by_id.get(r_id)
+            if r:
+                item.setText(self._runLabel(r))
+
+        self._updateActivationButtonStates()
 
     def _setReason(
         self,
@@ -483,9 +598,23 @@ class TaskPanel(QDockWidget):
             return value
         return None
 
-    @staticmethod
-    def _runLabel(run: TrackingRun) -> str:
-        label = f"{run.task_type} · {run.status} · {str(run.run_id)[:8]}"
+    def _runLabel(self, run: TrackingRun) -> str:
+        iter_suffix = ""
+        iter_info = run.extra_fields.get("refinement_iteration_v1")
+        if isinstance(iter_info, dict) and "iteration_index" in iter_info:
+            iter_suffix = f" · iter {iter_info['iteration_index']}"
+
+        if run.task_type == "infer":
+            if run.run_id == self._active_run_id:
+                status_str = "Active"
+            elif run.status == "completed":
+                status_str = "Completed · Not active"
+            else:
+                status_str = run.status.capitalize()
+        else:
+            status_str = run.status.capitalize()
+
+        label = f"{run.task_type} · {status_str} · {str(run.run_id)[:8]}{iter_suffix}"
         if run.model_snapshot:
             label += f" · {run.model_snapshot.replace(chr(92), chr(47)).rsplit(chr(47), 1)[-1]}"
         return label
