@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 完成状态复核通过；5.4 mini-plan 待确认**）
+- 最后更新：2026-09-03（**5.4 mini-plan 已批准；按用户指令暂停执行**）
 
 ---
 
@@ -16,7 +16,7 @@
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
-| Subphase | 5.4 — Iteration History & Result Activation | 📝 mini-plan 待用户确认 |
+| Subphase | 5.4 — Iteration History & Result Activation | ✅ mini-plan 已批准；⏸ 暂停执行 |
 
 ## Recently Completed
 
@@ -91,9 +91,10 @@
 
 ## Current Goal
 
-**5.4 mini-plan 已形成草案，等待用户确认范围、持久化约定与 fixed-split 边界调整。**
+**5.4 mini-plan 已获批准，但按用户指令暂停执行。**
 
-计划见 [phase-5.4-plan.md](phase-5.4-plan.md)。确认前不创建 5.4 Issue/分支、不写产品代码。
+计划见 [phase-5.4-plan.md](phase-5.4-plan.md)。目前尚未新增 ADR-0014、创建 5.4 Issue/开发
+分支或开始任何 Slice。
 
 ## Current Decisions / Deferred Checks
 
@@ -114,9 +115,8 @@
 
 ## Next Recommended Action
 
-1. **用户确认 5.4 mini-plan**：重点批准 Track/TrackingRun `extra_fields` 的 refinement 持久化
-   约定、新 inference 默认 `Completed · Not active`、显式 Activate/Replace/Clear，以及把
-   DLC `trainIndices/testIndices` 接线从 5.5 提前到 5.4 以避免 validation leakage。
-2. 批准后：新增 ADR-0014 → 同步 project-format/phase5 requirements → 创建 GitHub Issue 和
-   `feat/p5.4-result-activation-history` → 从 Slice 1 开始。
-3. 本地计划文档提交后不自动 push；按红线等待用户明确授权。
+1. **保持暂停，不执行 Phase 5.4 mini-plan。**
+2. 用户明确要求恢复后，先新增 ADR-0014，并同步 `docs/spec/project-format.md` 与
+   `docs/spec/phase5-requirements.md`。
+3. 然后创建 Phase 5.4 GitHub Issue 和 `feat/p5.4-result-activation-history` 分支。
+4. 再进入 Slice 1：补统一 refinement 状态、固定验证集划分/训练排除与 round-trip 测试。

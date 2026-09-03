@@ -1,6 +1,6 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Accepted / Phase 5.0–5.3 已完成，5.4 mini-plan 待确认**
+> 状态：**Accepted / Phase 5.0–5.3 已完成，5.4 mini-plan 已接受、暂停执行**
 > 日期：2026-09-03
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
@@ -89,7 +89,8 @@
 
 ### 5.4 — Iteration History & Result Activation（F2）
 
-**状态**：📝 mini-plan 草案待用户确认，见 [phase-5.4-plan.md](phase-5.4-plan.md)。
+**状态**：✅ mini-plan 已接受；按用户指令暂停，Issue、分支与 Slice 均未开始。见
+[phase-5.4-plan.md](phase-5.4-plan.md)。
 
 **目标**：让不同推理结果可比较、可显式激活，并建立固定验证序列。
 
@@ -163,9 +164,9 @@
 ## 6. 当前入口
 
 5.0–5.3 已完成；5.3 记录见 [phase-5.3-plan.md](phase-5.3-plan.md) 与
-[phase-5.3-review.md](../reviews/phase-5.3-review.md)。5.4 mini-plan 已形成草案，等待用户确认
-result activation、fixed validation/history 持久化与 fixed-split 边界调整。
+[phase-5.3-review.md](../reviews/phase-5.3-review.md)。5.4 mini-plan 已获批准，但按用户指令
+暂停执行；Issue、开发分支与 Slice 均未开始。
 
 ## Result
 
-Phase 5 总计划已接受；Phase 5.0–5.3 已完成；5.4 mini-plan 待确认。
+Phase 5 总计划已接受；Phase 5.0–5.3 已完成；5.4 mini-plan 已接受并暂停执行。

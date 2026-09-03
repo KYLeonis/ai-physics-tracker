@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 5.4 Iteration History & Result Activation
 
-- Issue：待创建（计划确认后同步到 GitHub）
-- 分支：`feat/p5.4-result-activation-history`
-- 日期 / 状态：2026-09-03 · 📝 Draft，等待用户确认
+- Issue：待创建（用户恢复执行后同步到 GitHub）
+- 分支：`feat/p5.4-result-activation-history`（尚未创建）
+- 日期 / 状态：2026-09-03 · ✅ Accepted；按用户指令暂停，尚未执行 Slice
 
 ## Goal
 
@@ -46,7 +46,7 @@
 - 不删除旧 run、模型、HDF5/CSV、observation artifact、审核记录或既有 evaluation。
 - 不要求本 Subphase 完成真实的 resume/retrain refinement 改善；该闭环仍在 5.5–5.6 验收。
 
-## Persistence and Behavior Contract（待批准）
+## Persistence and Behavior Contract（已批准，待执行时记 ADR）
 
 沿用 schema v1 的 tolerant `extra_fields`，不增加顶层字段：
 
@@ -82,7 +82,7 @@ infer TrackingRun.extra_fields["prediction_summary_v1"]
 - 新 inference 无论当前是否已有 AI 点都保留完整 completed result；不再出现 first-wins 导致
   “0 inserted = 没有可用新结果”的产品语义。
 
-这是新增的稳定持久化约定。计划批准后，先新增 ADR-0014 并同步
+这是新增的稳定持久化约定，已随 mini-plan 获批。用户恢复执行后，先新增 ADR-0014 并同步
 `docs/spec/project-format.md` / `docs/spec/phase5-requirements.md`；若实现发现必须修改顶层 schema，
 立即停下并重新请求批准。
 
