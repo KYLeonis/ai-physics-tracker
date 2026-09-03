@@ -577,7 +577,10 @@ class TestPrepareDifficultFrameRequest:
 
         session, _video, _track, run, prediction_path, _m = \
             self._make_session_with_infer_run(tmp_path, synthetic_video_path)
-        _write_prediction_csv(prediction_path, frame_count=10)  # 重写 → mtime 变化
+        prediction_path.write_text(
+            prediction_path.read_text(encoding="utf-8") + "# tampered\n",
+            encoding="utf-8",
+        )  # 改变文件大小，避免依赖平台时间戳分辨率
         with pytest.raises(Exception, match="artifact has changed"):
             prepare_difficult_frame_request(session, run.run_id, MiningParams())
 
