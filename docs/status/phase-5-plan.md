@@ -89,7 +89,7 @@
 
 ### 5.4 — Iteration History & Result Activation（F2）
 
-**状态**：✅ mini-plan 已接受；按用户指令暂停，Issue、分支与 Slice 均未开始。见
+**状态**：✅ 2026-09-03 完成；Issue #21，Human Review 通过。见
 [phase-5.4-plan.md](phase-5.4-plan.md)。
 
 **目标**：让不同推理结果可比较、可显式激活，并建立固定验证序列。

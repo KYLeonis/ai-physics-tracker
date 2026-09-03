@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**Phase 5.4 Slices 1–4 全部完成，子智能体审查闭环，全回归 652 passed，真实 DLC smoke 通过，准备发起 Human Review**）
+- 最后更新：2026-09-03（**Phase 5.4 Iteration History & Result Activation 验收通过并收尾合并；下一步进入 Phase 5.5**）
 
 ---
 
@@ -16,9 +16,13 @@
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
-| Subphase | 5.4 — Iteration History & Result Activation | 🚧 进行中（Slices 1–4 完成，子智能体审查闭环，准备发起 Human Review） |
+| Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, Human Review 通过) |
 
 ## Recently Completed
+
+- **Phase 5.4 收尾与 Human Review 通过（2026-09-03）**：
+  - 经用户真人真机测试，确认推理候选隔离（推理后不自动覆盖）、结果显式激活与原子替换/清除、手工点优先保留与同帧 AI 复原、固定验证集冻结展示与 Undo/Redo 完全符合预期，正式批准通过验收。
+  - 分支 `feat/p5.4-result-activation-history` 合并入 `main`，全量 652 项测试全绿，文档同步并推送到 GitHub 远程。
 
 - **Phase 5.4 Slices 1–4 结果激活、迭代历史与固定验证集（2026-09-03）**：
   - **Slice 1 (ADR-0014 与数据契约)**：创建 ADR-0014，建立 `refinement_state_v1`（包含 `ValidationSeries`、`ValidationLabelSnapshot`、`ActivationRecord`、`RefinementIterationInfo` 与 `PredictionSummary`），实现标签一致性校验及 Undo/Redo 隔离。
@@ -121,6 +125,6 @@
 
 ## Next Recommended Action
 
-1. **发起 Phase 5.4 Human Review，停止并等待用户真机交互测试反馈。**
-2. 用户确认验收通过后，在 `main` 分支执行 `--no-ff` 合并，推送至远程并关闭 GitHub Issue #21。
-3. 随后按照 roadmap 顺序进入 Phase 5.5（迭代对比与模型选择）。
+1. **保持暂停，等待下一条开发指令再进入 Phase 5.5。**
+2. 用户明确要求进入 Phase 5.5（Training Advisor & Retraining）后，编写 Phase 5.5 mini-plan，并创建对应 GitHub Issue 与工作分支。
+3. 按 mini-plan 逐步实现规则型 Training Advisor 与 DLC resume/restart。
