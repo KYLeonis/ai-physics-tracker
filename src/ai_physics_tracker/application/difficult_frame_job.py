@@ -161,15 +161,20 @@ def prepare_difficult_frame_request(
         p.frame_index for p in session.manual_points(track.track_id)
         if zone_start <= p.frame_index <= zone_end
     )
-    # AC-8 / R2.8: 排除本 run 历史已审阅的 accepted 和 skipped 帧
-    excluded_review_frames = get_excluded_frames_for_run(run)
+    # AC-8 / R2.8: 排除本 run 历史已审阅的 accepted 和 skipped 帧（过滤在有效帧范围内）
+    excluded_review_frames = frozenset(
+        f for f in get_excluded_frames_for_run(run) if 0 <= f < video.frame_count
+    )
     all_excluded = manual_frames | excluded_review_frames
 
-    # prior_correct_frames 若未显式传入，自动从本 run 的审核记录中读取
-    resolved_prior_correct = (
+    # prior_correct_frames 若未显式传入，自动从本 run 的审核记录中读取（过滤在有效帧范围内）
+    raw_prior_correct = (
         frozenset(prior_correct_frames)
         if prior_correct_frames
         else get_prior_correct_frames_for_run(run)
+    )
+    resolved_prior_correct = frozenset(
+        f for f in raw_prior_correct if 0 <= f < video.frame_count
     )
 
     mining_request = DifficultFrameMiningRequest(

@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 Slice 3 已完成，全部 616 测试通过；下一步释放 Subagents 审查并进入 Slice 4**）
+- 最后更新：2026-09-03（**5.3 Slice 1-3 独立审查完成，12 项 Finding 全部闭环，621 测试通过；下一步进入 Slice 4**）
 
 ---
 
@@ -15,10 +15,20 @@
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
-| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1-3 已完成；下一步 Slice 4） |
+| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1-3 及独立审查已完成；下一步 Slice 4） |
 
 ## Recently Completed
 
+- **Phase 5.3 Slices 1–3 独立代码审查与健壮性加固（2026-09-03）**：
+  - 启动 2 个只读 Reviewer 智能体（Domain & Session Reviewer、GUI & Concurrency Reviewer）并发审查。
+  - 识别并彻底修复全部 12 项 finding（5 项领域/会话、7 项 GUI/并发）：
+    - 修复 `accept`/`skip` 允许对已修正帧操作导致的 manual point 孤立问题（D-01）。
+    - 修复跨 Track 选中 run 激活审核的上下文错乱（G-01）。
+    - 修复异步解码在途时删除 manual point 竞态条件（G-02）。
+    - 修复时间轴拖动/步进/播放未退出 Correct 模式导致的坐标错位（G-03）。
+    - 修复空队列快捷键 `A`/`S` 崩溃隐患及输入框焦点屏蔽（G-04、G-08）。
+    - 完善 Accept/Skip 脏状态与自动保存触发，完善取消 Correct 时的标注模式退出。
+  - 新增 5 个自动化测试，全量测试 **621 passed**，归档 `docs/reviews/phase-5.3-review.md`。
 - **Phase 5.3 Slice 3 — Review/Correct/delete GUI (2026-09-03)**：
   - 实现一次性 Correct 模式交互流：点击 Correct 按钮或按 C 键进入修正模式，画面点击即提交 manual point + 记录 `corrected` 状态 + 自动退出，按 Esc 或切换项干净取消且不产生脏状态。
   - 实现当前帧 manual 点删除交互：仅当当前帧存在 active manual 点时使能删除按钮，删除后恢复原 AI 观测并将对应候选回滚为 pending；支持 Undo/Redo 恢复；明确提示保存后不可恢复。
@@ -87,6 +97,5 @@
 
 ## Next Recommended Action
 
-1. 提交 Slice 3 变更（Conventional Commit: `feat: implement review, correct, and manual point deletion GUI (Phase 5.3 Slice 3)`）。
-2. 执行独立 Review（2 个并发 Reviewer 子智能体审查 Slice 1-3 健壮性）。
-3. 进入 Phase 5.3 Slice 4 — Reliability matrix + review gate：全量边界测试与 Human Review。
+1. 提交 Slices 1–3 独立审查加固变更（Conventional Commit: `fix: address review findings across domain transactions and gui concurrency (Phase 5.3 Slices 1-3 review)`）。
+2. 开始 Phase 5.3 Slice 4 — Reliability matrix + review gate：覆盖保存重开、中途退出、项目/video/track/run 切换、Undo/Redo 交错等全量边界测试，并按规范发起 Human Review。

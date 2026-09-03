@@ -125,7 +125,14 @@ class DifficultFrameReviewActions(QObject):
             return
 
         run = next((r for r in session.tracking_runs() if r.run_id == run_id), None)
-        if run is not None and run.task_type == "infer" and run.status == "completed":
+        selected_track = self.window.selectedTrackId
+        if (
+            run is not None
+            and run.task_type == "infer"
+            and run.status == "completed"
+            and selected_track is not None
+            and run.track_id == selected_track
+        ):
             state = session.get_suggested_frame_review(run.run_id)
             if state is not None and state.active_batch is not None:
                 self._controller = ReviewQueueController(session, run.run_id)
@@ -374,20 +381,26 @@ class DifficultFrameReviewActions(QObject):
         self.window.seekFrame(frame_index)
 
     def acceptCurrent(self) -> None:
-        if self._controller is None:
+        if self._controller is None or self._controller.current_candidate is None:
             return
         self._controller.accept_current(auto_advance=True)
         if self._controller.current_frame_index is not None:
             self.jumpToFrame(self._controller.current_frame_index)
         self._sync_panel_with_controller()
+        self.window._refreshHistoryButtons()
+        self.window._refreshDeletePointButton()
+        self.window._register_mark_for_autosave()
 
     def skipCurrent(self) -> None:
-        if self._controller is None:
+        if self._controller is None or self._controller.current_candidate is None:
             return
         self._controller.skip_current(auto_advance=True)
         if self._controller.current_frame_index is not None:
             self.jumpToFrame(self._controller.current_frame_index)
         self._sync_panel_with_controller()
+        self.window._refreshHistoryButtons()
+        self.window._refreshDeletePointButton()
+        self.window._register_mark_for_autosave()
 
     @property
     def is_correcting(self) -> bool:
@@ -410,6 +423,7 @@ class DifficultFrameReviewActions(QObject):
         if self._controller is not None and self._controller.is_correcting:
             self._controller.set_correcting(False)
             self._sync_panel_with_controller()
+        self.window.videoView.set_annotation_mode(False)
 
     def handleCorrectClick(self, pixel_x: float, pixel_y: float) -> bool:
         if not self.is_correcting:
@@ -418,7 +432,17 @@ class DifficultFrameReviewActions(QObject):
         if ctrl is None or ctrl.current_candidate is None:
             return False
         c = ctrl.current_candidate
-        ctrl.correct_current(pixel_x, pixel_y, auto_advance=True)
+        if self.window.presented_frame_index != c.frame_index:
+            self.window.statusBar().showMessage(
+                f"Ignored click: current frame {self.window.presented_frame_index} does not match candidate frame {c.frame_index}"
+            )
+            return False
+        try:
+            ctrl.correct_current(pixel_x, pixel_y, auto_advance=True)
+        except (ProjectSessionError, ValueError) as error:
+            logger.error("correct suggested frame failed", exc_info=True)
+            self.window.statusBar().showMessage(f"Correction failed: {error}")
+            return False
         if ctrl.current_frame_index is not None:
             self.jumpToFrame(ctrl.current_frame_index)
         self._sync_panel_with_controller()
@@ -431,16 +455,22 @@ class DifficultFrameReviewActions(QObject):
         self.window._deleteCurrentManualPoint()
 
     def onSelectedTrackChanged(self, *_args) -> None:
+        if self.is_correcting:
+            self.cancelCorrectMode()
         current = self.window.selectedTrackId
         if self.busy and current != self._running_track_id:
             self._cancel_active_task()
             self._reset()
+            self.panel.setMineStatus("")
         self.onRunSelected(self._selected_run_id)
 
     def onProjectChanged(self, *_args) -> None:
+        if self.is_correcting:
+            self.cancelCorrectMode()
         if self.busy:
             self._cancel_active_task()
             self._reset()
+        self.panel.setMineStatus("")
         self._controller = None
         self._selected_run_id = None
         self.panel.setReviewBatch(None, None)
@@ -449,4 +479,4 @@ class DifficultFrameReviewActions(QObject):
     def shutdown(self) -> None:
         self._timer.stop()
         self._cancel_active_task()
-        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._executor.shutdown(wait=False, cancel_futures=False)

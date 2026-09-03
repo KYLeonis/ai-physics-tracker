@@ -623,7 +623,7 @@ def test_delete_manual_point_gui_interaction_and_revert_ac7(test_window: MainWin
     QTest.qWait(20)
 
     # 此时帧 3 具备 manual point -> 删除按钮使能
-    assert window.deletePointButton.isEnabled()
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.deletePointButton.isEnabled(), timeout=3000)
     assert panel.deleteManualPointButton.isEnabled()
 
     # 点击删除
@@ -707,4 +707,151 @@ def test_save_and_reopen_restores_review_state_ac5(test_window: MainWindow, tmp_
     assert summary.accepted_count == 1
     assert summary.corrected_count == 1
     assert summary.pending_count == 0
+
+
+def test_shortcuts_and_focus_widget_guard_f04_f08(test_window: MainWindow, tmp_path: Path):
+    """F-04 / F-08: 键盘快捷键 A/S 触发审核，但在输入框有焦点时被安全屏蔽。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    panel = window.trackingActions.panel
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.40),
+        components={},
+        raw_components={},
+        reasons=(),
+        total_score=0.5,
+    )
+    c2 = ReviewCandidate(
+        frame_index=2,
+        prediction=ReviewPredictionSnapshot(14.0, 24.0, 0.30),
+        components={},
+        raw_components={},
+        reasons=(),
+        total_score=0.6,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1, c2))
+    session.set_active_review_batch(valid_run.run_id, batch)
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    ctrl = window.reviewActions.controller
+    assert ctrl is not None
+    assert ctrl.current_index == 0
+
+    # 1. 无输入焦点时按 A -> 接受 candidate 1
+    QTest.keyClick(window, Qt.Key.Key_A)
+    QTest.qWait(20)
+    assert ctrl.state.reviewed_frames[1].disposition == "accepted"
+
+    # 2. 输入框获取焦点时按 S -> 快捷键被屏蔽，不会误跳过 candidate 2
+    panel.mineTopNSpinBox.setFocus()
+    assert window._isTypingInInputWidget()
+    QTest.keyClick(panel.mineTopNSpinBox, Qt.Key.Key_S)
+    QTest.qWait(20)
+    assert 2 not in ctrl.state.reviewed_frames
+
+    # 3. 清除焦点后按 S -> 成功跳过 candidate 2
+    panel.mineTopNSpinBox.clearFocus()
+    window.setFocus()
+    assert not window._isTypingInInputWidget()
+    QTest.keyClick(window, Qt.Key.Key_S)
+    QTest.qWait(20)
+    assert ctrl.state.reviewed_frames[2].disposition == "skipped"
+
+
+def test_empty_queue_shortcut_stability_f04(test_window: MainWindow, tmp_path: Path):
+    """F-04: 候选队列为空时触发快捷键不引发未捕获异常。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+
+    req_id = uuid4()
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=())
+    session.set_active_review_batch(valid_run.run_id, batch)
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    # 队列为空时按 A 和 S 不崩溃
+    QTest.keyClick(window, Qt.Key.Key_A)
+    QTest.keyClick(window, Qt.Key.Key_S)
+    QTest.keyClick(window, Qt.Key.Key_C)
+
+
+def test_cross_track_selection_guard_f01(test_window: MainWindow, tmp_path: Path):
+    """F-01: 选中属于其他 Track 的 run 时，不激活审核控制器，防止跨 Track 错标。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+
+    # Track 1
+    run_track1 = _setup_infer_run_with_prediction(window, tmp_path)
+    req_id = uuid4()
+    c1 = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.40),
+        components={},
+        raw_components={},
+        reasons=(),
+        total_score=0.5,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1,))
+    session.set_active_review_batch(run_track1.run_id, batch)
+
+    # 新建 Track 2 并切换为当前选中
+    track2 = session.add_track(window.activeVideoId)
+    window._refreshTrackList()
+    for row in range(window.trackList.count()):
+        if window.trackList.item(row).data(Qt.ItemDataRole.UserRole) == track2.track_id:
+            window.trackList.setCurrentRow(row)
+            break
+    assert window.selectedTrackId == track2.track_id
+
+    # 尝试选择属于 Track 1 的 run
+    window.reviewActions.onRunSelected(run_track1.run_id)
+    assert window.reviewActions.controller is None
+    assert "No active review batch" in window.trackingActions.panel.reviewProgressLabel.text()
+
+
+def test_in_flight_frame_guard_on_delete_manual_point_f02(test_window: MainWindow):
+    """F-02: 在途解码帧未交付时屏蔽删除人工点，防止竞态误删旧帧点。"""
+    window = test_window
+    window._has_pending_request = True
+    window._deleteCurrentManualPoint()
+    assert "Waiting for frame; delete ignored" in window.statusBar().currentMessage()
+
+
+def test_cannot_accept_or_skip_already_corrected_frame(test_window: MainWindow, tmp_path: Path):
+    """Subagent 1 [P1]: 对已人工修正的帧禁止直接 Accept/Skip，防止产生孤立人工点。"""
+    from ai_physics_tracker.application.project_session import ProjectSessionError
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.40),
+        components={},
+        raw_components={},
+        reasons=(),
+        total_score=0.5,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1,))
+    session.set_active_review_batch(valid_run.run_id, batch)
+
+    # 修正帧 1
+    session.correct_suggested_frame(valid_run.run_id, 1, 10.0, 20.0)
+
+    # 尝试 Accept 或 Skip -> 抛出 ProjectSessionError
+    with pytest.raises(ProjectSessionError, match="already been corrected"):
+        session.accept_suggested_frame(valid_run.run_id, 1)
+
+    with pytest.raises(ProjectSessionError, match="already been corrected"):
+        session.skip_suggested_frame(valid_run.run_id, 1)
+
 

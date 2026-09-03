@@ -559,6 +559,8 @@ class MainWindow(QMainWindow):
         self.startPlayback()
 
     def startPlayback(self) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         snapshot = self._async.snapshot()
         if snapshot is None:
             return
@@ -693,6 +695,9 @@ class MainWindow(QMainWindow):
     def _deleteCurrentManualPoint(self) -> None:
         if not self._measurement_allowed or self.projectActions.busy:
             return
+        if self._has_pending_request:
+            self.statusBar().showMessage("Waiting for frame; delete ignored")
+            return
         session = self._annotation_session
         track_id = self._selected_track_id
         frame_index = self._presented_frame_index
@@ -725,19 +730,22 @@ class MainWindow(QMainWindow):
         if self._isTypingInInputWidget():
             return
         if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
-            self.reviewActions.acceptCurrent()
+            if self.reviewActions.controller.current_candidate is not None:
+                self.reviewActions.acceptCurrent()
 
     def _onReviewSkipShortcut(self) -> None:
         if self._isTypingInInputWidget():
             return
         if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
-            self.reviewActions.skipCurrent()
+            if self.reviewActions.controller.current_candidate is not None:
+                self.reviewActions.skipCurrent()
 
     def _onReviewCorrectShortcut(self) -> None:
         if self._isTypingInInputWidget():
             return
         if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
-            self.reviewActions.startCorrectCurrent()
+            if self.reviewActions.controller.current_candidate is not None:
+                self.reviewActions.startCorrectCurrent()
 
     def _addTrack(self) -> None:
         if not self._measurement_allowed or self.projectActions.busy or self._annotation_session is None or self._annotation_video_id is None:
@@ -1238,6 +1246,8 @@ class MainWindow(QMainWindow):
         self.presentedFrameChanged.emit(frame.frame_index)
 
     def _step(self, delta: int) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         snapshot = self._async.snapshot()
         if snapshot is None:
             return
@@ -1252,12 +1262,16 @@ class MainWindow(QMainWindow):
         self._requestFrame(target)
 
     def _goToFrame(self, frame_index: int) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         if self._async.snapshot() is None:
             return
         self.stopPlayback()
         self._requestFrame(frame_index)
 
     def _scrubStarted(self) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         self.stopPlayback()
 
     def _scrubPreview(self, frame_index: int) -> None:

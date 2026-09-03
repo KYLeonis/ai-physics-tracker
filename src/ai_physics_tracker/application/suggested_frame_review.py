@@ -124,6 +124,8 @@ class ReviewCandidate:
             for k, v in mapping.items():
                 if isinstance(v, bool) or not isinstance(v, (int, float)) or not isfinite(float(v)):
                     raise ValueError(f"{mapping_name} value for {k} must be a finite float")
+        object.__setattr__(self, "components", {str(k): float(v) for k, v in self.components.items()})
+        object.__setattr__(self, "raw_components", {str(k): float(v) for k, v in self.raw_components.items()})
         if not isinstance(self.reasons, (tuple, list)):
             raise ValueError("reasons must be a tuple or list of strings")
         object.__setattr__(self, "reasons", tuple(str(r) for r in self.reasons))
@@ -604,7 +606,8 @@ class ReviewQueueController:
             self._run_id, c.frame_index, pixel_x, pixel_y
         )
         st = self._session.get_suggested_frame_review(self._run_id)
-        assert st is not None
+        if st is None or c.frame_index not in st.reviewed_frames:
+            raise ValueError(f"Failed to retrieve review record for frame {c.frame_index}")
         rec = st.reviewed_frames[c.frame_index]
         self._correcting = False
         if auto_advance:

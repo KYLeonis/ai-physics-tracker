@@ -1232,6 +1232,12 @@ class ProjectSession:
         if candidate is None:
             raise ProjectSessionError(f"frame {frame_index} is not in current active review batch")
 
+        curr_rec = state.reviewed_frames.get(frame_index)
+        if curr_rec is not None and curr_rec.disposition == DISPOSITION_CORRECTED:
+            raise ProjectSessionError(
+                f"frame {frame_index} has already been corrected; delete the manual point first to change disposition"
+            )
+
         now_iso = utc_now().isoformat()
         record = ReviewRecord(
             disposition=DISPOSITION_ACCEPTED,
@@ -1259,6 +1265,12 @@ class ProjectSession:
         candidate = next((c for c in state.active_batch.candidates if c.frame_index == frame_index), None)
         if candidate is None:
             raise ProjectSessionError(f"frame {frame_index} is not in current active review batch")
+
+        curr_rec = state.reviewed_frames.get(frame_index)
+        if curr_rec is not None and curr_rec.disposition == DISPOSITION_CORRECTED:
+            raise ProjectSessionError(
+                f"frame {frame_index} has already been corrected; delete the manual point first to change disposition"
+            )
 
         now_iso = utc_now().isoformat()
         record = ReviewRecord(
@@ -1412,7 +1424,7 @@ class ProjectSession:
         scoped_reviews: dict[UUID, dict[str, Any] | None] = {}
         updated_runs_list: list[TrackingRun] = []
         for r in self._project.tracking_runs:
-            rev_state = extract_review_state(r)
+            rev_state = self.get_suggested_frame_review(r.run_id)
             if rev_state is not None and frame_index in rev_state.reviewed_frames:
                 rec = rev_state.reviewed_frames[frame_index]
                 if rec.manual_point_id == target.point_id:
