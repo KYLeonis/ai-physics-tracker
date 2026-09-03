@@ -65,6 +65,7 @@ class DifficultFrameReviewActions(QObject):
 
         self._controller: ReviewQueueController | None = None
         self._running_track_id: UUID | None = None
+        self._closed = False
 
         self._timer = QTimer(self)
         self._timer.setInterval(200)
@@ -161,6 +162,13 @@ class DifficultFrameReviewActions(QObject):
         if self.busy:
             self.panel.setMineEnabled(False, "Difficult frame mining is in progress")
             return
+        if (
+            (hasattr(self.window, "trackingActions") and self.window.trackingActions.pending)
+            or (hasattr(self.window, "frameSelectionActions") and self.window.frameSelectionActions.busy)
+            or self.window.projectActions.busy
+        ):
+            self.panel.setMineEnabled(False, "Another background task is in progress")
+            return
 
         if session is None:
             self.panel.setMineEnabled(False, "No project open")
@@ -198,7 +206,13 @@ class DifficultFrameReviewActions(QObject):
 
     def requestMining(self, run_id: UUID | None = None, params: MiningParams | None = None) -> None:
         """用户点击挖掘困难帧时发起后台任务（Phase 5.2/5.3）。"""
-        if self.busy:
+        if (
+            self.busy
+            or self._closed
+            or (hasattr(self.window, "trackingActions") and self.window.trackingActions.pending)
+            or (hasattr(self.window, "frameSelectionActions") and self.window.frameSelectionActions.busy)
+            or self.window.projectActions.busy
+        ):
             return
         session = self.window.analysisSession
         target_run_id = run_id or self._selected_run_id
@@ -245,7 +259,7 @@ class DifficultFrameReviewActions(QObject):
             self._executor.submit(lambda: start.result().cancel() if start.done() else None)
 
     def _poll(self) -> None:
-        if not self.busy:
+        if self._closed or not self.busy:
             self._timer.stop()
             return
 
@@ -340,6 +354,7 @@ class DifficultFrameReviewActions(QObject):
         self._refresh_mining_enabled()
 
     def _reset(self) -> None:
+        self._timer.stop()
         self._request_id = None
         self._job_request = None
         self._handle = None
@@ -383,7 +398,12 @@ class DifficultFrameReviewActions(QObject):
     def acceptCurrent(self) -> None:
         if self._controller is None or self._controller.current_candidate is None:
             return
-        self._controller.accept_current(auto_advance=True)
+        try:
+            self._controller.accept_current(auto_advance=True)
+        except (ProjectSessionError, ValueError) as error:
+            logger.error("accept suggested frame failed: %s", error)
+            self.window.statusBar().showMessage(f"Accept failed: {error}")
+            return
         if self._controller.current_frame_index is not None:
             self.jumpToFrame(self._controller.current_frame_index)
         self._sync_panel_with_controller()
@@ -394,7 +414,12 @@ class DifficultFrameReviewActions(QObject):
     def skipCurrent(self) -> None:
         if self._controller is None or self._controller.current_candidate is None:
             return
-        self._controller.skip_current(auto_advance=True)
+        try:
+            self._controller.skip_current(auto_advance=True)
+        except (ProjectSessionError, ValueError) as error:
+            logger.error("skip suggested frame failed: %s", error)
+            self.window.statusBar().showMessage(f"Skip failed: {error}")
+            return
         if self._controller.current_frame_index is not None:
             self.jumpToFrame(self._controller.current_frame_index)
         self._sync_panel_with_controller()
@@ -477,6 +502,8 @@ class DifficultFrameReviewActions(QObject):
         self._refresh_mining_enabled()
 
     def shutdown(self) -> None:
+        self._closed = True
         self._timer.stop()
         self._cancel_active_task()
+        self._reset()
         self._executor.shutdown(wait=False, cancel_futures=False)

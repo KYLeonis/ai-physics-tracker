@@ -59,4 +59,35 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest
 
 - **全量结果**：`621 passed in 47.67s`
 - **层边界检查**：`tests/test_layer_boundaries.py` 5/5 全部通过，零架构层越界导入。
-- **最终结论**：**Approve**。12 项 finding 全部妥善处置闭环，Slice 1–3 代码健壮性达标，可推进至 Slice 4。
+- **R1 结论**：**Approve**。12 项 finding 全部妥善处置闭环，Slice 1–3 代码健壮性达标，可推进至 Slice 4。
+
+---
+
+## Findings & Dispositions (R2: Slice 4 & Full Reliability Review)
+
+- 轮次：R2 2026-09-03（2 智能体并发只读审查：Test & Spec Reviewer + Domain & Concurrency Reviewer）
+- Review 范围：`tests/gui/test_suggested_frame_review_reliability.py`、Slice 4 可靠性矩阵及全生命周期边界。
+
+| # | Reviewer | Priority | 问题 | 处置 | 状态 |
+|---|---|---|---|---|---|
+| **T-01** | Test & Spec | **[P1]** | 对已 corrected 候选在 GUI 上仍使能 Accept/Skip 按钮，且 `acceptCurrent` / `skipCurrent` 缺少异常屏障，导致领域异常泄漏到 Qt 事件循环 | 在 `TaskPanel.setReviewBatch` 中若 `disp == "corrected"` 则禁用 Accept/Skip 按钮并设提示；在 `acceptCurrent` 和 `skipCurrent` 中增加 try-except 异常屏障与状态栏提示；测试中增加 GUI 级点击与提示断言 | **Closed** |
+| **T-02** | Test & Spec | **[P1]** | `MainWindow._onAnnotationClicked` 中 Correct 处理失败或帧不匹配时穿透到底部执行普通 `mark_point` | 将 `return` 移出 `if handled:` 块，确保在 `is_correcting` 模式下无论处理结果如何均立即返回，绝不穿透；新增帧不匹配穿透防护测试 | **Closed** |
+| **C-01** | Domain & Concurrency | **[P1]** | 困难帧挖掘与 AI 训练/推理、建议帧选取三者缺少双向互斥，可能引发多任务并发冲突 | 在 `DifficultFrameReviewActions._refresh_mining_enabled` / `requestMining`、`TrackingActions.refresh` / `_start` 及 `FrameSelectionActions` 中补齐三方双向互斥与状态提示 | **Closed** |
+| **C-02** | Domain & Concurrency | **[P2]** | `MainWindow.seekFrame()` 编程式跳帧（图表点击、建议帧双击）未退出 active Correct 模式，导致界面高亮残留与后续点击帧不匹配 | 在 `seekFrame()` 头部增加 `cancelCorrectMode()` 调用；增加测试验证图表跳帧时自动退出 Correct 模式 | **Closed** |
+| **C-03** | Domain & Concurrency | **[P2]** | `DifficultFrameReviewActions` 缺少 `_closed` 生命周期保护标志与 `shutdown()` 状态重置 | 增加 `self._closed = False`；在 `_poll()` 中快速返回；在 `shutdown()` 中重置 `_reset()` 并停止计时器 | **Closed** |
+| **T-03** | Test & Spec | **[P2]** | AC-9 参数微调框 (Top N, Min Gap) 传参连通性与 AC-5 重开后修正点坐标精度未在 GUI 测试中断言 | 新增 `test_mining_params_spinbox_wiring_ac9`；在 `test_save_reopen_and_resume_review_matrix` 中增加重开后修正点坐标与 manual 属性断言 | **Closed** |
+
+---
+
+## Final Verification Summary
+
+所有 R1 与 R2 的 18 项审查意见全部清零闭环，并通过全量自动化测试验证：
+
+```bash
+# 全量测试套件（631/631 passed）
+QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest
+```
+
+- **测试通过率**：`631 passed in 49.62s`（0 failed, 0 skipped）
+- **层边界检查**：`tests/test_layer_boundaries.py` 5/5 通过，架构依赖与 ADR-0013 保持 100% 一致。
+- **最终评审裁定**：**Pass / Ready for Human Review**。代码健壮性、状态机安全性与可靠性矩阵完备，正式发起真人验收（Human Review）。

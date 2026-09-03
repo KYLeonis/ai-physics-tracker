@@ -658,9 +658,16 @@ class TaskPanel(QDockWidget):
                 f"AI: {pred_str} · Score: {curr.total_score:.3f}\n"
                 f"Reasons: {reasons_str}{guidance}"
             )
-            self.reviewAcceptButton.setEnabled(True)
-            self.reviewSkipButton.setEnabled(True)
+            is_already_corrected = (disp == "corrected")
+            self.reviewAcceptButton.setEnabled(not is_already_corrected)
+            self.reviewSkipButton.setEnabled(not is_already_corrected)
             self.reviewCorrectButton.setEnabled(True)
+            if is_already_corrected:
+                self.reviewAcceptButton.setToolTip("Frame has a manual point; delete it first to change disposition")
+                self.reviewSkipButton.setToolTip("Frame has a manual point; delete it first to change disposition")
+            else:
+                self.reviewAcceptButton.setToolTip("")
+                self.reviewSkipButton.setToolTip("")
             if controller.is_correcting:
                 self.reviewCorrectButton.setText("Click Video...")
                 self.reviewCorrectButton.setStyleSheet("font-weight: bold; background-color: #ffe0b2;")

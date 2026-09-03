@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 Slice 1-3 独立审查完成，12 项 Finding 全部闭环，621 测试通过；下一步进入 Slice 4**）
+- 最后更新：2026-09-03（**5.3 Slice 1-4 全部完成，R1/R2 两轮审查 18 项 Finding 清零，631 测试全过；进入 Human Review**）
 
 ---
 
@@ -15,10 +15,20 @@
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
-| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1-3 及独立审查已完成；下一步 Slice 4） |
+| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1-4 全部完成；进入 Human Review 验收） |
 
 ## Recently Completed
 
+- **Phase 5.3 Slice 4 — Reliability Matrix & R2 Review Closure (2026-09-03)**：
+  - 构建可靠性与边界测试矩阵（`tests/gui/test_suggested_frame_review_reliability.py`），覆盖保存重开后继续审核、普通打点与审核操作交错 Undo/Redo、后台挖掘取消与迟到结果隔离、挖掘失败清理与按钮恢复、Correct 模式全导航矢量注销、已有 manual 点覆盖与纠偏。
+  - 启动 2 个并发子智能体（Test & Spec Reviewer + Domain & Concurrency Reviewer）进行全面只读审查，识别并闭环修复 6 项 Finding（T-01 至 T-03，C-01 至 C-03）：
+    - 修复已修正候选 Accept/Skip 按钮未禁用及缺少异常屏障缺陷（T-01）。
+    - 修复 Correct 模式校验失败时穿透执行普通 mark_point 缺陷（T-02）。
+    - 补齐困难帧挖掘、选帧与模型训练/推理之间的三方互斥及状态提示（C-01）。
+    - 修复 seekFrame() 编程式跳帧未取消 active Correct 模式问题（C-02）。
+    - 补齐 DifficultFrameReviewActions 的 `_closed` 标志与 shutdown 重置（C-03）。
+    - 补齐参数框（Top N, Min Gap）正向传参及重开点坐标精度测试（T-03）。
+  - 新增 10 个测试用例，全量测试 **631 passed**。
 - **Phase 5.3 Slices 1–3 独立代码审查与健壮性加固（2026-09-03）**：
   - 启动 2 个只读 Reviewer 智能体（Domain & Session Reviewer、GUI & Concurrency Reviewer）并发审查。
   - 识别并彻底修复全部 12 项 finding（5 项领域/会话、7 项 GUI/并发）：
@@ -97,5 +107,5 @@
 
 ## Next Recommended Action
 
-1. 提交 Slices 1–3 独立审查加固变更（Conventional Commit: `fix: address review findings across domain transactions and gui concurrency (Phase 5.3 Slices 1-3 review)`）。
-2. 开始 Phase 5.3 Slice 4 — Reliability matrix + review gate：覆盖保存重开、中途退出、项目/video/track/run 切换、Undo/Redo 交错等全量边界测试，并按规范发起 Human Review。
+1. 进行 Phase 5.3 Human Review（真人真机交互验收），由用户亲自验证困难帧挖掘、候选浏览、快捷键 A/S/C、一次性 Correct 模式、当前帧 manual 点删除、保存重开恢复及多任务互斥。
+2. Human Review 通过后，执行 Phase 5.3 收尾工作：更新 `docs/roadmap.md`、`README.md`，执行 `--no-ff` 合并及 push origin。

@@ -401,6 +401,8 @@ class MainWindow(QMainWindow):
         if self.projectActions.busy or self._timeline is None or self._async.snapshot() is None:
             return False
         self.stopPlayback()
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         self.videoView.set_annotation_mode(False)
         self.videoView.set_calibration_mode(None)
         self.drawScaleButton.setChecked(False)
@@ -1150,7 +1152,7 @@ class MainWindow(QMainWindow):
                 self._refreshMarkers()
                 self._refreshHistoryButtons()
                 self._register_mark_for_autosave()
-                return
+            return
         try:
             self._annotation_session.mark_point(
                 self._selected_track_id,

@@ -847,11 +847,134 @@ def test_cannot_accept_or_skip_already_corrected_frame(test_window: MainWindow, 
     # 修正帧 1
     session.correct_suggested_frame(valid_run.run_id, 1, 10.0, 20.0)
 
-    # 尝试 Accept 或 Skip -> 抛出 ProjectSessionError
+    # 1. 领域层抛出 ProjectSessionError
     with pytest.raises(ProjectSessionError, match="already been corrected"):
         session.accept_suggested_frame(valid_run.run_id, 1)
 
     with pytest.raises(ProjectSessionError, match="already been corrected"):
         session.skip_suggested_frame(valid_run.run_id, 1)
+
+    # 2. GUI 层按钮被禁用且具备提示（Reviewer [P1]）
+    window.reviewActions.onRunSelected(valid_run.run_id)
+    panel = window.trackingActions.panel
+    assert not panel.reviewAcceptButton.isEnabled()
+    assert not panel.reviewSkipButton.isEnabled()
+    assert "delete it first" in panel.reviewAcceptButton.toolTip()
+
+    # 3. GUI action 方法具备异常屏障，不向事件循环抛异常
+    window.reviewActions.acceptCurrent()
+    assert "Accept failed" in window.statusBar().currentMessage()
+    window.reviewActions.skipCurrent()
+    assert "Skip failed" in window.statusBar().currentMessage()
+
+
+def test_correct_mode_mismatch_does_not_fallthrough_to_mark_point(test_window: MainWindow, tmp_path: Path, qtbot):
+    """Reviewer [P1]: Correct 模式下若校验失败或帧不匹配，绝不穿透到普通 mark_point。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    track_id = window.selectedTrackId
+    assert track_id is not None
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(1, ReviewPredictionSnapshot(12.0, 22.0, 0.40), {}, {}, (), 0.5)
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1,))
+    session.set_active_review_batch(valid_run.run_id, batch)
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    # 启动 Correct 模式（目标是帧 1）
+    window.reviewActions.startCorrectCurrent()
+    assert window.reviewActions.is_correcting
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 1, timeout=3000)
+
+    # 模拟外部导致 presented_frame_index 与目标 candidate 不一致（例如 0）
+    window._presented_frame_index = 0
+    obs_before = len(session.manual_points(track_id))
+
+    # 在图像区域点击（视频分辨率 64x48，使用有效内部坐标）
+    click_pos = _inside_point(window, 20.0, 20.0)
+    window._onAnnotationClicked(click_pos)
+
+    # 校验：由于帧不匹配，Correct 被拒绝，且绝不穿透执行 mark_point
+    assert len(session.manual_points(track_id)) == obs_before
+    assert "does not match candidate frame" in window.statusBar().currentMessage()
+
+
+def test_mining_params_spinbox_wiring_ac9(test_window: MainWindow, tmp_path: Path):
+    """Reviewer [P2]: AC-9 参数微调框 (Top N, Min Gap) 传参准确连通。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    panel = window.trackingActions.panel
+
+    runner = _FakeRunner()
+    window.reviewActions._runner = runner
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    # 调整 spinbox 参数
+    panel.mineTopNSpinBox.setValue(15)
+    panel.mineMinGapSpinBox.setValue(0.75)
+
+    # 启动挖掘
+    panel.mineButton.click()
+    assert window.reviewActions.busy
+
+    # 校验传入 job_request 的 MiningParams 准确匹配
+    job_req = window.reviewActions._job_request
+    assert job_req is not None
+    assert job_req.mining_request.params.top_n == 15
+    assert job_req.mining_request.params.min_gap_s == 0.75
+
+
+def test_ai_tasks_mutual_exclusion_gui(test_window: MainWindow, tmp_path: Path):
+    """Reviewer [P1]: 挖掘进行中，训练/推理与选帧均互斥禁用。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+    panel = window.trackingActions.panel
+
+    runner = _FakeRunner()
+    window.reviewActions._runner = runner
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    # 启动挖掘
+    panel.mineButton.click()
+    assert window.reviewActions.busy
+
+    # 刷新状态并校验互斥
+    window.trackingActions.refresh()
+    window.frameSelectionActions._refreshEnabled()
+    assert not panel.trainButton.isEnabled()
+    assert not panel.inferButton.isEnabled()
+    assert not panel.suggestButton.isEnabled()
+
+    # 尝试在挖掘中启动选帧 -> 被直接阻止
+    window.frameSelectionActions.requestSuggestion(5, "uncertainty")
+    assert not window.frameSelectionActions.busy
+
+
+def test_seek_frame_cancels_active_correct_mode(test_window: MainWindow, tmp_path: Path):
+    """Reviewer [P2]: seekFrame() 导航操作必须自动退出 Correct 模式。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(1, ReviewPredictionSnapshot(12.0, 22.0, 0.40), {}, {}, (), 0.5)
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1,))
+    session.set_active_review_batch(valid_run.run_id, batch)
+    window.reviewActions.onRunSelected(valid_run.run_id)
+
+    window.reviewActions.startCorrectCurrent()
+    assert window.reviewActions.is_correcting
+
+    # 调用 seekFrame
+    window.seekFrame(0)
+    assert not window.reviewActions.is_correcting
+    assert window.trackingActions.panel.reviewCorrectButton.text() == "Correct (C)"
 
 
