@@ -111,6 +111,10 @@ class TrackingActions(QObject):
             reason = "Video timing is not authorized"
         elif self.pending or any(run.status in {"pending", "running"} for run in runs):
             reason = "An AI task is active"
+        elif hasattr(self.window, "frameSelectionActions") and self.window.frameSelectionActions.busy:
+            reason = "Frame selection is running"
+        elif hasattr(self.window, "reviewActions") and self.window.reviewActions.busy:
+            reason = "Difficult frame mining is running"
         train_reason = reason
         if not train_reason and len(session.manual_points(track_id)) < 3:
             train_reason = "Mark at least 3 frames; cover different target positions"
@@ -134,6 +138,9 @@ class TrackingActions(QObject):
             return
         if self.window.frameSelectionActions.busy:
             self.panel.setActivity("Cannot start: frame selection is running")
+            return
+        if hasattr(self.window, "reviewActions") and self.window.reviewActions.busy:
+            self.panel.setActivity("Cannot start: difficult frame mining is running")
             return
         session = self.window.analysisSession
         try:
@@ -410,6 +417,7 @@ class FrameSelectionActions(QObject):
         self._poll_timer.start()
 
         self.panel.suggestFramesRequested.connect(self.requestSuggestion)
+        self.panel.suggestCancelRequested.connect(self.cancel)
         self.panel.suggestedFrameJumped.connect(self._onFrameJumped)
         window.selectedTrackChanged.connect(self._onSelectedTrackChanged)
         window.projectChanged.connect(self._onProjectChanged)
@@ -440,7 +448,13 @@ class FrameSelectionActions(QObject):
 
     def requestSuggestion(self, n_frames: int, algorithm: str) -> None:
         """用户点击"建议帧"时触发，发起后台选帧任务（Phase 5.1）。"""
-        if self.busy or self._closed or self.window.trackingActions.pending or self.window.projectActions.busy:
+        if (
+            self.busy
+            or self._closed
+            or self.window.trackingActions.pending
+            or self.window.projectActions.busy
+            or (hasattr(self.window, "reviewActions") and self.window.reviewActions.busy)
+        ):
             return
         session = self.window.analysisSession
         track_id = self.window.selectedTrackId
@@ -496,7 +510,7 @@ class FrameSelectionActions(QObject):
             elif isinstance(message, TaskResult):
                 payload = message.payload or {}
                 if payload.get("status") == "cancelled":
-                    self._finish_error("Frame selection cancelled")
+                    self._finish_cancelled("Frame selection cancelled")
                     return
                 elif not message.success:
                     self._finish_error(message.error or "Frame selection failed")
@@ -523,6 +537,21 @@ class FrameSelectionActions(QObject):
         self._result_track_id = self._running_track_id
         self._cached_result = result
         self._cached_status = self.panel.suggestStatusLabel.text()
+        self._reset()
+        self._refreshEnabled()
+
+    def cancel(self) -> None:
+        """用户点击取消建议帧任务（F4 / AC-9）。"""
+        if not self.busy:
+            return
+        self._cancel_active_task()
+        self._finish_cancelled("Frame selection cancelled")
+
+    def _finish_cancelled(self, message: str = "Frame selection cancelled") -> None:
+        self.panel.setSuggestStatus(message)
+        self._result_track_id = None
+        self._cached_result = None
+        self._cached_status = ""
         self._reset()
         self._refreshEnabled()
 
@@ -590,6 +619,8 @@ class FrameSelectionActions(QObject):
             self.panel.setSuggestEnabled(False, "Frame selection running")
         elif self.window.trackingActions.pending:
             self.panel.setSuggestEnabled(False, "An AI tracking task is active")
+        elif hasattr(self.window, "reviewActions") and self.window.reviewActions.busy:
+            self.panel.setSuggestEnabled(False, "Difficult frame mining running")
         elif self.window.projectActions.busy:
             self.panel.setSuggestEnabled(False, "Project operation in progress")
         elif session is None or track_id is None:

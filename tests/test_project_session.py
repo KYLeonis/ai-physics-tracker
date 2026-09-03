@@ -4,7 +4,9 @@
 （time_s 冻结、manual last-wins、superseded 遮蔽）与 dirty 生命周期。
 """
 
+from dataclasses import replace
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -12,8 +14,21 @@ from ai_physics_tracker.application.project_session import (
     ProjectSession,
     ProjectSessionError,
 )
+from ai_physics_tracker.application.suggested_frame_review import (
+    ActiveReviewBatch,
+    ReviewCandidate,
+    ReviewPredictionSnapshot,
+    SuggestedFrameReviewState,
+)
 from ai_physics_tracker.application.video import VideoStreamInfo
-from ai_physics_tracker.domain.tracking_run import create_tracking_run
+from ai_physics_tracker.domain.track import Track, TrackPoint
+from ai_physics_tracker.domain.tracking_run import (
+    TrackingRun,
+    create_tracking_run,
+    mark_run_completed,
+    mark_run_running,
+)
+from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
 
@@ -444,4 +459,373 @@ def test_undo_redo_calibration_operations(tmp_path: Path) -> None:
     assert session.undo()
     assert session.calibrations == (cal,)
     assert session.active_calibration(video.video_id) == cal
+
+
+def _session_with_completed_infer_and_review_batch(
+    tmp_path: Path,
+) -> tuple[ProjectSession, Track, TrackingRun]:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+
+    run = mark_run_running(
+        create_tracking_run(
+            video.video_id,
+            track.track_id,
+            "infer",
+            engine="dlc",
+            engine_version="3.0.1",
+            source_detail="test-infer",
+        )
+    )
+    session.record_tracking_run(run)
+    completed_run = mark_run_completed(run)
+    session.update_tracking_run(completed_run)
+
+    c1 = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(pixel_x=10.0, pixel_y=20.0, confidence=0.7),
+        components={"uncertainty": 0.3},
+        raw_components={"uncertainty": 0.3},
+        reasons=("low_confidence",),
+        total_score=0.8,
+    )
+    c2 = ReviewCandidate(
+        frame_index=2,
+        prediction=ReviewPredictionSnapshot(pixel_x=12.0, pixel_y=22.0, confidence=0.5),
+        components={"jump": 0.8},
+        raw_components={"jump": 3.0},
+        reasons=("jump_outlier",),
+        total_score=0.9,
+    )
+    batch = ActiveReviewBatch(request_id=uuid4(), params_snapshot={"top_n": 2}, candidates=(c1, c2))
+    session.set_active_review_batch(completed_run.run_id, batch)
+    return session, track, completed_run
+
+
+def test_accept_and_skip_suggested_frame_records_disposition_without_creating_points(
+    tmp_path: Path,
+) -> None:
+    session, track, run = _session_with_completed_infer_and_review_batch(tmp_path)
+    assert session.project.observations == ()
+
+    session.accept_suggested_frame(run.run_id, 1)
+    session.skip_suggested_frame(run.run_id, 2)
+
+    # AC-5: Accept/Skip do NOT create TrackPoints
+    assert session.project.observations == ()
+    assert session.is_dirty
+
+    summary = session.get_review_summary(run.run_id)
+    assert summary.total_candidates == 2
+    assert summary.accepted_count == 1
+    assert summary.skipped_count == 1
+    assert summary.corrected_count == 0
+    assert summary.pending_count == 0
+    assert summary.total_reviewed == 2
+
+    rev = session.get_suggested_frame_review(run.run_id)
+    assert rev is not None
+    assert rev.reviewed_frames[1].disposition == "accepted"
+    assert rev.reviewed_frames[1].manual_point_id is None
+    assert rev.reviewed_frames[2].disposition == "skipped"
+    assert rev.reviewed_frames[2].manual_point_id is None
+
+
+def test_correct_suggested_frame_atomically_adds_manual_point_and_records_disposition(
+    tmp_path: Path,
+) -> None:
+    session, track, run = _session_with_completed_infer_and_review_batch(tmp_path)
+
+    point = session.correct_suggested_frame(run.run_id, 1, 15.0, 25.0)
+
+    assert isinstance(point, TrackPoint)
+    assert point.frame_index == 1
+    assert point.pixel_x == 15.0
+    assert point.pixel_y == 25.0
+    assert point.source == "manual"
+    assert point.status == "active"
+    assert session.project.observations == (point,)
+    assert session.is_dirty
+
+    rev = session.get_suggested_frame_review(run.run_id)
+    assert rev is not None
+    assert rev.reviewed_frames[1].disposition == "corrected"
+    assert rev.reviewed_frames[1].manual_point_id == point.point_id
+    assert rev.reviewed_frames[1].prediction == ReviewPredictionSnapshot(10.0, 20.0, 0.7)
+
+    summary = session.get_review_summary(run.run_id)
+    assert summary.corrected_count == 1
+    assert summary.pending_count == 1
+
+
+def test_correct_suggested_frame_supersedes_engine_point_and_records_prediction_provenance(
+    tmp_path: Path,
+) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+
+    run = mark_run_running(
+        create_tracking_run(
+            video.video_id,
+            track.track_id,
+            "infer",
+            engine="dlc",
+            engine_version="3.0.1",
+            source_detail="test-infer",
+        )
+    )
+    session.record_tracking_run(run)
+    completed_run = mark_run_completed(run)
+
+    now = utc_now()
+    engine_pt = TrackPoint(
+        point_id=uuid4(),
+        track_id=track.track_id,
+        frame_index=1,
+        time_s=0.1,
+        pixel_x=10.0,
+        pixel_y=20.0,
+        source="dlc",
+        source_detail="test-infer",
+        confidence=0.7,
+        visibility="visible",
+        status="active",
+        created_at=now,
+        modified_at=now,
+    )
+    session.import_engine_points((engine_pt,), completed_run)
+
+    c1 = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(pixel_x=10.0, pixel_y=20.0, confidence=0.7),
+        components={"uncertainty": 0.3},
+        raw_components={"uncertainty": 0.3},
+        reasons=("low_confidence",),
+        total_score=0.8,
+    )
+    batch = ActiveReviewBatch(request_id=uuid4(), params_snapshot={"top_n": 1}, candidates=(c1,))
+    session.set_active_review_batch(completed_run.run_id, batch)
+
+    assert session.effective_point(track.track_id, 1) == engine_pt
+
+    # Correct frame 1
+    correct_pt = session.correct_suggested_frame(completed_run.run_id, 1, 14.0, 24.0)
+
+    # Engine point superseded by manual last-wins
+    obs = {p.point_id: p for p in session.project.observations}
+    assert obs[engine_pt.point_id].status == "superseded"
+    assert obs[engine_pt.point_id].superseded_by == correct_pt.point_id
+    assert session.effective_point(track.track_id, 1) == correct_pt
+
+
+def test_delete_active_manual_point_removes_point_and_restores_superseded_ai_point(
+    tmp_path: Path,
+) -> None:
+    session = _session_with_video(tmp_path)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+
+    run = mark_run_running(
+        create_tracking_run(
+            video.video_id,
+            track.track_id,
+            "infer",
+            engine="dlc",
+            engine_version="3.0.1",
+            source_detail="test-infer",
+        )
+    )
+    session.record_tracking_run(run)
+    completed_run = mark_run_completed(run)
+
+    now = utc_now()
+    engine_pt = TrackPoint(
+        point_id=uuid4(),
+        track_id=track.track_id,
+        frame_index=1,
+        time_s=0.1,
+        pixel_x=10.0,
+        pixel_y=20.0,
+        source="dlc",
+        source_detail="test-infer",
+        confidence=0.7,
+        visibility="visible",
+        status="active",
+        created_at=now,
+        modified_at=now,
+    )
+    session.import_engine_points((engine_pt,), completed_run)
+
+    # Annotate regular manual point
+    manual_pt = session.mark_point(track.track_id, 1, 15.0, 25.0)
+    assert session.effective_point(track.track_id, 1) == manual_pt
+
+    # Delete active manual point
+    deleted = session.delete_active_manual_point(track.track_id, 1)
+    assert deleted.point_id == manual_pt.point_id
+
+    # Observation deleted, engine point restored
+    assert len(session.project.observations) == 1
+    restored = session.project.observations[0]
+    assert restored.point_id == engine_pt.point_id
+    assert restored.status == "active"
+    assert restored.superseded_by is None
+    assert session.effective_point(track.track_id, 1) == restored
+
+
+def test_delete_active_manual_point_from_correction_reverts_candidate_to_pending(
+    tmp_path: Path,
+) -> None:
+    session, track, run = _session_with_completed_infer_and_review_batch(tmp_path)
+
+    session.correct_suggested_frame(run.run_id, 1, 15.0, 25.0)
+    assert session.get_review_summary(run.run_id).corrected_count == 1
+
+    session.delete_active_manual_point(track.track_id, 1)
+
+    assert session.project.observations == ()
+    summary = session.get_review_summary(run.run_id)
+    assert summary.corrected_count == 0
+    assert summary.pending_count == 2
+    rev = session.get_suggested_frame_review(run.run_id)
+    assert rev is not None
+    assert 1 not in rev.reviewed_frames
+
+
+def test_delete_active_manual_point_fails_if_no_manual_point(
+    tmp_path: Path,
+) -> None:
+    session, track, run = _session_with_completed_infer_and_review_batch(tmp_path)
+    with pytest.raises(ProjectSessionError, match="No active manual point"):
+        session.delete_active_manual_point(track.track_id, 1)
+
+
+def test_undo_redo_accept_and_skip(
+    tmp_path: Path,
+) -> None:
+    session, track, run = _session_with_completed_infer_and_review_batch(tmp_path)
+
+    session.accept_suggested_frame(run.run_id, 1)
+    session.skip_suggested_frame(run.run_id, 2)
+
+    assert session.get_review_summary(run.run_id).accepted_count == 1
+    assert session.get_review_summary(run.run_id).skipped_count == 1
+
+    # Undo skip
+    assert session.undo()
+    assert session.get_review_summary(run.run_id).accepted_count == 1
+    assert session.get_review_summary(run.run_id).skipped_count == 0
+    assert session.get_review_summary(run.run_id).pending_count == 1
+
+    # Undo accept
+    assert session.undo()
+    assert session.get_review_summary(run.run_id).accepted_count == 0
+    assert session.get_review_summary(run.run_id).pending_count == 2
+
+    # Redo accept
+    assert session.redo()
+    assert session.get_review_summary(run.run_id).accepted_count == 1
+
+    # Redo skip
+    assert session.redo()
+    assert session.get_review_summary(run.run_id).accepted_count == 1
+    assert session.get_review_summary(run.run_id).skipped_count == 1
+
+
+def test_undo_redo_correct_restores_both_manual_point_and_review_state_atomically(
+    tmp_path: Path,
+) -> None:
+    session, track, run = _session_with_completed_infer_and_review_batch(tmp_path)
+
+    point = session.correct_suggested_frame(run.run_id, 1, 15.0, 25.0)
+    assert len(session.project.observations) == 1
+    assert session.get_review_summary(run.run_id).corrected_count == 1
+
+    # Undo Correct
+    assert session.undo()
+    assert session.project.observations == ()
+    assert session.get_review_summary(run.run_id).corrected_count == 0
+    assert session.get_review_summary(run.run_id).pending_count == 2
+
+    # Redo Correct
+    assert session.redo()
+    assert session.project.observations == (point,)
+    assert session.get_review_summary(run.run_id).corrected_count == 1
+
+
+def test_undo_redo_delete_manual_point_restores_point_and_review_state(
+    tmp_path: Path,
+) -> None:
+    session, track, run = _session_with_completed_infer_and_review_batch(tmp_path)
+
+    point = session.correct_suggested_frame(run.run_id, 1, 15.0, 25.0)
+    session.delete_active_manual_point(track.track_id, 1)
+    assert session.project.observations == ()
+    assert session.get_review_summary(run.run_id).corrected_count == 0
+
+    # Undo Delete -> point restored, disposition restored to corrected
+    assert session.undo()
+    assert session.project.observations == (point,)
+    assert session.get_review_summary(run.run_id).corrected_count == 1
+
+    # Redo Delete -> point deleted again, disposition reverted to pending
+    assert session.redo()
+    assert session.project.observations == ()
+    assert session.get_review_summary(run.run_id).corrected_count == 0
+
+
+def test_undo_does_not_rollback_unrelated_tracking_runs_or_background_progress(
+    tmp_path: Path,
+) -> None:
+    session, track, run1 = _session_with_completed_infer_and_review_batch(tmp_path)
+
+    run2 = mark_run_running(
+        create_tracking_run(
+            run1.video_id,
+            track.track_id,
+            "train",
+            engine="dlc",
+            engine_version="3.0.1",
+            source_detail="test-train",
+        )
+    )
+    session.record_tracking_run(run2)
+
+    session.accept_suggested_frame(run1.run_id, 1)
+
+    completed_run2 = mark_run_completed(run2)
+    session.update_tracking_run(completed_run2)
+    assert next(r for r in session.tracking_runs() if r.run_id == run2.run_id).status == "completed"
+
+    assert session.undo()
+    assert session.get_review_summary(run1.run_id).accepted_count == 0
+
+    # run2 status MUST remain completed
+    assert next(r for r in session.tracking_runs() if r.run_id == run2.run_id).status == "completed"
+
+
+def test_review_actions_mark_session_dirty_and_save_clears_dirty_and_undo(
+    tmp_path: Path,
+) -> None:
+    session, track, run = _session_with_completed_infer_and_review_batch(tmp_path)
+
+    project_dir = tmp_path / "saved_proj"
+    session.save_as(project_dir)
+    assert not session.is_dirty
+    assert not session.can_undo
+
+    session.accept_suggested_frame(run.run_id, 1)
+    assert session.is_dirty
+    assert session.can_undo
+
+    assert session.undo()
+    assert not session.is_dirty
+
+    session.accept_suggested_frame(run.run_id, 1)
+    session.save()
+    assert not session.is_dirty
+    assert not session.can_undo
+
 

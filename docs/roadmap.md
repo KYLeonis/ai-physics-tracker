@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 5.2 — Difficult Frame Mining（✅ 2026-09-02；AC-10 达成：policy 0.800/0.300 vs baseline 0.600/0.000，575 测试全绿）**
-- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.2 完成，GUI HR 第二轮验收后进入 5.3）**
+- 最近完成：**Phase 5.3 — Suggested Frame Review & Correction（✅ 2026-09-03；审核队列/Correct/删除/恢复/Scoped Undo 全流程闭环，Human Review 通过，631 测试全绿）**
+- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.0–5.3 已完成，下一步 5.4）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -147,7 +147,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 | 5.0 ✅ | Tracking Pipeline Consolidation | F3：统一 runner/actions/task handle 生命周期，旧 coordinator 已移除 |
 | 5.1 ✅ | Representative Frame Selection | DLC uniform/K-means 初始建议帧，自适应抽帧优化与 Human Review 通过 |
 | 5.2 ✅ | Difficult Frame Mining | 全帧原始预测读取、四信号可解释评分 + screening 补齐、时间去重/多样性、后台任务与真实基准（AC-10 达成） |
-| 5.3 | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复 |
+| 5.3 ✅ | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复（Human Review 通过） |
 | 5.4 | Iteration History & Result Activation | fixed validation/history；F2 clear/activate/replace |
 | 5.5 | Training Advisor & Retraining | 规则建议、DLC resume/restart 与跨轮比较 |
 | 5.6 | Refinement Loop Integration & Acceptance | 单摆端到端闭环与量化验收 |
@@ -155,8 +155,8 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 **验收标准**
 - [x] F3 关闭：旧 coordinator lifecycle 已移除，训练/推理只维护统一 runner/actions/task handle 路径
 - [x] DLC uniform/K-means 可在 working zone 推荐去重代表帧，不自动创建标签（✅ 5.1 完成）
-- [ ] 困难帧扫描消费指定 infer run 的全帧原始预测；连续低 confidence 片段不会垄断 Top N
-- [ ] Accept 不产生 ground truth，Correct 保留 prediction provenance，Skip 不造坐标；保存重开一致
+- [x] 困难帧扫描消费指定 infer run 的全帧原始预测；连续低 confidence 片段不会垄断 Top N（✅ 5.2 完成）
+- [x] Accept 不产生 ground truth，Correct 保留 prediction provenance，Skip 不造坐标；保存重开一致（✅ 5.3 完成）
 - [ ] 新 completed infer result 可显式激活/替换，且不丢 manual、旧 run 产物与历史；事务可撤销并使派生 stale
 - [ ] 至少两轮使用相同 fixed validation membership，RMSE 与 coverage/confidence 分开报告
 - [ ] Training Advisor 覆盖补标、resume/restart、epochs、batch size 与 snapshot，且不会自动启动无限训练

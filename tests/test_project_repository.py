@@ -15,6 +15,17 @@ from ai_physics_tracker.domain.project import add_calibration, add_video
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.video import Video
+from ai_physics_tracker.application.suggested_frame_review import (
+    ActiveReviewBatch,
+    ReviewCandidate,
+    ReviewPredictionSnapshot,
+    ReviewRecord,
+    SuggestedFrameReviewState,
+    attach_review_state,
+    extract_review_state,
+    SUGGESTED_FRAME_REVIEW_KEY,
+)
+from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.infrastructure.errors import (
     ProjectFormatError,
     UnsupportedSchemaVersionError,
@@ -396,3 +407,105 @@ def test_corrupt_json_reports_backup_recovery_path(tmp_path: Path) -> None:
 
     with pytest.raises(ProjectFormatError, match="project.backup.json"):
         repository.load(project_root)
+
+
+def test_suggested_frame_review_roundtrip_and_null_provenance(tmp_path: Path) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "project"
+    project = _populated_project(repository, project_root)
+    video = project.videos[0]
+    track = project.tracks[0]
+
+    req_id = uuid4()
+    point_id = uuid4()
+
+    c1 = ReviewCandidate(
+        frame_index=12,
+        prediction=ReviewPredictionSnapshot(pixel_x=321.5, pixel_y=205.0, confidence=0.42),
+        components={"uncertainty": 0.8},
+        raw_components={"uncertainty": 0.58},
+        reasons=("low_confidence",),
+        total_score=0.8,
+    )
+    c2 = ReviewCandidate(
+        frame_index=20,
+        prediction=None,  # missing prediction
+        components={"jump": 0.9},
+        raw_components={"jump": 4.5},
+        reasons=("jump_outlier",),
+        total_score=0.85,
+    )
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={"top_n": 10}, candidates=(c1, c2))
+
+    r1 = ReviewRecord(
+        disposition="corrected",
+        reviewed_at="2026-09-03T12:00:00Z",
+        request_id=req_id,
+        prediction=c1.prediction,
+        manual_point_id=point_id,
+    )
+    r2 = ReviewRecord(
+        disposition="skipped",
+        reviewed_at="2026-09-03T12:05:00Z",
+        request_id=req_id,
+        prediction=None,
+        manual_point_id=None,
+    )
+    state = SuggestedFrameReviewState(active_batch=batch, reviewed_frames={12: r1, 20: r2})
+
+    run = TrackingRun(
+        run_id=uuid4(),
+        video_id=video.video_id,
+        track_id=track.track_id,
+        engine="dlc",
+        engine_version="3.0.1",
+        task_type="infer",
+        config={},
+        source_detail="test-infer",
+        created_at=_NOW,
+        status="completed",
+        completed_at=_NOW,
+        extra_fields={"sibling_plugin_key": 42},
+    )
+    run_with_review = attach_review_state(run, state)
+
+    project_with_run = replace(project, tracking_runs=(run_with_review,))
+    repository.save(project_root, project_with_run)
+
+    # 1. Inspect on-disk JSON directly
+    payload = json.loads((project_root / "project.json").read_text(encoding="utf-8"))
+    run_json = payload["tracking_runs"][0]
+    assert run_json["sibling_plugin_key"] == 42
+    assert SUGGESTED_FRAME_REVIEW_KEY in run_json
+    rev_json = run_json[SUGGESTED_FRAME_REVIEW_KEY]
+
+    # Verify candidates JSON structure
+    assert rev_json["active_batch"]["candidates"][0]["prediction"] == {
+        "pixel_x": 321.5,
+        "pixel_y": 205.0,
+        "confidence": 0.42,
+    }
+    assert rev_json["active_batch"]["candidates"][1]["prediction"] is None  # null in json
+
+    # Verify reviewed_frames keys are decimal strings
+    assert "12" in rev_json["reviewed_frames"]
+    assert rev_json["reviewed_frames"]["12"]["disposition"] == "corrected"
+    assert rev_json["reviewed_frames"]["12"]["manual_point_id"] == str(point_id)
+    assert "20" in rev_json["reviewed_frames"]
+    assert rev_json["reviewed_frames"]["20"]["disposition"] == "skipped"
+    assert rev_json["reviewed_frames"]["20"]["manual_point_id"] is None
+
+    # 2. Reload and extract state
+    loaded_project = repository.load(project_root)
+    loaded_run = loaded_project.tracking_runs[0]
+    assert loaded_run.extra_fields["sibling_plugin_key"] == 42
+    loaded_state = extract_review_state(loaded_run)
+    assert loaded_state is not None
+    assert loaded_state.active_batch is not None
+    assert loaded_state.active_batch.request_id == req_id
+    assert len(loaded_state.active_batch.candidates) == 2
+    assert loaded_state.active_batch.candidates[1].prediction is None
+    assert loaded_state.reviewed_frames[12].disposition == "corrected"
+    assert loaded_state.reviewed_frames[12].manual_point_id == point_id
+    assert loaded_state.reviewed_frames[20].disposition == "skipped"
+

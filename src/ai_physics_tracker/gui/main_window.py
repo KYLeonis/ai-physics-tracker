@@ -42,8 +42,9 @@ from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
 from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.gui.timing_actions import TimingActions
-from ai_physics_tracker.gui.tracking_actions import TrackingActions, FrameSelectionActions
 from ai_physics_tracker.gui.chart_actions import ChartActions
+from ai_physics_tracker.gui.suggested_frame_review_actions import DifficultFrameReviewActions
+from ai_physics_tracker.gui.tracking_actions import TrackingActions, FrameSelectionActions
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time, clamp_to_working_zone
 from ai_physics_tracker.gui.video_view import CalibrationView, MarkerView, VideoView
 
@@ -131,6 +132,11 @@ class MainWindow(QMainWindow):
         self.addTrackButton = QPushButton("Add track", self)
         self.deleteTrackButton = QPushButton("Delete track", self)
         self.deleteTrackButton.setEnabled(False)
+        self.deletePointButton = QPushButton("Delete point", self)
+        self.deletePointButton.setEnabled(False)
+        self.deletePointButton.setToolTip(
+            "Delete manual point on current track at current frame (Undoable before save; non-recoverable after save)"
+        )
         self.undoButton = QPushButton("↩ Undo", self)
         self.redoButton = QPushButton("↪ Redo", self)
         self.undoButton.setEnabled(False)
@@ -210,6 +216,7 @@ class MainWindow(QMainWindow):
         trackButtons = QHBoxLayout()
         trackButtons.addWidget(self.addTrackButton)
         trackButtons.addWidget(self.deleteTrackButton)
+        trackButtons.addWidget(self.deletePointButton)
         historyButtons = QHBoxLayout()
         historyButtons.addWidget(self.undoButton)
         historyButtons.addWidget(self.redoButton)
@@ -279,6 +286,9 @@ class MainWindow(QMainWindow):
         self.frameSelectionActions = FrameSelectionActions(
             self, self.trackingActions.panel
         )
+        self.reviewActions = DifficultFrameReviewActions(
+            self, self.trackingActions.panel
+        )
         self.chartActions.panel.raise_()
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         viewMenu.addAction(self.chartActions.panel.toggleViewAction())
@@ -335,6 +345,7 @@ class MainWindow(QMainWindow):
         self.rotationSpinBox.valueChanged.connect(self._onRotationChanged)
         self.addTrackButton.clicked.connect(self._addTrack)
         self.deleteTrackButton.clicked.connect(self._deleteSelectedTrack)
+        self.deletePointButton.clicked.connect(self._deleteCurrentManualPoint)
         self.trackList.itemSelectionChanged.connect(self._onTrackSelectionChanged)
         self.trackList.itemClicked.connect(lambda _item: self._onTrackSelectionChanged())
         annotationEscape = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
@@ -345,6 +356,19 @@ class MainWindow(QMainWindow):
         redoShortcut.activated.connect(self._redo)
         self.undoButton.clicked.connect(self._undo)
         self.redoButton.clicked.connect(self._redo)
+
+        deletePointShortcut = QShortcut(QKeySequence(Qt.Key.Key_Delete), self)
+        deletePointShortcut.activated.connect(self._onDeletePointShortcut)
+        backspacePointShortcut = QShortcut(QKeySequence(Qt.Key.Key_Backspace), self)
+        backspacePointShortcut.activated.connect(self._onDeletePointShortcut)
+
+        reviewAcceptShortcut = QShortcut(QKeySequence(Qt.Key.Key_A), self)
+        reviewAcceptShortcut.activated.connect(self._onReviewAcceptShortcut)
+        reviewSkipShortcut = QShortcut(QKeySequence(Qt.Key.Key_S), self)
+        reviewSkipShortcut.activated.connect(self._onReviewSkipShortcut)
+        reviewCorrectShortcut = QShortcut(QKeySequence(Qt.Key.Key_C), self)
+        reviewCorrectShortcut.activated.connect(self._onReviewCorrectShortcut)
+
         self.statusBar().showMessage("Ready")
 
     @property
@@ -364,6 +388,10 @@ class MainWindow(QMainWindow):
         return self._presented_frame_index
 
     @property
+    def presented_frame_index(self) -> int | None:
+        return self._presented_frame_index
+
+    @property
     def deliveryGeneration(self) -> int:
         return self._delivery_generation
 
@@ -373,6 +401,8 @@ class MainWindow(QMainWindow):
         if self.projectActions.busy or self._timeline is None or self._async.snapshot() is None:
             return False
         self.stopPlayback()
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         self.videoView.set_annotation_mode(False)
         self.videoView.set_calibration_mode(None)
         self.drawScaleButton.setChecked(False)
@@ -531,6 +561,8 @@ class MainWindow(QMainWindow):
         self.startPlayback()
 
     def startPlayback(self) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         snapshot = self._async.snapshot()
         if snapshot is None:
             return
@@ -642,9 +674,80 @@ class MainWindow(QMainWindow):
         session = self._annotation_session
         self.undoButton.setEnabled(session is not None and session.can_undo)
         self.redoButton.setEnabled(session is not None and session.can_redo)
+        self._refreshDeletePointButton()
         if hasattr(self, "projectActions"):
             self.projectActions.refresh()
         self.analysisChanged.emit()
+
+    def _refreshDeletePointButton(self) -> None:
+        has_manual = False
+        session = self._annotation_session
+        track_id = self._selected_track_id
+        frame_index = self._presented_frame_index
+        if session is not None and track_id is not None and frame_index is not None:
+            pt = session.effective_point(track_id, frame_index)
+            if pt is not None and pt.source == "manual":
+                has_manual = True
+        enabled = has_manual and self._measurement_allowed and not self.projectActions.busy
+        if hasattr(self, "deletePointButton"):
+            self.deletePointButton.setEnabled(enabled)
+        if hasattr(self, "trackingActions") and hasattr(self.trackingActions.panel, "deleteManualPointButton"):
+            self.trackingActions.panel.deleteManualPointButton.setEnabled(enabled)
+
+    def _deleteCurrentManualPoint(self) -> None:
+        if not self._measurement_allowed or self.projectActions.busy:
+            return
+        if self._has_pending_request:
+            self.statusBar().showMessage("Waiting for frame; delete ignored")
+            return
+        session = self._annotation_session
+        track_id = self._selected_track_id
+        frame_index = self._presented_frame_index
+        if session is None or track_id is None or frame_index is None:
+            return
+        pt = session.effective_point(track_id, frame_index)
+        if pt is None or pt.source != "manual":
+            return
+        session.delete_active_manual_point(track_id, frame_index)
+        self._refreshMarkers()
+        self._refreshHistoryButtons()
+        self._refreshDeletePointButton()
+        if hasattr(self, "reviewActions"):
+            self.reviewActions.refresh()
+        self.statusBar().showMessage(
+            f"Deleted manual point at frame {frame_index} (Undoable before save; non-recoverable after save)"
+        )
+
+    def _onDeletePointShortcut(self) -> None:
+        if self._isTypingInInputWidget():
+            return
+        self._deleteCurrentManualPoint()
+
+    def _isTypingInInputWidget(self) -> bool:
+        from PySide6.QtWidgets import QAbstractSpinBox, QLineEdit, QTextEdit, QPlainTextEdit
+        focus = self.focusWidget()
+        return isinstance(focus, (QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox))
+
+    def _onReviewAcceptShortcut(self) -> None:
+        if self._isTypingInInputWidget():
+            return
+        if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
+            if self.reviewActions.controller.current_candidate is not None:
+                self.reviewActions.acceptCurrent()
+
+    def _onReviewSkipShortcut(self) -> None:
+        if self._isTypingInInputWidget():
+            return
+        if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
+            if self.reviewActions.controller.current_candidate is not None:
+                self.reviewActions.skipCurrent()
+
+    def _onReviewCorrectShortcut(self) -> None:
+        if self._isTypingInInputWidget():
+            return
+        if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
+            if self.reviewActions.controller.current_candidate is not None:
+                self.reviewActions.startCorrectCurrent()
 
     def _addTrack(self) -> None:
         if not self._measurement_allowed or self.projectActions.busy or self._annotation_session is None or self._annotation_video_id is None:
@@ -715,8 +818,13 @@ class MainWindow(QMainWindow):
             ):
                 self.statusBar().showMessage("Browse mode")
         self._refreshMarkers()
+        self._refreshDeletePointButton()
 
     def _exitAnnotationMode(self) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
+            self.statusBar().showMessage("Correct mode cancelled")
+            return
         if self._selected_track_id is not None:
             self.trackList.setCurrentRow(-1)
             self.trackList.clearSelection()
@@ -1038,6 +1146,13 @@ class MainWindow(QMainWindow):
         pixel = self.videoView.mapScreenToPixel(view_pos)
         if pixel is None:
             return  # 点击落在图像外（data-model.md §6.1：不钳位、不造值）
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            handled = self.reviewActions.handleCorrectClick(pixel[0], pixel[1])
+            if handled:
+                self._refreshMarkers()
+                self._refreshHistoryButtons()
+                self._register_mark_for_autosave()
+            return
         try:
             self._annotation_session.mark_point(
                 self._selected_track_id,
@@ -1129,9 +1244,12 @@ class MainWindow(QMainWindow):
         self.nextButton.setEnabled(frame.frame_index < self._timeline.working_zone[1])
         self._presented_frame_index = frame.frame_index
         self._refreshMarkers()
+        self._refreshDeletePointButton()
         self.presentedFrameChanged.emit(frame.frame_index)
 
     def _step(self, delta: int) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         snapshot = self._async.snapshot()
         if snapshot is None:
             return
@@ -1146,12 +1264,16 @@ class MainWindow(QMainWindow):
         self._requestFrame(target)
 
     def _goToFrame(self, frame_index: int) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         if self._async.snapshot() is None:
             return
         self.stopPlayback()
         self._requestFrame(frame_index)
 
     def _scrubStarted(self) -> None:
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
         self.stopPlayback()
 
     def _scrubPreview(self, frame_index: int) -> None:

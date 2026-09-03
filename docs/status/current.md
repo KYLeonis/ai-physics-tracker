@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 mini-plan 已接受，Issue #20 与开发分支已建立；Slice 1 未开始**）
+- 最后更新：2026-09-03（**5.3 全流程开发、R1/R2 两轮审查与真机 Human Review 全部闭环通过验收；下一步进行 Phase 5.4 规划**）
 
 ---
 
@@ -15,10 +15,51 @@
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
-| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 已规划，Issue #20 / 开发分支已建立；Slice 1 未开始 |
+| Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
 
 ## Recently Completed
 
+- **Phase 5.3 收尾与 Human Review 通过（2026-09-03）**：
+  - 经用户真人真机测试，确认困难帧挖掘发起、候选队列浏览、快捷键 A/S/C/Delete、一次性 Correct 模式、当前帧 manual 点删除、保存重开恢复及后台互斥完全符合预期，用户正式批准通过验收。
+
+- **Phase 5.3 Slice 4 — Reliability Matrix & R2 Review Closure (2026-09-03)**：
+  - 构建可靠性与边界测试矩阵（`tests/gui/test_suggested_frame_review_reliability.py`），覆盖保存重开后继续审核、普通打点与审核操作交错 Undo/Redo、后台挖掘取消与迟到结果隔离、挖掘失败清理与按钮恢复、Correct 模式全导航矢量注销、已有 manual 点覆盖与纠偏。
+  - 启动 2 个并发子智能体（Test & Spec Reviewer + Domain & Concurrency Reviewer）进行全面只读审查，识别并闭环修复 6 项 Finding（T-01 至 T-03，C-01 至 C-03）：
+    - 修复已修正候选 Accept/Skip 按钮未禁用及缺少异常屏障缺陷（T-01）。
+    - 修复 Correct 模式校验失败时穿透执行普通 mark_point 缺陷（T-02）。
+    - 补齐困难帧挖掘、选帧与模型训练/推理之间的三方互斥及状态提示（C-01）。
+    - 修复 seekFrame() 编程式跳帧未取消 active Correct 模式问题（C-02）。
+    - 补齐 DifficultFrameReviewActions 的 `_closed` 标志与 shutdown 重置（C-03）。
+    - 补齐参数框（Top N, Min Gap）正向传参及重开点坐标精度测试（T-03）。
+  - 新增 10 个测试用例，全量测试 **631 passed**。
+- **Phase 5.3 Slices 1–3 独立代码审查与健壮性加固（2026-09-03）**：
+  - 启动 2 个只读 Reviewer 智能体（Domain & Session Reviewer、GUI & Concurrency Reviewer）并发审查。
+  - 识别并彻底修复全部 12 项 finding（5 项领域/会话、7 项 GUI/并发）：
+    - 修复 `accept`/`skip` 允许对已修正帧操作导致的 manual point 孤立问题（D-01）。
+    - 修复跨 Track 选中 run 激活审核的上下文错乱（G-01）。
+    - 修复异步解码在途时删除 manual point 竞态条件（G-02）。
+    - 修复时间轴拖动/步进/播放未退出 Correct 模式导致的坐标错位（G-03）。
+    - 修复空队列快捷键 `A`/`S` 崩溃隐患及输入框焦点屏蔽（G-04、G-08）。
+    - 完善 Accept/Skip 脏状态与自动保存触发，完善取消 Correct 时的标注模式退出。
+  - 新增 5 个自动化测试，全量测试 **621 passed**，归档 `docs/reviews/phase-5.3-review.md`。
+- **Phase 5.3 Slice 3 — Review/Correct/delete GUI (2026-09-03)**：
+  - 实现一次性 Correct 模式交互流：点击 Correct 按钮或按 C 键进入修正模式，画面点击即提交 manual point + 记录 `corrected` 状态 + 自动退出，按 Esc 或切换项干净取消且不产生脏状态。
+  - 实现当前帧 manual 点删除交互：仅当当前帧存在 active manual 点时使能删除按钮，删除后恢复原 AI 观测并将对应候选回滚为 pending；支持 Undo/Redo 恢复；明确提示保存后不可恢复。
+  - 实现完成统计展示（🎉 Review Complete）、候选状态与 AI 原始预测快照信息联动展示。
+  - 增加 5 个 GUI offscreen 测试（`tests/gui/test_suggested_frame_review_actions.py`），验证 AC-2–AC-7；全量回归 **616 passed**。
+- **Phase 5.3 Slice 2 — Mining entry + queue controller (2026-09-03)**：
+  - 在 `TaskPanel` 与 `DifficultFrameReviewActions` 中实现挖掘发起与审核面板联动，支持 Top N 与 Min Gap 参数配置及中性取消（AC-9，F4）。
+  - 实现基于 Task history 的 run 选中与合法性校验（仅限当前 Track 的 completed infer run，AC-1）。
+  - 实现同一 infer run 挖掘时自动排除已 Accept/Skip 的帧（AC-8，R2.8），新 run fresh 挖掘。
+  - 在挖掘产物中固化 AI 预测快照（x, y, confidence），并提供 `DifficultFrameResult.to_active_batch()`。
+  - 实现纯 Python Qt-free 审核队列控制器 `ReviewQueueController` 与 `MainWindow` 快捷键（A/S/C，防输入框冲突）。
+  - 顺带关闭 F4（中性取消不带 Failed 前缀）与 F6（算法 ComboBox 采用 `currentData()` 提取）。
+  - 增加 10 个测试（`test_difficult_frames.py` 1 个 AC-8 测试 + 预测快照断言，`test_suggested_frame_review.py` 3 个控制器测试，`tests/gui/test_suggested_frame_review_actions.py` 6 个 GUI offscreen 测试），全量 **611 passed**。
+- **Phase 5.3 Slice 1 — Review contract + atomic session transactions (2026-09-03)**：
+  - 实现 Qt-free 值对象契约 `suggested_frame_review.py`（候选、快照、记录、批次、汇总、序列化）。
+  - 在 `ProjectSession` 实现 `accept_suggested_frame`、`skip_suggested_frame`、`correct_suggested_frame`（原子 manual point + superseded AI 观测 + 预测保留）与 `delete_active_manual_point`（恢复原 AI 观测并回滚审核为 pending）。
+  - 实现 scoped Undo/Redo，保证审核操作撤销时不回滚无关后台任务状态与跟踪 run。
+  - 增加 20 个新单元/集成测试（`test_suggested_frame_review.py` 8 个、`test_project_session.py` 11 个、`test_project_repository.py` 1 个），全量测试 **601 passed**。
 - **Windows CI flaky test 修复（2026-09-03，`351ea1b`）**：Windows runner
   无法保证“立即同尺寸重写文件”改变 mtime，导致 fingerprint tamper 测试偶发漏检；测试现改为
   确定性改变文件大小，不改变 ADR-0012 的生产校验策略。定向 60 passed，全回归 **581 passed**。
@@ -69,6 +110,4 @@
 
 ## Next Recommended Action
 
-1. 下一次开发会话先读 `CODE_STANDARD.md` 与 ADR-0013，然后从 5.3 Slice 1 开始：Review
-   contract + ProjectSession 原子事务与 scoped Undo/Redo。
-2. 本次按用户限定停在 Issue/分支建立完成处；尚未修改 `src/`、`tests/`，也未开始产品实现。
+1. 暂停等待下一条指令，开始 Phase 5.4（Iteration History & Result Activation）规划与方案设计（覆盖 fixed validation/history、F2 clear/activate/replace）。

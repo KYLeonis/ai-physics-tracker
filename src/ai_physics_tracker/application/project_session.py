@@ -10,10 +10,24 @@ import logging
 import json
 from copy import deepcopy
 from dataclasses import replace
+from math import isfinite
 from pathlib import Path
-from typing import Protocol, TYPE_CHECKING
+from typing import Any, Protocol, TYPE_CHECKING
 from uuid import UUID, uuid4
 
+from ai_physics_tracker.application.suggested_frame_review import (
+    ActiveReviewBatch,
+    DISPOSITION_ACCEPTED,
+    DISPOSITION_CORRECTED,
+    DISPOSITION_SKIPPED,
+    ReviewBatchSummary,
+    ReviewRecord,
+    SUGGESTED_FRAME_REVIEW_KEY,
+    SuggestedFrameReviewState,
+    attach_review_state,
+    compute_batch_summary,
+    extract_review_state,
+)
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
 from ai_physics_tracker.domain.calibration import Calibration, CalibrationTransform
@@ -93,6 +107,17 @@ TRACK_COLOR_PALETTE = (
 )
 
 
+# 会话历史快照（含 TrackStore 数据、标定、派生数据与可选的审核事务作用域快照）
+_SessionDataSnapshot = tuple[
+    tuple[Track, ...],
+    tuple[TrackPoint, ...],
+    tuple[Calibration, ...],
+    dict[UUID, UUID],
+    tuple[DerivedData, ...],
+    dict[UUID, dict[str, Any] | None] | None,
+]
+
+
 class ProjectSessionError(Exception):
     """标注会话的用户可见错误。"""
 
@@ -115,24 +140,8 @@ class ProjectSession:
         self._store = TrackStore(project.tracks, project.observations)
         self._verified_videos: set[UUID] = set()
         self._approximate_timing: dict[UUID, str] = {}
-        self._undo_stack: list[
-            tuple[
-                tuple[Track, ...],
-                tuple[TrackPoint, ...],
-                tuple[Calibration, ...],
-                dict[UUID, UUID],
-                tuple[DerivedData, ...],
-            ]
-        ] = []
-        self._redo_stack: list[
-            tuple[
-                tuple[Track, ...],
-                tuple[TrackPoint, ...],
-                tuple[Calibration, ...],
-                dict[UUID, UUID],
-                tuple[DerivedData, ...],
-            ]
-        ] = []
+        self._undo_stack: list[_SessionDataSnapshot] = []
+        self._redo_stack: list[_SessionDataSnapshot] = []
 
     @classmethod
     def start(
@@ -1007,13 +1016,46 @@ class ProjectSession:
         return bool(self._redo_stack)
 
     def undo(self) -> bool:
-        """撤销最近一次写操作（含"替换后恢复旧点"）；无可撤销时返回 False。"""
+        """撤销最近一次写操作（含"替换后恢复旧点"与审核记录）；无可撤销时返回 False。"""
 
         if not self._undo_stack:
             return False
-        self._redo_stack.append(self._current_data_snapshot())
-        tracks, observations, calibrations, active_calibration_by_video, derived = self._undo_stack.pop()
+        snapshot = self._undo_stack.pop()
+        tracks, observations, calibrations, active_calibration_by_video, derived, scoped_reviews = snapshot
+
+        # 抓取当前受影响 run 的 review 状态作为 redo 恢复点
+        current_scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None
+        if scoped_reviews is not None:
+            current_scoped_reviews = {}
+            for r_id in scoped_reviews:
+                run = next((r for r in self._project.tracking_runs if r.run_id == r_id), None)
+                if run is not None:
+                    rev_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
+                    current_scoped_reviews[r_id] = (
+                        deepcopy(rev_dict) if isinstance(rev_dict, dict) else None
+                    )
+                else:
+                    current_scoped_reviews[r_id] = None
+
+        self._redo_stack.append(self._current_data_snapshot(current_scoped_reviews))
         self._store = TrackStore(tracks, observations)
+
+        updated_runs = self._project.tracking_runs
+        if scoped_reviews is not None:
+            runs_list: list[TrackingRun] = []
+            for existing in updated_runs:
+                if existing.run_id in scoped_reviews:
+                    old_rev = scoped_reviews[existing.run_id]
+                    extras = dict(existing.extra_fields)
+                    if old_rev is None:
+                        extras.pop(SUGGESTED_FRAME_REVIEW_KEY, None)
+                    else:
+                        extras[SUGGESTED_FRAME_REVIEW_KEY] = deepcopy(old_rev)
+                    runs_list.append(replace(existing, extra_fields=extras))
+                else:
+                    runs_list.append(existing)
+            updated_runs = tuple(runs_list)
+
         self._project = replace(
             self._project,
             tracks=tracks,
@@ -1021,6 +1063,7 @@ class ProjectSession:
             calibrations=calibrations,
             active_calibration_by_video=active_calibration_by_video,
             derived=derived,
+            tracking_runs=updated_runs,
         )
         return True
 
@@ -1029,9 +1072,41 @@ class ProjectSession:
 
         if not self._redo_stack:
             return False
-        self._undo_stack.append(self._current_data_snapshot())
-        tracks, observations, calibrations, active_calibration_by_video, derived = self._redo_stack.pop()
+        snapshot = self._redo_stack.pop()
+        tracks, observations, calibrations, active_calibration_by_video, derived, scoped_reviews = snapshot
+
+        current_scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None
+        if scoped_reviews is not None:
+            current_scoped_reviews = {}
+            for r_id in scoped_reviews:
+                run = next((r for r in self._project.tracking_runs if r.run_id == r_id), None)
+                if run is not None:
+                    rev_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
+                    current_scoped_reviews[r_id] = (
+                        deepcopy(rev_dict) if isinstance(rev_dict, dict) else None
+                    )
+                else:
+                    current_scoped_reviews[r_id] = None
+
+        self._undo_stack.append(self._current_data_snapshot(current_scoped_reviews))
         self._store = TrackStore(tracks, observations)
+
+        updated_runs = self._project.tracking_runs
+        if scoped_reviews is not None:
+            runs_list: list[TrackingRun] = []
+            for existing in updated_runs:
+                if existing.run_id in scoped_reviews:
+                    target_rev = scoped_reviews[existing.run_id]
+                    extras = dict(existing.extra_fields)
+                    if target_rev is None:
+                        extras.pop(SUGGESTED_FRAME_REVIEW_KEY, None)
+                    else:
+                        extras[SUGGESTED_FRAME_REVIEW_KEY] = deepcopy(target_rev)
+                    runs_list.append(replace(existing, extra_fields=extras))
+                else:
+                    runs_list.append(existing)
+            updated_runs = tuple(runs_list)
+
         self._project = replace(
             self._project,
             tracks=tracks,
@@ -1039,28 +1114,27 @@ class ProjectSession:
             calibrations=calibrations,
             active_calibration_by_video=active_calibration_by_video,
             derived=derived,
+            tracking_runs=updated_runs,
         )
         return True
 
     def _current_data_snapshot(
         self,
-    ) -> tuple[
-        tuple[Track, ...],
-        tuple[TrackPoint, ...],
-        tuple[Calibration, ...],
-        dict[UUID, UUID],
-        tuple[DerivedData, ...],
-    ]:
+        scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None,
+    ) -> _SessionDataSnapshot:
         return (
             self._store.tracks,
             self._store.observations,
             self._project.calibrations,
             dict(self._project.active_calibration_by_video),
             self._project.derived,
+            deepcopy(scoped_reviews) if scoped_reviews is not None else None,
         )
 
-    def _push_undo_snapshot(self) -> None:
-        self._undo_stack.append(self._current_data_snapshot())
+    def _push_undo_snapshot(
+        self, scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None
+    ) -> None:
+        self._undo_stack.append(self._current_data_snapshot(scoped_reviews))
         del self._undo_stack[:-UNDO_STACK_LIMIT]
         self._redo_stack.clear()
 
@@ -1071,15 +1145,25 @@ class ProjectSession:
             index += 1
         return f"Track {index}"
 
-    def _commit_project(self, project: Project, store: TrackStore | None = None) -> None:
-        self._push_undo_snapshot()
+    def _commit_project(
+        self,
+        project: Project,
+        store: TrackStore | None = None,
+        scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None,
+    ) -> None:
+        self._push_undo_snapshot(scoped_reviews)
         if store is not None:
             self._store = store
         else:
             self._store = TrackStore(project.tracks, project.observations)
         self._project = project
 
-    def _commit_store(self, store: TrackStore, derived: tuple[DerivedData, ...]) -> None:
+    def _commit_store(
+        self,
+        store: TrackStore,
+        derived: tuple[DerivedData, ...],
+        scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None,
+    ) -> None:
         # 先完成跨对象校验；失败不能污染原 store 或提前清 redo。
         project = replace(
             self._project,
@@ -1087,4 +1171,292 @@ class ProjectSession:
             observations=store.observations,
             derived=derived,
         )
-        self._commit_project(project, store)
+        self._commit_project(project, store, scoped_reviews)
+
+    # ------------------------------------------------------------------
+    # Suggested Frame Review & Correction (Phase 5.3 ADR-0013)
+    # ------------------------------------------------------------------
+
+    def _validate_infer_run_for_review(self, run_id: UUID) -> TrackingRun:
+        run = next((r for r in self._project.tracking_runs if r.run_id == run_id), None)
+        if run is None:
+            raise ProjectSessionError(f"unknown tracking run_id: {run_id}")
+        if run.task_type != "infer" or run.status != "completed":
+            raise ProjectSessionError("review requires a completed inference run")
+        return run
+
+    def _commit_review_transaction(
+        self, run: TrackingRun, new_state: SuggestedFrameReviewState
+    ) -> None:
+        old_review_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
+        scoped_reviews = {
+            run.run_id: deepcopy(old_review_dict) if isinstance(old_review_dict, dict) else None
+        }
+        updated_run = attach_review_state(run, new_state)
+        runs = tuple(updated_run if r.run_id == run.run_id else r for r in self._project.tracking_runs)
+        updated_project = replace(self._project, tracking_runs=runs)
+        self._commit_project(updated_project, self._store, scoped_reviews)
+
+    def get_suggested_frame_review(self, run_id: UUID) -> SuggestedFrameReviewState | None:
+        """返回指定 infer run 的建议帧审核状态；未设置或损坏时返回 None。"""
+        run = next((r for r in self._project.tracking_runs if r.run_id == run_id), None)
+        if run is None:
+            return None
+        try:
+            return extract_review_state(run)
+        except ValueError:
+            return None
+
+    def get_review_summary(self, run_id: UUID) -> ReviewBatchSummary:
+        """计算指定 infer run 当前批次的审核概要。"""
+        state = self.get_suggested_frame_review(run_id)
+        return compute_batch_summary(state)
+
+    def set_active_review_batch(self, run_id: UUID, batch: ActiveReviewBatch) -> None:
+        """设置当前活动的困难帧挖掘批次（保留该 run 既有的 reviewed_frames）。"""
+        run = self._validate_infer_run_for_review(run_id)
+        current_state = self.get_suggested_frame_review(run_id)
+        kept_reviewed = current_state.reviewed_frames if current_state is not None else {}
+        new_state = SuggestedFrameReviewState(active_batch=batch, reviewed_frames=kept_reviewed)
+        updated_run = attach_review_state(run, new_state)
+        self.update_tracking_run(updated_run)
+        logger.info("set active review batch for run=%s candidates=%d", run_id, len(batch.candidates))
+
+    def accept_suggested_frame(self, run_id: UUID, frame_index: int) -> ReviewRecord:
+        """将候选帧标记为已接受（不创建 TrackPoint，AC-5）。"""
+        run = self._validate_infer_run_for_review(run_id)
+        state = self.get_suggested_frame_review(run_id)
+        if state is None or state.active_batch is None:
+            raise ProjectSessionError("no active review batch for this run")
+        candidate = next((c for c in state.active_batch.candidates if c.frame_index == frame_index), None)
+        if candidate is None:
+            raise ProjectSessionError(f"frame {frame_index} is not in current active review batch")
+
+        curr_rec = state.reviewed_frames.get(frame_index)
+        if curr_rec is not None and curr_rec.disposition == DISPOSITION_CORRECTED:
+            raise ProjectSessionError(
+                f"frame {frame_index} has already been corrected; delete the manual point first to change disposition"
+            )
+
+        now_iso = utc_now().isoformat()
+        record = ReviewRecord(
+            disposition=DISPOSITION_ACCEPTED,
+            reviewed_at=now_iso,
+            request_id=state.active_batch.request_id,
+            prediction=candidate.prediction,
+            manual_point_id=None,
+        )
+        new_reviewed = dict(state.reviewed_frames)
+        new_reviewed[frame_index] = record
+        new_state = SuggestedFrameReviewState(
+            active_batch=state.active_batch,
+            reviewed_frames=new_reviewed,
+        )
+        self._commit_review_transaction(run, new_state)
+        logger.info("accepted suggested frame run=%s frame=%d", run_id, frame_index)
+        return record
+
+    def skip_suggested_frame(self, run_id: UUID, frame_index: int) -> ReviewRecord:
+        """将候选帧标记为跳过（不创建 TrackPoint，AC-5）。"""
+        run = self._validate_infer_run_for_review(run_id)
+        state = self.get_suggested_frame_review(run_id)
+        if state is None or state.active_batch is None:
+            raise ProjectSessionError("no active review batch for this run")
+        candidate = next((c for c in state.active_batch.candidates if c.frame_index == frame_index), None)
+        if candidate is None:
+            raise ProjectSessionError(f"frame {frame_index} is not in current active review batch")
+
+        curr_rec = state.reviewed_frames.get(frame_index)
+        if curr_rec is not None and curr_rec.disposition == DISPOSITION_CORRECTED:
+            raise ProjectSessionError(
+                f"frame {frame_index} has already been corrected; delete the manual point first to change disposition"
+            )
+
+        now_iso = utc_now().isoformat()
+        record = ReviewRecord(
+            disposition=DISPOSITION_SKIPPED,
+            reviewed_at=now_iso,
+            request_id=state.active_batch.request_id,
+            prediction=candidate.prediction,
+            manual_point_id=None,
+        )
+        new_reviewed = dict(state.reviewed_frames)
+        new_reviewed[frame_index] = record
+        new_state = SuggestedFrameReviewState(
+            active_batch=state.active_batch,
+            reviewed_frames=new_reviewed,
+        )
+        self._commit_review_transaction(run, new_state)
+        logger.info("skipped suggested frame run=%s frame=%d", run_id, frame_index)
+        return record
+
+    def correct_suggested_frame(
+        self,
+        run_id: UUID,
+        frame_index: int,
+        pixel_x: float,
+        pixel_y: float,
+    ) -> TrackPoint:
+        """对候选帧执行人工修正，原子提交 manual point 与 corrected disposition。
+
+        原 AI 观测按 manual last-wins 保留并标记为 superseded；
+        原 prediction 快照（无论是否低于导入阈值或缺测）随审核记录持久化。
+        """
+        run = self._validate_infer_run_for_review(run_id)
+        track = next((t for t in self._store.tracks if t.track_id == run.track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"track {run.track_id} not found")
+        if track.video_id not in self._verified_videos:
+            raise ProjectSessionError("video timing is not verified CFR; new measurements disabled")
+        timeline = next((t for t in self._project.timelines if t.video_id == track.video_id), None)
+        if timeline is None:
+            raise ProjectSessionError(f"no timeline registered for video of track {track.name}")
+        if not (timeline.working_zone[0] <= frame_index <= timeline.working_zone[1]):
+            raise ProjectSessionError(f"frame {frame_index} outside working zone")
+
+        state = self.get_suggested_frame_review(run_id)
+        if state is None or state.active_batch is None:
+            raise ProjectSessionError("no active review batch for this run")
+        candidate = next((c for c in state.active_batch.candidates if c.frame_index == frame_index), None)
+        if candidate is None:
+            raise ProjectSessionError(f"frame {frame_index} is not in current active review batch")
+
+        if (
+            isinstance(pixel_x, bool)
+            or not isinstance(pixel_x, (int, float))
+            or not isfinite(float(pixel_x))
+            or isinstance(pixel_y, bool)
+            or not isinstance(pixel_y, (int, float))
+            or not isfinite(float(pixel_y))
+        ):
+            raise ProjectSessionError("pixel coordinates must be finite floats")
+
+        now = utc_now()
+        point = TrackPoint(
+            point_id=uuid4(),
+            track_id=track.track_id,
+            frame_index=frame_index,
+            time_s=frame_to_time(frame_index, timeline),
+            pixel_x=float(pixel_x),
+            pixel_y=float(pixel_y),
+            source="manual",
+            source_detail=self._approximate_timing.get(track.video_id),
+            visibility="visible",
+            status="active",
+            created_at=now,
+            modified_at=now,
+        )
+
+        candidate_store = TrackStore(self._store.tracks, self._store.observations)
+        candidate_store.add_manual_point(point)
+
+        record = ReviewRecord(
+            disposition=DISPOSITION_CORRECTED,
+            reviewed_at=now.isoformat(),
+            request_id=state.active_batch.request_id,
+            prediction=candidate.prediction,
+            manual_point_id=point.point_id,
+        )
+        new_reviewed = dict(state.reviewed_frames)
+        new_reviewed[frame_index] = record
+        new_state = SuggestedFrameReviewState(
+            active_batch=state.active_batch,
+            reviewed_frames=new_reviewed,
+        )
+
+        old_review_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
+        scoped_reviews = {
+            run.run_id: deepcopy(old_review_dict) if isinstance(old_review_dict, dict) else None
+        }
+
+        updated_run = attach_review_state(run, new_state)
+        runs = tuple(updated_run if r.run_id == run.run_id else r for r in self._project.tracking_runs)
+
+        updated_project = replace(
+            self._project,
+            tracks=candidate_store.tracks,
+            observations=candidate_store.observations,
+            derived=mark_tracks_stale(self._project.derived, {track.track_id}),
+            tracking_runs=runs,
+        )
+        self._commit_project(updated_project, candidate_store, scoped_reviews)
+        logger.info(
+            "corrected suggested frame run=%s track=%s frame=%d point_id=%s pixel=(%.1f, %.1f)",
+            run_id,
+            track.name,
+            frame_index,
+            point.point_id,
+            pixel_x,
+            pixel_y,
+        )
+        return point
+
+    def delete_active_manual_point(self, track_id: UUID, frame_index: int) -> TrackPoint:
+        """删除当前 Track 在当前帧的 active manual 点，恢复被它遮蔽的 AI 点。
+
+        若该点由某 infer run 的 Correct 创建，同时把对应候选恢复为 pending。
+        可在下一次保存前 Undo；保存后不可通过应用内 Undo 恢复（ADR-0013）。
+        """
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        target = next(
+            (
+                p
+                for p in self._store.observations
+                if p.track_id == track_id
+                and p.frame_index == frame_index
+                and p.source == "manual"
+                and p.status == "active"
+            ),
+            None,
+        )
+        if target is None:
+            raise ProjectSessionError(
+                f"No active manual point on track {track.name} at frame {frame_index}"
+            )
+
+        candidate_store = TrackStore(self._store.tracks, self._store.observations)
+        candidate_store.delete_manual_point(target.point_id)
+
+        # 检查是否有 completed infer run 包含由该 manual_point_id 关联的 Correct 记录
+        scoped_reviews: dict[UUID, dict[str, Any] | None] = {}
+        updated_runs_list: list[TrackingRun] = []
+        for r in self._project.tracking_runs:
+            rev_state = self.get_suggested_frame_review(r.run_id)
+            if rev_state is not None and frame_index in rev_state.reviewed_frames:
+                rec = rev_state.reviewed_frames[frame_index]
+                if rec.manual_point_id == target.point_id:
+                    old_dict = r.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
+                    scoped_reviews[r.run_id] = deepcopy(old_dict) if isinstance(old_dict, dict) else None
+
+                    new_reviewed = dict(rev_state.reviewed_frames)
+                    del new_reviewed[frame_index]
+                    new_state = SuggestedFrameReviewState(
+                        active_batch=rev_state.active_batch,
+                        reviewed_frames=new_reviewed,
+                    )
+                    updated_runs_list.append(attach_review_state(r, new_state))
+                    continue
+            updated_runs_list.append(r)
+
+        updated_project = replace(
+            self._project,
+            tracks=candidate_store.tracks,
+            observations=candidate_store.observations,
+            derived=mark_tracks_stale(self._project.derived, {track_id}),
+            tracking_runs=tuple(updated_runs_list),
+        )
+        self._commit_project(
+            updated_project,
+            candidate_store,
+            scoped_reviews if scoped_reviews else None,
+        )
+        logger.info(
+            "deleted active manual point track=%s frame=%d point_id=%s (restored superseded observations)",
+            track.name,
+            frame_index,
+            target.point_id,
+        )
+        return target
