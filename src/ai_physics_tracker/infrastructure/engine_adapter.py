@@ -47,8 +47,10 @@ class EngineAdapter(Protocol):
         num_shuffles: int = 1,
         net_type: str = "resnet_50",
         augmenter_type: str = "default",
+        train_indices: list[int] | None = None,
+        test_indices: list[int] | None = None,
     ) -> bool:
-        """生成 DLC 训练集文件，成功返回 True。"""
+        """生成 DLC 训练集文件，支持显式切分索引，成功返回 True。"""
         ...
 
     def train(

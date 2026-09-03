@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.4 mini-plan 已批准；按用户指令暂停执行**）
+- 最后更新：2026-09-03（**Phase 5.4 Iteration History & Result Activation 验收通过并收尾合并；下一步进入 Phase 5.5**）
 
 ---
 
@@ -16,9 +16,19 @@
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
-| Subphase | 5.4 — Iteration History & Result Activation | ✅ mini-plan 已批准；⏸ 暂停执行 |
+| Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, Human Review 通过) |
 
 ## Recently Completed
+
+- **Phase 5.4 收尾与 Human Review 通过（2026-09-03）**：
+  - 经用户真人真机测试，确认推理候选隔离（推理后不自动覆盖）、结果显式激活与原子替换/清除、手工点优先保留与同帧 AI 复原、固定验证集冻结展示与 Undo/Redo 完全符合预期，正式批准通过验收。
+  - 分支 `feat/p5.4-result-activation-history` 合并入 `main`，全量 652 项测试全绿，文档同步并推送到 GitHub 远程。
+
+- **Phase 5.4 Slices 1–4 结果激活、迭代历史与固定验证集（2026-09-03）**：
+  - **Slice 1 (ADR-0014 与数据契约)**：创建 ADR-0014，建立 `refinement_state_v1`（包含 `ValidationSeries`、`ValidationLabelSnapshot`、`ActivationRecord`、`RefinementIterationInfo` 与 `PredictionSummary`），实现标签一致性校验及 Undo/Redo 隔离。
+  - **Slice 2 (Fixed split 与训练冻结)**：`DLCAdapter` 与 `prepare_training` 实现固定测试集划分，向 DLC 传入互斥显式 `trainIndices/testIndices`，杜绝验证集数据泄露；自动同步 DLC 配置的 `TrainingFraction`；冻结上轮/当前 infer 引用与 review 统计。
+  - **Slice 3 (Candidate 隔离与激活事务)**：推理完成仅作为 Candidate 登记（`observations_changed=False`）；实现 `activate_infer_run`、`replace_active_infer_run` 与 `clear_active_ai_observations` 原子事务；支持 manual 点优先、同帧 AI superseded 保留与删除 manual 自动复原 AI；完备指纹篡改校验与旧项目兼容。
+  - **Slice 4 (GUI 控制与独立 Review 闭环)**：在 `TaskPanel` 与 `TrackingActions` 增加激活/替换/清除/固定验证集管理按钮与确认对话框；完成 2 个并发子智能体审查并彻底闭环修复 9 项 GUI/并发/边界 finding（F-01~F-09 及领域边界 P1~P3）；全量 **652 tests passed**，真实 DLC fixed split smoke 成功通过。
 
 - **Phase 5.3 完成状态复核（2026-09-03）**：10 项 AC 与 4 个 Slice 全部勾选，R1/R2 共
   18 项 finding 已关闭，Human Review 已通过；本地全回归 **631 passed**，`main @ f159410`
@@ -115,8 +125,6 @@
 
 ## Next Recommended Action
 
-1. **保持暂停，不执行 Phase 5.4 mini-plan。**
-2. 用户明确要求恢复后，先新增 ADR-0014，并同步 `docs/spec/project-format.md` 与
-   `docs/spec/phase5-requirements.md`。
-3. 然后创建 Phase 5.4 GitHub Issue 和 `feat/p5.4-result-activation-history` 分支。
-4. 再进入 Slice 1：补统一 refinement 状态、固定验证集划分/训练排除与 round-trip 测试。
+1. **保持暂停，等待下一条开发指令再进入 Phase 5.5。**
+2. 用户明确要求进入 Phase 5.5（Training Advisor & Retraining）后，编写 Phase 5.5 mini-plan，并创建对应 GitHub Issue 与工作分支。
+3. 按 mini-plan 逐步实现规则型 Training Advisor 与 DLC resume/restart。

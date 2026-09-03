@@ -15,6 +15,23 @@ from ai_physics_tracker.domain.project import add_calibration, add_video
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.video import Video
+from ai_physics_tracker.application.refinement_history import (
+    ActivationRecord,
+    PREDICTION_SUMMARY_KEY,
+    PredictionSummary,
+    REFINEMENT_ITERATION_KEY,
+    REFINEMENT_STATE_KEY,
+    RefinementIterationInfo,
+    RefinementState,
+    ValidationLabelSnapshot,
+    ValidationSeries,
+    attach_prediction_summary,
+    attach_refinement_iteration,
+    attach_refinement_state,
+    extract_prediction_summary,
+    extract_refinement_iteration,
+    extract_refinement_state,
+)
 from ai_physics_tracker.application.suggested_frame_review import (
     ActiveReviewBatch,
     ReviewCandidate,
@@ -508,4 +525,116 @@ def test_suggested_frame_review_roundtrip_and_null_provenance(tmp_path: Path) ->
     assert loaded_state.reviewed_frames[12].disposition == "corrected"
     assert loaded_state.reviewed_frames[12].manual_point_id == point_id
     assert loaded_state.reviewed_frames[20].disposition == "skipped"
+
+
+def test_save_load_roundtrip_preserves_refinement_state_and_iteration(
+    tmp_path: Path,
+) -> None:
+    repository = ProjectRepository()
+    project_root = tmp_path / "refinement_project"
+    project = _populated_project(repository, project_root)
+    track = project.tracks[0]
+
+    # 1. Setup RefinementState on Track
+    snap = ValidationLabelSnapshot(uuid4(), 10, 100.5, 200.5, _NOW.isoformat())
+    series = ValidationSeries(uuid4(), "Val Set A", _NOW.isoformat(), (snap,))
+    rec = ActivationRecord(uuid4(), _NOW.isoformat(), "activate", None, uuid4(), 50, 2)
+    ref_state = RefinementState(
+        active_infer_run_id=uuid4(),
+        activation_history=(rec,),
+        active_validation_series_id=series.series_id,
+        validation_series=(series,),
+    )
+    track_with_ref = attach_refinement_state(track, ref_state)
+
+    # 2. Setup RefinementIterationInfo on train TrackingRun
+    train_run = TrackingRun(
+        run_id=uuid4(),
+        video_id=track.video_id,
+        track_id=track.track_id,
+        engine="dlc",
+        engine_version="3.0.1",
+        task_type="train",
+        config={},
+        source_detail="test-train",
+        created_at=_NOW,
+        status="completed",
+        completed_at=_NOW,
+    )
+    iter_info = RefinementIterationInfo(
+        iteration_index=1,
+        previous_training_run_id=None,
+        source_infer_run_id=None,
+        validation_series_id=series.series_id,
+        training_labels=(snap,),
+        review_summary={"accepted": 2, "corrected": 1},
+    )
+    train_run = attach_refinement_iteration(train_run, iter_info)
+
+    # 3. Setup PredictionSummary on infer TrackingRun
+    infer_run = TrackingRun(
+        run_id=uuid4(),
+        video_id=track.video_id,
+        track_id=track.track_id,
+        engine="dlc",
+        engine_version="3.0.1",
+        task_type="infer",
+        config={},
+        source_detail="test-infer",
+        created_at=_NOW,
+        status="completed",
+        completed_at=_NOW,
+    )
+    pred_summary = PredictionSummary(
+        row_count=100,
+        eligible_count=80,
+        missing_count=5,
+        low_confidence_count=15,
+        threshold=0.6,
+        coverage=0.8,
+    )
+    infer_run = attach_prediction_summary(infer_run, pred_summary)
+
+    project_updated = replace(
+        project,
+        tracks=(track_with_ref,),
+        tracking_runs=(train_run, infer_run),
+    )
+    repository.save(project_root, project_updated)
+
+    # Check on-disk json
+    disk_payload = json.loads((project_root / "project.json").read_text(encoding="utf-8"))
+    disk_track = disk_payload["tracks"][0]
+    assert REFINEMENT_STATE_KEY in disk_track
+    assert disk_track[REFINEMENT_STATE_KEY]["active_validation_series_id"] == str(series.series_id)
+
+    disk_train = disk_payload["tracking_runs"][0]
+    assert REFINEMENT_ITERATION_KEY in disk_train
+    assert disk_train[REFINEMENT_ITERATION_KEY]["iteration_index"] == 1
+
+    disk_infer = disk_payload["tracking_runs"][1]
+    assert PREDICTION_SUMMARY_KEY in disk_infer
+    assert disk_infer[PREDICTION_SUMMARY_KEY]["coverage"] == 0.8
+
+    # Reload from disk and assert fidelity
+    loaded = repository.load(project_root)
+    loaded_track = loaded.tracks[0]
+    loaded_state = extract_refinement_state(loaded_track)
+    assert loaded_state.active_infer_run_id == ref_state.active_infer_run_id
+    assert loaded_state.active_validation_series_id == series.series_id
+    assert len(loaded_state.validation_series) == 1
+    assert loaded_state.validation_series[0].name == "Val Set A"
+    assert loaded_state.validation_series[0].label_snapshots[0].pixel_x == 100.5
+
+    loaded_train = loaded.tracking_runs[0]
+    loaded_iter = extract_refinement_iteration(loaded_train)
+    assert loaded_iter is not None
+    assert loaded_iter.iteration_index == 1
+    assert loaded_iter.review_summary == {"accepted": 2, "corrected": 1}
+
+    loaded_infer = loaded.tracking_runs[1]
+    loaded_summary = extract_prediction_summary(loaded_infer)
+    assert loaded_summary is not None
+    assert loaded_summary.coverage == 0.8
+
 

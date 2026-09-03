@@ -12,9 +12,20 @@ from copy import deepcopy
 from dataclasses import replace
 from math import isfinite
 from pathlib import Path
-from typing import Any, Protocol, TYPE_CHECKING
+from typing import Any, Iterable, Protocol, TYPE_CHECKING
 from uuid import UUID, uuid4
 
+from ai_physics_tracker.application.refinement_history import (
+    ActivationRecord,
+    REFINEMENT_STATE_KEY,
+    RefinementState,
+    ValidationLabelSnapshot,
+    ValidationSeries,
+    _now_iso_utc,
+    attach_refinement_state,
+    check_validation_series_consistency,
+    extract_refinement_state,
+)
 from ai_physics_tracker.application.suggested_frame_review import (
     ActiveReviewBatch,
     DISPOSITION_ACCEPTED,
@@ -1460,3 +1471,405 @@ class ProjectSession:
             target.point_id,
         )
         return target
+
+    # --- Phase 5.4: Refinement State & Fixed Validation Series ---
+
+    def get_refinement_state(self, track_id: UUID) -> RefinementState:
+        """获取指定 Track 的迭代与结果激活状态。"""
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+        return extract_refinement_state(track)
+
+    def create_validation_series(
+        self,
+        track_id: UUID,
+        name: str,
+        frame_indices: Iterable[int],
+    ) -> ValidationSeries:
+        """从当前 active manual points 创建不可变的固定验证集，并将其设为活动验证集。"""
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        clean_name = name.strip()
+        if not clean_name:
+            raise ProjectSessionError("Validation series name must not be empty")
+
+        frames_set = sorted(set(frame_indices))
+        if not frames_set:
+            raise ProjectSessionError("Validation series must contain at least one frame")
+
+        snapshots: list[ValidationLabelSnapshot] = []
+        for f_idx in frames_set:
+            manual_pt = next(
+                (
+                    p
+                    for p in self._store.observations
+                    if p.track_id == track_id
+                    and p.frame_index == f_idx
+                    and p.source == "manual"
+                    and p.status == "active"
+                ),
+                None,
+            )
+            if manual_pt is None:
+                raise ProjectSessionError(
+                    f"No active manual point found on track '{track.name}' at frame {f_idx}"
+                )
+            snapshots.append(
+                ValidationLabelSnapshot(
+                    point_id=manual_pt.point_id,
+                    frame_index=f_idx,
+                    pixel_x=manual_pt.pixel_x,
+                    pixel_y=manual_pt.pixel_y,
+                    modified_at=manual_pt.modified_at.isoformat(),
+                )
+            )
+
+        new_series = ValidationSeries(
+            series_id=uuid4(),
+            name=clean_name,
+            created_at=_now_iso_utc(),
+            label_snapshots=tuple(snapshots),
+        )
+
+        current_state = extract_refinement_state(track)
+        updated_state = RefinementState(
+            active_infer_run_id=current_state.active_infer_run_id,
+            activation_history=current_state.activation_history,
+            active_validation_series_id=new_series.series_id,
+            validation_series=(*current_state.validation_series, new_series),
+        )
+        updated_track = attach_refinement_state(track, updated_state)
+
+        candidate_store = TrackStore(
+            tuple(updated_track if t.track_id == track_id else t for t in self._store.tracks),
+            self._store.observations,
+        )
+        updated_project = replace(
+            self._project,
+            tracks=candidate_store.tracks,
+        )
+        self._commit_project(updated_project, candidate_store)
+        logger.info(
+            "created validation series track=%s series_id=%s name=%s labels=%d",
+            track.name,
+            new_series.series_id,
+            new_series.name,
+            len(new_series.label_snapshots),
+        )
+        return new_series
+
+    def set_active_validation_series(
+        self,
+        track_id: UUID,
+        series_id: UUID | None,
+    ) -> None:
+        """设置或清空当前 Track 的活动固定验证集。"""
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        current_state = extract_refinement_state(track)
+        if series_id is not None and current_state.get_series(series_id) is None:
+            raise ProjectSessionError(
+                f"Validation series '{series_id}' does not exist on track '{track.name}'"
+            )
+
+        updated_state = RefinementState(
+            active_infer_run_id=current_state.active_infer_run_id,
+            activation_history=current_state.activation_history,
+            active_validation_series_id=series_id,
+            validation_series=current_state.validation_series,
+        )
+        updated_track = attach_refinement_state(track, updated_state)
+
+        candidate_store = TrackStore(
+            tuple(updated_track if t.track_id == track_id else t for t in self._store.tracks),
+            self._store.observations,
+        )
+        updated_project = replace(
+            self._project,
+            tracks=candidate_store.tracks,
+        )
+        self._commit_project(updated_project, candidate_store)
+
+    def delete_validation_series(
+        self,
+        track_id: UUID,
+        series_id: UUID,
+    ) -> None:
+        """删除指定 Track 的固定验证集。若为活动验证集则自动清空活动指针。"""
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        current_state = extract_refinement_state(track)
+        target = current_state.get_series(series_id)
+        if target is None:
+            raise ProjectSessionError(
+                f"Validation series '{series_id}' does not exist on track '{track.name}'"
+            )
+
+        new_series_list = tuple(s for s in current_state.validation_series if s.series_id != series_id)
+        new_active_id = (
+            None
+            if current_state.active_validation_series_id == series_id
+            else current_state.active_validation_series_id
+        )
+
+        updated_state = RefinementState(
+            active_infer_run_id=current_state.active_infer_run_id,
+            activation_history=current_state.activation_history,
+            active_validation_series_id=new_active_id,
+            validation_series=new_series_list,
+        )
+        updated_track = attach_refinement_state(track, updated_state)
+
+        candidate_store = TrackStore(
+            tuple(updated_track if t.track_id == track_id else t for t in self._store.tracks),
+            self._store.observations,
+        )
+        updated_project = replace(
+            self._project,
+            tracks=candidate_store.tracks,
+        )
+        self._commit_project(updated_project, candidate_store)
+
+    def validate_active_validation_series(
+        self,
+        track_id: UUID,
+    ) -> tuple[bool, str | None]:
+        """校验当前 Track 活动验证集与当前 manual points 是否一致。"""
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        state = extract_refinement_state(track)
+        active_series = state.active_series
+        if active_series is None:
+            return False, "No active validation series"
+
+        manual_points = [
+            p
+            for p in self._store.observations
+            if p.track_id == track_id and p.source == "manual" and p.status == "active"
+        ]
+        return check_validation_series_consistency(active_series, manual_points)
+
+    # ------------------------------------------------------------------
+    # Inference Result Activation & Replacement (Phase 5.4 ADR-0014)
+    # ------------------------------------------------------------------
+
+    def get_track_activation_status(
+        self,
+        track_id: UUID,
+    ) -> tuple[str, UUID | None, str | None]:
+        """获取指定 Track 的 AI 观测激活状态。
+
+        返回 (status, active_run_id, detail):
+        - ("active", run_id, None): 存在显式激活的 infer run
+        - ("none", None, detail): 无激活的 AI 观测
+        - ("legacy_inferred", run_id, detail): 5.4 前项目且存在唯一定位明确的 infer run
+        - ("legacy_mixed", None, detail): 5.4 前项目且存在多 run 混合或无法归属的 AI 观测
+        """
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        ref_state = extract_refinement_state(track)
+        if ref_state.active_infer_run_id is not None:
+            return "active", ref_state.active_infer_run_id, None
+
+        # 检查 TrackStore 中是否存在非 manual 的 AI 观测
+        ai_points = [
+            p
+            for p in self._store.observations
+            if p.track_id == track_id and p.source != "manual"
+        ]
+        if not ai_points:
+            return "none", None, "No active AI observations"
+
+        source_details = {p.source_detail for p in ai_points}
+        matching_runs = [
+            r
+            for r in self.tracking_runs()
+            if r.track_id == track_id and r.task_type == "infer" and r.source_detail in source_details
+        ]
+        if len(source_details) == 1 and len(matching_runs) == 1:
+            return "legacy_inferred", matching_runs[0].run_id, "Inferred from single matching infer run"
+        return "legacy_mixed", None, "Legacy mixed observations from multiple runs or unmapped sources"
+
+    def activate_infer_run(
+        self,
+        track_id: UUID,
+        run_id: UUID,
+    ) -> ActivationRecord:
+        """激活指定的 completed infer run（当前 Track 必须尚未激活任何 AI 结果）。"""
+        status, active_run_id, _ = self.get_track_activation_status(track_id)
+        if status in ("active", "legacy_inferred", "legacy_mixed"):
+            raise ProjectSessionError(
+                f"Track already has active AI observations (status: {status}). "
+                f"Use replace_active_infer_run instead of activate_infer_run."
+            )
+        return self._activate_or_replace_infer_run(track_id, run_id, action="activate")
+
+    def replace_active_infer_run(
+        self,
+        track_id: UUID,
+        run_id: UUID,
+    ) -> ActivationRecord:
+        """用指定的 completed infer run 替换当前 Track 的活动 AI 结果。"""
+        return self._activate_or_replace_infer_run(track_id, run_id, action="replace")
+
+    def clear_active_ai_observations(
+        self,
+        track_id: UUID,
+    ) -> ActivationRecord:
+        """清除当前 Track 的所有活动 AI 观测，全部 manual 点完好保留。"""
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        ref_state = extract_refinement_state(track)
+        status, prev_run_id, _ = self.get_track_activation_status(track_id)
+        if status == "none":
+            raise ProjectSessionError("Track has no active AI observations to clear")
+
+        if any(r.track_id == track_id and r.status in {"pending", "running"} for r in self.tracking_runs()):
+            raise ProjectSessionError("Cannot activate or modify tracking results while a task is running on this track")
+
+        candidate_store = TrackStore(self._store.tracks, self._store.observations)
+        candidate_store.clear_track_engine_points(track_id)
+
+        now_str = _now_iso_utc()
+        manual_cnt = len(
+            [
+                p
+                for p in self._store.observations
+                if p.track_id == track_id and p.source == "manual" and p.status == "active"
+            ]
+        )
+        record = ActivationRecord(
+            record_id=uuid4(),
+            timestamp=now_str,
+            action="clear",
+            from_run_id=ref_state.active_infer_run_id or prev_run_id,
+            to_run_id=None,
+            point_count=0,
+            manual_preserved_count=manual_cnt,
+        )
+        new_ref_state = replace(
+            ref_state,
+            active_infer_run_id=None,
+            activation_history=(*ref_state.activation_history, record),
+        )
+        updated_track = attach_refinement_state(track, new_ref_state)
+        candidate_store.update_track(updated_track)
+
+        updated_project = replace(
+            self._project,
+            tracks=candidate_store.tracks,
+            observations=candidate_store.observations,
+            derived=mark_tracks_stale(self._project.derived, {track_id}),
+        )
+        self._commit_project(updated_project, candidate_store)
+        return record
+
+    def _activate_or_replace_infer_run(
+        self,
+        track_id: UUID,
+        run_id: UUID,
+        action: str,
+    ) -> ActivationRecord:
+        """底层激活/替换事务：校验产物、指纹与时序，原子写入并标记 DerivedData stale。"""
+        from ai_physics_tracker.application.inference_job import read_observation_exchange
+
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+
+        target_run = next((r for r in self.tracking_runs() if r.run_id == run_id), None)
+        if target_run is None:
+            raise ProjectSessionError(f"unknown tracking run_id: {run_id}")
+        if target_run.track_id != track_id:
+            raise ProjectSessionError(f"Run {run_id} does not belong to track {track_id}")
+        if target_run.task_type != "infer":
+            raise ProjectSessionError(f"Run {run_id} is not an inference run")
+        if target_run.status != "completed":
+            raise ProjectSessionError(f"Run {run_id} is not completed (status: {target_run.status})")
+
+        if any(r.track_id == track_id and r.status in {"pending", "running"} for r in self.tracking_runs()):
+            raise ProjectSessionError("Cannot activate or modify tracking results while a task is running on this track")
+
+        root = self.project_root
+        if root is None:
+            raise ProjectSessionError("Save project before activating tracking results")
+        root = root.resolve()
+
+        obs_rel = target_run.extra_fields.get("observations_path") or f"data/engines/{run_id}/observations.json"
+        obs_file = (root / obs_rel).resolve()
+        if not obs_file.is_file() or not obs_file.is_relative_to(root):
+            raise ProjectSessionError(f"Observation artifact missing for run {run_id}: {obs_rel}")
+
+        file_info = target_run.extra_fields.get("observations_file_info")
+        if file_info is not None:
+            st = obs_file.stat()
+            if [st.st_size, st.st_mtime_ns] != list(file_info)[:2]:
+                raise ProjectSessionError("Observation artifact was modified after inference completed")
+
+        video = next((v for v in self._project.videos if v.video_id == target_run.video_id), None)
+        timeline = next((t for t in self._project.timelines if t.video_id == target_run.video_id), None)
+        if video is None or timeline is None:
+            raise ProjectSessionError("Video or timeline missing for run")
+
+        points = read_observation_exchange(obs_file)
+        for p in points:
+            if (
+                p.track_id != track_id
+                or p.source != target_run.engine
+                or p.source_detail != target_run.source_detail
+            ):
+                raise ProjectSessionError("Engine point does not match target run metadata")
+            if not 0 <= p.frame_index < video.frame_count:
+                raise ProjectSessionError(f"Engine point frame {p.frame_index} out of bounds")
+            expected_time = frame_to_time(p.frame_index, timeline)
+            if abs(p.time_s - expected_time) >= TIME_COMPARISON_TOLERANCE_S:
+                raise ProjectSessionError(f"Engine point time does not match timeline at frame {p.frame_index}")
+
+        candidate_store = TrackStore(self._store.tracks, self._store.observations)
+        act_cnt, sup_cnt = candidate_store.replace_track_engine_points(track_id, points)
+
+        ref_state = extract_refinement_state(track)
+        status, prev_inferred_id, _ = self.get_track_activation_status(track_id)
+        prev_run_id = ref_state.active_infer_run_id or prev_inferred_id
+
+        now_str = _now_iso_utc()
+        record = ActivationRecord(
+            record_id=uuid4(),
+            timestamp=now_str,
+            action=action,
+            from_run_id=prev_run_id,
+            to_run_id=run_id,
+            point_count=act_cnt,
+            manual_preserved_count=sup_cnt,
+        )
+        new_ref_state = replace(
+            ref_state,
+            active_infer_run_id=run_id,
+            activation_history=(*ref_state.activation_history, record),
+        )
+        updated_track = attach_refinement_state(track, new_ref_state)
+        candidate_store.update_track(updated_track)
+
+        updated_project = replace(
+            self._project,
+            tracks=candidate_store.tracks,
+            observations=candidate_store.observations,
+            derived=mark_tracks_stale(self._project.derived, {track_id}),
+        )
+        self._commit_project(updated_project, candidate_store)
+        return record
+
+

@@ -118,6 +118,21 @@ class TrackStore:
                 return
         raise ValueError(f"unknown track_id: {track_id}")
 
+    def update_track(self, track: Track) -> None:
+        """更新 Track（如 extra_fields），保持 track_id 存在。"""
+        for index, item in enumerate(self._tracks):
+            if item.track_id == track.track_id:
+                self._tracks[index] = track
+                return
+        raise ValueError(f"unknown track_id: {track.track_id}")
+
+    def get_track(self, track_id: UUID) -> Track:
+        """获取指定 track_id 的 Track，不存在则抛出 ValueError。"""
+        for item in self._tracks:
+            if item.track_id == track_id:
+                return item
+        raise ValueError(f"unknown track_id: {track_id}")
+
     def delete_track(self, track_id: UUID) -> None:
         """删除 Track，并级联删除其全部观测。"""
 
@@ -243,6 +258,80 @@ class TrackStore:
             point for point in self._observations if point.point_id not in removed_ids
         ]
         return before - len(self._observations)
+
+    def clear_track_engine_points(self, track_id: UUID) -> int:
+        """清除指定 Track 的所有引擎观测（保留全部 manual 点）。"""
+        self._require_known_track(track_id)
+        before = len(self._observations)
+        self._observations = [
+            point
+            for point in self._observations
+            if not (point.track_id == track_id and point.source != "manual")
+        ]
+        return before - len(self._observations)
+
+    def replace_track_engine_points(
+        self,
+        track_id: UUID,
+        points: tuple[TrackPoint, ...] | list[TrackPoint],
+    ) -> tuple[int, int]:
+        """原子清除当前 Track 的所有旧引擎观测，并装配新的引擎观测。
+
+        若某帧存在 active manual 点，则新引擎观测记录为 status='superseded' 并关联 superseded_by=manual_point.point_id；
+        若无 active manual 点，则记录为 status='active'。
+        全部 manual 点原样保留。
+        返回 (activated_count, superseded_count)。
+        """
+        self._require_known_track(track_id)
+        existing_ids = {
+            p.point_id
+            for p in self._observations
+            if not (p.track_id == track_id and p.source != "manual")
+        }
+        incoming_ids = [p.point_id for p in points]
+        if len(set(incoming_ids)) != len(incoming_ids):
+            raise ValueError("engine batch point_id values must be unique")
+        if any(pid in existing_ids for pid in incoming_ids):
+            raise ValueError("engine batch point_id already exists in store")
+        incoming_frames = [p.frame_index for p in points]
+        if len(set(incoming_frames)) != len(incoming_frames):
+            raise ValueError("engine batch contains duplicate frame_index entries")
+
+        for point in points:
+            if point.track_id != track_id:
+                raise ValueError(f"point track_id {point.track_id} does not match {track_id}")
+            if point.source == "manual":
+                raise ValueError("engine batch points cannot have source='manual'")
+
+        # 1. 过滤掉该 track 所有的旧 engine 观测
+        remaining = [
+            point
+            for point in self._observations
+            if not (point.track_id == track_id and point.source != "manual")
+        ]
+
+        # 2. 建立该 track 当前 active manual 点的 frame_index -> point_id 映射
+        manual_by_frame = {
+            p.frame_index: p.point_id
+            for p in remaining
+            if p.track_id == track_id and p.source == "manual" and p.status == "active"
+        }
+
+        # 3. 逐个装配 incoming engine points
+        activated_count = 0
+        superseded_count = 0
+        for p in points:
+            manual_id = manual_by_frame.get(p.frame_index)
+            if manual_id is not None:
+                new_p = replace(p, status="superseded", superseded_by=manual_id)
+                superseded_count += 1
+            else:
+                new_p = replace(p, status="active", superseded_by=None)
+                activated_count += 1
+            remaining.append(new_p)
+
+        self._observations = remaining
+        return activated_count, superseded_count
 
     def query(
         self,

@@ -16,6 +16,7 @@ from ai_physics_tracker.application.training_job import (
 )
 from ai_physics_tracker.application.video import DecodedFrame, VideoStreamInfo
 from ai_physics_tracker.domain.project import create_project
+from ai_physics_tracker.application.refinement_history import extract_refinement_iteration
 from ai_physics_tracker.infrastructure.engine_adapter import TrainingParams
 from ai_physics_tracker.infrastructure.mock_engine_adapter import MockEngineAdapter
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
@@ -126,3 +127,57 @@ def test_prepare_training_success_and_directory_reuse(tmp_path: Path) -> None:
     )
     assert cfg_path3 != cfg_path
     assert cfg_path3.parent != cfg_path.parent
+
+
+def test_prepare_training_with_active_validation_series_fixed_split(tmp_path: Path) -> None:
+    session, reader, _ = _setup_session_with_track(tmp_path, point_count=5)  # frames 0, 10, 20, 30, 40
+    track = session.tracks[0]
+    adapter = MockEngineAdapter()
+
+    # 1. Without active validation series: train/test indices should be None
+    run1, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    iter_info1 = extract_refinement_iteration(run1)
+    assert iter_info1 is not None
+    assert iter_info1.iteration_index == 0
+    assert iter_info1.validation_series_id is None
+    assert len(iter_info1.training_labels) == 5
+    assert adapter.created_dataset_splits[-1] == (None, None)
+
+    # 2. Create and activate validation series on frames 10 and 30
+    val_series = session.create_validation_series(track.track_id, "Fixed Val 1", [10, 30])
+    assert val_series.frame_indices == (10, 30)
+
+    # Prepare training with active validation series
+    run2, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    iter_info2 = extract_refinement_iteration(run2)
+    assert iter_info2 is not None
+    assert iter_info2.validation_series_id == val_series.series_id
+    # Training labels should only contain frames 0, 20, 40
+    assert tuple(s.frame_index for s in iter_info2.training_labels) == (0, 20, 40)
+
+    # Verify adapter received explicit train and test indices
+    train_inds, test_inds = adapter.created_dataset_splits[-1]
+    assert train_inds == [0, 2, 4]
+    assert test_inds == [1, 3]
+    # Verify zero data leakage: disjoint sets and full coverage
+    assert set(train_inds) & set(test_inds) == set()
+    assert set(train_inds) | set(test_inds) == {0, 1, 2, 3, 4}
+
+
+def test_prepare_training_rejects_invalid_or_all_consuming_validation_series(tmp_path: Path) -> None:
+    session, reader, _ = _setup_session_with_track(tmp_path, point_count=3)  # frames 0, 10, 20
+    track = session.tracks[0]
+    adapter = MockEngineAdapter()
+
+    # A: Validation series takes all points (0, 10, 20) -> no points left for training
+    session.create_validation_series(track.track_id, "All Points Val", [0, 10, 20])
+    with pytest.raises(ProjectSessionError, match="At least one manual point must be available"):
+        prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+
+    # B: Validation series on frame 0, but user moves/modifies point 0
+    session.create_validation_series(track.track_id, "Val Frame 0", [0])
+    # Modify coordinates on frame 0
+    session.mark_point(track.track_id, 0, 999.0, 999.0)
+    with pytest.raises(ProjectSessionError, match="Active validation series 'Val Frame 0' is invalid"):
+        prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+

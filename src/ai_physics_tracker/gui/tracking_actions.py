@@ -4,8 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
+from uuid import UUID
 
 from PySide6.QtCore import QObject, QTimer, Qt
+from PySide6.QtWidgets import QMessageBox
 
 from ai_physics_tracker.application.tracking_job import (
     prepare_tracking_request, run_tracking_worker, prepare_tracking_candidate,
@@ -54,6 +56,10 @@ class TrackingActions(QObject):
         self.panel.inferRequested.connect(self.infer)
         self.panel.cancelRequested.connect(self.cancel)
         self.panel.runSelected.connect(self.showLog)
+        self.panel.activateRunRequested.connect(self.activateRun)
+        self.panel.replaceRunRequested.connect(self.replaceRun)
+        self.panel.clearActivationRequested.connect(self.clearActivation)
+        self.panel.manageValidationRequested.connect(self.manageValidation)
         window.projectChanged.connect(self.resetContext)
         window.selectedTrackChanged.connect(self.refresh)
         window.analysisChanged.connect(self.refresh)
@@ -122,6 +128,28 @@ class TrackingActions(QObject):
         if not infer_reason and not any(run.track_id == track_id and run.task_type == "train"
                 and run.status == "completed" and run.model_snapshot for run in runs):
             infer_reason = "Train a model for this track first"
+        active_status, active_run_id, _ = (
+            session.get_track_activation_status(track_id)
+            if (session and track_id)
+            else ("none", None, None)
+        )
+        ref_state = (
+            session.get_refinement_state(track_id)
+            if (session and track_id)
+            else None
+        )
+        val_valid, val_reason = (
+            session.validate_active_validation_series(track_id)
+            if (session and track_id)
+            else (False, None)
+        )
+        self.panel.setRefinementInfo(
+            active_status=active_status,
+            active_run_id=active_run_id,
+            ref_state=ref_state,
+            validation_valid=val_valid,
+            validation_reason=val_reason,
+        )
         self.panel.setRuns(runs, track_id)
         self.panel.setContext(video.display_name if video else "No video", track.name if track else "No track",
                               train_reason, infer_reason, self.pending)
@@ -132,6 +160,116 @@ class TrackingActions(QObject):
 
     def infer(self) -> None:
         self._start(self.panel.inferenceParameters(), self.panel.selectedTrainingRunId())
+
+    def activateRun(self, run_id: UUID) -> None:
+        if self.pending or self.window.projectActions.busy:
+            return
+        session = self.window.analysisSession
+        track_id = self.window.selectedTrackId
+        if not session or not track_id:
+            return
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        track_name = track.name if track else "selected track"
+        reply = QMessageBox.question(
+            self.window,
+            "Activate Tracking Result",
+            f"Activate AI tracking result from run {str(run_id)[:8]} on track '{track_name}'?\n\n"
+            "Existing manual points will take precedence and be preserved.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            rec = session.activate_infer_run(track_id, run_id)
+            self.window.statusBar().showMessage(
+                f"Activated run {str(run_id)[:8]}: {rec.point_count} active points, "
+                f"{rec.manual_preserved_count} superseded by manual"
+            )
+            self.window._refreshMarkers()
+            self.window._refreshHistoryButtons()
+        except Exception as error:
+            QMessageBox.critical(self.window, "Activation Failed", str(error))
+        self._context_key = None
+        self.refresh()
+
+    def replaceRun(self, run_id: UUID) -> None:
+        if self.pending or self.window.projectActions.busy:
+            return
+        session = self.window.analysisSession
+        track_id = self.window.selectedTrackId
+        if not session or not track_id:
+            return
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        track_name = track.name if track else "selected track"
+        reply = QMessageBox.question(
+            self.window,
+            "Replace Active Tracking Result",
+            f"Replace current active AI tracking result with run {str(run_id)[:8]} on track '{track_name}'?\n\n"
+            "All previous AI observations for this track will be replaced. Existing manual points will remain preserved.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            rec = session.replace_active_infer_run(track_id, run_id)
+            self.window.statusBar().showMessage(
+                f"Replaced active run with {str(run_id)[:8]}: {rec.point_count} active points, "
+                f"{rec.manual_preserved_count} superseded by manual"
+            )
+            self.window._refreshMarkers()
+            self.window._refreshHistoryButtons()
+        except Exception as error:
+            QMessageBox.critical(self.window, "Replacement Failed", str(error))
+        self._context_key = None
+        self.refresh()
+
+    def clearActivation(self) -> None:
+        if self.pending or self.window.projectActions.busy:
+            return
+        session = self.window.analysisSession
+        track_id = self.window.selectedTrackId
+        if not session or not track_id:
+            return
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        track_name = track.name if track else "selected track"
+        reply = QMessageBox.question(
+            self.window,
+            "Clear Active AI Result",
+            f"Clear all active AI tracking observations for track '{track_name}'?\n\n"
+            "Manual points will NOT be deleted.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            rec = session.clear_active_ai_observations(track_id)
+            self.window.statusBar().showMessage(
+                f"Cleared active AI observations on track '{track_name}'"
+            )
+            self.window._refreshMarkers()
+            self.window._refreshHistoryButtons()
+        except Exception as error:
+            QMessageBox.critical(self.window, "Clear Failed", str(error))
+        self._context_key = None
+        self.refresh()
+
+    def manageValidation(self) -> None:
+        if self.pending or self.window.projectActions.busy:
+            return
+        from ai_physics_tracker.gui.validation_dialog import ManageValidationDialog
+
+        session = self.window.analysisSession
+        track_id = self.window.selectedTrackId
+        if not session or not track_id:
+            return
+        dialog = ManageValidationDialog(session, track_id, self.window)
+        dialog.exec()
+        self.window._refreshHistoryButtons()
+        self._context_key = None
+        self.refresh()
 
     def _start(self, parameters, training_run_id=None) -> None:
         if self.pending or self.window.projectActions.busy:
