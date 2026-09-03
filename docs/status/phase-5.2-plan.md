@@ -2,7 +2,7 @@
 
 - Issue：[#19](https://github.com/KYLeonis/ai-physics-tracker/issues/19)
 - 分支：`feat/p5.2-difficult-frames`
-- 日期 / 状态：2026-09-02 · 🚧 代码与基准工具链完成；冻结审计集待用户标注（见 Result）
+- 日期 / 状态：2026-09-03 · ✅ 已完成（AC-10、独立 review、Human Review 与 push 均闭环）
 
 ## Goal
 
@@ -134,8 +134,8 @@
   K-means；接入 `BackgroundTaskRunner`、取消、原子 JSON 结果与结果身份校验，并验证不修改项目；
   顺带完成 F3b 改名（`_kmeans_via_sklearn`）。（`9c14405`）
 - [x] Slice 4 — Benchmark + close：benchmark 工具链（`application/benchmark.py` +
-  `scripts/benchmark_difficult_frames.py`）与真实开发集审计表已交付；开发集标注、调参与
-  冻结审计集比较待用户完成后收尾。（`5feefd1`）
+  `scripts/benchmark_difficult_frames.py`）、真实开发集调参与冻结审计集比较均已完成；policy
+  Precision@N / review yield 两项均优于 baseline。（`5feefd1` 起，最终证据见 Result）
 
 ## Verification
 
@@ -161,7 +161,7 @@ Independent Review 聚焦：数值退化情况、pipeline 顺序、run/file iden
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：2026-09-02 代码与工具链（`d67f57d` / `7af74a0` / `9c14405` /
+- 完成日期 / 合并 commit：2026-09-03（`d67f57d` / `7af74a0` / `9c14405` /
   `dcb6819` / `5feefd1` / `fddc391` / `9b5ae46` / `27f676a`）；AC-10 于 2026-09-02 达成
 - AC 勾选结果：全部勾选（AC-10 证据见 `docs/benchmarks/phase-5.2-report.md`：
   policy 0.800/0.300 vs baseline 0.600/0.000）
@@ -172,5 +172,5 @@ Independent Review 聚焦：数值退化情况、pipeline 顺序、run/file iden
     （不修改用户数据），同时 prepare 的 legacy 容忍分支被测试钉住
 - 遗留问题：Accept/Skip 抑制与 Correct provenance 由 5.3 持久化；5.2 request 已预留显式集合输入；
   `#18` F4/F6 顺带项仍按计划随 5.3 处理；`_file_info` 双实现待下次共同触碰时合并（review S1）
-- 独立 review 结论：R1 request-changes（H1 身份绑定）+ R2 approve-with-comments（覆盖/舍入）
-  全部修复闭环，见 [phase-5.2-review.md](../reviews/phase-5.2-review.md)；全回归 566 passed
+- 独立 review 结论：R1 request-changes、R2 approve-with-comments、R3 条件收尾与 R4 终审加固
+  全部修复闭环，见 [phase-5.2-review.md](../reviews/phase-5.2-review.md)；最终全回归 581 passed

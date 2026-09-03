@@ -1,7 +1,7 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Accepted / Phase 5.0–5.2 已完成，5.3 待规划**
-> 日期：2026-09-02  
+> 状态：**Accepted / Phase 5.0–5.2 已完成，5.3 mini-plan 待确认**
+> 日期：2026-09-03
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
 
@@ -72,6 +72,8 @@
 **独立验收**：连续异常段不垄断；每帧有解释；策略经调整后优于冻结基线。
 
 ### 5.3 — Suggested Frame Review & Correction
+
+**状态**：📝 mini-plan 草案待用户确认，见 [phase-5.3-plan.md](phase-5.3-plan.md)。
 
 **目标**：实现 `查看 → Accept / Correct / Skip → 下一帧` 队列。
 
@@ -158,9 +160,9 @@
 ## 6. 当前入口
 
 5.0、5.1、5.2 已完成（5.2 记录见 [phase-5.2-plan.md](phase-5.2-plan.md) 与
-[phase-5.2-review.md](../reviews/phase-5.2-review.md)；AC-10 真实基准达成）。下一步：
-按会话进入协议规划 5.3（Suggested Frame Review & Correction）。F2 仍由 5.4 处理。
+[phase-5.2-review.md](../reviews/phase-5.2-review.md)；AC-10 真实基准达成）。5.3 mini-plan
+已形成草案，等待用户确认范围与持久化约定；确认前不创建 Issue/分支。F2 仍由 5.4 处理。
 
 ## Result
 
-Phase 5 总计划已接受；Phase 5.0–5.2 已完成；5.3 待规划。
+Phase 5 总计划已接受；Phase 5.0–5.2 已完成；5.3 mini-plan 待确认。
