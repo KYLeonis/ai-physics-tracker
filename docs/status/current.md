@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 全流程开发、R1/R2 两轮审查与真机 Human Review 全部闭环通过验收；下一步进行 Phase 5.4 规划**）
+- 最后更新：2026-09-03（**5.3 完成状态复核通过；5.4 mini-plan 待确认**）
 
 ---
 
@@ -16,9 +16,14 @@
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
+| Subphase | 5.4 — Iteration History & Result Activation | 📝 mini-plan 待用户确认 |
 
 ## Recently Completed
 
+- **Phase 5.3 完成状态复核（2026-09-03）**：10 项 AC 与 4 个 Slice 全部勾选，R1/R2 共
+  18 项 finding 已关闭，Human Review 已通过；本地全回归 **631 passed**，`main @ f159410`
+  与 `origin/main` 一致，[CI run 33753432647](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33753432647)
+  双平台成功；遗漏的 GitHub Issue #20 已补关闭。
 - **Phase 5.3 收尾与 Human Review 通过（2026-09-03）**：
   - 经用户真人真机测试，确认困难帧挖掘发起、候选队列浏览、快捷键 A/S/C/Delete、一次性 Correct 模式、当前帧 manual 点删除、保存重开恢复及后台互斥完全符合预期，用户正式批准通过验收。
 
@@ -86,10 +91,9 @@
 
 ## Current Goal
 
-**Phase 5.3 已规划并完成开工准备；按用户指令停在 Slice 1 实现之前。**
+**5.4 mini-plan 已形成草案，等待用户确认范围、持久化约定与 fixed-split 边界调整。**
 
-计划见 [phase-5.3-plan.md](phase-5.3-plan.md)，GitHub Issue
-[#20](https://github.com/KYLeonis/ai-physics-tracker/issues/20)。
+计划见 [phase-5.4-plan.md](phase-5.4-plan.md)。确认前不创建 5.4 Issue/分支、不写产品代码。
 
 ## Current Decisions / Deferred Checks
 
@@ -110,4 +114,9 @@
 
 ## Next Recommended Action
 
-1. 暂停等待下一条指令，开始 Phase 5.4（Iteration History & Result Activation）规划与方案设计（覆盖 fixed validation/history、F2 clear/activate/replace）。
+1. **用户确认 5.4 mini-plan**：重点批准 Track/TrackingRun `extra_fields` 的 refinement 持久化
+   约定、新 inference 默认 `Completed · Not active`、显式 Activate/Replace/Clear，以及把
+   DLC `trainIndices/testIndices` 接线从 5.5 提前到 5.4 以避免 validation leakage。
+2. 批准后：新增 ADR-0014 → 同步 project-format/phase5 requirements → 创建 GitHub Issue 和
+   `feat/p5.4-result-activation-history` → 从 Slice 1 开始。
+3. 本地计划文档提交后不自动 push；按红线等待用户明确授权。
