@@ -299,10 +299,12 @@ def test_spawn_mock_inference_without_hash_imports_and_keeps_manual_edits(
         session.project, request, result_path
     )
     assert session.apply_tracking_candidate(second_candidate)
-    assert session.effective_point(track.track_id, 4) == manual
-    assert len(session.effective_points(track.track_id)) == 5
     completed = next(run for run in session.tracking_runs() if run.run_id == request.run.run_id)
     assert completed.status == "completed"
+    # Phase 5.4: 推理完成只提交候选，显式激活后生效点数达标且保留人工点
+    session.activate_infer_run(track.track_id, request.run.run_id)
+    assert session.effective_point(track.track_id, 4) == manual
+    assert len(session.effective_points(track.track_id)) == 5
 
 
 def test_unified_inference_cancel_reaps_worker_without_result(

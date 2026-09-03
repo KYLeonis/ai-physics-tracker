@@ -284,9 +284,10 @@ def prepare_tracking_candidate(project: Project, request: TrackingRequest,
     if run.task_type == "infer":
         path = (request.project_root / result["points_path"]).resolve()
         expected = request.project_root / "data" / "engines" / str(run.run_id) / "observations.json"
-        if path != expected.resolve():
+        if path != expected.resolve() or not path.is_file():
             raise ProjectSessionError("Unexpected observation path")
-        session.import_engine_points(read_observation_exchange(path), run)
+        # Phase 5.4 Slice 3: 推理完成只登记 completed candidate run，不自动覆盖修改当前 Track 观测
+        session.update_tracking_run(run)
     else:
         session.update_tracking_run(run)
     return TrackingCandidate(project, session.project, session._store,

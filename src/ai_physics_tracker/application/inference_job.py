@@ -10,6 +10,10 @@ from typing import Any
 from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
+from ai_physics_tracker.application.refinement_history import (
+    PredictionSummary,
+    attach_prediction_summary,
+)
 from ai_physics_tracker.domain.tracking_run import (
     TrackingRun, create_tracking_run, mark_run_completed,
 )
@@ -187,21 +191,38 @@ def read_inference_result(request: InferenceRequest, project_root: Path,
             or counts[0] != request.frame_count or len(points) + counts[1] + counts[2] != counts[0]
             or any(p.confidence is None or p.confidence < request.params.min_confidence for p in points)):
         raise ProjectSessionError("Invalid prediction counts or confidence")
-    extras = {**run.extra_fields, "prediction_path": raw.relative_to(project_root).as_posix(),
+    extras = {
+        **run.extra_fields,
+        "prediction_path": raw.relative_to(project_root).as_posix(),
         "observations_path": exchange.relative_to(project_root).as_posix(),
+        "observations_file_info": list((payload.get("observations_file_info") or _stamp(exchange))[:2]),
         "model_file_info": payload["model_file_info"],
-        "config_file_info": payload["config_file_info"], "device": payload["device"],
+        "config_file_info": payload["config_file_info"],
+        "device": payload["device"],
         # 预测产物指纹基线：后续消费（如 5.2 mining）可发现推理后被替换的文件
         "prediction_file_info": list(_stamp(raw)[:2]),
-        "import_summary": dict(zip(("row_count", "missing_count", "low_confidence_count"), counts))}
+        "import_summary": dict(zip(("row_count", "missing_count", "low_confidence_count"), counts)),
+    }
     snapshot_ref = run.model_snapshot
     if request.archive_model:
         snapshot_ref = (folder / "model-used.pt").relative_to(project_root).as_posix()
         extras["config_path"] = (folder / "config-used.yaml").relative_to(project_root).as_posix()
         extras["model_file_info"] = list(_stamp(folder / "model-used.pt")[:2])
         extras["config_file_info"] = list(_stamp(folder / "config-used.yaml")[:2])
-    completed = replace(mark_run_completed(run, model_snapshot=snapshot_ref),
-                        engine_version=str(payload["engine_version"]), extra_fields=extras)
+    completed = replace(
+        mark_run_completed(run, model_snapshot=snapshot_ref),
+        engine_version=str(payload["engine_version"]),
+        extra_fields=extras,
+    )
+    pred_summary = PredictionSummary(
+        row_count=counts[0],
+        eligible_count=len(points),
+        missing_count=counts[1],
+        low_confidence_count=counts[2],
+        threshold=request.params.min_confidence,
+        coverage=float(len(points)) / float(counts[0]) if counts[0] > 0 else 0.0,
+    )
+    completed = attach_prediction_summary(completed, pred_summary)
     return tuple(points), completed
 
 
