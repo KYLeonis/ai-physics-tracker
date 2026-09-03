@@ -3,6 +3,7 @@
 from dataclasses import replace
 import logging
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from ai_physics_tracker.application.project_session import (

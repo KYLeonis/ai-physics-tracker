@@ -161,9 +161,15 @@ class DLCAdapter:
         exported_count = 0
         csv_rows: list[list[str]] = []
 
+        # DLC 按 PNG 文件名字典序排序数据集并以此对齐 train/test 索引：
+        # 帧号 ≥100000 时固定 5 位宽度会出现混合位数，字典序 ≠ 数值序，
+        # 划分索引会静默错位（review F-2）。宽度跟随视频总帧数。
+        total_frames = video_reader.info.frame_count
+        index_width = max(5, len(str(max(total_frames - 1, 0))))
+
         # 抽帧并生成图像文件
         for point in manual_points:
-            img_rel = f"labeled-data/{video_stem}/img{point.frame_index:05d}.png"
+            img_rel = f"labeled-data/{video_stem}/img{point.frame_index:0{index_width}d}.png"
             img_abs = proj_dir / img_rel
 
             # 解码该帧并写入 PNG
@@ -268,6 +274,9 @@ class DLCAdapter:
             if (train_indices is None) ^ (test_indices is None):
                 raise ValueError("train_indices and test_indices must both be provided or both be None")
             if train_indices is not None and test_indices is not None:
+                if not train_indices or not test_indices:
+                    # 空 list 会让 DLC 静默不建集却返回成功（防御性拒绝，review F-6）
+                    raise ValueError("train_indices and test_indices must be non-empty when provided")
                 from deeplabcut.utils import auxiliaryfunctions
 
                 total_split = len(train_indices) + len(test_indices)

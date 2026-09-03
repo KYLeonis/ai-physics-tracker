@@ -79,3 +79,50 @@
 
 因此本 Review Record 的原 findings 处置结论仍成立，但 Phase 5.4 整体最终状态改为
 **Follow-up required**；上述项目列入 Phase 5.5 mini-plan 的 Entry Gate，关闭前不开始 Advisor 实现。
+
+---
+
+## 4. 合并后复审（R2 轮，2026-09-03 · 用户指令的风险排查专项）
+
+**执行方式**：三个 GLM-5.3-Flash 只读 subagent 并行（激活事务与领域契约 / 数据泄漏防线 / GUI 生命周期），
+基线 652 passed，合并 commit CI 绿（run 33771353773）。已排除首轮 D-*/G-* findings。
+
+### 结论
+
+三方均 **approve-with-comments**，无 Blocker。最关键的防泄漏契约经独立验证**真实成立**：
+DLC `trainIndices/testIndices` 为全局帧位置语义（`trainingsetmanipulation.py:1113-1136`、
+`dlcloader.py:296-306` 只用 `df_train`）；PNG 字典序与应用侧 enumerate 对齐成立；
+per-run 全新 DLC 项目使 shuffle 恒为 1；取消/失败路径干净。
+
+### 已直修（轻量，本轮 commit）
+
+| # | 来源 | Severity | 问题 | 修复 |
+| --- | --- | --- | --- | --- |
+| 1 | 领域 M-1 | Medium | `manual_preserved_count` 在 activate/replace 存 superseded 数、在 clear 存 manual 数，语义不一致 | 统一为"操作时 active manual 点数"；`ActivationRecord` 新增容错字段 `superseded_count`，序列化/反序列化同步；测试断言更新 |
+| 2 | 领域 L-1 | Low | 激活路径对损坏产物抛裸 `JSONDecodeError`/`KeyError` | 包裹为 `ProjectSessionError`（含 run id 与路径上下文） |
+| 3 | 领域 L-2 | Low | status="none" 时 `replace_active_infer_run` 仍成功，污染激活历史 | 显式拒绝（legacy 两态保留放行） |
+| 4 | 领域 L-4 | Low | 容错反序列化可产出零快照空 series 并可设为活动集 | 有效快照为空时整条丢弃（返回 None） |
+| 5 | 领域 L-6 | Low | 激活/替换缺 `can_measure` 门禁，与 `import_engine_points` 口径不一 | 补齐授权检查 |
+| 6 | 泄漏 F-2 | Medium | PNG 固定 5 位宽度：帧号 ≥100000 时字典序 ≠ 数值序，train/test 索引静默错位 | 宽度跟随视频总帧数（`max(5, len(str(frame_count-1)))`）；per-run 目录无旧名引用负担 |
+| 7 | 泄漏 F-4/领域 L-5 | Low | `training_job.py` 用 `Any` 未导入 | 补 import |
+| 8 | 泄漏 F-6 | Nit | 空 list 的 train/test 索引通过互斥检查后静默不建集 | 显式拒绝空 list |
+| 9 | 泄漏 F-3 | Medium | history 详情未展示 train run 所用 validation series，违反"不同 series 不宣称可直接比较" | `_runDetails` 增加 `validation_series=` 行 |
+| 10 | GUI F-2(缓解) | High | 崩溃后遗留 pending/running run 使 track 永久锁死，激活按钮却可用（点击必失败） | GUI 缓解：当前 track 存在 pending/running run 时禁用四个按钮并给 tooltip；**根治需用户批准**（见延期项） |
+| 11 | GUI F-3 | Low | autosave 窗口期按钮可用但静默无效 | `setContext` 新增 `project_busy`，矩阵随项目操作禁用 |
+| 12 | GUI F-4 | Low | 项目级 history 把其他 track 的 active run 标为 "Not active" | 新增 "Active (other track)" 标注（`setRuns` 接收 per-track active 映射） |
+| 13 | GUI F-5 | Low | 激活/验证集操作守卫缺 frameSelection/review busy | `_interaction_blocked()` 统一互斥口径 |
+| 14 | GUI F-1 | Medium | Replace/Clear 确认框缺 from-run 与点数统计（plan AC 已勾选但实现不符） | 对话框补 from-run id、manual 点数、目标 run 预测点数（`prediction_summary_v1.eligible_count`） |
+| 15 | GUI F-7 | Nit | legacy_inferred 选中被推断 run 时 Replace 禁用无解释 | tooltip 说明 Clear→Activate 路径 |
+
+全量回归 **658 passed**（652 + 新增 6），compileall 通过。
+
+### 需要决策/大修（不阻塞，已记录待处置）
+
+| # | Severity | 问题 | 建议处置 |
+| --- | --- | --- | --- |
+| A | High | **崩溃恢复死锁（GUI F-2 根因）**：任务运行中项目被保存（autosave/手存），之后强退 → 重开后 pending/running run 无进程对应，train/infer/激活全部永久禁用，普通用户只能手改 project.json。根因为 Phase 4 起的既有缺口 | 打开项目时把无对应进程的 pending/running run 标记为 failed（含 "interrupted by shutdown" 信息）。触及持久化数据语义，**需用户批准后实施**（建议随 5.5） |
+| B | Medium | **shuffle 数量/编号语义错位（泄漏 F-1）**：复用同一 DLC 项目目录二次 `create_training_dataset` 会创建 shuffle 2，而训练仍跑 shuffle 1（旧划分）——若两次间 validation series 变化即为真实泄漏。当前 GUI 因 per-run 新目录不可达，但 `prepare_training` 的目录复用路径被测试支持 | prepare 时分配未占用 shuffle 编号写入 `run.config["shuffle"]`，train/evaluate 读 config。跨 prepare→config→train 贯通改动 + 一次"同项目二次训练"真实 DLC 冒烟；**5.5 训练迭代主路径启用前必须完成** |
+| C | Medium | **产物指纹 mtime 纳秒强等值（领域 M-2）**：合法文件拷贝/备份还原改变 mtime 后候选永久无法激活，无 re-baseline 途径 | 候选方案：size-only 回退（弱化篡改检测）或写入 sha256、mtime 不一致时内容哈希复核并重置基线。属防篡改策略调整，**需用户选择方案** |
+| D | Low | GUI F-6：非活动 validation series 无法删除、无限累积 | 5.5+/Phase 7（模型库清理）一并处理 |
+| E | Low | 领域 L-3：`refinement_state_v1` 内部未知键在下次写盘被丢弃 | 已选择"文档化契约"方案：序列化处注明内部结构由 v1 独占，扩展需升级版本号 |
+

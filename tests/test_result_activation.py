@@ -240,7 +240,8 @@ def test_activate_replace_clear_lifecycle_and_undo_redo(
     assert rec1.from_run_id is None
     assert rec1.to_run_id == run1.run_id
     assert rec1.point_count == 2  # frames 1 and 3
-    assert rec1.manual_preserved_count == 1  # frame 2 (manual point exists)
+    assert rec1.manual_preserved_count == 1  # 操作时 active manual 点数（review M-1 统一语义）
+    assert rec1.superseded_count == 1  # frame 2 的 AI 点被 manual 遮蔽
 
     status, active_id, _ = session.get_track_activation_status(track.track_id)
     assert status == "active"
@@ -277,7 +278,8 @@ def test_activate_replace_clear_lifecycle_and_undo_redo(
     assert rec2.from_run_id == run1.run_id
     assert rec2.to_run_id == run2.run_id
     assert rec2.point_count == 4
-    assert rec2.manual_preserved_count == 1  # frame 2 superseded by manual
+    assert rec2.manual_preserved_count == 1  # 仍是那 1 个 manual 点（review M-1）
+    assert rec2.superseded_count == 1  # frame 2 superseded by manual
 
     status2, active_id2, _ = session.get_track_activation_status(track.track_id)
     assert status2 == "active"
@@ -449,3 +451,51 @@ def test_activation_rejects_invalid_task_type_incomplete_or_cross_track(
     with pytest.raises(ProjectSessionError, match="has no active AI observations"):
         session.clear_active_ai_observations(track.track_id)
 
+
+# ---------------------------------------------------------------------------
+# 合并后复审（R2）——稳健性加固
+# ---------------------------------------------------------------------------
+
+class TestActivationHardening:
+    def test_replace_without_active_result_rejected(self, tmp_path: Path):
+        """ADR-0014：Replace 仅用于已有 AI 结果的 Track（review L-2）。"""
+        session, track, video, proj_dir = _setup_session(tmp_path)
+        timeline = next(t for t in session.project.timelines if t.video_id == video.video_id)
+        run = create_tracking_run(video.video_id, track.track_id, "infer", engine="dlc")
+        _proj, obs = _create_fake_infer_artifacts(proj_dir, run, video, timeline, point_frames=(1, 3))
+        run = replace(run, status="completed", completed_at=utc_now(), extra_fields={
+            "observations_path": obs.relative_to(proj_dir).as_posix(),
+            "observations_file_info": [obs.stat().st_size, obs.stat().st_mtime_ns],
+        })
+        session.record_tracking_run(run)
+        with pytest.raises(ProjectSessionError, match="no active AI result"):
+            session.replace_active_infer_run(track.track_id, run.run_id)
+
+    def test_corrupt_observation_artifact_wrapped_as_session_error(self, tmp_path: Path):
+        """损坏产物统一转 ProjectSessionError，不裸抛解析异常（review L-1）。"""
+        session, track, video, proj_dir = _setup_session(tmp_path)
+        timeline = next(t for t in session.project.timelines if t.video_id == video.video_id)
+        session.mark_point(track.track_id, 2, 20.0, 30.0)
+        run = create_tracking_run(video.video_id, track.track_id, "infer", engine="dlc")
+        _proj, obs = _create_fake_infer_artifacts(proj_dir, run, video, timeline, point_frames=(1, 3))
+        obs.write_text("{corrupt", encoding="utf-8")
+        run = replace(run, status="completed", completed_at=utc_now(), extra_fields={
+            "observations_path": obs.relative_to(proj_dir).as_posix(),
+            "observations_file_info": [obs.stat().st_size, obs.stat().st_mtime_ns],
+        })
+        session.record_tracking_run(run)
+        with pytest.raises(ProjectSessionError, match="unreadable"):
+            session.activate_infer_run(track.track_id, run.run_id)
+
+    def test_empty_snapshot_series_dropped_on_deserialize(self):
+        """全部快照非法的 series 反序列化为 None，不产生可激活的空集合（review L-4）。"""
+        from ai_physics_tracker.application.refinement_history import (
+            deserialize_validation_series,
+        )
+
+        raw = {"series_id": str(uuid4()), "name": "broken",
+               "created_at": utc_now().isoformat(), "label_snapshots": [{"bad": 1}]}
+        assert deserialize_validation_series(raw) is None
+        assert deserialize_validation_series({"series_id": str(uuid4()), "name": "x",
+                                              "created_at": utc_now().isoformat(),
+                                              "label_snapshots": []}) is None

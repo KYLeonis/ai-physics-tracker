@@ -103,7 +103,12 @@ class ValidationSeries:
 
 @dataclass(frozen=True)
 class ActivationRecord:
-    """轨迹结果激活/替换/清空操作的历史快照记录。"""
+    """轨迹结果激活/替换/清空操作的历史快照记录。
+
+    manual_preserved_count 在三类操作中语义一致：操作时该 Track 的 active
+    manual 点数。superseded_count 仅 activate/replace 有意义：与 manual 同帧
+    而被遮蔽保留的 AI 点数（clear 为 0）。
+    """
 
     record_id: UUID
     timestamp: str
@@ -112,6 +117,7 @@ class ActivationRecord:
     to_run_id: UUID | None
     point_count: int
     manual_preserved_count: int
+    superseded_count: int = 0
 
     def __post_init__(self) -> None:
         if not isinstance(self.record_id, UUID):
@@ -298,6 +304,10 @@ def deserialize_validation_series(data: Any) -> ValidationSeries | None:
         s = deserialize_validation_snapshot(item)
         if s is not None:
             snaps.append(s)
+    if not snaps:
+        # 全部快照非法（损坏/手改 project.json）：整条丢弃，避免空 series
+        # 被设为活动集后让用户误以为是正常的"需创建新 series"路径
+        return None
     try:
         return ValidationSeries(
             series_id=s_id,
@@ -318,6 +328,7 @@ def serialize_activation_record(rec: ActivationRecord) -> dict[str, Any]:
         "to_run_id": str(rec.to_run_id) if rec.to_run_id is not None else None,
         "point_count": rec.point_count,
         "manual_preserved_count": rec.manual_preserved_count,
+        "superseded_count": rec.superseded_count,
     }
 
 
@@ -331,6 +342,7 @@ def deserialize_activation_record(data: Any) -> ActivationRecord | None:
     to_r = _parse_uuid(data.get("to_run_id"))
     pt_cnt = data.get("point_count", 0)
     m_cnt = data.get("manual_preserved_count", 0)
+    sup_cnt = data.get("superseded_count", 0)
     if rec_id is None or act not in {"activate", "replace", "clear"}:
         return None
     try:
@@ -342,12 +354,16 @@ def deserialize_activation_record(data: Any) -> ActivationRecord | None:
             to_run_id=to_r,
             point_count=int(pt_cnt),
             manual_preserved_count=int(m_cnt),
+            superseded_count=int(sup_cnt),
         )
     except (ValueError, TypeError):
         return None
 
 
 def serialize_refinement_state(state: RefinementState) -> dict[str, Any]:
+    # 键级契约：refinement_state_v1 内部结构由本模块 v1 独占，序列化只输出
+    # 已知键（未知内部键不保留）；顶层 extra_fields 的 tolerant 契约不受影响。
+    # 未来需要扩展内部结构时升级 REFINEMENT_STATE_KEY 版本号。
     return {
         "active_infer_run_id": (
             str(state.active_infer_run_id) if state.active_infer_run_id is not None else None
