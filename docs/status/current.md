@@ -114,6 +114,15 @@
 计划见 [phase-5.5-plan.md](phase-5.5-plan.md)。等待用户确认规则阈值、resume/fine-tune 语义与
 持久化扩展；确认前不新增 ADR-0015、不创建 5.5 Issue/开发分支，也不开始 Slice 0 或产品代码。
 
+## Current Worktree Note
+
+本轮规划提交后，工作区另有 4 个非本轮产生的未提交源码改动：
+`project_session.py`、`refinement_history.py`、`training_job.py`、`dlc_adapter.py`。这些改动保持原样，
+未纳入规划提交；定向运行 refinement/result activation/training/DLC adapter 测试得到
+**31 passed, 5 failed**，失败均因新增的 `video_reader.info.frame_count` 读取与现有 MagicMock 不兼容。
+开始 Slice 0 前须由这些改动的所有者完成或撤回，并重新跑全回归；已提交 `13f48c2` 基线及其 CI
+仍为 652 passed / 双平台成功。
+
 ## Current Decisions / Deferred Checks
 
 **已定决策**
