@@ -9,12 +9,16 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import logging
 from math import isfinite, isnan
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.infrastructure.dlc_predictions import RawPrediction
+
+if TYPE_CHECKING:
+    from ai_physics_tracker.application.project_session import ProjectSession
+    from ai_physics_tracker.domain.track import TrackPoint
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +27,7 @@ SUGGESTED_FRAME_REVIEW_KEY = "suggested_frame_review_v1"
 DISPOSITION_ACCEPTED = "accepted"
 DISPOSITION_CORRECTED = "corrected"
 DISPOSITION_SKIPPED = "skipped"
+DISPOSITION_PENDING = "pending"
 VALID_DISPOSITIONS = frozenset(
     {DISPOSITION_ACCEPTED, DISPOSITION_CORRECTED, DISPOSITION_SKIPPED}
 )
@@ -273,8 +278,11 @@ def get_candidate_disposition(
     return record.disposition
 
 
-def get_excluded_frames_for_run(state: SuggestedFrameReviewState | None) -> frozenset[int]:
+def get_excluded_frames_for_run(state_or_run: SuggestedFrameReviewState | TrackingRun | None) -> frozenset[int]:
     """返回同一 infer run 后续 mining 需排除的帧（已 Accept / Skip 的帧，R2.8）。"""
+    if state_or_run is None:
+        return frozenset()
+    state = extract_review_state(state_or_run) if isinstance(state_or_run, TrackingRun) else state_or_run
     if state is None:
         return frozenset()
     return frozenset(
@@ -284,8 +292,11 @@ def get_excluded_frames_for_run(state: SuggestedFrameReviewState | None) -> froz
     )
 
 
-def get_prior_correct_frames_for_run(state: SuggestedFrameReviewState | None) -> frozenset[int]:
+def get_prior_correct_frames_for_run(state_or_run: SuggestedFrameReviewState | TrackingRun | None) -> frozenset[int]:
     """返回同一 infer run 中已被 Correct 标记的帧集合。"""
+    if state_or_run is None:
+        return frozenset()
+    state = extract_review_state(state_or_run) if isinstance(state_or_run, TrackingRun) else state_or_run
     if state is None:
         return frozenset()
     return frozenset(
@@ -420,3 +431,183 @@ def attach_review_state(
     else:
         extras[SUGGESTED_FRAME_REVIEW_KEY] = serialize_review_state(state)
     return replace(run, extra_fields=extras)
+
+
+class ReviewQueueController:
+    """审核队列控制器（Qt-free）。
+
+    协调当前选中的 TrackingRun、ActiveReviewBatch、候选游标、
+    跳帧定位目标、审核处置（Accept/Skip/Correct/撤销）与汇总统计。
+    """
+
+    def __init__(self, session: ProjectSession, run_id: UUID) -> None:
+        self._session = session
+        self._run_id = run_id
+        self._current_index: int = 0
+        self._correcting: bool = False
+
+    @property
+    def session(self) -> ProjectSession:
+        return self._session
+
+    @property
+    def run_id(self) -> UUID:
+        return self._run_id
+
+    @property
+    def state(self) -> SuggestedFrameReviewState | None:
+        return self._session.get_suggested_frame_review(self._run_id)
+
+    @property
+    def active_batch(self) -> ActiveReviewBatch | None:
+        st = self.state
+        return st.active_batch if st is not None else None
+
+    @property
+    def candidates(self) -> tuple[ReviewCandidate, ...]:
+        batch = self.active_batch
+        return batch.candidates if batch is not None else ()
+
+    @property
+    def count(self) -> int:
+        return len(self.candidates)
+
+    @property
+    def current_index(self) -> int:
+        count = len(self.candidates)
+        if count == 0:
+            return 0
+        return max(0, min(self._current_index, count - 1))
+
+    @property
+    def current_candidate(self) -> ReviewCandidate | None:
+        candidates = self.candidates
+        if not candidates:
+            return None
+        return candidates[self.current_index]
+
+    @property
+    def current_frame_index(self) -> int | None:
+        c = self.current_candidate
+        return c.frame_index if c is not None else None
+
+    @property
+    def current_disposition(self) -> str:
+        c = self.current_candidate
+        if c is None:
+            return DISPOSITION_PENDING
+        st = self.state
+        if st is None or c.frame_index not in st.reviewed_frames:
+            return DISPOSITION_PENDING
+        return st.reviewed_frames[c.frame_index].disposition
+
+    @property
+    def summary(self) -> ReviewBatchSummary:
+        return self._session.get_review_summary(self._run_id)
+
+    @property
+    def is_correcting(self) -> bool:
+        return self._correcting
+
+    @property
+    def can_navigate_next(self) -> bool:
+        return self.current_index < len(self.candidates) - 1
+
+    @property
+    def can_navigate_previous(self) -> bool:
+        return self.current_index > 0
+
+    @property
+    def has_pending(self) -> bool:
+        return self.summary.pending_count > 0
+
+    def set_correcting(self, active: bool) -> None:
+        self._correcting = active
+
+    def select_index(self, index: int) -> ReviewCandidate | None:
+        candidates = self.candidates
+        if not candidates:
+            self._current_index = 0
+            return None
+        self._current_index = max(0, min(index, len(candidates) - 1))
+        self._correcting = False
+        return candidates[self._current_index]
+
+    def select_frame(self, frame_index: int) -> ReviewCandidate | None:
+        for idx, candidate in enumerate(self.candidates):
+            if candidate.frame_index == frame_index:
+                return self.select_index(idx)
+        return None
+
+    def next_candidate(self, *, only_pending: bool = False) -> ReviewCandidate | None:
+        candidates = self.candidates
+        if not candidates:
+            return None
+        st = self.state
+        reviewed = st.reviewed_frames if st else {}
+        for idx in range(self.current_index + 1, len(candidates)):
+            if not only_pending or candidates[idx].frame_index not in reviewed:
+                return self.select_index(idx)
+        return None
+
+    def previous_candidate(self, *, only_pending: bool = False) -> ReviewCandidate | None:
+        candidates = self.candidates
+        if not candidates:
+            return None
+        st = self.state
+        reviewed = st.reviewed_frames if st else {}
+        for idx in range(self.current_index - 1, -1, -1):
+            if not only_pending or candidates[idx].frame_index not in reviewed:
+                return self.select_index(idx)
+        return None
+
+    def first_pending(self) -> ReviewCandidate | None:
+        candidates = self.candidates
+        if not candidates:
+            return None
+        st = self.state
+        reviewed = st.reviewed_frames if st else {}
+        for idx, candidate in enumerate(candidates):
+            if candidate.frame_index not in reviewed:
+                return self.select_index(idx)
+        return None
+
+    def accept_current(self, *, auto_advance: bool = True) -> ReviewRecord:
+        c = self.current_candidate
+        if c is None:
+            raise ValueError("No candidate currently selected")
+        rec = self._session.accept_suggested_frame(self._run_id, c.frame_index)
+        self._correcting = False
+        if auto_advance:
+            if self.next_candidate(only_pending=True) is None:
+                self.first_pending()
+        return rec
+
+    def skip_current(self, *, auto_advance: bool = True) -> ReviewRecord:
+        c = self.current_candidate
+        if c is None:
+            raise ValueError("No candidate currently selected")
+        rec = self._session.skip_suggested_frame(self._run_id, c.frame_index)
+        self._correcting = False
+        if auto_advance:
+            if self.next_candidate(only_pending=True) is None:
+                self.first_pending()
+        return rec
+
+    def correct_current(
+        self, pixel_x: float, pixel_y: float, *, auto_advance: bool = True
+    ) -> tuple[TrackPoint, ReviewRecord]:
+        c = self.current_candidate
+        if c is None:
+            raise ValueError("No candidate currently selected")
+        point = self._session.correct_suggested_frame(
+            self._run_id, c.frame_index, pixel_x, pixel_y
+        )
+        st = self._session.get_suggested_frame_review(self._run_id)
+        assert st is not None
+        rec = st.reviewed_frames[c.frame_index]
+        self._correcting = False
+        if auto_advance:
+            if self.next_candidate(only_pending=True) is None:
+                self.first_pending()
+        return point, rec

@@ -17,6 +17,13 @@ from ai_physics_tracker.application.difficult_frames import (
 )
 from ai_physics_tracker.application.inference_job import _project_path
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
+from ai_physics_tracker.application.suggested_frame_review import (
+    ActiveReviewBatch,
+    ReviewCandidate,
+    ReviewPredictionSnapshot,
+    get_excluded_frames_for_run,
+    get_prior_correct_frames_for_run,
+)
 from ai_physics_tracker.application.tracking_types import FrameSelectionRequest
 from ai_physics_tracker.infrastructure.engine_adapter import EngineAdapter
 from ai_physics_tracker.infrastructure.task_runner import (
@@ -154,6 +161,16 @@ def prepare_difficult_frame_request(
         p.frame_index for p in session.manual_points(track.track_id)
         if zone_start <= p.frame_index <= zone_end
     )
+    # AC-8 / R2.8: 排除本 run 历史已审阅的 accepted 和 skipped 帧
+    excluded_review_frames = get_excluded_frames_for_run(run)
+    all_excluded = manual_frames | excluded_review_frames
+
+    # prior_correct_frames 若未显式传入，自动从本 run 的审核记录中读取
+    resolved_prior_correct = (
+        frozenset(prior_correct_frames)
+        if prior_correct_frames
+        else get_prior_correct_frames_for_run(run)
+    )
 
     mining_request = DifficultFrameMiningRequest(
         run_id=run.run_id,
@@ -167,8 +184,8 @@ def prepare_difficult_frame_request(
         zone_end=zone_end,
         fps_nominal=timeline.fps_nominal,
         params=params,
-        prior_correct_frames=frozenset(prior_correct_frames),
-        manual_frames=manual_frames,
+        prior_correct_frames=resolved_prior_correct,
+        manual_frames=all_excluded,
     )
     return DifficultFrameJobRequest(
         mining_request=mining_request,
@@ -191,14 +208,22 @@ def _verify_file(path: Path, expected: tuple[int, int], label: str) -> None:
 
 @dataclass(frozen=True)
 class DifficultFrameResult:
-    """挖掘结果；candidates 按总分降序，只含帧号与解释性分量（R2.4）。"""
+    """挖掘结果；candidates 按总分降序，含帧号、原始预测与解释性分量（R2.4）。"""
 
     request_id: UUID
     run_id: UUID
-    candidates: tuple[FrameCandidate, ...]
+    candidates: tuple[ReviewCandidate, ...]
     actual_n: int
     diversity_status: str
     params_snapshot: dict[str, Any]
+
+    def to_active_batch(self) -> ActiveReviewBatch:
+        """转换为可供审核队列控制器消费的 ActiveReviewBatch。"""
+        return ActiveReviewBatch(
+            request_id=self.request_id,
+            params_snapshot=dict(self.params_snapshot),
+            candidates=self.candidates,
+        )
 
 
 def run_difficult_frame_worker(
@@ -240,6 +265,7 @@ def run_difficult_frame_worker(
     candidates, diversity_status = _apply_visual_diversity(
         adapter, mining, outcome, queue, cancel_event, request_id)
 
+    pred_by_frame = {p.frame_index: p for p in predictions}
     payload = {
         "request_id": str(request_id),
         "run_id": str(mining.run_id),
@@ -251,6 +277,18 @@ def run_difficult_frame_worker(
         "candidates": [
             {
                 "frame_index": candidate.frame_index,
+                "prediction": (
+                    None
+                    if pred_by_frame.get(candidate.frame_index) is None
+                    or not isfinite(pred_by_frame[candidate.frame_index].pixel_x)
+                    or not isfinite(pred_by_frame[candidate.frame_index].pixel_y)
+                    or not isfinite(pred_by_frame[candidate.frame_index].confidence)
+                    else {
+                        "pixel_x": float(pred_by_frame[candidate.frame_index].pixel_x),
+                        "pixel_y": float(pred_by_frame[candidate.frame_index].pixel_y),
+                        "confidence": float(pred_by_frame[candidate.frame_index].confidence),
+                    }
+                ),
                 "components": candidate.components,
                 "raw_components": candidate.raw_components,
                 "reasons": list(candidate.reasons),
@@ -348,9 +386,25 @@ def read_difficult_frame_result(project_root: Path, request_id: UUID) -> Difficu
         raise ProjectSessionError(f"Difficult frame result not found: {out_file}")
     try:
         payload = json.loads(out_file.read_text(encoding="utf-8"))
+
+        def _parse_pred(rec: dict[str, Any]) -> ReviewPredictionSnapshot | None:
+            pred_dict = rec.get("prediction")
+            if not isinstance(pred_dict, dict):
+                return None
+            try:
+                px = float(pred_dict["pixel_x"])
+                py = float(pred_dict["pixel_y"])
+                conf = float(pred_dict["confidence"])
+                if isfinite(px) and isfinite(py) and isfinite(conf):
+                    return ReviewPredictionSnapshot(px, py, conf)
+            except (KeyError, TypeError, ValueError):
+                pass
+            return None
+
         candidates = tuple(
-            FrameCandidate(
+            ReviewCandidate(
                 frame_index=int(record["frame_index"]),
+                prediction=_parse_pred(record),
                 components={name: float(value) for name, value in record["components"].items()},
                 raw_components={name: float(value) for name, value in record["raw_components"].items()},
                 reasons=tuple(record["reasons"]),
@@ -376,7 +430,10 @@ class DifficultFrameRunner:
     """应用层封装挖掘后台任务；复用 BackgroundTaskRunner（与 5.1 同模式）。"""
 
     def __init__(self, adapter: EngineAdapter | None = None, runner: Any = None) -> None:
-        self.adapter: EngineAdapter = adapter or DLCAdapter()
+        if adapter is None:
+            from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter
+            adapter = DLCAdapter()
+        self.adapter: EngineAdapter = adapter
         self.runner = runner or BackgroundTaskRunner()
 
     def start(self, job_request: DifficultFrameJobRequest, request_id: UUID) -> Any:

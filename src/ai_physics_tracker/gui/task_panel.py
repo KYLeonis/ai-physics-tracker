@@ -1,5 +1,6 @@
 """AI 训练/推理任务面板；只负责展示状态与发出用户操作信号。"""
 
+from typing import Any
 from uuid import UUID
 
 from PySide6.QtCore import QSignalBlocker, Qt, Signal
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ai_physics_tracker.application.difficult_frames import MiningParams
 from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.application.tracking_types import (
     InferenceParams, TrainingParams, FrameSelectionResult,
@@ -46,7 +48,16 @@ class TaskPanel(QDockWidget):
     cancelRequested = Signal()
     runSelected = Signal(object)
     suggestFramesRequested = Signal(int, str)   # (n_frames, algorithm)
+    suggestCancelRequested = Signal()           # F4
     suggestedFrameJumped = Signal(int)           # 用户点击建议帧，发出帧号
+    mineDifficultRequested = Signal(object, object)  # (run_id, MiningParams)
+    mineCancelRequested = Signal()
+    reviewNextRequested = Signal()
+    reviewPrevRequested = Signal()
+    reviewAcceptRequested = Signal()
+    reviewSkipRequested = Signal()
+    reviewCorrectRequested = Signal()
+    reviewCandidateJumpRequested = Signal(int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("AI tasks", parent)
@@ -84,8 +95,12 @@ class TaskPanel(QDockWidget):
         self.nFramesSpinBox.setRange(1, 200)
         self.nFramesSpinBox.setValue(10)
         self.algorithmComboBox = QComboBox()
-        self.algorithmComboBox.addItems(["K-means", "Uniform"])
+        self.algorithmComboBox.addItem("K-means", "kmeans")
+        self.algorithmComboBox.addItem("Uniform", "uniform")
         self.suggestButton = QPushButton("Suggest Frames")
+        self.suggestCancelButton = QPushButton("Cancel")
+        self.suggestCancelButton.setEnabled(False)
+        self.suggestCancelButton.hide()
         self.suggestStatusLabel = QLabel("")
         self.suggestStatusLabel.setWordWrap(True)
         self.suggestStatusLabel.hide()
@@ -101,12 +116,14 @@ class TaskPanel(QDockWidget):
         suggestForm.addRow("Algorithm", self.algorithmComboBox)
         suggestLayout = QVBoxLayout()
         suggestLayout.addLayout(suggestForm)
-        suggestLayout.addWidget(self.suggestButton)
+        suggestButtonRow = QHBoxLayout()
+        suggestButtonRow.addWidget(self.suggestButton, 1)
+        suggestButtonRow.addWidget(self.suggestCancelButton)
+        suggestLayout.addLayout(suggestButtonRow)
         suggestLayout.addWidget(self.suggestStatusLabel)
         suggestLayout.addWidget(self.suggestedFramesList)
         suggestGroup = QGroupBox("Suggest Representative Frames")
         suggestGroup.setLayout(suggestLayout)
-
 
         self.confidenceSpinBox = QDoubleSpinBox()
         self.confidenceSpinBox.setRange(0.0, 1.0)
@@ -130,6 +147,76 @@ class TaskPanel(QDockWidget):
         self.inferReasonLabel = QLabel()
         self.inferReasonLabel.setWordWrap(True)
         self.inferReasonLabel.hide()
+
+        # --- 建议帧审核与困难帧挖掘（Phase 5.2/5.3）---
+        self.mineTopNSpinBox = QSpinBox()
+        self.mineTopNSpinBox.setRange(1, 100)
+        self.mineTopNSpinBox.setValue(10)
+        self.mineMinGapSpinBox = QDoubleSpinBox()
+        self.mineMinGapSpinBox.setRange(0.05, 5.0)
+        self.mineMinGapSpinBox.setSingleStep(0.05)
+        self.mineMinGapSpinBox.setValue(0.25)
+        self.mineButton = QPushButton("Mine Difficult Frames")
+        self.mineCancelButton = QPushButton("Cancel Mining")
+        self.mineCancelButton.setEnabled(False)
+        self.mineCancelButton.hide()
+        self.mineStatusLabel = QLabel("")
+        self.mineStatusLabel.setWordWrap(True)
+        self.mineStatusLabel.hide()
+        self.mineReasonLabel = QLabel("")
+        self.mineReasonLabel.setWordWrap(True)
+        self.mineReasonLabel.hide()
+
+        mineForm = QFormLayout()
+        mineForm.addRow("Top candidates", self.mineTopNSpinBox)
+        mineForm.addRow("Min gap (s)", self.mineMinGapSpinBox)
+
+        mineButtonRow = QHBoxLayout()
+        mineButtonRow.addWidget(self.mineButton, 1)
+        mineButtonRow.addWidget(self.mineCancelButton)
+
+        self.reviewProgressLabel = QLabel("No active review batch")
+        self.candidateDetailsLabel = QLabel("Select a completed infer run to mine or review.")
+        self.candidateDetailsLabel.setWordWrap(True)
+
+        self.reviewPrevButton = QPushButton("◀ Prev")
+        self.reviewNextButton = QPushButton("Next ▶")
+        self.reviewPrevButton.setEnabled(False)
+        self.reviewNextButton.setEnabled(False)
+        navRow = QHBoxLayout()
+        navRow.addWidget(self.reviewPrevButton)
+        navRow.addWidget(self.reviewNextButton)
+
+        self.reviewAcceptButton = QPushButton("Accept (A)")
+        self.reviewSkipButton = QPushButton("Skip (S)")
+        self.reviewCorrectButton = QPushButton("Correct (C)")
+        self.reviewAcceptButton.setEnabled(False)
+        self.reviewSkipButton.setEnabled(False)
+        self.reviewCorrectButton.setEnabled(False)
+        actionRow = QHBoxLayout()
+        actionRow.addWidget(self.reviewAcceptButton)
+        actionRow.addWidget(self.reviewSkipButton)
+        actionRow.addWidget(self.reviewCorrectButton)
+
+        self.reviewCandidatesList = QListWidget()
+        self.reviewCandidatesList.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        self.reviewCandidatesList.setMinimumHeight(52)
+        self.reviewCandidatesList.setMaximumHeight(100)
+        self.reviewCandidatesList.setToolTip("Double-click a candidate to jump to its frame.")
+
+        reviewLayout = QVBoxLayout()
+        reviewLayout.addLayout(mineForm)
+        reviewLayout.addLayout(mineButtonRow)
+        reviewLayout.addWidget(self.mineReasonLabel)
+        reviewLayout.addWidget(self.mineStatusLabel)
+        reviewLayout.addWidget(self.reviewProgressLabel)
+        reviewLayout.addWidget(self.candidateDetailsLabel)
+        reviewLayout.addLayout(navRow)
+        reviewLayout.addLayout(actionRow)
+        reviewLayout.addWidget(self.reviewCandidatesList)
+
+        reviewGroup = QGroupBox("Difficult Frames Review")
+        reviewGroup.setLayout(reviewLayout)
 
         self.cancelButton = QPushButton("Cancel")
         self.cancelButton.setEnabled(False)
@@ -171,6 +258,7 @@ class TaskPanel(QDockWidget):
         middle = QVBoxLayout()
         middle.addWidget(inferGroup)
         middle.addWidget(self.inferReasonLabel)
+        middle.addWidget(reviewGroup)
         columns = QHBoxLayout()
         columns.addLayout(left, 1)
         columns.addLayout(middle, 1)
@@ -195,7 +283,17 @@ class TaskPanel(QDockWidget):
         self.cancelButton.clicked.connect(lambda: self.cancelRequested.emit())
         self.historyList.currentItemChanged.connect(self._onHistorySelected)
         self.suggestButton.clicked.connect(self._onSuggestClicked)
+        self.suggestCancelButton.clicked.connect(lambda: self.suggestCancelRequested.emit())
         self.suggestedFramesList.itemDoubleClicked.connect(self._onSuggestedFrameDoubleClicked)
+
+        self.mineButton.clicked.connect(self._onMineClicked)
+        self.mineCancelButton.clicked.connect(lambda: self.mineCancelRequested.emit())
+        self.reviewPrevButton.clicked.connect(lambda: self.reviewPrevRequested.emit())
+        self.reviewNextButton.clicked.connect(lambda: self.reviewNextRequested.emit())
+        self.reviewAcceptButton.clicked.connect(lambda: self.reviewAcceptRequested.emit())
+        self.reviewSkipButton.clicked.connect(lambda: self.reviewSkipRequested.emit())
+        self.reviewCorrectButton.clicked.connect(lambda: self.reviewCorrectRequested.emit())
+        self.reviewCandidatesList.itemDoubleClicked.connect(self._onReviewCandidateDoubleClicked)
 
     def trainingParameters(self) -> TrainingParams:
         """返回当前训练控件的不可变参数快照。"""
@@ -440,6 +538,9 @@ class TaskPanel(QDockWidget):
         """
         self.suggestButton.setEnabled(enabled)
         self.suggestButton.setToolTip(reason if not enabled else "")
+        is_running = "running" in reason.lower()
+        self.suggestCancelButton.setEnabled(not enabled and is_running)
+        self.suggestCancelButton.setVisible(not enabled and is_running)
         if hint and not enabled:
             self._suggest_hint = reason
             self.setSuggestStatus(reason)
@@ -449,11 +550,122 @@ class TaskPanel(QDockWidget):
 
     def _onSuggestClicked(self) -> None:
         n = self.nFramesSpinBox.value()
-        algo_text = self.algorithmComboBox.currentText()
-        algorithm = "kmeans" if "k" in algo_text.lower() else "uniform"
-        self.suggestFramesRequested.emit(n, algorithm)
+        algorithm = self.algorithmComboBox.currentData()
+        if not algorithm:
+            algo_text = self.algorithmComboBox.currentText()
+            algorithm = "kmeans" if "k" in algo_text.lower() else "uniform"
+        self.suggestFramesRequested.emit(n, str(algorithm))
 
     def _onSuggestedFrameDoubleClicked(self, item: QListWidgetItem) -> None:
         frame = item.data(Qt.ItemDataRole.UserRole)
         if isinstance(frame, int):
             self.suggestedFrameJumped.emit(frame)
+
+    # --- 建议帧审核公共接口（Phase 5.2/5.3）---
+
+    def _onMineClicked(self) -> None:
+        params = MiningParams(
+            top_n=self.mineTopNSpinBox.value(),
+            min_gap_s=self.mineMinGapSpinBox.value(),
+        )
+        self.mineDifficultRequested.emit(None, params)
+
+    def _onReviewCandidateDoubleClicked(self, item: QListWidgetItem) -> None:
+        frame = item.data(Qt.ItemDataRole.UserRole)
+        if isinstance(frame, int):
+            self.reviewCandidateJumpRequested.emit(frame)
+
+    def setMineEnabled(self, enabled: bool, reason: str = "") -> None:
+        self.mineButton.setEnabled(enabled)
+        self.mineButton.setToolTip(reason if not enabled else "")
+        if not enabled and reason:
+            self.mineReasonLabel.setText(reason)
+            self.mineReasonLabel.show()
+        else:
+            self.mineReasonLabel.setText("")
+            self.mineReasonLabel.hide()
+
+    def setMineBusy(self, busy: bool) -> None:
+        self.mineButton.setEnabled(not busy)
+        self.mineCancelButton.setEnabled(busy)
+        self.mineCancelButton.setVisible(busy)
+
+    def setMineStatus(self, message: str) -> None:
+        if message.strip():
+            self.mineStatusLabel.setText(message)
+            self.mineStatusLabel.show()
+        else:
+            self.mineStatusLabel.setText("")
+            self.mineStatusLabel.hide()
+
+    def setReviewBatch(
+        self,
+        controller: Any | None,
+        summary: Any | None,
+    ) -> None:
+        if controller is None or controller.active_batch is None or summary is None:
+            self.reviewProgressLabel.setText("No active review batch")
+            self.candidateDetailsLabel.setText("Select a completed infer run to mine or review.")
+            self.reviewPrevButton.setEnabled(False)
+            self.reviewNextButton.setEnabled(False)
+            self.reviewAcceptButton.setEnabled(False)
+            self.reviewSkipButton.setEnabled(False)
+            self.reviewCorrectButton.setEnabled(False)
+            self.reviewCandidatesList.clear()
+            return
+
+        tot = summary.total_candidates
+        rev = summary.total_reviewed
+        pen = summary.pending_count
+        acc = summary.accepted_count
+        skp = summary.skipped_count
+        cor = summary.corrected_count
+
+        self.reviewProgressLabel.setText(
+            f"Review: {rev}/{tot} reviewed ({pen} pending · {acc} accepted · {skp} skipped · {cor} corrected)"
+        )
+
+        curr = controller.current_candidate
+        idx = controller.current_index
+        if curr is not None:
+            disp = controller.current_disposition
+            pred_str = "no prediction"
+            if curr.prediction is not None:
+                pred_str = (
+                    f"({curr.prediction.pixel_x:.1f}, {curr.prediction.pixel_y:.1f}) "
+                    f"conf={curr.prediction.confidence:.2f}"
+                )
+            reasons_str = ", ".join(curr.reasons) if curr.reasons else "none"
+            self.candidateDetailsLabel.setText(
+                f"Candidate {idx + 1}/{tot} (Frame {curr.frame_index}) · Status: {disp.upper()}\n"
+                f"AI: {pred_str} · Score: {curr.total_score:.3f}\n"
+                f"Reasons: {reasons_str}"
+            )
+            self.reviewAcceptButton.setEnabled(True)
+            self.reviewSkipButton.setEnabled(True)
+            self.reviewCorrectButton.setEnabled(True)
+        else:
+            self.candidateDetailsLabel.setText("No candidate selected")
+            self.reviewAcceptButton.setEnabled(False)
+            self.reviewSkipButton.setEnabled(False)
+            self.reviewCorrectButton.setEnabled(False)
+
+        self.reviewPrevButton.setEnabled(controller.can_navigate_previous)
+        self.reviewNextButton.setEnabled(controller.can_navigate_next)
+
+        self.reviewCandidatesList.blockSignals(True)
+        self.reviewCandidatesList.clear()
+        state = controller.state
+        reviewed = state.reviewed_frames if state else {}
+        for i, c in enumerate(controller.candidates):
+            rec = reviewed.get(c.frame_index)
+            disp_tag = f"[{rec.disposition.upper()}]" if rec else "[PENDING]"
+            score_tag = f"score={c.total_score:.2f}"
+            item_text = f"{i + 1}. Frame {c.frame_index} {disp_tag} {score_tag}"
+            item = QListWidgetItem(item_text)
+            item.setData(Qt.ItemDataRole.UserRole, c.frame_index)
+            self.reviewCandidatesList.addItem(item)
+            if i == idx:
+                item.setSelected(True)
+                self.reviewCandidatesList.setCurrentItem(item)
+        self.reviewCandidatesList.blockSignals(False)

@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 Slice 1 已完成，全部 601 测试通过；下一步进入 Slice 2**）
+- 最后更新：2026-09-03（**5.3 Slice 2 已完成，全部 611 测试通过；下一步进入 Slice 3**）
 
 ---
 
@@ -15,10 +15,18 @@
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
-| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1 已完成；下一步 Slice 2） |
+| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1-2 已完成；下一步 Slice 3） |
 
 ## Recently Completed
 
+- **Phase 5.3 Slice 2 — Mining entry + queue controller (2026-09-03)**：
+  - 在 `TaskPanel` 与 `DifficultFrameReviewActions` 中实现挖掘发起与审核面板联动，支持 Top N 与 Min Gap 参数配置及中性取消（AC-9，F4）。
+  - 实现基于 Task history 的 run 选中与合法性校验（仅限当前 Track 的 completed infer run，AC-1）。
+  - 实现同一 infer run 挖掘时自动排除已 Accept/Skip 的帧（AC-8，R2.8），新 run fresh 挖掘。
+  - 在挖掘产物中固化 AI 预测快照（x, y, confidence），并提供 `DifficultFrameResult.to_active_batch()`。
+  - 实现纯 Python Qt-free 审核队列控制器 `ReviewQueueController` 与 `MainWindow` 快捷键（A/S/C，防输入框冲突）。
+  - 顺带关闭 F4（中性取消不带 Failed 前缀）与 F6（算法 ComboBox 采用 `currentData()` 提取）。
+  - 增加 10 个测试（`test_difficult_frames.py` 1 个 AC-8 测试 + 预测快照断言，`test_suggested_frame_review.py` 3 个控制器测试，`tests/gui/test_suggested_frame_review_actions.py` 6 个 GUI offscreen 测试），全量 **611 passed**。
 - **Phase 5.3 Slice 1 — Review contract + atomic session transactions (2026-09-03)**：
   - 实现 Qt-free 值对象契约 `suggested_frame_review.py`（候选、快照、记录、批次、汇总、序列化）。
   - 在 `ProjectSession` 实现 `accept_suggested_frame`、`skip_suggested_frame`、`correct_suggested_frame`（原子 manual point + superseded AI 观测 + 预测保留）与 `delete_active_manual_point`（恢复原 AI 观测并回滚审核为 pending）。
@@ -74,5 +82,5 @@
 
 ## Next Recommended Action
 
-1. 提交 Slice 1 变更（Conventional Commit: `feat: implement review contract and atomic session transactions (Phase 5.3 Slice 1)`）。
-2. 开始 Phase 5.3 Slice 2 — Mining entry + queue controller：复用 Task history 的 run 选择，接入 5.2 挖掘算法并自动排除 accepted/skipped 帧；实现队列控制器、跳转定位与快捷键（A/S/C）。
+1. 提交 Slice 2 变更（Conventional Commit: `feat: implement mining entry and review queue controller (Phase 5.3 Slice 2)`）。
+2. 开始 Phase 5.3 Slice 3 — Review/Correct/delete GUI：实现审核工作区、一次性 Correct 模式与当前帧 manual 删除，刷新 dirty/Undo/Redo/marker 状态。

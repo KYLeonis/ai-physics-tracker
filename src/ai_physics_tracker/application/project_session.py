@@ -1222,7 +1222,7 @@ class ProjectSession:
         self.update_tracking_run(updated_run)
         logger.info("set active review batch for run=%s candidates=%d", run_id, len(batch.candidates))
 
-    def accept_suggested_frame(self, run_id: UUID, frame_index: int) -> None:
+    def accept_suggested_frame(self, run_id: UUID, frame_index: int) -> ReviewRecord:
         """将候选帧标记为已接受（不创建 TrackPoint，AC-5）。"""
         run = self._validate_infer_run_for_review(run_id)
         state = self.get_suggested_frame_review(run_id)
@@ -1248,8 +1248,9 @@ class ProjectSession:
         )
         self._commit_review_transaction(run, new_state)
         logger.info("accepted suggested frame run=%s frame=%d", run_id, frame_index)
+        return record
 
-    def skip_suggested_frame(self, run_id: UUID, frame_index: int) -> None:
+    def skip_suggested_frame(self, run_id: UUID, frame_index: int) -> ReviewRecord:
         """将候选帧标记为跳过（不创建 TrackPoint，AC-5）。"""
         run = self._validate_infer_run_for_review(run_id)
         state = self.get_suggested_frame_review(run_id)
@@ -1275,6 +1276,7 @@ class ProjectSession:
         )
         self._commit_review_transaction(run, new_state)
         logger.info("skipped suggested frame run=%s frame=%d", run_id, frame_index)
+        return record
 
     def correct_suggested_frame(
         self,

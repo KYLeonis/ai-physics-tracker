@@ -109,7 +109,7 @@ TrackingRun.extra_fields["suggested_frame_review_v1"]
 - [x] **Slice 1 — Review contract + atomic session transactions**：新增 ADR-0013 与 Qt-free review
   值对象/校验；在 ProjectSession 实现 Accept/Skip/Correct/删除的原子事务及 scoped Undo/Redo；
   用 session、持久化和旧项目兼容测试证明 AC-3–AC-8。
-- [ ] **Slice 2 — Mining entry + queue controller**：复用 Task history 的 run 选择，接入 5.2
+- [x] **Slice 2 — Mining entry + queue controller**：复用 Task history 的 run 选择，接入 5.2
   background mining、身份复核、保存 active batch、同 run suppression、取消和上下文切换；
   用 application/GUI offscreen 测试证明 AC-1、AC-2、AC-8、AC-9，并顺带关闭 F4/F6。
 - [ ] **Slice 3 — Review/Correct/delete GUI**：实现审核区、导航、一次性 Correct 模式、完成统计

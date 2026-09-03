@@ -636,6 +636,61 @@ class TestPrepareDifficultFrameRequest:
         with pytest.raises(Exception, match="no stored raw prediction artifact"):
             prepare_difficult_frame_request(session, no_ref.run_id, MiningParams())
 
+    def test_prepare_request_excludes_accepted_and_skipped_frames_for_same_run(
+        self, tmp_path: Path, synthetic_video_path: Path
+    ):
+        """AC-8: 同一 infer run 后续 mining 自动排除已 Accept/Skip 的帧；新 run 不继承排除。"""
+        from ai_physics_tracker.application.difficult_frame_job import prepare_difficult_frame_request
+        from ai_physics_tracker.application.suggested_frame_review import (
+            ActiveReviewBatch, ReviewCandidate,
+        )
+        from ai_physics_tracker.domain.tracking_run import create_tracking_run, mark_run_completed, mark_run_running
+        from dataclasses import replace
+
+        session, video, track, run, _p, _m = \
+            self._make_session_with_infer_run(tmp_path, synthetic_video_path)
+
+        req_id = uuid4()
+        c1 = ReviewCandidate(frame_index=2, prediction=None, components={}, raw_components={}, reasons=(), total_score=1.0)
+        c2 = ReviewCandidate(frame_index=4, prediction=None, components={}, raw_components={}, reasons=(), total_score=0.9)
+        c3 = ReviewCandidate(frame_index=6, prediction=None, components={}, raw_components={}, reasons=(), total_score=0.8)
+        batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1, c2, c3))
+        session.set_active_review_batch(run.run_id, batch)
+
+        # Accept frame 2, Skip frame 4
+        session.accept_suggested_frame(run.run_id, 2)
+        session.skip_suggested_frame(run.run_id, 4)
+
+        # 再次对该 run 调用 prepare_difficult_frame_request
+        job = prepare_difficult_frame_request(session, run.run_id, MiningParams())
+        assert 2 in job.mining_request.manual_frames
+        assert 4 in job.mining_request.manual_frames
+        assert 6 not in job.mining_request.manual_frames
+
+        # 对另一个新的 infer run 调用 prepare_difficult_frame_request
+        run2_id = uuid4()
+        run2_dir = session.project_root / "data" / "engines" / str(run2_id)
+        run2_dir.mkdir(parents=True)
+        pred2 = run2_dir / "predictions.csv"
+        pred2.write_text(_p.read_text(encoding="utf-8"), encoding="utf-8")
+        pred2_stat = pred2.stat()
+        run2 = mark_run_completed(mark_run_running(create_tracking_run(video.video_id, track.track_id, "infer")))
+        run2 = replace(
+            run2,
+            run_id=run2_id,
+            extra_fields={
+                "prediction_path": f"data/engines/{run2_id}/predictions.csv",
+                "prediction_file_info": [pred2_stat.st_size, pred2_stat.st_mtime_ns],
+                "model_file_info": run.extra_fields["model_file_info"],
+            },
+            model_snapshot=run.model_snapshot,
+        )
+        session.record_tracking_run(run2)
+
+        job2 = prepare_difficult_frame_request(session, run2.run_id, MiningParams())
+        assert 2 not in job2.mining_request.manual_frames
+        assert 4 not in job2.mining_request.manual_frames
+
 
 # ---------------------------------------------------------------------------
 # Slice 3 — 显式候选集（视觉多样性复用 5.1 K-means）
@@ -782,6 +837,16 @@ class TestDifficultFrameWorker:
         assert scores == sorted(scores, reverse=True)
         assert all(c.reasons for c in result.candidates)
         assert result.params_snapshot["diversity_status"] == "applied"
+        batch = result.to_active_batch()
+        assert batch.request_id == request_id
+        assert len(batch.candidates) == len(result.candidates)
+        # NaN 帧 5/6 没有有效预测，其余帧有有效预测
+        for c in result.candidates:
+            if c.frame_index in (5, 6):
+                assert c.prediction is None
+            else:
+                assert c.prediction is not None
+                assert c.prediction.confidence > 0
 
     def test_worker_skips_diversity_when_shortlist_small(self, tmp_path: Path, synthetic_video_path: Path):
         from ai_physics_tracker.application.difficult_frame_job import (

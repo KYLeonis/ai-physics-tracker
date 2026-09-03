@@ -4,11 +4,15 @@ import json
 from uuid import UUID, uuid4
 import pytest
 
+from pathlib import Path
+
+from ai_physics_tracker.application.project_session import ProjectSession
 from ai_physics_tracker.application.suggested_frame_review import (
     SUGGESTED_FRAME_REVIEW_KEY,
     ActiveReviewBatch,
     ReviewCandidate,
     ReviewPredictionSnapshot,
+    ReviewQueueController,
     ReviewRecord,
     SuggestedFrameReviewState,
     attach_review_state,
@@ -19,9 +23,16 @@ from ai_physics_tracker.application.suggested_frame_review import (
     get_prior_correct_frames_for_run,
     serialize_review_state,
 )
-from ai_physics_tracker.domain.tracking_run import TrackingRun
+from ai_physics_tracker.application.video import VideoStreamInfo
+from ai_physics_tracker.domain.tracking_run import (
+    TrackingRun,
+    create_tracking_run,
+    mark_run_completed,
+    mark_run_running,
+)
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.infrastructure.dlc_predictions import RawPrediction
+from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
 
 def _sample_run(extra_fields: dict | None = None) -> TrackingRun:
@@ -307,3 +318,129 @@ def test_batch_summary_and_disposition_helpers() -> None:
     # R2.8 suppression sets
     assert get_excluded_frames_for_run(state) == frozenset({1, 3})
     assert get_prior_correct_frames_for_run(state) == frozenset({2})
+
+
+def _setup_session_and_controller(
+    tmp_path: Path,
+) -> tuple[ProjectSession, TrackingRun, ReviewQueueController]:
+    session = ProjectSession.start(ProjectRepository())
+    info = VideoStreamInfo(64, 48, 10.0, 10, "fake", "cfr")
+    session.register_external_video(tmp_path / "clip.mp4", info)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+
+    run = mark_run_running(
+        create_tracking_run(
+            video.video_id,
+            track.track_id,
+            "infer",
+            engine="dlc",
+            engine_version="3.0.1",
+            source_detail="test-infer",
+        )
+    )
+    session.record_tracking_run(run)
+    completed_run = mark_run_completed(run)
+    session.update_tracking_run(completed_run)
+
+    req_id = uuid4()
+    c1 = ReviewCandidate(frame_index=1, prediction=ReviewPredictionSnapshot(10.0, 20.0, 0.5), components={}, raw_components={}, reasons=(), total_score=1.0)
+    c2 = ReviewCandidate(frame_index=2, prediction=ReviewPredictionSnapshot(15.0, 25.0, 0.4), components={}, raw_components={}, reasons=(), total_score=0.9)
+    c3 = ReviewCandidate(frame_index=3, prediction=None, components={}, raw_components={}, reasons=(), total_score=0.8)
+    batch = ActiveReviewBatch(request_id=req_id, params_snapshot={}, candidates=(c1, c2, c3))
+    session.set_active_review_batch(completed_run.run_id, batch)
+
+    ctrl = ReviewQueueController(session, completed_run.run_id)
+    return session, completed_run, ctrl
+
+
+def test_review_queue_controller_navigation_and_bounds(tmp_path: Path) -> None:
+    session, run, ctrl = _setup_session_and_controller(tmp_path)
+
+    assert ctrl.count == 3
+    assert ctrl.current_index == 0
+    assert ctrl.current_frame_index == 1
+    assert ctrl.current_disposition == "pending"
+    assert ctrl.can_navigate_next is True
+    assert ctrl.can_navigate_previous is False
+    assert ctrl.has_pending is True
+
+    # Next
+    assert ctrl.next_candidate() is not None
+    assert ctrl.current_index == 1
+    assert ctrl.current_frame_index == 2
+    assert ctrl.can_navigate_previous is True
+
+    # Next to end
+    assert ctrl.next_candidate() is not None
+    assert ctrl.current_index == 2
+    assert ctrl.current_frame_index == 3
+    assert ctrl.can_navigate_next is False
+    assert ctrl.next_candidate() is None
+
+    # Previous back to start
+    assert ctrl.previous_candidate() is not None
+    assert ctrl.current_index == 1
+    assert ctrl.previous_candidate() is not None
+    assert ctrl.current_index == 0
+    assert ctrl.previous_candidate() is None
+
+    # Direct select by frame
+    assert ctrl.select_frame(3) is not None
+    assert ctrl.current_index == 2
+    assert ctrl.select_frame(99) is None
+    assert ctrl.current_index == 2
+
+
+def test_review_queue_controller_accept_skip_correct_and_auto_advance(tmp_path: Path) -> None:
+    session, run, ctrl = _setup_session_and_controller(tmp_path)
+
+    # Frame 1: Accept -> auto-advances to frame 2
+    rec1 = ctrl.accept_current(auto_advance=True)
+    assert rec1.disposition == "accepted"
+    assert ctrl.current_index == 1
+    assert ctrl.current_frame_index == 2
+    assert ctrl.summary.accepted_count == 1
+    assert ctrl.summary.pending_count == 2
+
+    # Frame 2: Skip -> auto-advances to frame 3
+    rec2 = ctrl.skip_current(auto_advance=True)
+    assert rec2.disposition == "skipped"
+    assert ctrl.current_index == 2
+    assert ctrl.current_frame_index == 3
+    assert ctrl.summary.skipped_count == 1
+    assert ctrl.summary.pending_count == 1
+
+    # Frame 3: Correct (12.0, 22.0)
+    ctrl.set_correcting(True)
+    assert ctrl.is_correcting is True
+    point, rec3 = ctrl.correct_current(12.0, 22.0, auto_advance=True)
+    assert point.pixel_x == 12.0
+    assert rec3.disposition == "corrected"
+    assert ctrl.is_correcting is False
+    assert ctrl.summary.corrected_count == 1
+    assert ctrl.summary.pending_count == 0
+    assert ctrl.has_pending is False
+
+
+def test_review_queue_controller_empty_batch(tmp_path: Path) -> None:
+    session = ProjectSession.start(ProjectRepository())
+    info = VideoStreamInfo(64, 48, 10.0, 10, "fake", "cfr")
+    session.register_external_video(tmp_path / "clip.mp4", info)
+    video = session.project.videos[0]
+    track = session.add_track(video.video_id)
+    run = mark_run_completed(mark_run_running(create_tracking_run(video.video_id, track.track_id, "infer")))
+    session.record_tracking_run(run)
+
+    ctrl = ReviewQueueController(session, run.run_id)
+    assert ctrl.count == 0
+    assert ctrl.current_candidate is None
+    assert ctrl.current_frame_index is None
+    assert ctrl.current_disposition == "pending"
+    assert ctrl.can_navigate_next is False
+    assert ctrl.can_navigate_previous is False
+    assert ctrl.next_candidate() is None
+    assert ctrl.previous_candidate() is None
+    with pytest.raises(ValueError, match="No candidate currently selected"):
+        ctrl.accept_current()
+

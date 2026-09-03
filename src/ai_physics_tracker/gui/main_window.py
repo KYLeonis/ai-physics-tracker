@@ -42,8 +42,9 @@ from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
 from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.gui.timing_actions import TimingActions
-from ai_physics_tracker.gui.tracking_actions import TrackingActions, FrameSelectionActions
 from ai_physics_tracker.gui.chart_actions import ChartActions
+from ai_physics_tracker.gui.suggested_frame_review_actions import DifficultFrameReviewActions
+from ai_physics_tracker.gui.tracking_actions import TrackingActions, FrameSelectionActions
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time, clamp_to_working_zone
 from ai_physics_tracker.gui.video_view import CalibrationView, MarkerView, VideoView
 
@@ -279,6 +280,9 @@ class MainWindow(QMainWindow):
         self.frameSelectionActions = FrameSelectionActions(
             self, self.trackingActions.panel
         )
+        self.reviewActions = DifficultFrameReviewActions(
+            self, self.trackingActions.panel
+        )
         self.chartActions.panel.raise_()
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         viewMenu.addAction(self.chartActions.panel.toggleViewAction())
@@ -345,6 +349,14 @@ class MainWindow(QMainWindow):
         redoShortcut.activated.connect(self._redo)
         self.undoButton.clicked.connect(self._undo)
         self.redoButton.clicked.connect(self._redo)
+
+        reviewAcceptShortcut = QShortcut(QKeySequence(Qt.Key.Key_A), self)
+        reviewAcceptShortcut.activated.connect(self._onReviewAcceptShortcut)
+        reviewSkipShortcut = QShortcut(QKeySequence(Qt.Key.Key_S), self)
+        reviewSkipShortcut.activated.connect(self._onReviewSkipShortcut)
+        reviewCorrectShortcut = QShortcut(QKeySequence(Qt.Key.Key_C), self)
+        reviewCorrectShortcut.activated.connect(self._onReviewCorrectShortcut)
+
         self.statusBar().showMessage("Ready")
 
     @property
@@ -645,6 +657,29 @@ class MainWindow(QMainWindow):
         if hasattr(self, "projectActions"):
             self.projectActions.refresh()
         self.analysisChanged.emit()
+
+    def _isTypingInInputWidget(self) -> bool:
+        from PySide6.QtWidgets import QAbstractSpinBox, QLineEdit, QTextEdit, QPlainTextEdit
+        focus = self.focusWidget()
+        return isinstance(focus, (QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox))
+
+    def _onReviewAcceptShortcut(self) -> None:
+        if self._isTypingInInputWidget():
+            return
+        if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
+            self.reviewActions.acceptCurrent()
+
+    def _onReviewSkipShortcut(self) -> None:
+        if self._isTypingInInputWidget():
+            return
+        if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
+            self.reviewActions.skipCurrent()
+
+    def _onReviewCorrectShortcut(self) -> None:
+        if self._isTypingInInputWidget():
+            return
+        if hasattr(self, "reviewActions") and self.reviewActions.controller is not None:
+            self.reviewActions.startCorrectCurrent()
 
     def _addTrack(self) -> None:
         if not self._measurement_allowed or self.projectActions.busy or self._annotation_session is None or self._annotation_video_id is None:
