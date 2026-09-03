@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近完成：**Phase 5.4 — Iteration History & Result Activation（✅ 2026-09-03；候选隔离/显式激活/原子替换/清除/固定验证集/Undo-Redo/子智能体审查/真实 DLC smoke/Human Review 通过，652 测试全绿）**
-- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.0–5.4 已完成，下一步 5.5）**
+- 最近交付：**Phase 5.4 — Iteration History & Result Activation（2026-09-03；实现已合并，Review/Human Review、652 测试与双平台 CI 通过；复核收口项见 current status）**
+- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；先关闭 5.4 复核缺口，再进入 5.5）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -148,7 +148,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 | 5.1 ✅ | Representative Frame Selection | DLC uniform/K-means 初始建议帧，自适应抽帧优化与 Human Review 通过 |
 | 5.2 ✅ | Difficult Frame Mining | 全帧原始预测读取、四信号可解释评分 + screening 补齐、时间去重/多样性、后台任务与真实基准（AC-10 达成） |
 | 5.3 ✅ | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复（Human Review 通过） |
-| 5.4 ✅ | Iteration History & Result Activation | fixed validation/history；F2 clear/activate/replace（Human Review 通过） |
+| 5.4 🔄 | Iteration History & Result Activation | 实现已合并、Human Review 通过；ADR writer 与历史比较/展示证据待收口 |
 | 5.5 | Training Advisor & Retraining | 规则建议、DLC resume/restart 与跨轮比较 |
 | 5.6 | Refinement Loop Integration & Acceptance | 单摆端到端闭环与量化验收 |
 
@@ -158,10 +158,10 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 - [x] 困难帧扫描消费指定 infer run 的全帧原始预测；连续低 confidence 片段不会垄断 Top N（✅ 5.2 完成）
 - [x] Accept 不产生 ground truth，Correct 保留 prediction provenance，Skip 不造坐标；保存重开一致（✅ 5.3 完成）
 - [x] 新 completed infer result 可显式激活/替换，且不丢 manual、旧 run 产物与历史；事务可撤销并使派生 stale（✅ 5.4 完成）
-- [x] 至少两轮使用相同 fixed validation membership，RMSE 与 coverage/confidence 分开报告（✅ 5.4 完成）
+- [ ] 至少两轮使用相同 fixed validation membership，RMSE 与 coverage/confidence 分开报告（5.4 复核待补证据/展示）
 - [ ] Training Advisor 覆盖补标、resume/restart、epochs、batch size 与 snapshot，且不会自动启动无限训练
 - [ ] 单摆基准完成一次完整 refinement 闭环，并记录 fixed-validation、coverage、remaining difficult frames 的变化
-- [ ] 冻结人工审计集上的 Precision@N/review yield 优于 lowest-confidence-only Top N 基线
+- [x] 冻结人工审计集上的 Precision@N/review yield 优于 lowest-confidence-only Top N 基线（✅ 5.2：0.800/0.300 vs 0.600/0.000）
 
 **主要技术风险**
 - confidence 不等于定位误差，连续遮挡会淹没候选 → 多信号候选 + 去重/多样性 + 固定人工审计集。

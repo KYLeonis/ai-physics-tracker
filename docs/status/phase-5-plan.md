@@ -1,6 +1,6 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Accepted / Phase 5.0–5.3 已完成，5.4 mini-plan 已接受、暂停执行**
+> 状态：**Accepted / 5.4 实现已合并但有复核收口项；5.5 mini-plan 草案待确认**
 > 日期：2026-09-03
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
@@ -89,7 +89,8 @@
 
 ### 5.4 — Iteration History & Result Activation（F2）
 
-**状态**：✅ 2026-09-03 完成；Issue #21，Human Review 通过。见
+**状态**：⚠️ 2026-09-03 实现已合并、Human Review 通过；复核发现 2 项 AC 证据/展示缺口与
+ADR writer 形态偏差，列为 5.5 实现前 Entry Gate。GitHub Issue 未创建（流程遗漏）。见
 [phase-5.4-plan.md](phase-5.4-plan.md)。
 
 **目标**：让不同推理结果可比较、可显式激活，并建立固定验证序列。
@@ -107,15 +108,18 @@
 
 ### 5.5 — Training Advisor & Retraining
 
+**状态**：📝 mini-plan 草案待用户确认，见 [phase-5.5-plan.md](phase-5.5-plan.md)。
+
 **目标**：根据已有证据提出有限下一步，并复用 DLC 完成可控 resume/restart。
 
 **Slices**
 
-1. dataset builder 接受冻结 `trainIndices/testIndices`，每轮只导出 manual training labels。
-2. 训练请求增加可选 `snapshot_path`/parent run；接通 DLC PyTorch resume，restart 保持现有路径。
-3. Advisor 输出 action + evidence + limits，覆盖补标数、先修/先训、resume/restart、epochs、batch size、snapshot。
-4. 表驱动测试 underfit、generalization gap、refinement improved、plateau、OOM 和无 fixed validation。
-5. UI 可把建议填入表单，但不自动启动。
+0. 关闭 5.4 收尾复核发现的 ADR writer、双轮/跨 series 证据与 history details 缺口。
+1. 定义 Qt-free Advisor action + evidence + limits，并用表驱动测试固定规则优先级和有限参数档位。
+2. 训练请求增加可选 parent snapshot；接通 DLC PyTorch resume/fine-tune，restart 保持现有隔离路径。
+3. UI 可手选 mode/source，也可把建议填入表单，但不自动启动。
+4. 覆盖 OOM、无/失效 fixed validation、缺失 snapshot、取消/迟到和上下文切换；完成独立 review、
+   真实 DLC smoke 与 Human Review。
 
 **独立验收**：规则确定、有限、可解释；无验证数据不声称最佳；真实 DLC resume/restart smoke 通过。
 
@@ -158,15 +162,16 @@
 - Session：Accept/Correct/Skip、F2 replace、Undo/Redo、保存重开、派生 stale。
 - GUI offscreen：任务取消/迟到/上下文切换、队列导航、历史和 Advisor 表单。
 - 真实基准：冻结单摆 validation/audit frames，报告全部 iteration，不挑有利结果。
-- Human Review：5.1、5.3、5.4、5.6 的交互交付前由用户亲测。
+- Human Review：5.1、5.3、5.4、5.5、5.6 的交互交付前由用户亲测。
 - 每个 Subphase 运行 `QT_QPA_PLATFORM=offscreen python -m pytest`；Phase 收尾跑双平台 CI。
 
 ## 6. 当前入口
 
-5.0–5.3 已完成；5.3 记录见 [phase-5.3-plan.md](phase-5.3-plan.md) 与
-[phase-5.3-review.md](../reviews/phase-5.3-review.md)。5.4 mini-plan 已获批准，但按用户指令
-暂停执行；Issue、开发分支与 Slice 均未开始。
+5.0–5.3 已完成；5.4 实现已合并并通过 Review/Human Review，但复核发现 2 项 AC 证据/展示缺口
+与 ADR writer 形态偏差，详见 [phase-5.4-plan.md](phase-5.4-plan.md)。5.5 mini-plan 已形成草案，
+其 Slice 0 先关闭这些债务，再进入 Advisor；等待用户确认规则阈值、resume/fine-tune 语义与
+持久化扩展。
 
 ## Result
 
-Phase 5 总计划已接受；Phase 5.0–5.3 已完成；5.4 mini-plan 已接受并暂停执行。
+Phase 5 总计划已接受；5.4 收口与 5.5 mini-plan 待确认。

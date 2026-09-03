@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 5.4 Iteration History & Result Activation
 
-- Issue：待创建（用户恢复执行后同步到 GitHub）
-- 分支：`feat/p5.4-result-activation-history`（尚未创建）
-- 日期 / 状态：2026-09-03 · ✅ Accepted；按用户指令暂停，尚未执行 Slice
+- Issue：未创建（GitHub 当前不存在文档曾引用的 #21；流程记录遗漏）
+- 分支：`feat/p5.4-result-activation-history`（已合并并清理）
+- 日期 / 状态：2026-09-03 · ⚠️ 实现已合并、Review/Human Review 已通过；收尾复核发现 2 项 AC 证据/展示缺口
 
 ## Goal
 
@@ -46,7 +46,7 @@
 - 不删除旧 run、模型、HDF5/CSV、observation artifact、审核记录或既有 evaluation。
 - 不要求本 Subphase 完成真实的 resume/retrain refinement 改善；该闭环仍在 5.5–5.6 验收。
 
-## Persistence and Behavior Contract（已批准，待执行时记 ADR）
+## Persistence and Behavior Contract（已批准并由 ADR-0014 落地）
 
 沿用 schema v1 的 tolerant `extra_fields`，不增加顶层字段：
 
@@ -82,9 +82,9 @@ infer TrackingRun.extra_fields["prediction_summary_v1"]
 - 新 inference 无论当前是否已有 AI 点都保留完整 completed result；不再出现 first-wins 导致
   “0 inserted = 没有可用新结果”的产品语义。
 
-这是新增的稳定持久化约定，已随 mini-plan 获批。用户恢复执行后，先新增 ADR-0014 并同步
-`docs/spec/project-format.md` / `docs/spec/phase5-requirements.md`；若实现发现必须修改顶层 schema，
-立即停下并重新请求批准。
+这是新增的稳定持久化约定，已随 mini-plan 获批，并由
+[ADR-0014](../decisions/0014-result-activation-and-fixed-validation-history.md) 接受；实现未修改顶层
+schema。
 
 ## Acceptance Criteria
 
@@ -102,9 +102,9 @@ infer TrackingRun.extra_fields["prediction_summary_v1"]
   snapshots。标签缺失/坐标变化时禁止沿用并提示创建新 series，旧 series/evaluation 不改写。
 - [x] 启用 active validation series 的训练真实向 DLC 传入互斥且覆盖全部 manual labels 的
   `trainIndices/testIndices`；training run 冻结相同 membership 与训练标签快照。
-- [x] 两个 train run 可引用同一 validation series，历史把 train/fixed-validation RMSE 与 infer
+- [ ] 两个 train run 可引用同一 validation series，历史把 train/fixed-validation RMSE 与 infer
   coverage/confidence 分栏显示；不同 series 不宣称可直接比较。
-- [x] Task history 同屏可辨认 train iteration、completed infer Candidate、当前 Active 与 Legacy
+- [ ] Task history 同屏可辨认 train iteration、completed infer Candidate、当前 Active 与 Legacy
   mixed；显示 labels/corrections/params/snapshot/evaluation/coverage/remaining candidates。
 - [x] 5.4 前单 run、mixed run、无 observations artifact 的项目都有明确兼容行为；不静默猜测、
   不自动迁移、不破坏 5.3 review state。
@@ -159,7 +159,7 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest \
   tests/test_inference_session.py \
   tests/test_tracking_job.py \
   tests/test_project_repository.py \
-  tests/gui/test_result_activation_actions.py \
+  tests/gui/test_tracking_activation_actions.py \
   tests/gui/test_task_panel.py -v
 
 # 全回归、编译与真实 DLC fixed-split smoke
@@ -173,10 +173,13 @@ Human Review 在自动化、真实 DLC smoke 与独立 review 全绿后进行，
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：2026-09-03 / 待 Human Review 通过后合并
-- AC 勾选结果：11 项全部完成验证通过。
+- 完成日期 / 合并 commit：2026-09-03 / `13f48c2`
+- AC 勾选结果：收尾时曾标记 11 项通过；2026-09-03 复核后改为 **9/11 有充分证据**。待补：
+  双 train run 同 series/跨 series 比较测试，以及完整 history details 展示与 GUI 断言。
 - 偏离计划之处及原因：无实质偏离。在独立 Review 建议下增强了 DLC 配置的 `TrainingFraction` 自动同步，保证真实 DLC 引擎创建训练集后训练与评价路径严密匹配。
-- 遗留问题：无阻塞性问题。
+- 遗留问题：`validation_series` writer 当前输出 list，与 ADR-0014 的 series-id mapping 表述不一致；
+  reader 已兼容两种形态。连同上述 2 项 AC 缺口，作为 5.5 实现前 Entry Gate 收口。GitHub Issue
+  未按工作流创建，文档曾误写为 #21，复核时已纠正。
 - 独立 review 结论：
   - 派出 2 个子智能体（Domain & Transaction Reviewer + GUI & Test Reviewer），报告包含 F-01~F-09 以及领域边界 P1~P3 findings。
   - 全部 finding 均已 100% 针对性解决并编写补充测试覆盖。

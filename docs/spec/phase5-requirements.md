@@ -1,7 +1,7 @@
 # Phase 5 — AI-assisted Annotation & Refinement 需求规范
 
-> 状态：**Accepted（2026-09-01；Phase 5.0–5.2 已完成，5.3 规划中）**
-> 本文定义产品边界、数据语义与验收口径；除标明完成的 R0 外，其余需求尚未实现。实施顺序见
+> 状态：**Accepted（2026-09-01；5.4 实现已合并但有复核收口项，5.5 规划中）**
+> 本文定义产品边界、数据语义与验收口径；实施状态以各 Subphase plan 与 current status 为准。实施顺序见
 > [PHASE_5_PLAN](../status/phase-5-plan.md)。Phase 4 基线见
 > [Phase 4 requirements](phase4-requirements.md)、[ADR-0011](../decisions/0011-deeplabcut-integration-architecture.md)、
 > [ADR-0012](../decisions/0012-gui-tracking-task-boundaries.md) 与
@@ -138,7 +138,7 @@ accepted/skipped、training parameters、resume/restart、source/produced snapsh
 2. fixed validation 标签若需修订，显式开启新的 evaluation series；不重写旧轮结论。
 3. train/validation RMSE 与 confidence coverage 分栏展示，coverage 不能代替 ground-truth 精度。
 4. 标签过少时允许训练，但标记“无可比较 fixed validation”，Advisor 不得声称精度提升。
-5. 5.4 才冻结持久化设计；若必须改 schema，先更新 spec/ADR 并请求用户批准。
+5. 持久化设计已由 5.4 / ADR-0014 冻结；后续若必须改顶层 schema，先更新 spec/ADR 并请求用户批准。
 
 ### R6 Refinement Retraining
 
@@ -176,10 +176,10 @@ accepted/skipped、training parameters、resume/restart、source/produced snapsh
 | Subphase | 名称 | 独立交付 |
 | --- | --- | --- |
 | 5.0 ✅ | Tracking Pipeline Consolidation | F3 Closed；统一 runner/actions/task handle 生命周期，无新产品能力 |
-| 5.1 | Representative Frame Selection | DLC uniform/K-means 建议帧；后台、可取消、可复核 |
-| 5.2 | Difficult Frame Mining | 原始预测候选池、可解释评分、时序去重、DLC 视觉多样性、Top N |
-| 5.3 | Suggested Frame Review & Correction | Accept/Correct/Skip、provenance、恢复与 Human Review |
-| 5.4 | Iteration History & Result Activation | fixed validation/history；处理 F2 clear/activate/replace |
+| 5.1 ✅ | Representative Frame Selection | DLC uniform/K-means 建议帧；后台、可取消、可复核 |
+| 5.2 ✅ | Difficult Frame Mining | 原始预测候选池、可解释评分、时序去重、DLC 视觉多样性、Top N |
+| 5.3 ✅ | Suggested Frame Review & Correction | Accept/Correct/Skip、provenance、恢复与 Human Review |
+| 5.4 🔄 | Iteration History & Result Activation | 实现已合并；ADR writer 与历史比较/展示证据待收口 |
 | 5.5 | Training Advisor & Retraining | 规则建议、resume/restart、snapshot/epochs/batch size、跨轮比较 |
 | 5.6 | Refinement Loop Integration & Acceptance | 单摆闭环、量化对比、全回归、独立 review 与 Human Review |
 

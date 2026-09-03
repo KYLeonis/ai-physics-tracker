@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**Phase 5.4 Iteration History & Result Activation 验收通过并收尾合并；下一步进入 Phase 5.5**）
+- 最后更新：2026-09-03（**5.4 完成状态复核发现收口缺口；5.5 mini-plan 待确认**）
 
 ---
 
@@ -16,9 +16,17 @@
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
-| Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, Human Review 通过) |
+| Subphase | 5.4 — Iteration History & Result Activation | ⚠️ 实现已合并、Human Review 通过；复核收口待办 |
+| Subphase | 5.5 — Training Advisor & Retraining | 📝 mini-plan 草案待用户确认 |
 
 ## Recently Completed
+
+- **Phase 5.4 完成状态复核（2026-09-03）**：4 个 Slice、独立 review finding 与 Human Review
+  均有完成记录；本地全回归 **652 passed**，`main @ 13f48c2` 与
+  `origin/main` 一致，[CI run 33771353773](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/33771353773)
+  的 macOS/Windows Python 3.11 均成功。但复核发现 2 项 AC 缺乏充分证据/展示、
+  `validation_series` writer 与 ADR-0014 形态不一致、GitHub 实际不存在文档曾引用的 Issue #21，
+  且数份收尾状态残留执行前文案。文案与 Issue 事实已纠正；技术缺口列为 5.5 Slice 0 Entry Gate。
 
 - **Phase 5.4 收尾与 Human Review 通过（2026-09-03）**：
   - 经用户真人真机测试，确认推理候选隔离（推理后不自动覆盖）、结果显式激活与原子替换/清除、手工点优先保留与同帧 AI 复原、固定验证集冻结展示与 Undo/Redo 完全符合预期，正式批准通过验收。
@@ -101,10 +109,10 @@
 
 ## Current Goal
 
-**5.4 mini-plan 已获批准，但按用户指令暂停执行。**
+**5.5 mini-plan 已形成草案；实现前先关闭 Phase 5.4 复核缺口。**
 
-计划见 [phase-5.4-plan.md](phase-5.4-plan.md)。目前尚未新增 ADR-0014、创建 5.4 Issue/开发
-分支或开始任何 Slice。
+计划见 [phase-5.5-plan.md](phase-5.5-plan.md)。等待用户确认规则阈值、resume/fine-tune 语义与
+持久化扩展；确认前不新增 ADR-0015、不创建 5.5 Issue/开发分支，也不开始 Slice 0 或产品代码。
 
 ## Current Decisions / Deferred Checks
 
@@ -120,11 +128,21 @@
 - Suggested Frame 审核状态（ADR-0013）：保存于对应 infer run 的
   `extra_fields["suggested_frame_review_v1"]`；schema v1 不迁移；审核事务使用 scoped
   Undo/Redo；manual 删除保存前可撤销，保存后不能通过应用内 Undo 恢复
+- 结果激活与 fixed validation（ADR-0014）：completed infer result 与当前 Track 投影分离；
+  Activate/Replace/Clear 为原子事务；固定验证成员真实传入 DLC train/test split
 
 **已批准延期**：Windows 真机/CUDA 延期到 Phase 9 打包前。
 
+**仓库记录待清理**：GitHub Issue #18 仍为 Open，虽然对应 5.1 runtime findings 已在代码/文档中
+标记完成；5.4 从未创建 Issue #21。两者均未在本轮进行外部状态修改。
+
 ## Next Recommended Action
 
-1. **保持暂停，等待下一条开发指令再进入 Phase 5.5。**
-2. 用户明确要求进入 Phase 5.5（Training Advisor & Retraining）后，编写 Phase 5.5 mini-plan，并创建对应 GitHub Issue 与工作分支。
-3. 按 mini-plan 逐步实现规则型 Training Advisor 与 DLC resume/restart。
+1. **用户确认 5.5 mini-plan 与 Slice 0 收口门槛**：先对齐 ADR-0014 writer、补齐 5.4 的
+   双轮/跨 series 证据与完整 history details，再进入 Advisor。
+2. 重点批准 `±5%` RMSE 趋势阈值、`1.5×` generalization gap、
+   3/5/10 标注档位、25/50 additional epochs，以及 `refinement_iteration_v1` 的两个新增字段。
+3. 批准后创建 Phase 5.5 GitHub Issue 和 `feat/p5.5-training-advisor-retraining` 分支，先执行 Slice 0。
+4. Slice 0 全绿后新增 ADR-0015，并同步 `docs/spec/project-format.md` 与
+   `docs/spec/phase5-requirements.md`。
+5. 再从 Slice 1 开始 Advisor 与 retraining 实现；mini-plan 文档只保留本地提交，用户明确允许前不 push。

@@ -1,6 +1,6 @@
 # 项目格式规范（Project Format Spec）— 持久化与项目目录
 
-- 日期：2026-09-03 · 状态：**Accepted**（主体决策见 [ADR-0003](../decisions/0003-project-persistence-format.md)；外部视频 locator 修订见 [ADR-0004](../decisions/0004-external-video-locator.md)；run-scoped 审核状态见 [ADR-0013](../decisions/0013-run-scoped-suggested-frame-review-state.md)）
+- 日期：2026-09-03 · 状态：**Accepted**（主体决策见 [ADR-0003](../decisions/0003-project-persistence-format.md)；外部视频 locator 修订见 [ADR-0004](../decisions/0004-external-video-locator.md)；run-scoped 审核状态见 [ADR-0013](../decisions/0013-run-scoped-suggested-frame-review-state.md)；结果激活与固定验证历史见 [ADR-0014](../decisions/0014-result-activation-and-fixed-validation-history.md)）
 - 来源：`docs/research/software-spec-plan.md` 行动项 A4（持久化与项目格式，含跨平台路径规则）
 - 输入：raw notes（kinovea `.kva` sidecar、deeplabcut 项目目录、sleap `.slp` 单文件、pose2sim 分阶段目录）、`docs/development.md` §1.1、`docs/spec/data-model.md`、补充业界 schema 版本迁移惯例调研
 - 性质：本文件定义**存储形态**；数据对象与语义见 `data-model.md`
@@ -119,6 +119,99 @@ MyExperiment/                        # 目录名 = 项目可移植单元；避�
    frame 的 manual `TrackPoint`。Accept/Skip 的 `manual_point_id` 为 null 或省略。
 5. 该对象是 schema v1 内的兼容性追加：读取方忽略未知 key，写回时保留未知 sibling keys；
    不触发迁移。完整事务与删除语义见 ADR-0013。
+
+### Phase 5.4 结果激活、固定验证集与迭代历史
+
+Phase 5.4 沿用 schema v1 tolerant extensions，不新增顶层对象：
+
+```json
+{
+  "tracks": [
+    {
+      "extra_fields": {
+        "refinement_state_v1": {
+          "active_infer_run_id": "<uuid-or-null>",
+          "activation_history": [
+            {
+              "record_id": "<uuid>",
+              "timestamp": "<ISO-8601>",
+              "action": "activate",
+              "from_run_id": null,
+              "to_run_id": "<infer-run-uuid>",
+              "point_count": 120,
+              "manual_preserved_count": 4
+            }
+          ],
+          "active_validation_series_id": "<uuid-or-null>",
+          "validation_series": {
+            "<series-uuid>": {
+              "series_id": "<series-uuid>",
+              "name": "validation-v1",
+              "created_at": "<ISO-8601>",
+              "label_snapshots": [
+                {
+                  "point_id": "<manual-point-uuid>",
+                  "frame_index": 10,
+                  "pixel_x": 321.5,
+                  "pixel_y": 205.0,
+                  "modified_at": "<ISO-8601>"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "tracking_runs": [
+    {
+      "task_type": "train",
+      "extra_fields": {
+        "refinement_iteration_v1": {
+          "iteration_index": 1,
+          "previous_training_run_id": "<train-run-uuid-or-null>",
+          "source_infer_run_id": "<infer-run-uuid-or-null>",
+          "validation_series_id": "<series-uuid-or-null>",
+          "training_labels": [],
+          "review_summary": null
+        }
+      }
+    },
+    {
+      "task_type": "infer",
+      "extra_fields": {
+        "prediction_summary_v1": {
+          "row_count": 1000,
+          "eligible_count": 920,
+          "missing_count": 20,
+          "low_confidence_count": 60,
+          "threshold": 0.6,
+          "coverage": 0.92
+        },
+        "observations_path": "data/engines/<run-uuid>/observations.json",
+        "observations_file_info": [12345, 67890]
+      }
+    }
+  ]
+}
+```
+
+约束：
+
+1. `project.observations` 中的非 manual 点只代表当前 active result 的物化投影。新 infer run 完成
+   时仅保存 run、原始预测与 `observations_path`，不得自动覆盖当前投影。
+2. `active_infer_run_id` 只指向当前 Track 的 completed infer run。Activate/Replace/Clear 在同一
+   ProjectSession 事务中更新投影、指针、activation history 与 DerivedData stale；manual 点始终
+   保留，同帧 AI 点可保存为 superseded。
+3. `validation_series` 的规范写出形态是 `series_id → ValidationSeries` 映射；series 与 label
+   snapshot 创建后不可原地改写。读取方兼容早期 5.4 实现写出的 list 形态，但新写入必须使用映射。
+4. `training_labels` 只保存本轮实际训练用的 active manual label 快照；validation labels 由
+   `validation_series_id` 指向的不可变 series 给出。启用 series 时必须真实向引擎传入互斥的
+   train/test indices。
+5. `prediction_summary_v1.coverage` 是阈值筛查覆盖率，不是 ground-truth 精度；跨轮精度只比较
+   同一 validation series 的 evaluation。缺测与不可用值写 `null` 或省略，不写 NaN。
+6. 旧项目缺少上述 key 时不迁移。单一可识别 engine source 可只读推断为 legacy active；多来源
+   或无法映射时显示 Legacy mixed，直到用户显式 Replace/Clear。完整行为见 ADR-0014。
 
 ---
 

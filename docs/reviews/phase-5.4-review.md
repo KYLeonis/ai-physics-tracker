@@ -63,3 +63,19 @@
    - `.venv/bin/python -m compileall src scripts tests` → 0 errors。
 3. **真实 DeepLabCut 3.x 固定验证集训练冒烟**:
    - `.venv/bin/python scripts/smoke_test_dlc_train.py` → **PASSED**（自动同步 `TrainingFraction`，3/2 互斥划分，1 epoch 训练并产出 `snapshot-001.pt`）。
+
+---
+
+## 4. 收尾后复核（2026-09-03）
+
+实现合并与 Human Review 后的独立仓库复核确认原 review findings 均已处置，但发现原审查范围
+遗漏以下收口项：
+
+1. `serialize_refinement_state()` 写出 `validation_series` list，而 ADR-0014 规定规范形态为
+   `series_id → ValidationSeries` mapping；reader 已兼容两者，writer 尚待对齐。
+2. 缺少“两次 train run 使用同一 validation series”及“不同 series 不直接比较”的明确测试证据。
+3. Task history/details 尚未完整显示计划要求的 label/review/prediction coverage/remaining candidates
+   信息及不可比较原因。
+
+因此本 Review Record 的原 findings 处置结论仍成立，但 Phase 5.4 整体最终状态改为
+**Follow-up required**；上述项目列入 Phase 5.5 mini-plan 的 Entry Gate，关闭前不开始 Advisor 实现。
