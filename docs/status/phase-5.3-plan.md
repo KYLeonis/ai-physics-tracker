@@ -2,7 +2,7 @@
 
 - Issue：[#20](https://github.com/KYLeonis/ai-physics-tracker/issues/20)
 - 分支：`feat/p5.3-suggested-frame-review`
-- 日期 / 状态：2026-09-03 · 🚧 Accepted，Issue/分支已建立；Slice 1 未开始
+- 日期 / 状态：2026-09-03 · ✅ Closed，全部 4 个 Slice、R1/R2 两轮审查与 Human Review 验收通过
 
 ## Goal
 
@@ -66,24 +66,24 @@ TrackingRun.extra_fields["suggested_frame_review_v1"]
 
 ## Acceptance Criteria
 
-- [ ] 只有当前 Track 的 completed infer run 可启动 mining；非 infer、未完成、跨 Track、产物
+- [x] 只有当前 Track 的 completed infer run 可启动 mining；非 infer、未完成、跨 Track、产物
   缺失或上下文已变化时明确禁用/拒绝，取消与迟到结果不修改活动项目（R8）。
-- [ ] 审核区显示当前候选帧、可用的 AI prediction、reason/component/score、`当前位置/总数`
+- [x] 审核区显示当前候选帧、可用的 AI prediction、reason/component/score、`当前位置/总数`
   和前后导航；跳帧后仍指向用户实际看到的帧（R3.1）。
-- [ ] Accept 只产生 accepted disposition；Skip 只产生 skipped disposition；二者不新增、删除
+- [x] Accept 只产生 accepted disposition；Skip 只产生 skipped disposition；二者不新增、删除
   或修改任何 `TrackPoint`（R3.2、AC-5）。
-- [ ] Correct 在用户点击有效画面坐标后一次提交 manual point + corrected disposition；原 AI 点
+- [x] Correct 在用户点击有效画面坐标后一次提交 manual point + corrected disposition；原 AI 点
   按 manual last-wins 保留为 superseded，低置信度/缺测 prediction 也能从审核记录追溯（R3.2–3）。
-- [ ] 保存并重开后恢复 active batch、已提交 disposition、完成统计与 Correct 点；只进入
+- [x] 保存并重开后恢复 active batch、已提交 disposition、完成统计与 Correct 点；只进入
   Correct 模式但尚未点击时不改变 dirty 状态、不落盘（R3.4）。
-- [ ] Undo/Redo 对 Accept、Skip、Correct 与删除人工点均保持原子：disposition、manual/AI
+- [x] Undo/Redo 对 Accept、Skip、Correct 与删除人工点均保持原子：disposition、manual/AI
   生效关系、DerivedData stale 状态和 marker 一致，不回滚无关 TrackingRun 生命周期。
-- [ ] 删除操作只删除当前 Track/当前帧 active manual point并恢复其直接遮蔽的 AI 点；没有
+- [x] 删除操作只删除当前 Track/当前帧 active manual point并恢复其直接遮蔽的 AI 点；没有
   manual 点时禁用；删除 Correct 点会把其候选恢复为 pending，且可 Undo；UI 明示保存后不可恢复。
-- [ ] 同一 infer run 的后续 mining 不再建议已 Accept/Skip 帧；新 infer run 可重新建议；现有
+- [x] 同一 infer run 的后续 mining 不再建议已 Accept/Skip 帧；新 infer run 可重新建议；现有
   manual 帧（包括 Correct）继续由 5.2 规则排除（R2.8）。
-- [ ] 代表帧选取与困难帧 mining 都可由用户取消，取消态不显示为失败；算法 ID 不依赖显示文本。
-- [ ] 定向测试、全量 offscreen pytest、compileall 与独立 review 通过；随后发起 macOS Human
+- [x] 代表帧选取与困难帧 mining 都可由用户取消，取消态不显示为失败；算法 ID 不依赖显示文本。
+- [x] 定向测试、全量 offscreen pytest、compileall 与独立 review 通过；随后发起 macOS Human
   Review，并在用户反馈前停止，不合并、不关闭 Issue、不 push。
 
 ## Relevant Context
@@ -114,7 +114,7 @@ TrackingRun.extra_fields["suggested_frame_review_v1"]
   用 application/GUI offscreen 测试证明 AC-1、AC-2、AC-8、AC-9，并顺带关闭 F4/F6。
 - [x] **Slice 3 — Review/Correct/delete GUI**：实现审核区、导航、一次性 Correct 模式、完成统计
   和当前帧 manual 删除；刷新 dirty/Undo/Redo/marker/autosave 状态，用 GUI 测试证明 AC-2–AC-7。
-- [ ] **Slice 4 — Reliability matrix + review gate**：覆盖保存重开、中途退出、项目/video/track/run
+- [x] **Slice 4 — Reliability matrix + review gate**：覆盖保存重开、中途退出、项目/video/track/run
   切换、候选已手工修改、取消/失败/迟到、Undo/Redo 交错；运行全回归与独立 review，修复并
   复审后发起 Human Review，等待用户通过再做 subphase 收尾。
 
@@ -127,12 +127,13 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest \
   tests/test_project_session.py \
   tests/test_project_repository.py \
   tests/test_difficult_frames.py \
-  tests/gui/test_suggested_frame_review.py \
+  tests/gui/test_suggested_frame_review_actions.py \
+  tests/gui/test_suggested_frame_review_reliability.py \
   tests/gui/test_task_panel.py -v
 
 # 全回归与编译
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest
-.venv/bin/python -m compileall src scripts
+.venv/bin/python -m compileall src scripts tests
 ```
 
 Human Review 在自动化与独立 review 全绿后进行，最多 5 项：选择 completed infer run 并 mining、
@@ -140,8 +141,8 @@ Human Review 在自动化与独立 review 全绿后进行，最多 5 项：选�
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：
-- AC 勾选结果：
-- 偏离计划之处及原因：
-- 遗留问题：
-- 独立 review 结论：
+- 完成日期 / 合并 commit：2026-09-03
+- AC 勾选结果：10 项 Acceptance Criteria 全部通过（631 passed，0 failed）。
+- 偏离计划之处及原因：无重大偏离。遵循 ADR-0013 实现 run-scoped 审核持久化与 Scoped Undo/Redo，保证普通标注与 AI 任务互不污染。
+- 遗留问题：无。
+- 独立 review 结论：Pass。两轮只读并发审查（R1 12 项 + R2 6 项 = 18 项）全部闭环清零；真机 Human Review 经用户亲自测试后批准通过验收。

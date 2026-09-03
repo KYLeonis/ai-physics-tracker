@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 Slice 1-4 全部完成，R1/R2 两轮审查 18 项 Finding 清零，631 测试全过；进入 Human Review**）
+- 最后更新：2026-09-03（**5.3 全流程开发、R1/R2 两轮审查与真机 Human Review 全部闭环通过验收；下一步进行 Phase 5.4 规划**）
 
 ---
 
@@ -15,9 +15,12 @@
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
-| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1-4 全部完成；进入 Human Review 验收） |
+| Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
 
 ## Recently Completed
+
+- **Phase 5.3 收尾与 Human Review 通过（2026-09-03）**：
+  - 经用户真人真机测试，确认困难帧挖掘发起、候选队列浏览、快捷键 A/S/C/Delete、一次性 Correct 模式、当前帧 manual 点删除、保存重开恢复及后台互斥完全符合预期，用户正式批准通过验收。
 
 - **Phase 5.3 Slice 4 — Reliability Matrix & R2 Review Closure (2026-09-03)**：
   - 构建可靠性与边界测试矩阵（`tests/gui/test_suggested_frame_review_reliability.py`），覆盖保存重开后继续审核、普通打点与审核操作交错 Undo/Redo、后台挖掘取消与迟到结果隔离、挖掘失败清理与按钮恢复、Correct 模式全导航矢量注销、已有 manual 点覆盖与纠偏。
@@ -107,5 +110,4 @@
 
 ## Next Recommended Action
 
-1. 进行 Phase 5.3 Human Review（真人真机交互验收），由用户亲自验证困难帧挖掘、候选浏览、快捷键 A/S/C、一次性 Correct 模式、当前帧 manual 点删除、保存重开恢复及多任务互斥。
-2. Human Review 通过后，执行 Phase 5.3 收尾工作：更新 `docs/roadmap.md`、`README.md`，执行 `--no-ff` 合并及 push origin。
+1. 暂停等待下一条指令，开始 Phase 5.4（Iteration History & Result Activation）规划与方案设计（覆盖 fixed validation/history、F2 clear/activate/replace）。
