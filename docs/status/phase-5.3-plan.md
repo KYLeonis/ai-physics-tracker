@@ -1,8 +1,8 @@
 # Subphase Plan — Phase 5.3 Suggested Frame Review & Correction
 
-- Issue：待创建（计划确认后同步到 GitHub）
+- Issue：[#20](https://github.com/KYLeonis/ai-physics-tracker/issues/20)
 - 分支：`feat/p5.3-suggested-frame-review`
-- 日期 / 状态：2026-09-03 · 📝 Draft，等待用户确认
+- 日期 / 状态：2026-09-03 · 🚧 Accepted，Issue/分支已建立；Slice 1 未开始
 
 ## Goal
 
@@ -41,7 +41,7 @@
   现在改阈值会重开 5.2 算法范围。只有真实 Human Review 证明候选质量有问题时再立项。
 - 不为普通标注事务整体纳入全部 `TrackingRun` 历史，避免 Undo 意外回滚后台任务状态。
 
-## Persistence and Transaction Contract（待批准）
+## Persistence and Transaction Contract（已批准）
 
 不新增顶层字段，而是在对应 infer run 的既有可扩展字段中写入版本化对象：
 
@@ -61,8 +61,8 @@ TrackingRun.extra_fields["suggested_frame_review_v1"]
   TrackingRun 更新不因此开始回滚全部任务历史；审核事务则保证 point/disposition 原子撤销。
 - 项目保存仍沿用 schema v1 的 tolerant `extra_fields` 读写；旧项目没有该 key 时等价于空队列。
 
-该结构是新增的持久化数据约定，计划批准后在实现前新增 ADR-0013，并同步
-`docs/spec/project-format.md`；若实现中发现必须改顶层 schema，立即停下重新请求批准。
+该结构是新增的持久化数据约定，已由 [ADR-0013](../decisions/0013-run-scoped-suggested-frame-review-state.md)
+接受并同步至 `docs/spec/project-format.md`；若实现中发现必须改顶层 schema，立即停下重新请求批准。
 
 ## Acceptance Criteria
 

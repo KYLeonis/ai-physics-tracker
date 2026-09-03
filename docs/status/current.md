@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.2 全部完成并已推送，Issue #19 已关闭**；5.3 mini-plan 待确认）
+- 最后更新：2026-09-03（**5.3 mini-plan 已接受，Issue #20 与开发分支已建立；Slice 1 未开始**）
 
 ---
 
@@ -15,11 +15,11 @@
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
-| Subphase | 5.3 — Suggested Frame Review & Correction | 📝 mini-plan 待用户确认（含每帧删除标注交互） |
+| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 已规划，Issue #20 / 开发分支已建立；Slice 1 未开始 |
 
 ## Recently Completed
 
-- **Windows CI flaky test 修复（2026-09-03，本地 `main @ 351ea1b`，尚未 push）**：Windows runner
+- **Windows CI flaky test 修复（2026-09-03，`351ea1b`）**：Windows runner
   无法保证“立即同尺寸重写文件”改变 mtime，导致 fingerprint tamper 测试偶发漏检；测试现改为
   确定性改变文件大小，不改变 ADR-0012 的生产校验策略。定向 60 passed，全回归 **581 passed**。
 - **Phase 5.2 — Difficult Frame Mining（代码与基准工具链，2026-09-02，分支 `feat/p5.2-difficult-frames`）**：
@@ -45,9 +45,10 @@
 
 ## Current Goal
 
-**5.3 mini-plan 已形成草案，等待用户确认范围、持久化约定与删除语义。**
+**Phase 5.3 已规划并完成开工准备；按用户指令停在 Slice 1 实现之前。**
 
-计划见 [phase-5.3-plan.md](phase-5.3-plan.md)。确认前不创建 Issue/分支、不写产品代码。
+计划见 [phase-5.3-plan.md](phase-5.3-plan.md)，GitHub Issue
+[#20](https://github.com/KYLeonis/ai-physics-tracker/issues/20)。
 
 ## Current Decisions / Deferred Checks
 
@@ -60,16 +61,14 @@
   min_gap 秒→帧用 ceil（不得低于请求最小间隔）；已有 manual 帧不进候选池
 - 预测产物身份：`read_inference_result` 持久化 `prediction_file_info` 基线；挖掘只接受
   本 run `data/engines/<run_id>/` 内的产物引用（旧 run 无基线时容忍）
+- Suggested Frame 审核状态（ADR-0013）：保存于对应 infer run 的
+  `extra_fields["suggested_frame_review_v1"]`；schema v1 不迁移；审核事务使用 scoped
+  Undo/Redo；manual 删除保存前可撤销，保存后不能通过应用内 Undo 恢复
 
 **已批准延期**：Windows 真机/CUDA 延期到 Phase 9 打包前。
 
 ## Next Recommended Action
 
-1. **用户确认 5.3 mini-plan**：重点批准
-   `TrackingRun.extra_fields["suggested_frame_review_v1"]` 持久化约定、审核事务的 scoped
-   Undo/Redo，以及“删除当前 active manual 点并恢复 AI 点；保存前可 Undo、保存后不可恢复”
-   的交互语义。
-2. 批准后：新增 ADR-0013 → 创建 GitHub Issue 并同步计划 → 建立
-   `feat/p5.3-suggested-frame-review` → 从 Slice 1 开始实现。
-3. **另行确认 push**：本地 `main` 含 Windows CI 修复 `351ea1b`，目前领先 `origin/main` 1 commit；
-   按红线未自动 push。5.3 计划文档提交后将继续保持本地领先，等待用户明确授权再一起推送。
+1. 下一次开发会话先读 `CODE_STANDARD.md` 与 ADR-0013，然后从 5.3 Slice 1 开始：Review
+   contract + ProjectSession 原子事务与 scoped Undo/Redo。
+2. 本次按用户限定停在 Issue/分支建立完成处；尚未修改 `src/`、`tests/`，也未开始产品实现。

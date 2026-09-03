@@ -1,6 +1,6 @@
 # 项目格式规范（Project Format Spec）— 持久化与项目目录
 
-- 日期：2026-08-28 · 状态：**Accepted**（主体决策见 [ADR-0003](../decisions/0003-project-persistence-format.md)；外部视频 locator 修订见 [ADR-0004](../decisions/0004-external-video-locator.md)）
+- 日期：2026-09-03 · 状态：**Accepted**（主体决策见 [ADR-0003](../decisions/0003-project-persistence-format.md)；外部视频 locator 修订见 [ADR-0004](../decisions/0004-external-video-locator.md)；run-scoped 审核状态见 [ADR-0013](../decisions/0013-run-scoped-suggested-frame-review-state.md)）
 - 来源：`docs/research/software-spec-plan.md` 行动项 A4（持久化与项目格式，含跨平台路径规则）
 - 输入：raw notes（kinovea `.kva` sidecar、deeplabcut 项目目录、sleap `.slp` 单文件、pose2sim 分阶段目录）、`docs/development.md` §1.1、`docs/spec/data-model.md`、补充业界 schema 版本迁移惯例调研
 - 性质：本文件定义**存储形态**；数据对象与语义见 `data-model.md`
@@ -70,6 +70,55 @@ MyExperiment/                        # 目录名 = 项目可移植单元；避�
   独立，避免 DLC 的 checkpoint 管理影响以前训练 run 引用的模型；评价 CSV 另复制为
   `data/engines/<run_id>/evaluation.csv`，历史指标/文件不被下一次评价覆盖。
   4.2 的同步脚本入口仍兼容原有按 Track 复用的训练目录。
+
+### Phase 5.3 Suggested Frame 审核状态
+
+审核状态是对应 completed infer run 的项目事实，使用既有可扩展字段，不单独建立 sidecar：
+
+```json
+{
+  "extra_fields": {
+    "suggested_frame_review_v1": {
+      "active_batch": {
+        "request_id": "<uuid>",
+        "params_snapshot": {},
+        "candidates": [
+          {
+            "frame_index": 12,
+            "prediction": {"pixel_x": 321.5, "pixel_y": 205.0, "confidence": 0.42},
+            "components": {"uncertainty": 0.8},
+            "reasons": ["low_confidence"],
+            "total_score": 0.8
+          }
+        ]
+      },
+      "reviewed_frames": {
+        "12": {
+          "disposition": "corrected",
+          "reviewed_at": "2026-09-03T12:00:00Z",
+          "request_id": "<uuid>",
+          "prediction": {"pixel_x": 321.5, "pixel_y": 205.0, "confidence": 0.42},
+          "manual_point_id": "<uuid>"
+        }
+      }
+    }
+  }
+}
+```
+
+约束：
+
+1. `suggested_frame_review_v1` 只允许写在其所属 infer run；run/track/video/frame 身份由应用层
+   提交前复核。旧项目没有该 key 时等价于尚未生成审核队列。
+2. `active_batch` 只保存当前 batch；新 mining 替换它，但不得清除同 run 的
+   `reviewed_frames`。候选字段沿用 5.2 结果语义，数值必须 finite。
+3. `reviewed_frames` 的 key 是十进制 frame index 字符串；`disposition` 只允许
+   `accepted`、`corrected`、`skipped`。未记录即 pending，不保存光标位置、Correct 模式等
+   未提交 GUI 状态。
+4. prediction 缺测写 JSON `null`，不得写 NaN；Correct 的 `manual_point_id` 必须指向同 Track/
+   frame 的 manual `TrackPoint`。Accept/Skip 的 `manual_point_id` 为 null 或省略。
+5. 该对象是 schema v1 内的兼容性追加：读取方忽略未知 key，写回时保留未知 sibling keys；
+   不触发迁移。完整事务与删除语义见 ADR-0013。
 
 ---
 

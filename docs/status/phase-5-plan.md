@@ -1,6 +1,6 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Accepted / Phase 5.0–5.2 已完成，5.3 mini-plan 待确认**
+> 状态：**Accepted / Phase 5.0–5.2 已完成，5.3 已规划待实现**
 > 日期：2026-09-03
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
@@ -73,7 +73,8 @@
 
 ### 5.3 — Suggested Frame Review & Correction
 
-**状态**：📝 mini-plan 草案待用户确认，见 [phase-5.3-plan.md](phase-5.3-plan.md)。
+**状态**：🚧 mini-plan 已接受，Issue [#20](https://github.com/KYLeonis/ai-physics-tracker/issues/20)，
+见 [phase-5.3-plan.md](phase-5.3-plan.md)；Slice 1 未开始。
 
 **目标**：实现 `查看 → Accept / Correct / Skip → 下一帧` 队列。
 
@@ -161,8 +162,8 @@
 
 5.0、5.1、5.2 已完成（5.2 记录见 [phase-5.2-plan.md](phase-5.2-plan.md) 与
 [phase-5.2-review.md](../reviews/phase-5.2-review.md)；AC-10 真实基准达成）。5.3 mini-plan
-已形成草案，等待用户确认范围与持久化约定；确认前不创建 Issue/分支。F2 仍由 5.4 处理。
+已接受并同步至 Issue #20，开发分支已建立；下一步从 Slice 1 开始。F2 仍由 5.4 处理。
 
 ## Result
 
-Phase 5 总计划已接受；Phase 5.0–5.2 已完成；5.3 mini-plan 待确认。
+Phase 5 总计划已接受；Phase 5.0–5.2 已完成；5.3 已规划、待实现。
