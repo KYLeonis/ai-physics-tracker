@@ -1734,6 +1734,11 @@ class ProjectSession:
 
         ref_state = extract_refinement_state(track)
         status, prev_run_id, _ = self.get_track_activation_status(track_id)
+        if status == "none":
+            raise ProjectSessionError("Track has no active AI observations to clear")
+
+        if any(r.track_id == track_id and r.status in {"pending", "running"} for r in self.tracking_runs()):
+            raise ProjectSessionError("Cannot activate or modify tracking results while a task is running on this track")
 
         candidate_store = TrackStore(self._store.tracks, self._store.observations)
         candidate_store.clear_track_engine_points(track_id)
@@ -1794,6 +1799,9 @@ class ProjectSession:
             raise ProjectSessionError(f"Run {run_id} is not an inference run")
         if target_run.status != "completed":
             raise ProjectSessionError(f"Run {run_id} is not completed (status: {target_run.status})")
+
+        if any(r.track_id == track_id and r.status in {"pending", "running"} for r in self.tracking_runs()):
+            raise ProjectSessionError("Cannot activate or modify tracking results while a task is running on this track")
 
         root = self.project_root
         if root is None:

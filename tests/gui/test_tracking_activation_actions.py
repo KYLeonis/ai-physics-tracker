@@ -108,28 +108,42 @@ def test_activate_and_replace_with_confirmation_and_cancellation(
     assert session.effective_point(track_id, 1).source == "manual"
     assert session.effective_point(track_id, 3).source == "dlc"
 
-    # Panel UI reflection
+    # Panel UI reflection and Undo button
     assert str(run1.run_id)[:8] in actions.panel.activeRunLabel.text()
+    assert window.undoButton.isEnabled()
 
-    # 3. Replace with Run 2
+    # 3. Replace cancellation (User clicks No)
+    monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.No)
+    actions.replaceRun(run2.run_id)
+    assert session.get_track_activation_status(track_id)[1] == run1.run_id
+
+    # Replace confirmation (User clicks Yes)
+    monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes)
     actions.replaceRun(run2.run_id)
     status2, active_id2, _ = session.get_track_activation_status(track_id)
     assert status2 == "active"
     assert active_id2 == run2.run_id
     assert str(run2.run_id)[:8] in actions.panel.activeRunLabel.text()
+    assert window.undoButton.isEnabled()
 
-    # 4. Clear active AI observations
+    # 4. Clear cancellation (User clicks No)
+    monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.No)
+    actions.clearActivation()
+    assert session.get_track_activation_status(track_id)[1] == run2.run_id
+
+    # Clear confirmation (User clicks Yes)
+    monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes)
     actions.clearActivation()
     status3, active_id3, _ = session.get_track_activation_status(track_id)
     assert status3 == "none"
     assert active_id3 is None
     assert len(session.effective_points(track_id)) == 3
     assert "None" in actions.panel.activeRunLabel.text()
+    assert window.undoButton.isEnabled()
 
     # 5. Undo restores active run 2
     assert session.can_undo
-    session.undo()
-    actions.refresh()
+    window.undoButton.click()
     assert session.get_track_activation_status(track_id)[1] == run2.run_id
 
 

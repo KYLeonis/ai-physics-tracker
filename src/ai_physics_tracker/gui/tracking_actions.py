@@ -162,6 +162,8 @@ class TrackingActions(QObject):
         self._start(self.panel.inferenceParameters(), self.panel.selectedTrainingRunId())
 
     def activateRun(self, run_id: UUID) -> None:
+        if self.pending or self.window.projectActions.busy:
+            return
         session = self.window.analysisSession
         track_id = self.window.selectedTrackId
         if not session or not track_id:
@@ -184,12 +186,16 @@ class TrackingActions(QObject):
                 f"Activated run {str(run_id)[:8]}: {rec.point_count} active points, "
                 f"{rec.manual_preserved_count} superseded by manual"
             )
+            self.window._refreshMarkers()
+            self.window._refreshHistoryButtons()
         except Exception as error:
             QMessageBox.critical(self.window, "Activation Failed", str(error))
         self._context_key = None
         self.refresh()
 
     def replaceRun(self, run_id: UUID) -> None:
+        if self.pending or self.window.projectActions.busy:
+            return
         session = self.window.analysisSession
         track_id = self.window.selectedTrackId
         if not session or not track_id:
@@ -212,12 +218,16 @@ class TrackingActions(QObject):
                 f"Replaced active run with {str(run_id)[:8]}: {rec.point_count} active points, "
                 f"{rec.manual_preserved_count} superseded by manual"
             )
+            self.window._refreshMarkers()
+            self.window._refreshHistoryButtons()
         except Exception as error:
             QMessageBox.critical(self.window, "Replacement Failed", str(error))
         self._context_key = None
         self.refresh()
 
     def clearActivation(self) -> None:
+        if self.pending or self.window.projectActions.busy:
+            return
         session = self.window.analysisSession
         track_id = self.window.selectedTrackId
         if not session or not track_id:
@@ -239,12 +249,16 @@ class TrackingActions(QObject):
             self.window.statusBar().showMessage(
                 f"Cleared active AI observations on track '{track_name}'"
             )
+            self.window._refreshMarkers()
+            self.window._refreshHistoryButtons()
         except Exception as error:
             QMessageBox.critical(self.window, "Clear Failed", str(error))
         self._context_key = None
         self.refresh()
 
     def manageValidation(self) -> None:
+        if self.pending or self.window.projectActions.busy:
+            return
         from ai_physics_tracker.gui.validation_dialog import ManageValidationDialog
 
         session = self.window.analysisSession
@@ -253,6 +267,7 @@ class TrackingActions(QObject):
             return
         dialog = ManageValidationDialog(session, track_id, self.window)
         dialog.exec()
+        self.window._refreshHistoryButtons()
         self._context_key = None
         self.refresh()
 

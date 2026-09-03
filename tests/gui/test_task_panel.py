@@ -1,5 +1,6 @@
 """TaskPanel 的参数、禁用原因、模型选择和有界日志测试。"""
 
+from dataclasses import replace
 from uuid import uuid4
 
 from PySide6.QtWidgets import QApplication
@@ -198,4 +199,38 @@ def test_task_panel_activation_controls_and_state_transitions(qtbot: QtBot) -> N
     panel.manageValidationRequested.connect(lambda: emitted_val.append(True))
     panel.manageValidationButton.click()
     assert emitted_val == [True]
+
+    # Verify history list labels
+    assert "Active" in panel.historyList.item(0).text()
+    assert "Completed · Not active" in panel.historyList.item(1).text()
+
+    # Cross-track infer run should NOT enable activate or replace buttons
+    other_track_id = uuid4()
+    run_other = mark_run_completed(create_tracking_run(video_id, other_track_id, "infer"))
+    train_raw = mark_run_completed(create_tracking_run(video_id, track_id, "train"))
+    train_with_iter = replace(
+        train_raw,
+        extra_fields={"refinement_iteration_v1": {"iteration_index": 1}},
+    )
+    panel.setRuns((run1, run2, run_other, train_with_iter), track_id)
+    assert "iter 1" in panel.historyList.item(3).text()
+
+    # Selecting cross-track run
+    panel.historyList.setCurrentRow(2)
+    assert not panel.activateButton.isEnabled()
+    assert not panel.replaceButton.isEnabled()
+
+    # Busy state disables all activation and validation buttons
+    panel.setContext("vid.mp4", "track", None, None, busy=True)
+    assert not panel.activateButton.isEnabled()
+    assert not panel.replaceButton.isEnabled()
+    assert not panel.clearActivationButton.isEnabled()
+    assert not panel.manageValidationButton.isEnabled()
+
+    # Legacy status display
+    panel.setContext("vid.mp4", "track", None, None, busy=False)
+    panel.setRefinementInfo("legacy_inferred", run1.run_id, None, False, None)
+    assert "(legacy)" in panel.activeRunLabel.text()
+    panel.setRefinementInfo("legacy_mixed", None, None, False, None)
+    assert "Legacy mixed" in panel.activeRunLabel.text()
 

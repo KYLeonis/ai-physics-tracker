@@ -265,9 +265,11 @@ class DLCAdapter:
                 "augmenter_type": augmenter_type,
                 "userfeedback": False,
             }
+            if (train_indices is None) ^ (test_indices is None):
+                raise ValueError("train_indices and test_indices must both be provided or both be None")
             if train_indices is not None and test_indices is not None:
-                kwargs["trainIndices"] = [list(train_indices)] * num_shuffles
-                kwargs["testIndices"] = [list(test_indices)] * num_shuffles
+                kwargs["trainIndices"] = [list(train_indices) for _ in range(num_shuffles)]
+                kwargs["testIndices"] = [list(test_indices) for _ in range(num_shuffles)]
 
             deeplabcut.create_training_dataset(
                 str(config_path),

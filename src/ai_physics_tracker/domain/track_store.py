@@ -293,6 +293,9 @@ class TrackStore:
             raise ValueError("engine batch point_id values must be unique")
         if any(pid in existing_ids for pid in incoming_ids):
             raise ValueError("engine batch point_id already exists in store")
+        incoming_frames = [p.frame_index for p in points]
+        if len(set(incoming_frames)) != len(incoming_frames):
+            raise ValueError("engine batch contains duplicate frame_index entries")
 
         for point in points:
             if point.track_id != track_id:

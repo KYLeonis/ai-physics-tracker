@@ -164,6 +164,8 @@ class RefinementIterationInfo:
             raise ValueError(f"iteration_index must be a non-negative int, got {self.iteration_index}")
         if not isinstance(self.training_labels, tuple):
             object.__setattr__(self, "training_labels", tuple(self.training_labels))
+        if self.review_summary is not None:
+            object.__setattr__(self, "review_summary", dict(self.review_summary))
 
 
 @dataclass(frozen=True)
@@ -376,8 +378,14 @@ def deserialize_refinement_state(data: Any) -> RefinementState:
 
     series_list: list[ValidationSeries] = []
     raw_series = data.get("validation_series")
-    if isinstance(raw_series, list):
-        for item in raw_series:
+    if isinstance(raw_series, dict):
+        series_items = raw_series.values()
+    elif isinstance(raw_series, list):
+        series_items = raw_series
+    else:
+        series_items = ()
+    for item in series_items:
+        if isinstance(item, dict):
             ser = deserialize_validation_series(item)
             if ser is not None:
                 series_list.append(ser)

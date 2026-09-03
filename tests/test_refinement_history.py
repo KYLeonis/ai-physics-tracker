@@ -274,6 +274,13 @@ def test_serialization_and_deserialization_roundtrips() -> None:
     assert restored_state.validation_series[0].name == "Test Series"
     assert restored_state.validation_series[0].label_snapshots[0].frame_index == 15
 
+    # Dictionary form of validation_series (ADR-0014 schema tolerance)
+    dict_form = dict(loaded_dict)
+    dict_form["validation_series"] = {str(series.series_id): loaded_dict["validation_series"][0]}
+    restored_from_dict = deserialize_refinement_state(dict_form)
+    assert len(restored_from_dict.validation_series) == 1
+    assert restored_from_dict.validation_series[0].name == "Test Series"
+
     # RefinementIterationInfo roundtrip
     iter_info = RefinementIterationInfo(
         iteration_index=2,

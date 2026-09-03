@@ -87,7 +87,7 @@ class ManageValidationDialog(QDialog):
             QLabel("Select manual points to freeze as fixed validation test set:")
         )
 
-        manual_points = session.manual_points(track_id)
+        manual_points = sorted(session.manual_points(track_id), key=lambda p: p.frame_index)
         self._checkboxes: list[tuple[int, QCheckBox]] = []
         point_list_widget = QWidget()
         point_list_layout = QVBoxLayout(point_list_widget)
@@ -112,7 +112,12 @@ class ManageValidationDialog(QDialog):
         create_layout.addWidget(scroll)
 
         self.freezeButton = QPushButton("Freeze & Activate Series")
-        self.freezeButton.setEnabled(len(manual_points) >= 4)
+        has_enough = len(manual_points) >= 4
+        self.freezeButton.setEnabled(has_enough)
+        if not has_enough:
+            self.freezeButton.setToolTip(
+                "Requires at least 4 manual points on this track (1 for validation, 3 for training)"
+            )
         self.freezeButton.clicked.connect(self._on_freeze_series)
         create_layout.addWidget(self.freezeButton)
 

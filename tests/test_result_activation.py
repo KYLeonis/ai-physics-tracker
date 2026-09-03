@@ -31,7 +31,11 @@ from ai_physics_tracker.domain.derived import DerivedData, DerivedInput
 from ai_physics_tracker.domain.project import add_video, create_project
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
-from ai_physics_tracker.domain.tracking_run import TrackingRun, create_tracking_run
+from ai_physics_tracker.domain.tracking_run import (
+    TrackingRun,
+    create_tracking_run,
+    mark_run_completed,
+)
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.domain.video import Video
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
@@ -398,6 +402,7 @@ def test_legacy_project_compatibility(tmp_path: Path) -> None:
         engine="dlc",
         source_detail="infer-1",
     )
+    matching_run = mark_run_completed(matching_run)
     session.record_tracking_run(matching_run)
 
     st, active_id, _ = session.get_track_activation_status(track.track_id)
@@ -409,3 +414,38 @@ def test_legacy_project_compatibility(tmp_path: Path) -> None:
     assert rec.action == "clear"
     assert rec.from_run_id == matching_run.run_id
     assert session.get_track_activation_status(track.track_id)[0] == "none"
+
+
+def test_activation_rejects_invalid_task_type_incomplete_or_cross_track(
+    tmp_path: Path,
+) -> None:
+    session, track, video, _ = _setup_session(tmp_path)
+    other_track = session.add_track(video.video_id, name="Other Track")
+
+    # 1. Reject non-infer run (e.g. train)
+    train_run = create_tracking_run(video.video_id, track.track_id, "train", engine="dlc")
+    train_run = replace(train_run, status="completed", completed_at=utc_now())
+    session.record_tracking_run(train_run)
+
+    with pytest.raises(ProjectSessionError, match="is not an inference run"):
+        session.activate_infer_run(track.track_id, train_run.run_id)
+
+    # 2. Reject incomplete infer run (status != completed)
+    pending_infer = create_tracking_run(video.video_id, track.track_id, "infer", engine="dlc")
+    session.record_tracking_run(pending_infer)
+
+    with pytest.raises(ProjectSessionError, match="is not completed"):
+        session.activate_infer_run(track.track_id, pending_infer.run_id)
+
+    # 3. Reject run belonging to another track
+    other_infer = create_tracking_run(video.video_id, other_track.track_id, "infer", engine="dlc")
+    other_infer = replace(other_infer, status="completed", completed_at=utc_now())
+    session.record_tracking_run(other_infer)
+
+    with pytest.raises(ProjectSessionError, match="does not belong to track"):
+        session.activate_infer_run(track.track_id, other_infer.run_id)
+
+    # 4. Reject clear when track has no active AI observations
+    with pytest.raises(ProjectSessionError, match="has no active AI observations"):
+        session.clear_active_ai_observations(track.track_id)
+

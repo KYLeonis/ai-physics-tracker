@@ -138,3 +138,13 @@ def test_delete_track_cascades_observations() -> None:
 
     assert store.tracks == ()
     assert store.observations == ()
+
+
+def test_replace_track_engine_points_rejects_duplicate_frames() -> None:
+    track = _track()
+    store = TrackStore((track,), ())
+    pt1 = _point(track.track_id, 5, source="dlc")
+    pt2 = _point(track.track_id, 5, source="dlc")
+
+    with pytest.raises(ValueError, match="duplicate frame_index"):
+        store.replace_track_engine_points(track.track_id, (pt1, pt2))

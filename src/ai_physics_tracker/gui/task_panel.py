@@ -259,6 +259,8 @@ class TaskPanel(QDockWidget):
 
         self._active_status: str = "none"
         self._active_run_id: UUID | None = None
+        self._current_track_id: UUID | None = None
+        self._busy: bool = False
         self._runs_by_id: dict[UUID, TrackingRun] = {}
 
         self.activeRunLabel = QLabel("Active AI: None")
@@ -374,9 +376,11 @@ class TaskPanel(QDockWidget):
         video = video_name.strip() or "No video selected"
         track = track_name.strip() or "No track selected"
         self.contextLabel.setText(f"Video: {video} · Track: {track}")
+        self._busy = busy
         self._setReason(self.trainButton, self.trainReasonLabel, train_reason, busy)
         self._setReason(self.inferButton, self.inferReasonLabel, infer_reason, busy)
         self.cancelButton.setEnabled(busy)
+        self._updateActivationButtonStates()
 
     def setRuns(
         self,
@@ -385,6 +389,7 @@ class TaskPanel(QDockWidget):
     ) -> None:
         """更新当前 Track 的可用训练模型和项目级任务历史。"""
 
+        self._current_track_id = track_id
         selected_model_id = self.selectedTrainingRunId()
         with QSignalBlocker(self.modelList):
             self.modelList.clear()
@@ -506,17 +511,31 @@ class TaskPanel(QDockWidget):
             self.replaceRunRequested.emit(run_id)
 
     def _updateActivationButtonStates(self) -> None:
+        if self._busy:
+            self.activateButton.setEnabled(False)
+            self.replaceButton.setEnabled(False)
+            self.clearActivationButton.setEnabled(False)
+            self.manageValidationButton.setEnabled(False)
+            return
+
+        self.manageValidationButton.setEnabled(self._current_track_id is not None)
+
         item = self.historyList.currentItem()
         run_id = self._itemRunId(item)
         run = self._runs_by_id.get(run_id) if run_id else None
 
         is_completed_infer = (
             run is not None
+            and self._current_track_id is not None
+            and run.track_id == self._current_track_id
             and run.task_type == "infer"
             and run.status == "completed"
         )
         is_active = (run_id is not None and run_id == self._active_run_id)
-        has_active_obs = self._active_status in ("active", "legacy_inferred", "legacy_mixed")
+        has_active_obs = (
+            self._current_track_id is not None
+            and self._active_status in ("active", "legacy_inferred", "legacy_mixed")
+        )
 
         if is_completed_infer and not is_active:
             if has_active_obs:
