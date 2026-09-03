@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.3 mini-plan 已接受，Issue #20 与开发分支已建立；Slice 1 未开始**）
+- 最后更新：2026-09-03（**5.3 Slice 1 已完成，全部 601 测试通过；下一步进入 Slice 2**）
 
 ---
 
@@ -15,10 +15,15 @@
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
-| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 已规划，Issue #20 / 开发分支已建立；Slice 1 未开始 |
+| Subphase | 5.3 — Suggested Frame Review & Correction | 🚧 进行中（Slice 1 已完成；下一步 Slice 2） |
 
 ## Recently Completed
 
+- **Phase 5.3 Slice 1 — Review contract + atomic session transactions (2026-09-03)**：
+  - 实现 Qt-free 值对象契约 `suggested_frame_review.py`（候选、快照、记录、批次、汇总、序列化）。
+  - 在 `ProjectSession` 实现 `accept_suggested_frame`、`skip_suggested_frame`、`correct_suggested_frame`（原子 manual point + superseded AI 观测 + 预测保留）与 `delete_active_manual_point`（恢复原 AI 观测并回滚审核为 pending）。
+  - 实现 scoped Undo/Redo，保证审核操作撤销时不回滚无关后台任务状态与跟踪 run。
+  - 增加 20 个新单元/集成测试（`test_suggested_frame_review.py` 8 个、`test_project_session.py` 11 个、`test_project_repository.py` 1 个），全量测试 **601 passed**。
 - **Windows CI flaky test 修复（2026-09-03，`351ea1b`）**：Windows runner
   无法保证“立即同尺寸重写文件”改变 mtime，导致 fingerprint tamper 测试偶发漏检；测试现改为
   确定性改变文件大小，不改变 ADR-0012 的生产校验策略。定向 60 passed，全回归 **581 passed**。
@@ -69,6 +74,5 @@
 
 ## Next Recommended Action
 
-1. 下一次开发会话先读 `CODE_STANDARD.md` 与 ADR-0013，然后从 5.3 Slice 1 开始：Review
-   contract + ProjectSession 原子事务与 scoped Undo/Redo。
-2. 本次按用户限定停在 Issue/分支建立完成处；尚未修改 `src/`、`tests/`，也未开始产品实现。
+1. 提交 Slice 1 变更（Conventional Commit: `feat: implement review contract and atomic session transactions (Phase 5.3 Slice 1)`）。
+2. 开始 Phase 5.3 Slice 2 — Mining entry + queue controller：复用 Task history 的 run 选择，接入 5.2 挖掘算法并自动排除 accepted/skipped 帧；实现队列控制器、跳转定位与快捷键（A/S/C）。

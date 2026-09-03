@@ -106,7 +106,7 @@ TrackingRun.extra_fields["suggested_frame_review_v1"]
 
 ## Slices
 
-- [ ] **Slice 1 — Review contract + atomic session transactions**：新增 ADR-0013 与 Qt-free review
+- [x] **Slice 1 — Review contract + atomic session transactions**：新增 ADR-0013 与 Qt-free review
   值对象/校验；在 ProjectSession 实现 Accept/Skip/Correct/删除的原子事务及 scoped Undo/Redo；
   用 session、持久化和旧项目兼容测试证明 AC-3–AC-8。
 - [ ] **Slice 2 — Mining entry + queue controller**：复用 Task history 的 run 选择，接入 5.2
