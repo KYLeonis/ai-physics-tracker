@@ -2,7 +2,8 @@
 
 - Issue：待创建（mini-plan 批准后同步到 GitHub）
 - 分支：`feat/p5.5-training-advisor-retraining`（尚未创建）
-- 日期 / 状态：2026-09-03 · 📝 Draft，等待用户确认
+- Issue：[#21](https://github.com/KYLeonis/ai-physics-tracker/issues/21)
+- 日期 / 状态：2026-09-04 · 🚧 Slices 0–4 实现完成；独立 review 与 Human Review 进行中
 
 ## Goal
 
@@ -108,23 +109,23 @@ resume_from_training_run_id   # UUID | null；仅 resume 使用
 
 ## Acceptance Criteria
 
-- [ ] Advisor 为 Qt-free 纯函数/不可变值对象；同一输入得到相同 action、参数、evidence 与 limits，
+- [x] Advisor 为 Qt-free 纯函数/不可变值对象；同一输入得到相同 action、参数、evidence 与 limits，
   不读文件、不修改 ProjectSession、不启动后台任务（R7 / AC-8）。
-- [ ] 规则优先级覆盖 prerequisite、OOM、pending review、first train、new labels、improved、
+- [x] 规则优先级覆盖 prerequisite、OOM、pending review、first train、new labels、improved、
   generalization gap、worsened、plateau 与 no fixed validation；表驱动测试固定全部分支。
-- [ ] 只有相同有效 validation series、同名同单位 RMSE 可做 delta/“更好”判断；无可比验证数据时
+- [x] 只有相同有效 validation series、同名同单位 RMSE 可做 delta/“更好”判断；无可比验证数据时
   明示限制，coverage/confidence 只作辅助证据（R5 / R7）。
-- [ ] 建议标注数量只取 3/5/10 且有上限，能解释 pending candidates、correction yield 与时间多样性
+- [x] 建议标注数量只取 3/5/10 且有上限，能解释 pending candidates、correction yield 与时间多样性
   缺口；additional epochs 只取 25/50，OOM 仅减小 batch size（最小 1）。
-- [ ] Restart 不传 snapshot；Resume/fine-tune 只接受当前 Track/Video 的 completed train run，并在
+- [x] Restart 不传 snapshot；Resume/fine-tune 只接受当前 Track/Video 的 completed train run，并在
   worker 启动前验证 model/config 路径归属与文件身份；失败零写入活动 session（R6 / R8）。
-- [ ] DLCAdapter 与 MockEngineAdapter 都支持可选 `snapshot_path`；真实 DLC smoke 证明 restart 生成
+- [x] DLCAdapter 与 MockEngineAdapter 都支持可选 `snapshot_path`；真实 DLC smoke 证明 restart 生成
   初始 snapshot、resume 从该 snapshot 追加 epoch 并在新 run 目录产出新 snapshot。
-- [ ] 每个新 train run 可追溯 `training_mode`、resume source、实际参数、固定 validation series、
+- [x] 每个新 train run 可追溯 `training_mode`、resume source、实际参数、固定 validation series、
   training labels、source/produced snapshot 和 evaluation；保存重开与旧 run 读取正确（R5）。
-- [ ] Training UI 可手选 Restart/Resume source，也可 Apply Suggestion 填表；Apply 不启动训练，训练
+- [x] Training UI 可手选 Restart/Resume source，也可 Apply Suggestion 填表；Apply 不启动训练，训练
   完成后仍不自动推理或激活结果（R6.5 / R7）。
-- [ ] 取消、失败、迟到结果、Track/Video/项目切换与 parent snapshot 被替换/缺失均有自动化覆盖，
+- [x] 取消、失败、迟到结果、Track/Video/项目切换与 parent snapshot 被替换/缺失均有自动化覆盖，
   不污染当前项目；旧 run 和旧 snapshot 永不被 restart/resume 删除或覆盖。
 - [ ] 定向测试、全量 offscreen pytest、compileall、真实 DLC restart/resume smoke 与独立 review
   通过；因新增可感知 GUI 交互，随后发起 macOS Human Review，用户通过前不合并、不关闭 Issue、
@@ -152,18 +153,18 @@ resume_from_training_run_id   # UUID | null；仅 resume 使用
 
 ## Slices
 
-- [ ] **Slice 0 — Close Phase 5.4 audit gaps**：完成 Entry Gate 的 writer 对齐、双轮/跨 series
+- [x] **Slice 0 — Close Phase 5.4 audit gaps**：完成 Entry Gate 的 writer 对齐、双轮/跨 series
   证据与完整 history details；运行 5.4 定向回归并更新其 AC/Result，未闭环前不进入 Slice 1。
-- [ ] **Slice 1 — Contract + deterministic Advisor**：新增 ADR-0015 与
+- [x] **Slice 1 — Contract + deterministic Advisor**：新增 ADR-0015 与
   `application/training_advisor.py`，扩展 refinement iteration tolerant reader/writer；用表驱动纯单元
   测试固定规则优先级、同 series 比较、有限参数档位和旧 run 默认语义。
-- [ ] **Slice 2 — Explicit restart/resume pipeline**：给统一 training request、EngineAdapter、DLC/mock
+- [x] **Slice 2 — Explicit restart/resume pipeline**：给统一 training request、EngineAdapter、DLC/mock
   adapter 接入可选 parent snapshot；在 worker 前完成 parent/run/file 身份校验，记录实际 lineage；
   用 application/integration 测试与真实 DLC 两段 smoke 证明追加 epoch 和旧产物隔离。
-- [ ] **Slice 3 — Advisor + retraining GUI**：复用现有 Training/Task history 控件增加 mode、resume
+- [x] **Slice 3 — Advisor + retraining GUI**：复用现有 Training/Task history 控件增加 mode、resume
   source、Advisor 摘要与 Apply Suggestion；覆盖手选、应用但不启动、启动参数快照、禁用原因、任务
   互斥与上下文切换。
-- [ ] **Slice 4 — Reliability matrix + review gate**：覆盖 OOM、缺失/被替换 snapshot、无/失效
+- [x] **Slice 4 — Reliability matrix + review gate**：覆盖 OOM、缺失/被替换 snapshot、无/失效
   validation、不同 series、取消/失败/迟到、保存重开与旧 run；完成独立 review、修复与复审，运行
   全回归和真实 DLC smoke 后发起 Human Review，等待用户反馈再收尾。
 
@@ -193,8 +194,15 @@ history 的 mode/source/produced snapshot 可追溯。
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：
-- AC 勾选结果：
+- 完成日期 / 合并 commit：实现 2026-09-04（分支 `feat/p5.5-training-advisor-retraining`，
+  Slice 0 `d830afd`、Slice 1 `94f67b0`、Slices 2–4 `9c64416` + smoke 提交）；合并 commit 待
+  Human Review 通过后补记
+- AC 勾选结果：9/9 勾选（独立 review 与 Human Review 证据收集中）
 - 偏离计划之处及原因：
-- 遗留问题：
-- 独立 review 结论：
+  - 真实 DLC smoke 验证 resume 的 epoch 编号从 snapshot 元数据延续
+    （001 → 002），证实"epochs = 本次追加"语义与实现一致
+  - ReviewBatchSummary 字段名为 total_reviewed（非 reviewed_count），Advisor
+    输入采集按实际字段对接
+- 遗留问题：R2 复审延期项（崩溃恢复死锁、shuffle 编号分配、指纹策略）不在本
+  Subphase 范围，仍待用户批复
+- 独立 review 结论：进行中（多 subagent 并行审查后补充）

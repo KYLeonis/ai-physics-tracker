@@ -4,7 +4,8 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近交付：**Phase 5.4 — Iteration History & Result Activation（2026-09-03；实现已合并，Review/Human Review、652 测试与双平台 CI 通过；复核收口项见 current status）**
-- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；先关闭 5.4 复核缺口，再进入 5.5）**
+- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.4 复核缺口已随 5.5 Entry Gate 关闭；5.5 实现/**
+- **完成，review/HR 进行中）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
