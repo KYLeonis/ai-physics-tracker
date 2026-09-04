@@ -124,7 +124,47 @@ def main() -> None:
             print(f"Smoke test failed! Error: {outcome.error_message}", file=sys.stderr)
             sys.exit(1)
 
-        print("=== Real DLC 3.x Smoke Test PASSED! ===")
+        # 6. Resume/fine-tune（ADR-0015）：从第一阶段 snapshot 继续训练 1 epoch。
+        # 使用全新的 DLC 项目目录（与产品 per-run 语义一致），验证 snapshot_path
+        # 能跨项目加载权重并产出新 snapshot。
+        print("Starting resume stage (1 epoch from previous snapshot)...")
+        resume_config = adapter.create_project(
+            project_name="smoke_test_project_resume",
+            experimenter="AIPhysicsTracker",
+            video_path=video_path,
+            working_dir=tmp_dir / "resume_run",
+            bodyparts=["target"],
+        )
+        video_reader = OpenCVVideoReader()
+        video_reader.open(video_path)
+        adapter.export_annotations(
+            tuple(points), video_reader, resume_config,
+            scorer="AIPhysicsTracker", bodyparts=["target"],
+        )
+        video_reader.close()
+        adapter.create_training_dataset(
+            resume_config, num_shuffles=1, train_indices=[0, 1, 2], test_indices=[3, 4],
+        )
+        resume_outcome = adapter.train(
+            run_id=uuid4(),
+            queue=queue,
+            cancel_event=Event(),
+            config_path=resume_config,
+            params=params,
+            snapshot_path=Path(outcome.snapshot_path),
+        )
+        print(f"Resume outcome: status={resume_outcome.status}, "
+              f"snapshot={resume_outcome.snapshot_path}")
+        if resume_outcome.status != "completed":
+            print(f"Resume stage failed! Error: {resume_outcome.error_message}",
+                  file=sys.stderr)
+            sys.exit(1)
+        if Path(resume_outcome.snapshot_path).resolve() == Path(outcome.snapshot_path).resolve():
+            print("Resume must produce a NEW snapshot, not overwrite the parent",
+                  file=sys.stderr)
+            sys.exit(1)
+
+        print("=== Real DLC 3.x Smoke Test PASSED! (restart + resume) ===")
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
