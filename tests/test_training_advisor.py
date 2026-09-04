@@ -183,7 +183,7 @@ def test_cross_series_and_cross_metric_comparisons_are_rejected() -> None:
     rounds = (_round("r1", 5.0, 4.0, series=SERIES),
               _round("r2", 4.0, 4.0, series=SERIES_B))
     rec = recommend_training_action(AdvisorInput(recent_rounds=rounds, completed_train_runs=2))
-    assert rec.action != ACTION_RESUME or any("cannot judge" in l for l in rec.limits)
+    assert rec.action == ACTION_FIX_PREREQUISITE
 
     # 指标名不同 → 不比较
     renamed = (RoundMetrics("r1", SERIES, 5.0, 4.0, metric_name="rmse", metric_unit="mm"),
@@ -209,6 +209,49 @@ def test_input_validation_rejects_bad_values() -> None:
         AdvisorInput(correction_yield=1.5)
     with pytest.raises(ValueError, match="action"):
         from ai_physics_tracker.application.training_advisor import AdvisorRecommendation
-        from ai_physics_tracker.application.training_advisor import ACTIONS
         AdvisorRecommendation(action="not-an-action")
-        del ACTIONS
+
+
+def test_threshold_boundaries_are_inclusive() -> None:
+    """±5% 恰好等于按 improved/worsened 处理（plan"至少 5%"，review 4a/4b）。"""
+    exactly_improved = (_round("r1", 5.0, 4.0), _round("r2", 4.75, 4.0))  # val -5.0%
+    rec = recommend_training_action(AdvisorInput(recent_rounds=exactly_improved,
+                                                 completed_train_runs=2))
+    assert rec.action == ACTION_RESUME
+
+    exactly_worsened = (_round("r1", 4.0, 3.0), _round("r2", 4.2, 3.0))  # val +5.0%
+    rec_w = recommend_training_action(AdvisorInput(recent_rounds=exactly_worsened,
+                                                   completed_train_runs=2,
+                                                   pending_candidates=5))
+    assert rec_w.action == ACTION_LABEL_MORE
+
+    exactly_gap = (_round("r1", 4.0, 2.0), _round("r2", 4.0, 2.0))  # 4.0 == 2.0 × 2 < 1.5×? no: 2×
+    # 4.0 >= 1.5 × 2.0 → gap 成立
+    rec_gap = recommend_training_action(AdvisorInput(recent_rounds=exactly_gap,
+                                                     completed_train_runs=2,
+                                                     pending_candidates=3))
+    assert any("generalization gap" in e for e in rec_gap.evidence)
+
+    just_below_gap = (_round("r1", 4.0, 2.0), _round("r2", 4.0, 2.8))  # 4.0 < 1.5×2.8=4.2
+    rec_below = recommend_training_action(AdvisorInput(recent_rounds=just_below_gap,
+                                                       completed_train_runs=2))
+    assert not any("generalization gap" in e for e in rec_below.evidence)
+
+
+def test_pending_candidates_preempt_fix_prerequisite() -> None:
+    """pending 候选抢占 fix_prerequisite（review 1：不得建议"冻结后 retrain"）。"""
+    rec = recommend_training_action(AdvisorInput(
+        pending_candidates=5, completed_train_runs=1, recent_rounds=()))
+    assert rec.action == ACTION_REVIEW_CANDIDATES
+    # 抢占后不得携带 fix_prerequisite 的"冻结 validation 再训练"建议
+    assert not any("Freeze" in limit for limit in rec.limits)
+
+
+def test_worsened_without_candidates_never_suggests_label_more() -> None:
+    """零候选 + 高 correction yield 不得建议低于最小档的标注数（review 2）。"""
+    worsened = (_round("r1", 4.0, 3.0), _round("r2", 5.0, 3.0))
+    rec = recommend_training_action(AdvisorInput(
+        recent_rounds=worsened, completed_train_runs=2,
+        pending_candidates=0, correction_yield=0.6))
+    assert rec.action == ACTION_RESTART
+    assert rec.label_count is None

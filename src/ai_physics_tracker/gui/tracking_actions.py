@@ -20,7 +20,8 @@ from ai_physics_tracker.application.tracking_job import (
     read_frame_selection_result, FrameSelectionRunner, FrameSelectionJobRequest,
 )
 from ai_physics_tracker.application.refinement_history import extract_refinement_state
-from ai_physics_tracker.application.training_advisor import AdvisorInput, RoundMetrics, recommend_training_action
+from ai_physics_tracker.application.training_advisor import (
+    OOM_MARKERS, AdvisorInput, RoundMetrics, recommend_training_action)
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
 from ai_physics_tracker.application.tracking_types import TaskProgress, TaskLog, TaskResult
 from ai_physics_tracker.gui.task_panel import TaskPanel
@@ -241,8 +242,7 @@ class TrackingActions(QObject):
         last_failure_oom = False
         if last_failed is not None:
             error_text = str(last_failed.error_message or "").lower()
-            last_failure_oom = any(marker in error_text
-                                   for marker in ("out of memory", "oom", "not enough memory"))
+            last_failure_oom = any(marker in error_text for marker in OOM_MARKERS)
 
         latest_train = completed_train[-1] if completed_train else None
         manual_points = [p for p in session.manual_points(track_id)]

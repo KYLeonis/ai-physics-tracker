@@ -8,7 +8,6 @@ ProjectSession、不产生随机性——同一输入永远得到同一输出（
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from math import isfinite
-from typing import Any
 
 # 固定阈值与档位（mini-plan 已批准的第一版可解释值；进入 evidence，不伪装成
 # 统计显著性或通用物理精度标准）
@@ -32,7 +31,8 @@ ACTIONS = frozenset({
     ACTION_RESTART, ACTION_STOP_AND_COMPARE, ACTION_FIX_PREREQUISITE,
 })
 
-_OOM_MARKERS = ("out of memory", "oom", "cuda out of memory", "not enough memory")
+# OOM 错误识别标记：Advisor 输入采集与 GUI 共用，避免两份清单漂移（review 7）
+OOM_MARKERS = ("out of memory", "oom", "cuda out of memory", "not enough memory")
 
 
 @dataclass(frozen=True)
@@ -87,10 +87,14 @@ class AdvisorInput:
                 raise ValueError("recent_rounds must contain RoundMetrics")
             for label, value in (("train_rmse", round_metrics.train_rmse),
                                  ("validation_rmse", round_metrics.validation_rmse)):
+                if isinstance(value, bool) or not isinstance(value, (int, float)):
+                    raise ValueError(f"{label} must be a finite number")
                 if not isfinite(value) or value < 0:
                     raise ValueError(f"{label} must be finite and non-negative")
         if self.correction_yield is not None:
-            if not isfinite(self.correction_yield) or not 0 <= self.correction_yield <= 1:
+            if isinstance(self.correction_yield, bool) or \
+                    not isinstance(self.correction_yield, (int, float)) or \
+                    not isfinite(self.correction_yield) or not 0 <= self.correction_yield <= 1:
                 raise ValueError("correction_yield must be in [0, 1]")
 
 
@@ -109,6 +113,9 @@ class AdvisorRecommendation:
     def __post_init__(self) -> None:
         if self.action not in ACTIONS:
             raise ValueError(f"action must be one of {sorted(ACTIONS)}, got {self.action!r}")
+        if self.training_mode is not None and self.training_mode not in {"restart", "resume"}:
+            raise ValueError(
+                f"training_mode must be 'restart', 'resume' or None, got {self.training_mode!r}")
         for label, value in (("epochs", self.epochs), ("batch_size", self.batch_size),
                              ("label_count", self.label_count)):
             if value is not None and (type(value) is not int or value < 1):
@@ -155,7 +162,7 @@ def recommend_training_action(inp: AdvisorInput) -> AdvisorRecommendation:
     # 规则 3：pending 候选不得被训练类建议跳过；label_more 本身就是
     # 审核/标注族动作（plan 规则 7"有候选时 label_more"），不抢占
     if inp.pending_candidates > 0 and core.action in {
-        ACTION_RESTART, ACTION_RESUME, ACTION_STOP_AND_COMPARE,
+        ACTION_RESTART, ACTION_RESUME, ACTION_STOP_AND_COMPARE, ACTION_FIX_PREREQUISITE,
     }:
         return AdvisorRecommendation(
             action=ACTION_REVIEW_CANDIDATES,
@@ -240,14 +247,16 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
                 ),
             )
         if val_delta >= RMSE_TREND_THRESHOLD or gap:
-            reasons = [f"{series_note}: validation RMSE worsened {val_delta:.1%} "
-                       f"({prev.validation_rmse:.4g} → {last.validation_rmse:.4g})"]
+            reasons = []
+            if val_delta >= RMSE_TREND_THRESHOLD:
+                reasons.append(f"{series_note}: validation RMSE worsened {val_delta:.1%} "
+                               f"({prev.validation_rmse:.4g} → {last.validation_rmse:.4g})")
             if gap:
                 reasons.append(
                     f"generalization gap: validation RMSE {last.validation_rmse:.4g} ≥ "
                     f"{GENERALIZATION_GAP_FACTOR}× train RMSE {last.train_rmse:.4g}"
                 )
-            if inp.pending_candidates > 0 or new_labels or inp.correction_yield is not None:
+            if inp.pending_candidates > 0:
                 return AdvisorRecommendation(
                     action=ACTION_LABEL_MORE,
                     label_count=_label_count(inp),
