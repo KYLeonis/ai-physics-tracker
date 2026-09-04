@@ -38,8 +38,20 @@ def prepare_training(
     params: TrainingParams | None = None,
     adapter: EngineAdapter | None = None,
     working_dir: Path | None = None,
+    mode: str = "restart",
+    resume_from_run_id: UUID | None = None,
 ) -> tuple[TrackingRun, Path]:
-    """为指定 Track 准备 DLC 项目、导出最新标注并登记 pending TrackingRun。"""
+    """为指定 Track 准备 DLC 项目、导出最新标注并登记 pending TrackingRun。
+
+    mode/resume_from_run_id（ADR-0015）：记录 lineage 到迭代解释层与 config；
+    resume 的 snapshot 文件校验由调用方在 worker 启动前完成。
+    """
+    if mode not in {"restart", "resume"}:
+        raise ProjectSessionError(f"Unknown training mode: {mode!r}")
+    if mode == "resume" and resume_from_run_id is None:
+        raise ProjectSessionError("Resume training requires a resume source run")
+    if mode == "restart" and resume_from_run_id is not None:
+        raise ProjectSessionError("restart mode must not carry a resume source run")
 
     track = next((t for t in session.tracks if t.track_id == track_id), None)
     if track is None:
@@ -192,15 +204,19 @@ def prepare_training(
         validation_series_id=validation_series_id,
         training_labels=tuple(training_label_snapshots),
         review_summary=review_summary_dict,
+        training_mode=mode,
+        resume_from_training_run_id=resume_from_run_id,
     )
 
+    executed_config = actual_params.to_config()
+    executed_config["training_mode"] = mode
     run = create_tracking_run(
         video_id=track.video_id,
         track_id=track_id,
         task_type="train",
         engine="dlc",
         engine_version=actual_adapter.engine_version(),
-        config=actual_params.to_config(),
+        config=executed_config,
     )
     run = attach_refinement_iteration(run, iter_info)
     if session.project_root is not None:

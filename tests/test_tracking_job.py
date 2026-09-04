@@ -4,6 +4,7 @@ from concurrent.futures import CancelledError
 from dataclasses import replace
 import os
 import time
+from uuid import uuid4
 from pathlib import Path
 
 import pytest
@@ -361,3 +362,131 @@ def test_reopened_unfinished_run_is_marked_failed_in_memory_until_saved(tmp_path
     reopened.save()
     persisted = ProjectRepository().load(reopened.project_root).tracking_runs[-1]
     assert persisted == recovered
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.5 — Resume/restart lineage（ADR-0015）
+# ---------------------------------------------------------------------------
+
+def test_resume_request_carries_parent_snapshot_and_lineage(
+    tmp_path: Path, synthetic_video_path: Path
+) -> None:
+    """Resume 请求贯通：GUI 校验 parent snapshot → worker 传递 → lineage 可追溯。"""
+    session, _video, track = _make_session(tmp_path, synthetic_video_path)
+    # 第一次训练（restart）产出 parent snapshot
+    first = tracking_job.prepare_tracking_request(
+        session, track.track_id,
+        TrainingParams(epochs=1, extra_params={"simulate_delay": 0.0}),
+    )
+    _register_running(session, first)
+    handle = BackgroundTaskRunner().start_task(
+        first.run.run_id, tracking_job.run_tracking_worker, first, MockEngineAdapter())
+    messages = _wait_worker(handle)
+    candidate = tracking_job.prepare_tracking_candidate(
+        session.project, first, _result_path(messages, first.project_root))
+    assert session.apply_tracking_candidate(candidate)
+    parent = next(r for r in session.tracking_runs()
+                  if r.run_id == first.run.run_id and r.status == "completed")
+    assert parent.model_snapshot is not None
+
+    # 新增一个 manual 点后从 parent snapshot resume
+    session.mark_point(track.track_id, 3, 33.0, 44.0)
+    request = tracking_job.prepare_tracking_request(
+        session, track.track_id,
+        TrainingParams(epochs=1, extra_params={"simulate_delay": 0.0}),
+        training_mode="resume",
+        resume_from_training_run_id=parent.run_id,
+    )
+    assert request.training_mode == "resume"
+    assert request.resume_from_training_run_id == parent.run_id
+    assert request.resume_snapshot_path is not None
+    assert request.resume_snapshot_path.is_file()
+    assert request.resume_snapshot_info == (
+        request.resume_snapshot_path.stat().st_size,
+        request.resume_snapshot_path.stat().st_mtime_ns,
+    )
+
+    _register_running(session, request)
+    adapter = MockEngineAdapter()
+    handle = BackgroundTaskRunner().start_task(
+        request.run.run_id, tracking_job.run_tracking_worker, request, adapter)
+    messages = _wait_worker(handle)
+    candidate = tracking_job.prepare_tracking_candidate(
+        session.project, request, _result_path(messages, request.project_root))
+    assert session.apply_tracking_candidate(candidate)
+    resumed = next(r for r in session.tracking_runs() if r.run_id == request.run.run_id)
+    assert resumed.config.get("training_mode") == "resume"
+    resumed_iter = resumed.extra_fields["refinement_iteration_v1"]
+    assert resumed_iter["training_mode"] == "resume"
+    assert resumed_iter["resume_from_training_run_id"] == str(parent.run_id)
+    # produced snapshot 在当前 run 自己的目录，不覆盖 parent
+    assert resumed.model_snapshot is not None
+    assert resumed.model_snapshot != parent.model_snapshot
+
+
+def test_resume_request_rejects_missing_changed_or_foreign_source(
+    tmp_path: Path, synthetic_video_path: Path
+) -> None:
+    """Resume 校验：跨 track、非 completed、快照缺失/被改均拒绝（review R8）。"""
+    session, _video, track = _make_session(tmp_path, synthetic_video_path)
+    first = tracking_job.prepare_tracking_request(
+        session, track.track_id,
+        TrainingParams(epochs=1, extra_params={"simulate_delay": 0.0}),
+    )
+    _register_running(session, first)
+    handle = BackgroundTaskRunner().start_task(
+        first.run.run_id, tracking_job.run_tracking_worker, first, MockEngineAdapter())
+    messages = _wait_worker(handle)
+    candidate = tracking_job.prepare_tracking_candidate(
+        session.project, first, _result_path(messages, first.project_root))
+    assert session.apply_tracking_candidate(candidate)
+    parent = next(r for r in session.tracking_runs() if r.run_id == first.run.run_id)
+    snapshot = first.project_root / parent.model_snapshot
+
+    # 快照被篡改（大小变化）
+    snapshot.write_bytes(snapshot.read_bytes() + b"x")
+    with pytest.raises(Exception, match="snapshot has changed"):
+        tracking_job.prepare_tracking_request(
+            session, track.track_id, TrainingParams(epochs=1),
+            training_mode="resume", resume_from_training_run_id=parent.run_id)
+    snapshot.write_bytes(snapshot.read_bytes()[:-1])
+
+    # 快照缺失
+    missing = snapshot.with_name("gone.pt")
+    snapshot.rename(missing)
+    try:
+        with pytest.raises(Exception, match="snapshot is missing"):
+            tracking_job.prepare_tracking_request(
+                session, track.track_id, TrainingParams(epochs=1),
+                training_mode="resume", resume_from_training_run_id=parent.run_id)
+    finally:
+        missing.rename(snapshot)
+
+    # restart 模式携带 resume source → 拒绝
+    with pytest.raises(Exception, match="requires training_mode"):
+        tracking_job.prepare_tracking_request(
+            session, track.track_id, TrainingParams(epochs=1),
+            resume_from_training_run_id=parent.run_id)
+
+    # 非法 mode
+    with pytest.raises(Exception, match="Unknown training mode"):
+        tracking_job.prepare_tracking_request(
+            session, track.track_id, TrainingParams(epochs=1), training_mode="warm")
+
+
+def test_resume_source_and_mode_combination_guards(
+    tmp_path: Path, synthetic_video_path: Path
+) -> None:
+    """restart 携带 resume source、非法 mode、resume 缺 source 均拒绝。"""
+    session, _video, track = _make_session(tmp_path, synthetic_video_path)
+    source_id = uuid4()
+    with pytest.raises(Exception, match="requires training_mode"):
+        tracking_job.prepare_tracking_request(
+            session, track.track_id, TrainingParams(epochs=1),
+            resume_from_training_run_id=source_id)
+    with pytest.raises(Exception, match="Unknown training mode"):
+        tracking_job.prepare_tracking_request(
+            session, track.track_id, TrainingParams(epochs=1), training_mode="warm")
+    with pytest.raises(Exception, match="requires a resume source run"):
+        tracking_job.prepare_tracking_request(
+            session, track.track_id, TrainingParams(epochs=1), training_mode="resume")

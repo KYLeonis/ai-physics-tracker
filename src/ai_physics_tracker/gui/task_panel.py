@@ -81,13 +81,30 @@ class TaskPanel(QDockWidget):
         self.deviceComboBox = QComboBox()
         self.deviceComboBox.addItems(["auto", "cpu", "mps", "cuda"])
 
+        # Phase 5.5：Restart/Resume 模式与 Advisor 摘要（ADR-0015）
+        self.trainingModeComboBox = QComboBox()
+        self.trainingModeComboBox.addItems(["Restart", "Resume (fine-tune)"])
+        self.trainingModeComboBox.setToolTip(
+            "Resume continues from the selected model's snapshot; "
+            "'Epochs' then means additional epochs for this run.")
+        self.advisorLabel = QLabel("Advisor: select a track with training history")
+        self.advisorLabel.setWordWrap(True)
+        self.advisorApplyButton = QPushButton("Apply Suggestion")
+        self.advisorApplyButton.setToolTip(
+            "Fill mode / epochs / batch size from the suggestion. Never starts training.")
+        self.advisorApplyButton.setEnabled(False)
+        self.advisorApplyButton.clicked.connect(self._onApplySuggestionClicked)
+
         trainForm = QFormLayout()
-        trainForm.addRow("Epochs", self.epochsSpinBox)
+        trainForm.addRow("Mode", self.trainingModeComboBox)
+        trainForm.addRow("Epochs this run", self.epochsSpinBox)
         trainForm.addRow("Batch size", self.batchSizeSpinBox)
         trainForm.addRow("Device", self.deviceComboBox)
         self.trainButton = QPushButton("Start Training")
         trainLayout = QVBoxLayout()
         trainLayout.addLayout(trainForm)
+        trainLayout.addWidget(self.advisorLabel)
+        trainLayout.addWidget(self.advisorApplyButton)
         trainLayout.addWidget(self.trainButton)
         trainGroup = QGroupBox("Training")
         trainGroup.setLayout(trainLayout)
@@ -261,6 +278,7 @@ class TaskPanel(QDockWidget):
         self._active_run_id: UUID | None = None
         self._current_track_id: UUID | None = None
         self._busy: bool = False
+        self._latest_advisor = None
         self._project_busy: bool = False
         self._ref_state: Any | None = None
         self._runs_by_id: dict[UUID, TrackingRun] = {}
@@ -341,6 +359,56 @@ class TaskPanel(QDockWidget):
         self.reviewCorrectButton.clicked.connect(lambda: self.reviewCorrectRequested.emit())
         self.deleteManualPointButton.clicked.connect(lambda: self.deleteManualPointRequested.emit())
         self.reviewCandidatesList.itemDoubleClicked.connect(self._onReviewCandidateDoubleClicked)
+
+    def trainingMode(self) -> str:
+        """返回当前选择的训练模式："restart" 或 "resume"。"""
+
+        return "resume" if self.trainingModeComboBox.currentIndex() == 1 else "restart"
+
+    def setTrainingMode(self, mode: str) -> None:
+        """供 Apply Suggestion 填入模式。"""
+
+        self.trainingModeComboBox.setCurrentIndex(1 if mode == "resume" else 0)
+
+    def setAdvisorSummary(self, recommendation) -> None:
+        """展示 Advisor 单一建议摘要与证据；None 表示无可给建议。"""
+
+        self._latest_advisor = recommendation
+        if recommendation is None:
+            self.advisorLabel.setText("Advisor: select a track with training history")
+            self.advisorApplyButton.setEnabled(False)
+            return
+        params = []
+        if recommendation.epochs is not None:
+            params.append(f"epochs={recommendation.epochs}")
+        if recommendation.batch_size is not None:
+            params.append(f"batch={recommendation.batch_size}")
+        if recommendation.label_count is not None:
+            params.append(f"label {recommendation.label_count} more frame(s)")
+        summary = f"Advisor: {recommendation.action}"
+        if params:
+            summary += f" ({', '.join(params)})"
+        if recommendation.evidence:
+            summary += "\n· " + "\n· ".join(recommendation.evidence)
+        if recommendation.limits:
+            summary += "\nLimits: " + " ".join(recommendation.limits)
+        self.advisorLabel.setText(summary)
+        fillable = recommendation.action in {"restart", "resume"} and (
+            recommendation.epochs is not None or recommendation.batch_size is not None)
+        self.advisorApplyButton.setEnabled(fillable)
+
+    def _onApplySuggestionClicked(self) -> None:
+        """Apply Suggestion 只填表（mode/epochs/batch），绝不自动启动训练。"""
+
+        rec = self._latest_advisor
+        if rec is None:
+            return
+        if rec.training_mode:
+            self.setTrainingMode(rec.training_mode)
+        if rec.epochs is not None:
+            self.epochsSpinBox.setValue(rec.epochs)
+        if rec.batch_size is not None:
+            self.batchSizeSpinBox.setValue(rec.batch_size)
 
     def trainingParameters(self) -> TrainingParams:
         """返回当前训练控件的不可变参数快照。"""

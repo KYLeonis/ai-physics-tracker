@@ -60,8 +60,13 @@ class EngineAdapter(Protocol):
         cancel_event: Any,
         config_path: Path,
         params: TrainingParams,
+        snapshot_path: Path | None = None,
     ) -> TrainOutcome:
-        """执行训练，流式汇报进度与日志，支持取消。"""
+        """执行训练，流式汇报进度与日志，支持取消。
+
+        snapshot_path（ADR-0015）：Resume/fine-tune 时从该 completed snapshot
+        继续训练；Restart 必须传 None。
+        """
         ...
 
     def import_results(
