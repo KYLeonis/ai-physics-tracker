@@ -234,3 +234,86 @@ def test_task_panel_activation_controls_and_state_transitions(qtbot: QtBot) -> N
     panel.setRefinementInfo("legacy_mixed", None, None, False, None)
     assert "Legacy mixed" in panel.activeRunLabel.text()
 
+
+
+def test_run_details_expose_iteration_traceability(qtbot: QtBot) -> None:
+    """Entry Gate：train run details 展示 label 数/审核摘要/coverage/可比性。"""
+    from ai_physics_tracker.application.refinement_history import (
+        RefinementState, ValidationLabelSnapshot, ValidationSeries,
+    )
+    from datetime import UTC, datetime
+
+    panel = _panel(qtbot)
+    track_id = uuid4()
+    run_id = uuid4()
+    source_infer_id = uuid4()
+    series_id = uuid4()
+    now = datetime.now(UTC).isoformat()
+
+    snapshot = ValidationLabelSnapshot(
+        point_id=uuid4(), frame_index=10, pixel_x=1.0, pixel_y=2.0,
+        modified_at=now,
+    )
+    series = ValidationSeries(
+        series_id=series_id, name="Val", created_at=now,
+        label_snapshots=(snapshot,),
+    )
+    panel.setRefinementInfo(
+        active_status="active", active_run_id=None,
+        ref_state=RefinementState(
+            active_validation_series_id=series_id,
+            validation_series=(series,),
+        ),
+        validation_valid=True, validation_reason=None,
+    )
+
+    run = mark_run_completed(
+        create_tracking_run(track_id, track_id, "train", engine="dlc"),
+        model_snapshot="data/engines/x/snapshot.pt",
+    )
+    source_run = mark_run_completed(
+        create_tracking_run(track_id, track_id, "infer", engine="dlc"),
+        model_snapshot="data/engines/y/snapshot.pt",
+    )
+    source_run = replace(source_run, extra_fields={
+        "prediction_summary_v1": {"coverage": 0.93, "row_count": 100},
+    })
+    run = replace(run, extra_fields={
+        "refinement_iteration_v1": {
+            "iteration_index": 1,
+            "previous_training_run_id": None,
+            "source_infer_run_id": str(source_infer_id),
+            "validation_series_id": str(series_id),
+            "training_labels": [{"frame_index": 10}],
+            "review_summary": {"total_candidates": 10, "reviewed_count": 7,
+                               "pending_count": 3, "accepted_count": 4,
+                               "corrected_count": 2, "skipped_count": 1},
+        },
+        "evaluation": {"status": "completed"},
+    })
+    panel._runs_by_id = {source_infer_id: source_run, run_id: run}
+
+    panel.setRunDetails(run)
+    text = panel.detailsLabel.text()
+    assert "iteration=1" in text
+    assert "training_labels=1" in text
+    assert "validation_labels=1" in text
+    assert str(series_id) in text
+    assert "pending_count=3" in text
+    assert "remaining_candidates=3" in text
+    assert "prediction_coverage=93.0%" in text
+
+    # 无固定验证集的 train run：明示不可跨轮比较
+    run_no_val = replace(run, extra_fields={
+        "refinement_iteration_v1": {
+            "iteration_index": 0,
+            "source_infer_run_id": None,
+            "validation_series_id": None,
+            "training_labels": [{"frame_index": 1}, {"frame_index": 2}],
+        },
+    })
+    panel.setRunDetails(run_no_val)
+    text = panel.detailsLabel.text()
+    assert "training_labels=2" in text
+    assert "no fixed validation" in text
+    assert "cross-iteration RMSE comparison unavailable" in text

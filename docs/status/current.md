@@ -116,12 +116,8 @@
 
 ## Current Worktree Note
 
-本轮规划提交后，工作区另有 4 个非本轮产生的未提交源码改动：
-`project_session.py`、`refinement_history.py`、`training_job.py`、`dlc_adapter.py`。这些改动保持原样，
-未纳入规划提交；定向运行 refinement/result activation/training/DLC adapter 测试得到
-**31 passed, 5 failed**，失败均因新增的 `video_reader.info.frame_count` 读取与现有 MagicMock 不兼容。
-开始 Slice 0 前须由这些改动的所有者完成或撤回，并重新跑全回归；已提交 `13f48c2` 基线及其 CI
-仍为 652 passed / 双平台成功。
+（已解决 2026-09-04）此前记录的 4 个未提交源码改动为 5.4 R2 复审加固（提交 `8352191`/`c54e875`），
+全量 **658 passed**，`compileall` 通过；worktree 现已干净。
 
 ## Current Decisions / Deferred Checks
 

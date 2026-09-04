@@ -374,7 +374,12 @@ def serialize_refinement_state(state: RefinementState) -> dict[str, Any]:
             if state.active_validation_series_id is not None
             else None
         ),
-        "validation_series": [serialize_validation_series(s) for s in state.validation_series],
+        # ADR-0014 形态：series_id → ValidationSeries 映射；反序列化仍兼容
+        # 5.4 早期落盘的 list 形式，不迁移旧项目
+        "validation_series": {
+            str(series.series_id): serialize_validation_series(series)
+            for series in state.validation_series
+        },
     }
 
 

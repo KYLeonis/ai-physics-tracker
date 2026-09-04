@@ -139,7 +139,8 @@ Phase 5.4 沿用 schema v1 tolerant extensions，不新增顶层对象：
               "from_run_id": null,
               "to_run_id": "<infer-run-uuid>",
               "point_count": 120,
-              "manual_preserved_count": 4
+              "manual_preserved_count": 4,
+              "superseded_count": 2
             }
           ],
           "active_validation_series_id": "<uuid-or-null>",
