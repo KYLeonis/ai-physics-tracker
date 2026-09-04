@@ -109,10 +109,9 @@
 
 ## Current Goal
 
-**5.5 mini-plan 已形成草案；实现前先关闭 Phase 5.4 复核缺口。**
-
-计划见 [phase-5.5-plan.md](phase-5.5-plan.md)。等待用户确认规则阈值、resume/fine-tune 语义与
-持久化扩展；确认前不新增 ADR-0015、不创建 5.5 Issue/开发分支，也不开始 Slice 0 或产品代码。
+**5.5 实现完成**（Slice 0–4，分支 `feat/p5.5-training-advisor-retraining`，688 tests +
+真实 DLC restart/resume smoke 通过）。进行中：多 subagent 独立 review → 修复 → Human Review
+→ 合并。计划见 [phase-5.5-plan.md](phase-5.5-plan.md)。
 
 ## Current Worktree Note
 
