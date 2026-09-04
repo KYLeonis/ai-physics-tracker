@@ -3,9 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近交付：**Phase 5.4 — Iteration History & Result Activation（2026-09-03；实现已合并，Review/Human Review、652 测试与双平台 CI 通过；复核收口项见 current status）**
-- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.4 复核缺口已随 5.5 Entry Gate 关闭；5.5 实现/**
-- **完成，review/HR 进行中）**
+- 最近交付：**Phase 5.4 复核缺口随 5.5 Entry Gate 关闭（2026-09-04；writer 对齐 ADR-0014、可比性证据测试、history details 补齐）**
+- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.5 Training Advisor & Retraining 实现完成，688 测试 + 真实 DLC restart/resume smoke 通过；独立 review/HR 进行中）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
