@@ -196,7 +196,7 @@ history 的 mode/source/produced snapshot 可追溯。
 
 - 完成日期 / 合并 commit：实现 2026-09-04（分支 `feat/p5.5-training-advisor-retraining`，
   Slice 0 `d830afd`、Slice 1 `94f67b0`、Slices 2–4 `9c64416`）；R2 修复 `1c8aafe`/`15d7be4`/
-  `181ed56`/`e6b3f60`；Human Review 于 2026-09-04 通过，合并 commit 见 Review Record
+  `181ed56`/`e6b3f60`；Human Review 于 2026-09-04 通过；合并 commit `65d0033`
 - AC 勾选结果：**9/9 全部通过**（独立 review 闭环 + 真实 DLC smoke + 用户 Human Review：
   lineage 详情/Advisor 证据/Apply 只填表/Restart+Resume 启动/保存重开全部亲测确认）
 - 偏离计划之处及原因：
