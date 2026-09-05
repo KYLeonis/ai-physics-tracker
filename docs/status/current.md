@@ -109,9 +109,9 @@
 
 ## Current Goal
 
-**5.5 实现完成**（Slice 0–4，分支 `feat/p5.5-training-advisor-retraining`，688 tests +
-真实 DLC restart/resume smoke 通过）。进行中：多 subagent 独立 review → 修复 → Human Review
-→ 合并。计划见 [phase-5.5-plan.md](phase-5.5-plan.md)。
+**5.5 实现与独立 review 完成**（R1 三路审查 findings 全部闭环，含 2 Blocker；693 tests +
+真实 DLC restart/resume smoke）。等待用户 **Human Review**（5 项清单见
+[phase-5.5-review.md](../reviews/phase-5.5-review.md) §4）；通过后合并、关闭 Issue #21、push。
 
 ## Current Worktree Note
 
