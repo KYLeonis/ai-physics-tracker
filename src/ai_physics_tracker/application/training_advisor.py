@@ -308,12 +308,19 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
                 "Epochs means additional epochs (fine-tune).",
             ),
         )
+    has_series = any(r.validation_series_id for r in inp.recent_rounds)
+    evidence = (
+        "a validation series exists but fewer than two completed evaluations "
+        "share it — no comparable pair yet" if has_series else
+        "no fixed validation series with a completed evaluation exists"
+    )
     return AdvisorRecommendation(
         action=ACTION_FIX_PREREQUISITE,
-        evidence=("no fixed validation series with a completed evaluation exists",),
+        evidence=(evidence,),
         limits=(
-            "Freeze a fixed validation series and retrain before iterating; "
-            "without it the advisor cannot judge improvement.",
+            "Freeze a fixed validation series and retrain (or train once more with "
+            "the current series) before iterating; without a comparable pair the "
+            "advisor cannot judge improvement.",
         ),
     )
 
