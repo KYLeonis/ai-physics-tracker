@@ -58,8 +58,7 @@ def _evaluation_rmse(evaluation: dict) -> tuple[float, float, str, str] | None:
     train_value, test_value = train_metrics[name], test_metrics[name]
     if not (isinstance(train_value, (int, float)) and isinstance(test_value, (int, float))):
         return None
-    units = evaluation.get("units")
-    if isinstance(units, dict):
+    if isinstance(evaluation.get("units"), dict):
         unit = str((train_block.get("units") or {}).get(name, "px"))
     return float(train_value), float(test_value), name, unit
 
@@ -145,7 +144,11 @@ class TrackingActions(QObject):
         session = self.window.analysisSession
         video_id, track_id = self.window.activeVideoId, self.window.selectedTrackId
         key = (id(session.project) if session else None, video_id, track_id, self.pending,
-               session.can_measure(video_id) if session and video_id else False)
+               session.can_measure(video_id) if session and video_id else False,
+               self.window.projectActions.busy,
+               getattr(self.window, "frameSelectionActions", None) is not None
+               and self.window.frameSelectionActions.busy,
+               self.window.reviewActions.busy if hasattr(self.window, "reviewActions") else False)
         if key == self._context_key:
             return
         self._context_key = key
@@ -208,22 +211,31 @@ class TrackingActions(QObject):
                               train_reason, infer_reason, self.pending,
                               project_busy=self.window.projectActions.busy)
         if session and track_id:
-            self.panel.setAdvisorSummary(self._advisor_recommendation(session, track_id, runs))
+            recommendation = self._advisor_recommendation(session, track_id, runs)
+            if recommendation is None:
+                # 采集失败与"未选 track"区分（review #11）
+                self.panel.setAdvisorSummary(None)
+                self.panel.advisorLabel.setText(
+                    "Advisor: unavailable (input collection failed — see log)")
+            else:
+                self.panel.setAdvisorSummary(recommendation)
         else:
             self.panel.setAdvisorSummary(None)
         self.window.projectActions.refresh()
 
     def train(self) -> None:
+        # 仅 Resume 模式携带 source；Restart 带选中项会被 prepare 拒绝（review Blocker 1）
+        resume_source = (self.panel.selectedTrainingRunId()
+                         if self.panel.trainingMode() == "resume" else None)
         self._start(self.panel.trainingParameters(),
                     training_mode=self.panel.trainingMode(),
-                    resume_from_run_id=self.panel.selectedTrainingRunId())
+                    resume_from_run_id=resume_source)
 
     def infer(self) -> None:
         self._start(self.panel.inferenceParameters(), self.panel.selectedTrainingRunId())
 
     def _advisor_recommendation(self, session, track_id, runs):
         """从活动会话采集不可变快照并计算 Advisor 建议（纯计算，不落盘）。"""
-        from concurrent.futures import CancelledError  # noqa: F401 (保持导入面一致)
         try:
             return recommend_training_action(self._build_advisor_input(session, track_id, runs))
         except Exception as error:  # Advisor 属辅助信息，采集失败不阻塞面板
@@ -293,18 +305,23 @@ class TrackingActions(QObject):
         ) if session.project_root is not None else False
 
         uncovered = False
-        if timeline is not None and manual_points:
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        if (timeline is not None and track is not None and manual_points):
+            # timeline.video_id 对齐 track.video_id（review #3：原实现误用 track_id，
+            # 导致 uncovered 恒 False、plateau 分支静默失效）
             zone_start, zone_end = timeline.working_zone
             span = max(zone_end - zone_start, 1)
             quarter_size = span / 4
             covered = set()
             for p in manual_points:
-                covered.add(min(int((p.frame_index - zone_start) / quarter_size), 3))
+                covered.add(max(0, min(int((p.frame_index - zone_start) / quarter_size), 3)))
             uncovered = len(covered) < 4
 
         _ = track_id  # 已由 runs 过滤；保留参数签名稳定
+        any_task_running = self.pending or any(
+            r.status in {"pending", "running"} for r in runs)
         return AdvisorInput(
-            has_active_task=self.pending,
+            has_active_task=any_task_running,
             artifacts_missing=False,
             validation_valid=session.validate_active_validation_series(track_id)[0]
             if session.get_refinement_state(track_id).active_series is not None else True,

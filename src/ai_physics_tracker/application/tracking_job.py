@@ -219,6 +219,12 @@ def _train(session, run_id, queue, cancel_event, request, adapter):
         if resume_snapshot is None or not resume_snapshot.is_file():
             raise ProjectSessionError(
                 "Resume source snapshot disappeared before training started")
+        if request.resume_snapshot_info is not None:
+            # worker 侧复核指纹，闭合 prepare→spawn 窗口内的 TOCTOU 篡改
+            st = resume_snapshot.stat()
+            if [st.st_size, st.st_mtime_ns] != [int(v) for v in request.resume_snapshot_info]:
+                raise ProjectSessionError(
+                    "Resume source snapshot changed between request and training start")
         send_log(queue, run_id, "INFO",
                  f"Resume training from snapshot: {resume_snapshot.name}")
     outcome = adapter.train(run_id, queue, cancel_event, config_path, parameters,

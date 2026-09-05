@@ -189,7 +189,7 @@ def prepare_training(
         if rev_sum is not None:
             review_summary_dict = {
                 "total_candidates": rev_sum.total_candidates,
-                "reviewed_count": rev_sum.reviewed_count,
+                "reviewed_count": rev_sum.total_reviewed,
                 "pending_count": rev_sum.pending_count,
                 "accepted_count": rev_sum.accepted_count,
                 "skipped_count": rev_sum.skipped_count,

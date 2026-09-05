@@ -497,6 +497,9 @@ class TaskPanel(QDockWidget):
 
         if self.modelList.currentItem() is None and self.modelList.count():
             self.modelList.setCurrentRow(self.modelList.count() - 1)
+        # 切到无训练历史的 track 时复位 Resume 模式，避免点击 Start 才报错（review #6）
+        if not self.modelList.count() and self.trainingMode() == "resume":
+            self.setTrainingMode("restart")
         current_history = self._itemRunId(self.historyList.currentItem())
         self._runs_by_id = {run.run_id: run for run in runs}
         with QSignalBlocker(self.historyList):
@@ -823,7 +826,8 @@ class TaskPanel(QDockWidget):
                 if isinstance(summary, dict) and summary.get("coverage") is not None:
                     coverage = summary["coverage"]
             lines.append(
-                f"prediction_coverage={coverage:.1%}" if coverage is not None
+                f"prediction_coverage={coverage:.1%}"
+                if isinstance(coverage, (int, float)) and not isinstance(coverage, bool)
                 else "prediction_coverage=unavailable"
             )
         return lines

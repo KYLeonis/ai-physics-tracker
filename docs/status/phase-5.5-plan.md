@@ -201,8 +201,10 @@ history 的 mode/source/produced snapshot 可追溯。
 - 偏离计划之处及原因：
   - 真实 DLC smoke 验证 resume 的 epoch 编号从 snapshot 元数据延续
     （001 → 002），证实"epochs = 本次追加"语义与实现一致
+  - Apply Suggestion 不填 source（plan 原文含 source）：避免 Advisor 越权改选
+    模型列表（与规则 9"不得选择 best snapshot"一致），Scope 措辞已同步修正
   - ReviewBatchSummary 字段名为 total_reviewed（非 reviewed_count），Advisor
-    输入采集按实际字段对接
+    输入采集与 5.4 遗留的 training_job 对接处均按实际字段修正
 - 遗留问题：R2 复审延期项（崩溃恢复死锁、shuffle 编号分配、指纹策略）不在本
   Subphase 范围，仍待用户批复
 - 独立 review 结论：进行中（多 subagent 并行审查后补充）

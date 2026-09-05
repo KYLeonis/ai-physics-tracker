@@ -151,3 +151,72 @@ def test_resume_mode_requires_source_and_passes_it_when_present(
     assert win.trackingActions.pending
     recorded = next(r for r in session.tracking_runs() if r.run_id == win.trackingActions._request.run.run_id)
     assert recorded.config.get("training_mode") == "resume"
+
+
+# ---------------------------------------------------------------------------
+# R2 复审修复回归（GUI Blocker 1/2）
+# ---------------------------------------------------------------------------
+
+def test_restart_with_selected_model_starts_training(
+    qtbot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    """Restart + 模型列表有选中项：不得携带 resume source（review Blocker 1）。"""
+    win, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
+                                            _FakeRunner(_FakeHandle()))
+    runner = _FakeRunner(_FakeHandle())
+    win.trackingActions.runner = runner
+    panel = win.trackingActions.panel
+    _completed_train_run(session, track_id)
+    win.trackingActions._context_key = None
+    win.trackingActions.refresh()
+    panel.setTrainingMode("restart")
+    # setRuns 自动选中最后一个模型 —— 复现 Blocker 1 的前置状态
+    assert panel.selectedTrainingRunId() is not None
+
+    win.trackingActions.train()
+    assert runner.calls == 1
+    recorded = next(r for r in session.tracking_runs()
+                    if r.run_id == win.trackingActions._request.run.run_id)
+    assert recorded.config.get("training_mode") == "restart"
+
+
+def test_training_after_active_infer_run_succeeds(
+    qtbot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    """激活 infer run 后启动训练：review summary 字段对接正确（review Blocker 2）。"""
+    win, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
+                                            _FakeRunner(_FakeHandle()))
+    runner = _FakeRunner(_FakeHandle())
+    win.trackingActions.runner = runner
+    video = session.project.videos[0]
+    # 激活需要 observation artifact：写入最小合法交换文件
+    import json as _json
+    now = utc_now()
+    folder = session.project_root / "data" / "engines" / "activation-fixture"
+    folder.mkdir(parents=True, exist_ok=True)
+    obs = folder / "observations.json"
+    obs.write_text(_json.dumps([]), encoding="utf-8")
+    st = obs.stat()
+    infer_run = create_tracking_run(video.video_id, track_id, "infer", engine="dlc",
+                                    source_detail="test-engine")
+    infer_run = mark_run_completed(replace(
+        infer_run,
+        extra_fields={
+            "observations_path": obs.relative_to(session.project_root).as_posix(),
+            "observations_file_info": [st.st_size, st.st_mtime_ns],
+        },
+    ))
+    session.record_tracking_run(infer_run)
+    session.activate_infer_run(track_id, infer_run.run_id)
+    _completed_train_run(session, track_id)
+    win.trackingActions._context_key = None
+    win.trackingActions.refresh()
+    panel = win.trackingActions.panel
+    panel.setTrainingMode("restart")
+
+    win.trackingActions.train()
+    # Blocker 2 修复前：worker 内 AttributeError → 训练失败
+    assert win.trackingActions.pending
+    recorded = next(r for r in session.tracking_runs()
+                    if r.run_id == win.trackingActions._request.run.run_id)
+    assert recorded.status in {"pending", "running"}
