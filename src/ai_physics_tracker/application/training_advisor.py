@@ -304,6 +304,7 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
                 f"{series_note}: validation RMSE plateau "
                 f"(delta {val_delta:.1%} within ±{RMSE_TREND_THRESHOLD:.0%})",
                 f"train RMSE {last.train_rmse:.4g}, validation RMSE {last.validation_rmse:.4g}",
+                *_evidence_extras(inp),
             ),
             limits=(
                 "Stop iterating: compare evaluations across the same series manually; "
