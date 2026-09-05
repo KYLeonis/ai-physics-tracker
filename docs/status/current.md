@@ -138,6 +138,12 @@ Integration & Acceptance：单摆端到端闭环与 AC-9）。
 
 **已批准延期**：Windows 真机/CUDA 延期到 Phase 9 打包前。
 
+**已批复的 5.6 Slice 0 决策（2026-09-04，源自 5.4 R2 复审）**
+
+- A（High）崩溃恢复死锁：打开项目时自动把无进程对应的 pending/running run 标记为 failed。
+- B（Medium）shuffle 编号错位：删除 prepare_training 的 DLC 目录复用路径，强制 per-run 全新目录。
+- C（Medium）激活产物指纹：放宽为仅比对文件大小（放弃 mtime/纳秒比对，接受防篡改强度下降）。
+
 **仓库记录待清理**：GitHub Issue #18 仍为 Open，虽然对应 5.1 runtime findings 已在代码/文档中
 标记完成；5.4 从未创建 Issue #21。两者均未在本轮进行外部状态修改。
 

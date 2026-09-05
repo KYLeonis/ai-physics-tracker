@@ -120,9 +120,9 @@ per-run 全新 DLC 项目使 shuffle 恒为 1；取消/失败路径干净。
 
 | # | Severity | 问题 | 建议处置 |
 | --- | --- | --- | --- |
-| A | High | **崩溃恢复死锁（GUI F-2 根因）**：任务运行中项目被保存（autosave/手存），之后强退 → 重开后 pending/running run 无进程对应，train/infer/激活全部永久禁用，普通用户只能手改 project.json。根因为 Phase 4 起的既有缺口 | 打开项目时把无对应进程的 pending/running run 标记为 failed（含 "interrupted by shutdown" 信息）。触及持久化数据语义，**需用户批准后实施**（建议随 5.5） |
-| B | Medium | **shuffle 数量/编号语义错位（泄漏 F-1）**：复用同一 DLC 项目目录二次 `create_training_dataset` 会创建 shuffle 2，而训练仍跑 shuffle 1（旧划分）——若两次间 validation series 变化即为真实泄漏。当前 GUI 因 per-run 新目录不可达，但 `prepare_training` 的目录复用路径被测试支持 | prepare 时分配未占用 shuffle 编号写入 `run.config["shuffle"]`，train/evaluate 读 config。跨 prepare→config→train 贯通改动 + 一次"同项目二次训练"真实 DLC 冒烟；**5.5 训练迭代主路径启用前必须完成** |
-| C | Medium | **产物指纹 mtime 纳秒强等值（领域 M-2）**：合法文件拷贝/备份还原改变 mtime 后候选永久无法激活，无 re-baseline 途径 | 候选方案：size-only 回退（弱化篡改检测）或写入 sha256、mtime 不一致时内容哈希复核并重置基线。属防篡改策略调整，**需用户选择方案** |
+| A | High | **崩溃恢复死锁（GUI F-2 根因）**：任务运行中项目被保存（autosave/手存），之后强退 → 重开后 pending/running run 无进程对应，train/infer/激活全部永久禁用 | **已批复（2026-09-04）：方案 1 批准**——打开项目时把无对应进程的 pending/running run 标记为 failed（含 "interrupted by shutdown" 信息）。实施排入 **5.6 Slice 0** |
+| B | Medium | **shuffle 数量/编号语义错位（泄漏 F-1）**：复用同一 DLC 项目目录二次建集会创建 shuffle 2，而训练仍跑 shuffle 1（旧划分）——series 变化即真实泄漏；当前 GUI 因 per-run 新目录不可达 | **已批复（2026-09-04）：方案 2**——删除 prepare_training 的 DLC 目录复用路径，强制每次训练使用全新 per-run 目录，从根上消除该场景。实施排入 **5.6 Slice 0** |
+| C | Medium | **产物指纹 mtime 纳秒强等值（领域 M-2）**：合法文件拷贝/备份还原改变 mtime 后候选永久无法激活 | **已批复（2026-09-04）：方案 2**——激活时的产物指纹放宽为仅比对文件大小（接受防篡改强度下降）。实施排入 **5.6 Slice 0** |
 | D | Low | GUI F-6：非活动 validation series 无法删除、无限累积 | 5.5+/Phase 7（模型库清理）一并处理 |
 | E | Low | 领域 L-3：`refinement_state_v1` 内部未知键在下次写盘被丢弃 | 已选择"文档化契约"方案：序列化处注明内部结构由 v1 独占，扩展需升级版本号 |
 
