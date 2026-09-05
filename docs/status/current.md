@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-04（**5.5 完成并合并；下一步 5.6**）
+- 最后更新：2026-09-05（**5.6 mini-plan 已起草，等待用户确认**）
 
 ---
 
@@ -18,7 +18,7 @@
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
 | Subphase | 5.4 — Iteration History & Result Activation | ⚠️ 实现已合并、Human Review 通过；复核收口待办 |
 | Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
-| Subphase | 5.6 — Refinement Loop Integration & Acceptance | ⬜ 待开始 |
+| Subphase | 5.6 — Refinement Loop Integration & Acceptance | 📝 mini-plan 待确认 |
 
 ## Recently Completed
 
@@ -148,6 +148,11 @@ Integration & Acceptance：单摆端到端闭环与 AC-9）。
 
 ## Next Recommended Action
 
-**进入 5.6**：mini-plan 的 Slice 0 = 上述 A/B/C 三项批复决策的实施与测试；
-随后为 Refinement Loop Integration & Acceptance（单摆端到端闭环与 AC-9）出完整计划。
-按 AGENTS.md §6 会话进入协议执行；5.6 为端到端验收 Subphase，预计触发 Human Review。
+**用户审阅并确认 [Phase 5.6 Mini-plan](phase-5.6-plan.md)**，重点确认：
+
+1. 测试床选择：继续 `experiment/AI_test2`（前半段闭环已有真实证据，省 ~30 帧重复标注）
+   ——若你更想要全新项目的"从零"完整证据链，改为新项目并在确认时说明。
+2. 三类 delta 定义与比较工具形态（纯函数 + CLI 报告，无新 GUI）。
+3. 循环上界 2 轮与"未改善则如实归档"的停止规则。
+
+确认后创建 Issue、建立 `feat/p5.6-loop-acceptance` 分支并执行 Slice 0（A/B/C 落地）。
