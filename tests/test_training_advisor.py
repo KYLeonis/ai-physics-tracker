@@ -255,3 +255,46 @@ def test_worsened_without_candidates_never_suggests_label_more() -> None:
         pending_candidates=0, correction_yield=0.6))
     assert rec.action == ACTION_RESTART
     assert rec.label_count is None
+
+
+# ---------------------------------------------------------------------------
+# 5.6 Slice 1 — coverage 证据对与激活引导
+# ---------------------------------------------------------------------------
+
+def test_improved_evidence_includes_coverage_pair_and_activation_hint() -> None:
+    improving = (_round("r1", 5.0, 4.0), _round("r2", 4.6, 3.9))
+    rec = recommend_training_action(AdvisorInput(
+        recent_rounds=improving, completed_train_runs=2,
+        coverage_previous=0.93, coverage_latest=0.96,
+        latest_infer_run_id="abcd1234-0000-0000-0000-000000000000"))
+    text = "\n".join(rec.evidence)
+    assert "coverage 93.0% → 96.0%" in text
+    assert "not accuracy" in text          # 仅证据，不进规则的声明
+    assert "activate" in text and "abcd1234" in text
+
+
+def test_worsened_keeps_current_activation() -> None:
+    worsened = (_round("r1", 4.0, 3.0), _round("r2", 5.0, 3.0))
+    rec = recommend_training_action(AdvisorInput(
+        recent_rounds=worsened, completed_train_runs=2, pending_candidates=5,
+        latest_infer_run_id="abcd1234-0000-0000-0000-000000000000"))
+    assert rec.action == ACTION_LABEL_MORE
+    assert any("keep the currently activated result" in e for e in rec.evidence)
+
+
+def test_coverage_never_triggers_training_decisions() -> None:
+    """coverage 大涨但 RMSE plateau：不得改变规则结论（coverage 不是精度）。"""
+    plateau = (_round("r1", 4.0, 3.0), _round("r2", 4.02, 3.0))
+    without = recommend_training_action(AdvisorInput(recent_rounds=plateau,
+                                                     completed_train_runs=2))
+    with_cov = recommend_training_action(AdvisorInput(recent_rounds=plateau,
+                                                      completed_train_runs=2,
+                                                      coverage_previous=0.5,
+                                                      coverage_latest=0.99))
+    assert without.action == with_cov.action  # 只多证据行，结论一致
+    assert any("coverage" in e for e in with_cov.evidence)
+
+
+def test_coverage_validation_rejects_out_of_range() -> None:
+    with pytest.raises(ValueError, match="coverage_latest"):
+        AdvisorInput(coverage_latest=1.5)

@@ -317,6 +317,27 @@ class TrackingActions(QObject):
                 covered.add(max(0, min(int((p.frame_index - zone_start) / quarter_size), 3)))
             uncovered = len(covered) < 4
 
+        # 覆盖率证据对（5.6 Slice 1，仅证据行）：最近两个 completed infer run 的
+        # prediction coverage
+        infer_runs_all = sorted(
+            (r for r in runs if r.track_id == track_id and r.task_type == "infer"
+             and r.status == "completed"),
+            key=lambda r: r.created_at)
+
+        def _coverage(infer_run):
+            summary = infer_run.extra_fields.get("prediction_summary_v1")
+            if isinstance(summary, dict) and isinstance(summary.get("coverage"), (int, float)) \
+                    and not isinstance(summary.get("coverage"), bool):
+                return float(summary["coverage"])
+            return None
+
+        coverage_previous = _coverage(infer_runs_all[-2]) if len(infer_runs_all) >= 2 else None
+        coverage_latest = _coverage(infer_runs_all[-1]) if infer_runs_all else None
+        # model_snapshot 为 None 表示该 infer 结果仍是未激活的 Candidate —— 适合激活引导
+        latest_infer_id = (str(infer_runs_all[-1].run_id)
+                           if infer_runs_all and infer_runs_all[-1].model_snapshot is None
+                           else None)
+
         _ = track_id  # 已由 runs 过滤；保留参数签名稳定
         any_task_running = self.pending or any(
             r.status in {"pending", "running"} for r in runs)
@@ -338,6 +359,9 @@ class TrackingActions(QObject):
             uncovered_zone_segments=uncovered,
             requested_batch_size=self.panel.batchSizeSpinBox.value(),
             requested_epochs=self.panel.epochsSpinBox.value(),
+            coverage_previous=coverage_previous,
+            coverage_latest=coverage_latest,
+            latest_infer_run_id=latest_infer_id,
         )
 
     def _interaction_blocked(self) -> bool:
