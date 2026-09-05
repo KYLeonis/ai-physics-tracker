@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:    Phase 5 — AI-assisted Annotation & Refinement 🔄
-Last Delivered:   Phase 5.4 — Iteration History & Result Activation（实现已合并，Human Review 通过）
-Current Subphase: 5.4 audit closure / 5.5 mini-plan 待确认
+Last Delivered:   Phase 5.5 — Training Advisor & Retraining（Human Review 通过）
+Current Subphase: N/A（5.5 已完成，5.6 待开始）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -96,7 +96,7 @@ macOS Human Review、433 项本地测试、真实 CPU GUI 组件闭环及 macOS/
 真实短训练只验证管线，不代表模型精度。经用户批准，Windows 真机/CUDA 延期到 Phase 9 打包前；详情见
 [4.4 计划与验收](docs/status/phase-4.4-plan.md)。
 
-Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道收敛；5.1 完成了基于 DLC uniform/K-means 的代表帧选取（含长视频自适应抽帧与流式 Grab 解码优化，真机验收通过）；5.2 完成了困难帧挖掘——全帧原始预测读取、四信号可解释评分、时间去重与视觉多样性、后台任务与真实单摆基准（策略 Precision@N=0.800 / review yield=0.300，优于最低置信度基线 0.600/0.000）；5.3 完成了建议帧审核队列（Accept/Correct/Skip、prediction provenance 保留、当前帧 manual 点删除、恢复与 Scoped Undo/Redo，Human Review 通过）；5.4 的推理候选隔离、结果激活/替换/清除、固定验证集与互斥训练划分已经合并并通过 Human Review。本轮复核发现 writer 形态与两项历史比较/展示证据仍需收口；完成后进入 5.5 Training Advisor 与再训练。详见
+Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道收敛；5.1 完成了基于 DLC uniform/K-means 的代表帧选取（含长视频自适应抽帧与流式 Grab 解码优化，真机验收通过）；5.2 完成了困难帧挖掘——全帧原始预测读取、四信号可解释评分、时间去重与视觉多样性、后台任务与真实单摆基准（策略 Precision@N=0.800 / review yield=0.300，优于最低置信度基线 0.600/0.000）；5.3 完成了建议帧审核队列（Accept/Correct/Skip、prediction provenance 保留、当前帧 manual 点删除、恢复与 Scoped Undo/Redo，Human Review 通过）；5.4 的推理候选隔离、结果激活/替换/清除、固定验证集与互斥训练划分已经合并并通过 Human Review（复核缺口已随 5.5 Entry Gate 关闭）；5.5 完成了确定性规则型 Training Advisor 与显式 Restart/Resume 再训练管线（lineage 可追溯，真实 DLC restart/resume smoke 通过）。下一步 5.6 将做单摆端到端闭环验收。详见
 [Phase 5 requirements](docs/spec/phase5-requirements.md) 与 [PHASE_5_PLAN](docs/status/phase-5-plan.md)。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
@@ -110,7 +110,7 @@ Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道�
 | Phase 2 | Video Analysis MVP | ✅ 已完成（2026-08-30，Windows 真机验收延后） |
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
-| Phase 5 | AI-assisted Annotation & Refinement | 🔄 5.4 复核收口；5.5 mini-plan 待确认 |
+| Phase 5 | AI-assisted Annotation & Refinement | 🔄 5.0–5.5 已完成，5.6 待开始 |
 | Phase 6 | Advanced Physics Analysis | ⬜ |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
@@ -130,7 +130,7 @@ Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道�
 - ✅ src-layout 核心/GUI 包、锁定依赖与自动化测试；GitHub Actions 覆盖 macOS/Windows Python 3.11，最新验证见 current.md
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
-- 🔄 Phase 5 进行中：5.4 实现已合并但有复核收口项；5.5 Training Advisor & Retraining mini-plan 待确认
+- 🔄 Phase 5 进行中：5.0–5.5 已完成（5.4 复核缺口随 5.5 Entry Gate 关闭）；F2 已由 5.4 关闭
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引

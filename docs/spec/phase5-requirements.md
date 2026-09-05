@@ -1,6 +1,7 @@
 # Phase 5 — AI-assisted Annotation & Refinement 需求规范
 
-> 状态：**Accepted（2026-09-01；5.4 实现已合并但有复核收口项，5.5 规划中）**
+> 状态：**Accepted（2026-09-01；R1–R7 已随 Subphase 5.1–5.5 实现，5.6 端到端验收待开始；
+> 实施证据以各 Subphase plan/review 与 current status 为准）**
 > 本文定义产品边界、数据语义与验收口径；实施状态以各 Subphase plan 与 current status 为准。实施顺序见
 > [PHASE_5_PLAN](../status/phase-5-plan.md)。Phase 4 基线见
 > [Phase 4 requirements](phase4-requirements.md)、[ADR-0011](../decisions/0011-deeplabcut-integration-architecture.md)、
@@ -179,8 +180,8 @@ accepted/skipped、training parameters、resume/restart、source/produced snapsh
 | 5.1 ✅ | Representative Frame Selection | DLC uniform/K-means 建议帧；后台、可取消、可复核 |
 | 5.2 ✅ | Difficult Frame Mining | 原始预测候选池、可解释评分、时序去重、DLC 视觉多样性、Top N |
 | 5.3 ✅ | Suggested Frame Review & Correction | Accept/Correct/Skip、provenance、恢复与 Human Review |
-| 5.4 🔄 | Iteration History & Result Activation | 实现已合并；ADR writer 与历史比较/展示证据待收口 |
-| 5.5 | Training Advisor & Retraining | 规则建议、resume/restart、snapshot/epochs/batch size、跨轮比较 |
+| 5.4 ✅ | Iteration History & Result Activation | Candidate 模式、激活/替换/清除原子事务、fixed validation series（复核缺口已随 5.5 Entry Gate 关闭） |
+| 5.5 ✅ | Training Advisor & Retraining | 确定性规则 Advisor、显式 restart/resume（DLC snapshot 贯通）、跨轮比较与 lineage 追溯 |
 | 5.6 | Refinement Loop Integration & Acceptance | 单摆闭环、量化对比、全回归、独立 review 与 Human Review |
 
 ---

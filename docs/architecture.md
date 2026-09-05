@@ -107,6 +107,12 @@ uniform/K-means 路径 + `FrameSelectionActions`，支持显式候选帧集合�
 screening 补齐；`difficult_frame_job.py` 的 run/产物身份绑定与后台 worker；`benchmark.py` 与
 `scripts/benchmark_difficult_frames.py` 的盲评基准工具链）。挖掘 worker 不持有活动
 ProjectSession，结果只含帧号与解释性分量，不创建 TrackPoint。
+5.3 审核队列（`application/suggested_frame_review.py` 契约 + `ProjectSession` 原子
+accept/skip/correct 事务 + Scoped Undo/Redo + `DifficultFrameReviewActions`）；5.4 结果
+激活与迭代历史（ADR-0014：`refinement_state_v1`/`refinement_iteration_v1`、`track_store`
+投影替换、`validation_dialog`）；5.5 训练 Advisor 与再训练（ADR-0015：
+`application/training_advisor.py` 确定性规则引擎、DLC `train_network(snapshot_path=...)`
+resume 管线、lineage 随 train run 追溯；Advisor 建议为界面状态，不持久化）。
 
 ## 4. 运动学计算与可视化（Phase 3/6 起细化）
 

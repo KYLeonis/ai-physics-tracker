@@ -148,8 +148,8 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 | 5.1 ✅ | Representative Frame Selection | DLC uniform/K-means 初始建议帧，自适应抽帧优化与 Human Review 通过 |
 | 5.2 ✅ | Difficult Frame Mining | 全帧原始预测读取、四信号可解释评分 + screening 补齐、时间去重/多样性、后台任务与真实基准（AC-10 达成） |
 | 5.3 ✅ | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复（Human Review 通过） |
-| 5.4 🔄 | Iteration History & Result Activation | 实现已合并、Human Review 通过；ADR writer 与历史比较/展示证据待收口 |
-| 5.5 | Training Advisor & Retraining | 规则建议、DLC resume/restart 与跨轮比较 |
+| 5.4 ✅ | Iteration History & Result Activation | Candidate 模式、Activate/Replace/Clear 原子事务、fixed validation series（复核缺口已随 5.5 Entry Gate 关闭） |
+| 5.5 ✅ | Training Advisor & Retraining | 确定性规则 Advisor、显式 restart/resume（DLC snapshot 贯通）、跨轮比较与 lineage 追溯（真实 DLC smoke + HR 通过） |
 | 5.6 | Refinement Loop Integration & Acceptance | 单摆端到端闭环与量化验收 |
 
 **验收标准**

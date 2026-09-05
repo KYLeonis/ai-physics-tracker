@@ -92,7 +92,8 @@
 
 1. 创建独立环境（venv，Python 3.11–3.12）
 2. 安装依赖：`pip install -e .`（`pyproject.toml` 包含 `deeplabcut>=3.0,<4.0`；5.2 起显式声明 `scikit-learn`，此前为 DLC 传递依赖，见 Issue #18）
-3. 本地验证：`python scripts/smoke_test_dlc_train.py`（单摆合成视频 1 epoch 冒烟验证）
+3. 本地验证：`python scripts/smoke_test_dlc_train.py`（单摆合成视频 restart + resume
+    两段冒烟：1 epoch 固定划分训练后，从该 snapshot 在新 run 目录追加 1 epoch）
 4. 设备探测与计算加速：
    - macOS (Apple Silicon)：自动使用 MPS 加速（降级为 CPU 稳定运行）
    - Windows (NVIDIA GPU)：自动使用 CUDA 加速

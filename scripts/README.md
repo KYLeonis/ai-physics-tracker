@@ -20,6 +20,9 @@
 运动学计算及保存重开。默认使用新的临时目录；成功和失败的文件均保留，脚本会打印位置。
 需要本地已安装 DLC/PyTorch/Pandas/PyTables；不用于无 DLC 的 CI，也不代表跟踪精度验收。
 
+`smoke_test_dlc_train.py`：5.4/5.5 的真实 DLC 训练冒烟。固定划分（3/2）1 epoch restart
+后，在新 run 项目目录从该 snapshot resume 追加 1 epoch，断言产出新 snapshot 且不覆盖
+parent；需要本地 DLC 环境。
 `smoke_test_gui_tracking.py`：4.4 的 GUI 组件集成冒烟。在 offscreen 平台创建主窗口，
 使用独立合成视频/项目，通过 Task Panel 启动真实 CPU 训练、评价和推理并验证结果。
 产物保留，不操作用户实验文件。它仅验证接线和数据，不替代 AGENTS.md 的真人 Human Review。
