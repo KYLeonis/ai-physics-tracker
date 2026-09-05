@@ -15,7 +15,11 @@
                            → 三类 delta 比较 → 用户显式激活 → 证据归档
 ```
 
-**AC-9 的"三类 delta"**（同一 validation series 上，同指标同单位）：
+**呈现原则（2026-09-05 与用户确认）**：三类 delta **不设任何用户可见的报告/界面**，
+全部由后台自动计算并汇入 Advisor——用户全程只看 Advisor 的"一行建议 + 证据行"。
+收尾时由 Agent 生成归档报告（`docs/benchmarks/`，验收证据），用户无需阅读。
+
+**AC-9 的"三类 delta"**（同一 validation series 上，同指标同单位；均为 Advisor 内部输入）：
 
 | delta | 定义 | 来源（均已随 run 落盘，无新 schema） |
 | --- | --- | --- |
@@ -40,14 +44,19 @@ AC-9 不假定必然改善：delta 如实记录；若未改善，按 Advisor 规
 
 验收：三项各有定向测试；全量回归 + compileall 通过；5.4 review record 对应行标记 Done。
 
-## Slice 1 — 迭代比较报告（AC-9 的"报告三类 delta"）
+## Slice 1 — delta 内化为 Advisor 输入 + 激活引导（无新用户界面）
 
-- 新增 Qt-free 纯函数模块（如 `application/iteration_compare.py`）：输入当前 track 的
-  completed train/infer runs，输出同 series 相邻两轮的 delta 摘要值对象（精度/覆盖/工作量，
-  附不可比原因说明）；**不写盘、不新增 GUI 窗口**。
-- `scripts/benchmark_difficult_frames.py` 风格的 CLI 或最小入口（`scripts/compare_iterations.py`）
-  打印/写出 markdown 报告（进 `docs/benchmarks/phase-5-loop-report.md`，人工证据归档）。
-- 表驱动测试：改善/恶化/持平、不同 series 不可比、指标名/单位不一致拒绝、单轮无 delta。
+- **输入扩展**（`_build_advisor_input`）：补采集同一 series 相邻两轮的 coverage 对
+  （经 infer run `config.training_run_id` 关联 train run，再取两个 infer run 的
+  `prediction_summary_v1.coverage`）；9 条规则合同**不变**，coverage 仅入证据行，
+  绝不作决策依据（规范：coverage 不是精度）。
+- **激活引导**（证据行增强，非新 action）：improved 时证据附"iteration N 优于 N-1
+  （同 series），可激活 run xxxxxxxx"；worsened 时明示"建议保留当前激活结果"。
+  仅陈述事实与建议，**绝不自动激活**（硬性不变式）。
+- **Agent 侧归档工具**（`scripts/generate_loop_report.py`，开发工具不进产品）：从
+  project.json 读取闭环各 run，产出三类 delta 的 markdown 归档（AC-9 验收证据）。
+- 测试：coverage 证据行出现/不出现、激活建议指向正确 run、worsened 时不建议激活、
+  9 条规则回归全部不变。
 
 ## Slice 2 — 真实单摆闭环执行（用户参与的半自动流程）
 
@@ -61,12 +70,13 @@ iter0=test RMSE 3.3 已在盘）。理由：AC-9 前半段（建议帧→标注�
 2. **用户**在审核队列逐帧 Accept/Correct/Skip（预计 ≤15 分钟；Correct 产生新训练标签）。
 3. **用户**查看 Advisor 建议（预期：新增标签 → resume 25 epochs）并确认或手选参数。
 4. Agent/用户启动 retrain（resume，同 series）→ reinfer 全视频。
-5. Agent 运行 Slice 1 工具生成三类 delta 报告；**用户**确认后显式 Activate 新结果。
+5. delta 后台自动汇入 Advisor；**用户**只看 Advisor 建议（含激活引导），显式 Activate
+   新结果（worsened 时按建议保留现结果，回到补标注路径）。
 6. 若精度 delta 未改善：按 Advisor 证据决定再补一轮标注（循环上界 **2 轮**）；仍无改善则
    如实归档失败证据与原因分析（AC-9 允许），此时与用户讨论是否继续。
 
-**产物**：`docs/benchmarks/phase-5-loop-report.md`（闭环各阶段 run id、三类 delta、
-激活记录、结论），作为 AC-9 与"至少一次可复现改善"的证据。
+**产物**：`docs/benchmarks/phase-5-loop-report.md` 由 Agent 在闭环完成后生成归档（用户
+无需阅读），含闭环各阶段 run id、三类 delta、激活记录与结论，作为 AC-9 证据。
 
 ## Slice 3 — Phase 5 总验收与收尾
 
@@ -79,7 +89,9 @@ iter0=test RMSE 3.3 已在盘）。理由：AC-9 前半段（建议帧→标注�
 
 ## 不做
 
-- 不新增 GUI 窗口/控件（闭环使用既有 5.1–5.5 交互；AC-11 的 HR 针对既有交互串联体验）。
+- 不新增 GUI 窗口/控件，**不设用户可见的 delta 报告**（三类 delta 仅为 Advisor 内部输入
+  与 Agent 归档证据；AC-11 的 HR 针对既有交互串联体验）。
+- coverage 不进入 Advisor 决策规则（仅证据行）；Advisor 不自动激活结果（只给事实性建议）。
 - 不改 schema、不加新持久化字段（delta 报告消费既有 run 记录）。
 - 不做 Windows/CUDA 真机验收（已批准延期至 Phase 9 前）。
 - 不自动激活结果、不自动循环训练（每轮由用户显式启动/确认，Phase 5 硬性不变式）。
@@ -87,8 +99,10 @@ iter0=test RMSE 3.3 已在盘）。理由：AC-9 前半段（建议帧→标注�
 ## 验收标准
 
 - [ ] Slice 0 三项（A/B/C）落地并有测试；5.4 review record 状态更新
-- [ ] 比较工具对同 series 两轮正确产出三类 delta；不可比场景拒绝并说明
-- [ ] 真实闭环完成：Correct → retrain → reinfer → 报告 → 用户激活，全程 run id 可追溯
+- [ ] 三类 delta 后台自动汇入 Advisor（coverage 仅证据、不入规则）；improved/worsened
+  的激活引导正确且绝不自动激活；归档工具可从 project.json 复现三类 delta
+- [ ] 真实闭环完成：Correct → retrain → reinfer → 用户按 Advisor 建议显式激活，
+  全程 run id 可追溯
 - [ ] `phase-5-loop-report.md` 归档三类 delta 与结论；若改善未达成，含原因分析
 - [ ] AC-1–AC-11 全部勾选且有证据链接；Phase 5 收官文档同步、合并、push、Issue 关闭
 - [ ] 全量回归 + compileall + 独立 review + Human Review 通过
@@ -109,7 +123,7 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest \
   tests/test_iteration_compare.py -v   # Slice 0/1 定向
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest           # 全量
 .venv/bin/python -m compileall src scripts
-.venv/bin/python scripts/compare_iterations.py --project experiment/AI_test2   # Slice 2 报告
+.venv/bin/python scripts/generate_loop_report.py --project experiment/AI_test2  # 归档证据
 ```
 
 ## Result（收尾时填写）
