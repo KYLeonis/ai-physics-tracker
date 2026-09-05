@@ -161,6 +161,7 @@
 
 **顺带项（记录于 `docs/status/phase-5.2-plan.md` §Deferred Findings）**：
 
-- F3b（`_kmeans_via_dlc` 改名 `_kmeans_via_sklearn` + docstring 修正）→ 5.2 Slice 3 触碰 `dlc_adapter.py` 时顺带。
-- F4（选帧取消入口 + 取消措辞）、F6（算法下拉改用 itemData）→ 随 **5.3 GUI** 一并处理：5.2 plan 明确"不新增 GUI"，且 5.2 将新增 mining 后台任务，取消交互宜在 5.3 为选帧/mining 统一设计一次。
+- F3b ✅ 已随 5.2 Slice 3 完成（`_kmeans_via_sklearn` 改名 + docstring 修正）。
+- F4 ✅ 已随 5.3 完成：选帧/挖掘获得中性取消（`_finish_cancelled`，无 Failed 前缀）与取消入口。
+- F6 ✅ 已随 5.3 完成：算法下拉改用 `currentData()` 显式映射。
 
