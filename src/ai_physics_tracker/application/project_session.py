@@ -1821,7 +1821,10 @@ class ProjectSession:
         file_info = target_run.extra_fields.get("observations_file_info")
         if file_info is not None:
             st = obs_file.stat()
-            if [st.st_size, st.st_mtime_ns] != list(file_info)[:2]:
+            # 5.6 Slice 0（用户批复方案 2）：仅比对文件大小。合法拷贝/备份还原会
+            # 更新 mtime，纳秒级强等值会永久拒绝激活；接受防篡改强度下降。
+            recorded_size = int(file_info[0])
+            if st.st_size != recorded_size:
                 raise ProjectSessionError("Observation artifact was modified after inference completed")
 
         video = next((v for v in self._project.videos if v.video_id == target_run.video_id), None)
