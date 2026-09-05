@@ -288,14 +288,20 @@ def test_run_details_expose_iteration_traceability(qtbot: QtBot) -> None:
             "review_summary": {"total_candidates": 10, "reviewed_count": 7,
                                "pending_count": 3, "accepted_count": 4,
                                "corrected_count": 2, "skipped_count": 1},
+            "training_mode": "resume",
+            "resume_from_training_run_id": str(uuid4()),
         },
         "evaluation": {"status": "completed"},
     })
+    run = replace(run, config={**run.config, "epochs": 25, "training_mode": "resume"})
     panel._runs_by_id = {source_infer_id: source_run, run_id: run}
 
     panel.setRunDetails(run)
     text = panel.detailsLabel.text()
     assert "iteration=1" in text
+    assert "training_mode=resume" in text
+    assert "resume_source=" in text
+    assert "epochs_this_run=25" in text
     assert "training_labels=1" in text
     assert "validation_labels=1" in text
     assert str(series_id) in text
@@ -310,10 +316,14 @@ def test_run_details_expose_iteration_traceability(qtbot: QtBot) -> None:
             "source_infer_run_id": None,
             "validation_series_id": None,
             "training_labels": [{"frame_index": 1}, {"frame_index": 2}],
+            "training_mode": "restart",
+            "resume_from_training_run_id": None,
         },
     })
     panel.setRunDetails(run_no_val)
     text = panel.detailsLabel.text()
     assert "training_labels=2" in text
+    assert "training_mode=restart" in text
+    assert "resume_source" not in text
     assert "no fixed validation" in text
     assert "cross-iteration RMSE comparison unavailable" in text

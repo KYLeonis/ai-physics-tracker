@@ -786,6 +786,17 @@ class TaskPanel(QDockWidget):
         if not isinstance(iter_info, dict) or iter_info.get("iteration_index") is None:
             return lines
         lines.append(f"iteration={iter_info['iteration_index']}")
+        # lineage 展示（plan Scope：实际 mode、resume source、本次 epochs）
+        mode = iter_info.get("training_mode")
+        if mode:
+            mode_line = f"training_mode={mode}"
+            if mode == "resume" and iter_info.get("resume_from_training_run_id"):
+                mode_line += (f" · resume_source="
+                              f"{str(iter_info['resume_from_training_run_id'])[:8]}")
+            lines.append(mode_line)
+        epochs_this_run = run.config.get("epochs")
+        if epochs_this_run is not None:
+            lines.append(f"epochs_this_run={epochs_this_run}")
         train_labels = iter_info.get("training_labels")
         if isinstance(train_labels, list):
             lines.append(f"training_labels={len(train_labels)}")
