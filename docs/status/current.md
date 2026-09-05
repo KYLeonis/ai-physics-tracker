@@ -144,16 +144,10 @@ Integration & Acceptance：单摆端到端闭环与 AC-9）。
 - B（Medium）shuffle 编号错位：删除 prepare_training 的 DLC 目录复用路径，强制 per-run 全新目录。
 - C（Medium）激活产物指纹：放宽为仅比对文件大小（放弃 mtime/纳秒比对，接受防篡改强度下降）。
 
-**仓库记录待清理**：GitHub Issue #18 仍为 Open，虽然对应 5.1 runtime findings 已在代码/文档中
-标记完成；5.4 从未创建 Issue #21。两者均未在本轮进行外部状态修改。
+**仓库记录**：GitHub Issue #18/#19/#21 均已关闭（2026-09-04/05），无未结 Issue。
 
 ## Next Recommended Action
 
-1. **用户确认 5.5 mini-plan 与 Slice 0 收口门槛**：先对齐 ADR-0014 writer、补齐 5.4 的
-   双轮/跨 series 证据与完整 history details，再进入 Advisor。
-2. 重点批准 `±5%` RMSE 趋势阈值、`1.5×` generalization gap、
-   3/5/10 标注档位、25/50 additional epochs，以及 `refinement_iteration_v1` 的两个新增字段。
-3. 批准后创建 Phase 5.5 GitHub Issue 和 `feat/p5.5-training-advisor-retraining` 分支，先执行 Slice 0。
-4. Slice 0 全绿后新增 ADR-0015，并同步 `docs/spec/project-format.md` 与
-   `docs/spec/phase5-requirements.md`。
-5. 再从 Slice 1 开始 Advisor 与 retraining 实现；mini-plan 文档只保留本地提交，用户明确允许前不 push。
+**进入 5.6**：mini-plan 的 Slice 0 = 上述 A/B/C 三项批复决策的实施与测试；
+随后为 Refinement Loop Integration & Acceptance（单摆端到端闭环与 AC-9）出完整计划。
+按 AGENTS.md §6 会话进入协议执行；5.6 为端到端验收 Subphase，预计触发 Human Review。
