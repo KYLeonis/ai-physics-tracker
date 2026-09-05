@@ -148,11 +148,9 @@ Integration & Acceptance：单摆端到端闭环与 AC-9）。
 
 ## Next Recommended Action
 
-**用户审阅并确认 [Phase 5.6 Mini-plan](phase-5.6-plan.md)**，重点确认：
+**Phase 5.6 Mini-plan 已按讨论结论修订（2026-09-05）**：测试床 = 继续用 `experiment/AI_test2`；
+三类 delta 全部内化为 Advisor 后台输入（无用户可见报告；coverage 仅证据不入规则）；
+激活由 Advisor 给事实性建议、用户显式执行；归档报告由 Agent 生成于 docs/benchmarks。
 
-1. 测试床选择：继续 `experiment/AI_test2`（前半段闭环已有真实证据，省 ~30 帧重复标注）
-   ——若你更想要全新项目的"从零"完整证据链，改为新项目并在确认时说明。
-2. 三类 delta 定义与比较工具形态（纯函数 + CLI 报告，无新 GUI）。
-3. 循环上界 2 轮与"未改善则如实归档"的停止规则。
-
-确认后创建 Issue、建立 `feat/p5.6-loop-acceptance` 分支并执行 Slice 0（A/B/C 落地）。
+等待用户对修订版 [phase-5.6-plan.md](phase-5.6-plan.md) 最终确认后，创建 Issue、建立
+`feat/p5.6-loop-acceptance` 分支并执行 Slice 0（A/B/C 落地）。
