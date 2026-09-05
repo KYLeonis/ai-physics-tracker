@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.4 完成状态复核发现收口缺口；5.5 mini-plan 待确认**）
+- 最后更新：2026-09-04（**5.5 完成并合并；下一步 5.6**）
 
 ---
 
@@ -17,7 +17,8 @@
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
 | Subphase | 5.4 — Iteration History & Result Activation | ⚠️ 实现已合并、Human Review 通过；复核收口待办 |
-| Subphase | 5.5 — Training Advisor & Retraining | 📝 mini-plan 草案待用户确认 |
+| Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
+| Subphase | 5.6 — Refinement Loop Integration & Acceptance | ⬜ 待开始 |
 
 ## Recently Completed
 
@@ -109,19 +110,14 @@
 
 ## Current Goal
 
-**5.5 mini-plan 已形成草案；实现前先关闭 Phase 5.4 复核缺口。**
-
-计划见 [phase-5.5-plan.md](phase-5.5-plan.md)。等待用户确认规则阈值、resume/fine-tune 语义与
-持久化扩展；确认前不新增 ADR-0015、不创建 5.5 Issue/开发分支，也不开始 Slice 0 或产品代码。
+**5.5 已完成并合并**（693 tests、真实 DLC restart/resume smoke、独立 review 三路 20 条
+findings 闭环、Human Review 通过）。等待下一条指令进入 **5.6**（Refinement Loop
+Integration & Acceptance：单摆端到端闭环与 AC-9）。
 
 ## Current Worktree Note
 
-本轮规划提交后，工作区另有 4 个非本轮产生的未提交源码改动：
-`project_session.py`、`refinement_history.py`、`training_job.py`、`dlc_adapter.py`。这些改动保持原样，
-未纳入规划提交；定向运行 refinement/result activation/training/DLC adapter 测试得到
-**31 passed, 5 failed**，失败均因新增的 `video_reader.info.frame_count` 读取与现有 MagicMock 不兼容。
-开始 Slice 0 前须由这些改动的所有者完成或撤回，并重新跑全回归；已提交 `13f48c2` 基线及其 CI
-仍为 652 passed / 双平台成功。
+（已解决 2026-09-04）此前记录的 4 个未提交源码改动为 5.4 R2 复审加固（提交 `8352191`/`c54e875`），
+全量 **658 passed**，`compileall` 通过；worktree 现已干净。
 
 ## Current Decisions / Deferred Checks
 

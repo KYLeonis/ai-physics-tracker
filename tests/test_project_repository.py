@@ -638,3 +638,51 @@ def test_save_load_roundtrip_preserves_refinement_state_and_iteration(
     assert loaded_summary.coverage == 0.8
 
 
+
+
+def test_refinement_iteration_resume_lineage_roundtrip(tmp_path: Path) -> None:
+    """ADR-0015 lineage（training_mode/resume source）经保存重开完整保留。"""
+    from ai_physics_tracker.domain.project import create_project
+    from ai_physics_tracker.domain.track import Track
+    from ai_physics_tracker.domain.tracking_run import (
+        create_tracking_run as _create_run,
+    )
+    from ai_physics_tracker.domain.types import utc_now as _utc_now
+
+    root = tmp_path / "repo-proj"
+    root.mkdir(parents=True)
+    repo = ProjectRepository()
+    project = create_project("lineage")
+
+    video = Video(uuid4(), PurePosixPath("videos/a.mp4"), "a", 10, 10, 30.0, 10)
+    project = add_video(project, video, Timeline(video.video_id, 30.0, (0, 9)))
+    track = Track(track_id=uuid4(), video_id=video.video_id, name="T", color="#123456",
+                  created_at=_utc_now())
+    from dataclasses import replace as _replace_tracks
+    project = _replace_tracks(project, tracks=(track,))
+
+    parent_id = uuid4()
+    run = _create_run(video.video_id, track.track_id, "train", engine="dlc")
+    run = replace(run, config={**run.config, "epochs": 25, "training_mode": "resume"})
+    run = attach_refinement_iteration(
+        run,
+        RefinementIterationInfo(
+            iteration_index=2,
+            previous_training_run_id=parent_id,
+            source_infer_run_id=None,
+            validation_series_id=None,
+            training_labels=(),
+            review_summary=None,
+            training_mode="resume",
+            resume_from_training_run_id=parent_id,
+        ),
+    )
+    repo.save(root, replace(project, tracking_runs=(run,)))
+
+    loaded = repo.load(root)
+    loaded_run = loaded.tracking_runs[0]
+    assert loaded_run.config["training_mode"] == "resume"
+    info = extract_refinement_iteration(loaded_run)
+    assert info is not None
+    assert info.training_mode == "resume"
+    assert info.resume_from_training_run_id == parent_id

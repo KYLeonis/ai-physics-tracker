@@ -181,3 +181,72 @@ def test_prepare_training_rejects_invalid_or_all_consuming_validation_series(tmp
     with pytest.raises(ProjectSessionError, match="Active validation series 'Val Frame 0' is invalid"):
         prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
 
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.5 Entry Gate — 5.4 审计缺口闭环证据
+# ---------------------------------------------------------------------------
+
+def test_refinement_state_writer_emits_series_map_and_reads_legacy_list(tmp_path: Path) -> None:
+    """writer 按 ADR-0014 输出 series_id → series 映射；reader 兼容旧 list 形态。"""
+    from ai_physics_tracker.application.refinement_history import (
+        deserialize_refinement_state, extract_refinement_state,
+        serialize_refinement_state,
+    )
+
+    session, reader, _ = _setup_session_with_track(tmp_path, point_count=4)
+    track = session.tracks[0]
+    series = session.create_validation_series(track.track_id, "Val", [10, 30])
+    # create_validation_series 经 replace 产生新 Track 对象，须重新获取
+    track = session.tracks[0]
+
+    state = extract_refinement_state(track)
+    payload = serialize_refinement_state(state)
+    assert isinstance(payload["validation_series"], dict)
+    assert set(payload["validation_series"].keys()) == {str(series.series_id)}
+
+    # 字典形态往返
+    restored = deserialize_refinement_state(payload)
+    assert restored.get_series(series.series_id) is not None
+    assert restored.active_validation_series_id == series.series_id
+
+    # 旧 list 形态（5.4 早期落盘）仍可读取
+    legacy = dict(payload)
+    legacy["validation_series"] = list(payload["validation_series"].values())
+    restored_legacy = deserialize_refinement_state(legacy)
+    assert restored_legacy.get_series(series.series_id) is not None
+
+
+def test_two_training_runs_reuse_same_validation_series(tmp_path: Path) -> None:
+    """两次 train run 复用同一 validation series：series id 一致是跨轮比较前提（Entry Gate）。"""
+    session, reader, _ = _setup_session_with_track(tmp_path, point_count=5)
+    track = session.tracks[0]
+    adapter = MockEngineAdapter()
+    val_series = session.create_validation_series(track.track_id, "Fixed Val 1", [10, 30])
+
+    run_a, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    run_b, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    iter_a = extract_refinement_iteration(run_a)
+    iter_b = extract_refinement_iteration(run_b)
+    assert iter_a.validation_series_id == val_series.series_id
+    assert iter_b.validation_series_id == val_series.series_id
+    # 同 series 且标签未变 → 两轮 training labels 一致，RMSE 趋势可比
+    assert [s.point_id for s in iter_a.training_labels] == [s.point_id for s in iter_b.training_labels]
+
+
+def test_different_validation_series_breaks_cross_iteration_comparison(tmp_path: Path) -> None:
+    """更换 series 后新 run 记录新 id：不同 series 的两轮不得直接比较（Entry Gate）。"""
+    session, reader, _ = _setup_session_with_track(tmp_path, point_count=5)
+    track = session.tracks[0]
+    adapter = MockEngineAdapter()
+
+    series_a = session.create_validation_series(track.track_id, "Val A", [10, 30])
+    run_a, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    series_b = session.create_validation_series(track.track_id, "Val B", [0, 20])
+    run_b, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+
+    iter_a = extract_refinement_iteration(run_a)
+    iter_b = extract_refinement_iteration(run_b)
+    assert iter_a.validation_series_id == series_a.series_id
+    assert iter_b.validation_series_id == series_b.series_id
+    assert iter_a.validation_series_id != iter_b.validation_series_id

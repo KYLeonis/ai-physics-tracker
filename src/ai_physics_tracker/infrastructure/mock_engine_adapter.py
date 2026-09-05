@@ -38,6 +38,7 @@ class MockEngineAdapter:
         self.created_projects: list[Path] = []
         self.exported_counts: list[int] = []
         self.created_datasets: list[Path] = []
+        self.resume_snapshots: list[Path | None] = []  # 每次 train 收到的 snapshot_path
         self.created_dataset_splits: list[tuple[list[int] | None, list[int] | None]] = []
 
     def engine_version(self) -> str:
@@ -105,9 +106,11 @@ class MockEngineAdapter:
         cancel_event: Any,
         config_path: Path,
         params: TrainingParams,
+        snapshot_path: Path | None = None,
     ) -> TrainOutcome:
-        """模拟执行训练，支持流式进度、取消与快照产出。"""
+        """模拟执行训练，支持流式进度、取消、快照产出与 Resume。"""
 
+        self.resume_snapshots.append(snapshot_path)
         send_log(queue, run_id, "INFO", f"Mock training started for {config_path.name}")
         epochs = params.epochs
         delay = float(params.extra_params.get("simulate_delay", 0.01))

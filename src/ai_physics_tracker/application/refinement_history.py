@@ -156,7 +156,11 @@ class RefinementState:
 
 @dataclass(frozen=True)
 class RefinementIterationInfo:
-    """训练运行 (train run) 的迭代解释层快照。"""
+    """训练运行 (train run) 的迭代解释层快照。
+
+    training_mode/resume_from_training_run_id 为 5.5 新增（ADR-0015）；
+    旧 run 缺失时按 restart/None 读取（5.5 前不存在产品级 resume 入口）。
+    """
 
     iteration_index: int
     previous_training_run_id: UUID | None = None
@@ -164,14 +168,21 @@ class RefinementIterationInfo:
     validation_series_id: UUID | None = None
     training_labels: tuple[ValidationLabelSnapshot, ...] = ()
     review_summary: dict[str, Any] | None = None
+    training_mode: str = "restart"                # "restart" | "resume"（ADR-0015）
+    resume_from_training_run_id: UUID | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.iteration_index, int) or self.iteration_index < 0:
             raise ValueError(f"iteration_index must be a non-negative int, got {self.iteration_index}")
+        if self.training_mode not in {"restart", "resume"}:
+            raise ValueError(
+                f"training_mode must be 'restart' or 'resume', got {self.training_mode!r}")
         if not isinstance(self.training_labels, tuple):
             object.__setattr__(self, "training_labels", tuple(self.training_labels))
         if self.review_summary is not None:
             object.__setattr__(self, "review_summary", dict(self.review_summary))
+        if self.training_mode == "resume" and self.resume_from_training_run_id is None:
+            raise ValueError("resume training_mode requires resume_from_training_run_id")
 
 
 @dataclass(frozen=True)
@@ -374,7 +385,12 @@ def serialize_refinement_state(state: RefinementState) -> dict[str, Any]:
             if state.active_validation_series_id is not None
             else None
         ),
-        "validation_series": [serialize_validation_series(s) for s in state.validation_series],
+        # ADR-0014 形态：series_id → ValidationSeries 映射；反序列化仍兼容
+        # 5.4 早期落盘的 list 形式，不迁移旧项目
+        "validation_series": {
+            str(series.series_id): serialize_validation_series(series)
+            for series in state.validation_series
+        },
     }
 
 
@@ -444,6 +460,11 @@ def serialize_refinement_iteration(info: RefinementIterationInfo) -> dict[str, A
         ),
         "training_labels": [serialize_validation_snapshot(s) for s in info.training_labels],
         "review_summary": dict(info.review_summary) if info.review_summary is not None else None,
+        "training_mode": info.training_mode,
+        "resume_from_training_run_id": (
+            str(info.resume_from_training_run_id)
+            if info.resume_from_training_run_id is not None else None
+        ),
     }
 
 
@@ -467,6 +488,9 @@ def deserialize_refinement_iteration(data: Any) -> RefinementIterationInfo | Non
 
     rev_sum = data.get("review_summary")
     review_summary = dict(rev_sum) if isinstance(rev_sum, dict) else None
+    # ADR-0015：旧 run 无这两个键时按 restart/None 读取
+    training_mode = data.get("training_mode", "restart")
+    resume_from = _parse_uuid(data.get("resume_from_training_run_id"))
 
     try:
         return RefinementIterationInfo(
@@ -476,6 +500,8 @@ def deserialize_refinement_iteration(data: Any) -> RefinementIterationInfo | Non
             validation_series_id=val_id,
             training_labels=tuple(labels),
             review_summary=review_summary,
+            training_mode=training_mode,
+            resume_from_training_run_id=resume_from,
         )
     except (ValueError, TypeError):
         return None

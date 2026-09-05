@@ -81,13 +81,30 @@ class TaskPanel(QDockWidget):
         self.deviceComboBox = QComboBox()
         self.deviceComboBox.addItems(["auto", "cpu", "mps", "cuda"])
 
+        # Phase 5.5：Restart/Resume 模式与 Advisor 摘要（ADR-0015）
+        self.trainingModeComboBox = QComboBox()
+        self.trainingModeComboBox.addItems(["Restart", "Resume (fine-tune)"])
+        self.trainingModeComboBox.setToolTip(
+            "Resume continues from the selected model's snapshot; "
+            "'Epochs' then means additional epochs for this run.")
+        self.advisorLabel = QLabel("Advisor: select a track with training history")
+        self.advisorLabel.setWordWrap(True)
+        self.advisorApplyButton = QPushButton("Apply Suggestion")
+        self.advisorApplyButton.setToolTip(
+            "Fill mode / epochs / batch size from the suggestion. Never starts training.")
+        self.advisorApplyButton.setEnabled(False)
+        self.advisorApplyButton.clicked.connect(self._onApplySuggestionClicked)
+
         trainForm = QFormLayout()
-        trainForm.addRow("Epochs", self.epochsSpinBox)
+        trainForm.addRow("Mode", self.trainingModeComboBox)
+        trainForm.addRow("Epochs this run", self.epochsSpinBox)
         trainForm.addRow("Batch size", self.batchSizeSpinBox)
         trainForm.addRow("Device", self.deviceComboBox)
         self.trainButton = QPushButton("Start Training")
         trainLayout = QVBoxLayout()
         trainLayout.addLayout(trainForm)
+        trainLayout.addWidget(self.advisorLabel)
+        trainLayout.addWidget(self.advisorApplyButton)
         trainLayout.addWidget(self.trainButton)
         trainGroup = QGroupBox("Training")
         trainGroup.setLayout(trainLayout)
@@ -261,7 +278,9 @@ class TaskPanel(QDockWidget):
         self._active_run_id: UUID | None = None
         self._current_track_id: UUID | None = None
         self._busy: bool = False
+        self._latest_advisor = None
         self._project_busy: bool = False
+        self._ref_state: Any | None = None
         self._runs_by_id: dict[UUID, TrackingRun] = {}
         self._active_run_ids_by_track: dict[UUID, UUID] = {}
 
@@ -340,6 +359,56 @@ class TaskPanel(QDockWidget):
         self.reviewCorrectButton.clicked.connect(lambda: self.reviewCorrectRequested.emit())
         self.deleteManualPointButton.clicked.connect(lambda: self.deleteManualPointRequested.emit())
         self.reviewCandidatesList.itemDoubleClicked.connect(self._onReviewCandidateDoubleClicked)
+
+    def trainingMode(self) -> str:
+        """返回当前选择的训练模式："restart" 或 "resume"。"""
+
+        return "resume" if self.trainingModeComboBox.currentIndex() == 1 else "restart"
+
+    def setTrainingMode(self, mode: str) -> None:
+        """供 Apply Suggestion 填入模式。"""
+
+        self.trainingModeComboBox.setCurrentIndex(1 if mode == "resume" else 0)
+
+    def setAdvisorSummary(self, recommendation) -> None:
+        """展示 Advisor 单一建议摘要与证据；None 表示无可给建议。"""
+
+        self._latest_advisor = recommendation
+        if recommendation is None:
+            self.advisorLabel.setText("Advisor: select a track with training history")
+            self.advisorApplyButton.setEnabled(False)
+            return
+        params = []
+        if recommendation.epochs is not None:
+            params.append(f"epochs={recommendation.epochs}")
+        if recommendation.batch_size is not None:
+            params.append(f"batch={recommendation.batch_size}")
+        if recommendation.label_count is not None:
+            params.append(f"label {recommendation.label_count} more frame(s)")
+        summary = f"Advisor: {recommendation.action}"
+        if params:
+            summary += f" ({', '.join(params)})"
+        if recommendation.evidence:
+            summary += "\n· " + "\n· ".join(recommendation.evidence)
+        if recommendation.limits:
+            summary += "\nLimits: " + " ".join(recommendation.limits)
+        self.advisorLabel.setText(summary)
+        fillable = recommendation.action in {"restart", "resume"} and (
+            recommendation.epochs is not None or recommendation.batch_size is not None)
+        self.advisorApplyButton.setEnabled(fillable)
+
+    def _onApplySuggestionClicked(self) -> None:
+        """Apply Suggestion 只填表（mode/epochs/batch），绝不自动启动训练。"""
+
+        rec = self._latest_advisor
+        if rec is None:
+            return
+        if rec.training_mode:
+            self.setTrainingMode(rec.training_mode)
+        if rec.epochs is not None:
+            self.epochsSpinBox.setValue(rec.epochs)
+        if rec.batch_size is not None:
+            self.batchSizeSpinBox.setValue(rec.batch_size)
 
     def trainingParameters(self) -> TrainingParams:
         """返回当前训练控件的不可变参数快照。"""
@@ -428,6 +497,9 @@ class TaskPanel(QDockWidget):
 
         if self.modelList.currentItem() is None and self.modelList.count():
             self.modelList.setCurrentRow(self.modelList.count() - 1)
+        # 切到无训练历史的 track 时复位 Resume 模式，避免点击 Start 才报错（review #6）
+        if not self.modelList.count() and self.trainingMode() == "resume":
+            self.setTrainingMode("restart")
         current_history = self._itemRunId(self.historyList.currentItem())
         self._runs_by_id = {run.run_id: run for run in runs}
         with QSignalBlocker(self.historyList):
@@ -490,6 +562,7 @@ class TaskPanel(QDockWidget):
                 lines.append(str(evaluation["reason"]))
         if run.error_message:
             lines.append(run.error_message)
+        lines.extend(self._iteration_detail_lines(run))
         self.detailsLabel.setText("\n".join(lines))
 
     def appendLog(self, text: str) -> None:
@@ -604,6 +677,7 @@ class TaskPanel(QDockWidget):
         """更新当前 Track 的 AI 激活状态与固定验证集状态。"""
         self._active_status = active_status
         self._active_run_id = active_run_id
+        self._ref_state = ref_state
 
         if active_status == "active" and active_run_id is not None:
             self.activeRunLabel.setText(f"Active AI: <b>{str(active_run_id)[:8]}</b>")
@@ -686,8 +760,7 @@ class TaskPanel(QDockWidget):
             label += f" · {run.model_snapshot.replace(chr(92), chr(47)).rsplit(chr(47), 1)[-1]}"
         return label
 
-    @staticmethod
-    def _runDetails(run: TrackingRun) -> str:
+    def _runDetails(self, run: TrackingRun) -> str:
         details = [
             f"run_id={run.run_id}",
             f"task={run.task_type}",
@@ -700,14 +773,89 @@ class TaskPanel(QDockWidget):
         for key in ("import_summary", "evaluation"):
             if key in run.extra_fields:
                 details.append(f"{key}={run.extra_fields[key]}")
+
+        details.extend(self._iteration_detail_lines(run))
         if run.error_message:
             details.append(f"error={run.error_message}")
-        iter_info = run.extra_fields.get("refinement_iteration_v1")
-        if isinstance(iter_info, dict) and iter_info.get("validation_series_id"):
-            # 跨轮比较只认同一 validation series；展示所用 series 供用户核对
-            # （review：plan AC"不同 series 不宣称可直接比较"）
-            details.append(f"validation_series={iter_info['validation_series_id']}")
         return "\n".join(details)
+
+    def _iteration_detail_lines(self, run: TrackingRun) -> list[str]:
+        """训练迭代的完整可追溯展示（label 数、审核摘要、coverage、可比性）。"""
+        lines: list[str] = []
+        iter_info = run.extra_fields.get("refinement_iteration_v1")
+        if not isinstance(iter_info, dict) or iter_info.get("iteration_index") is None:
+            return lines
+        lines.append(f"iteration={iter_info['iteration_index']}")
+        # lineage 展示（plan Scope：实际 mode、resume source、本次 epochs）
+        mode = iter_info.get("training_mode")
+        if mode:
+            mode_line = f"training_mode={mode}"
+            if mode == "resume" and iter_info.get("resume_from_training_run_id"):
+                mode_line += (f" · resume_source="
+                              f"{str(iter_info['resume_from_training_run_id'])[:8]}")
+            lines.append(mode_line)
+        epochs_this_run = run.config.get("epochs")
+        if epochs_this_run is not None:
+            lines.append(f"epochs_this_run={epochs_this_run}")
+        train_labels = iter_info.get("training_labels")
+        if isinstance(train_labels, list):
+            lines.append(f"training_labels={len(train_labels)}")
+        series_id = iter_info.get("validation_series_id")
+        if series_id:
+            val_count = self._validation_label_count(series_id)
+            lines.append(
+                f"validation_labels={val_count if val_count is not None else 'unavailable'}"
+                f" · validation_series={series_id}"
+            )
+        else:
+            lines.append(
+                "validation_labels=0 · no fixed validation — "
+                "cross-iteration RMSE comparison unavailable"
+            )
+        review = iter_info.get("review_summary")
+        if isinstance(review, dict):
+            lines.append(
+                "review_summary="
+                + ", ".join(
+                    f"{key}={review[key]}"
+                    for key in ("total_candidates", "reviewed_count", "pending_count",
+                                "accepted_count", "corrected_count", "skipped_count")
+                    if key in review
+                )
+            )
+            if review.get("pending_count"):
+                lines.append(f"remaining_candidates={review['pending_count']}")
+        source_infer = iter_info.get("source_infer_run_id")
+        if source_infer:
+            try:
+                source_run = self._runs_by_id.get(UUID(str(source_infer)))
+            except (TypeError, ValueError):
+                source_run = None
+            coverage = None
+            if source_run is not None:
+                summary = source_run.extra_fields.get("prediction_summary_v1")
+                if isinstance(summary, dict) and summary.get("coverage") is not None:
+                    coverage = summary["coverage"]
+            lines.append(
+                f"prediction_coverage={coverage:.1%}"
+                if isinstance(coverage, (int, float)) and not isinstance(coverage, bool)
+                else "prediction_coverage=unavailable"
+            )
+        return lines
+
+    def _validation_label_count(self, series_id: str) -> int | None:
+        """按 id 在当前 Track 的 refinement 状态中查 series 标签数；查不到返回 None。
+
+        series 快照不可变，历史评价的标签数因此可追溯；跨 track/legacy 场景
+        可能无数据，此时展示 unavailable 而不是伪造数值。
+        """
+        try:
+            target = UUID(str(series_id))
+        except (TypeError, ValueError):
+            return None
+        ref_state = self._ref_state
+        series = ref_state.get_series(target) if ref_state is not None else None
+        return len(series.label_snapshots) if series is not None else None
 
     # --- 建议帧公共接口（Phase 5.1）---
 

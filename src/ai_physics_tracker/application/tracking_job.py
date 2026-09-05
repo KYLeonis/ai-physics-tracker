@@ -32,7 +32,11 @@ from ai_physics_tracker.infrastructure.task_runner import TaskResult, Background
 
 @dataclass(frozen=True)
 class TrackingRequest:
-    """project 为不可变领域快照；可变会话和 Qt 对象不跨进程。"""
+    """project 为不可变领域快照；可变会话和 Qt 对象不跨进程。
+
+    training_mode/resume_*（ADR-0015）仅 train 请求使用：resume_snapshot_path
+    是 GUI 侧校验过的绝对路径，worker 启动前再次确认存在。
+    """
 
     project: Project
     project_root: Path
@@ -42,11 +46,17 @@ class TrackingRequest:
     training_run_id: UUID | None = None
     video_path: Path | None = None
     video_file_info: tuple[int, int] | None = None
+    training_mode: str = "restart"            # "restart" | "resume"
+    resume_from_training_run_id: UUID | None = None
+    resume_snapshot_path: Path | None = None
+    resume_snapshot_info: tuple[int, int] | None = None
 
 
 def prepare_tracking_request(session: ProjectSession, track_id: UUID,
                              parameters: TrainingParams | InferenceParams,
-                             training_run_id: UUID | None = None) -> TrackingRequest:
+                             training_run_id: UUID | None = None,
+                             training_mode: str = "restart",
+                             resume_from_training_run_id: UUID | None = None) -> TrackingRequest:
     """仅检查内存条件和捕获快照；不导入引擎、读视频或扫描文件。"""
     if session.project_root is None:
         raise ProjectSessionError("Save the project before starting an AI task")
@@ -56,10 +66,38 @@ def prepare_tracking_request(session: ProjectSession, track_id: UUID,
     if any(run.status in {"pending", "running"} for run in session.tracking_runs()):
         raise ProjectSessionError("Another AI task is active")
     detail = session.measurement_timing_detail(track.video_id)
+    resume_snapshot_path: Path | None = None
+    resume_snapshot_info: tuple[int, int] | None = None
     if isinstance(parameters, TrainingParams):
         if len(session.manual_points(track_id)) < 3:
             raise ProjectSessionError("Mark at least 3 distinct frames before training")
+        if training_mode not in {"restart", "resume"}:
+            raise ProjectSessionError(f"Unknown training mode: {training_mode!r}")
+        if training_mode == "resume":
+            if resume_from_training_run_id is None:
+                raise ProjectSessionError("Resume training requires a resume source run")
+            parent = next((r for r in session.tracking_runs()
+                           if r.run_id == resume_from_training_run_id), None)
+            if (parent is None or parent.task_type != "train" or parent.status != "completed"
+                    or parent.track_id != track_id or not parent.model_snapshot):
+                raise ProjectSessionError(
+                    "Resume source must be a completed training run of this track with a snapshot")
+            snapshot = (session.project_root / parent.model_snapshot).resolve()
+            if not snapshot.is_file():
+                raise ProjectSessionError(
+                    f"Resume source snapshot is missing: {parent.model_snapshot}")
+            st = snapshot.stat()
+            recorded = parent.extra_fields.get("model_file_info")
+            if recorded is not None and [st.st_size, st.st_mtime_ns] != [int(v) for v in recorded]:
+                raise ProjectSessionError(
+                    "Resume source snapshot has changed; select a current training run")
+            resume_snapshot_path = snapshot
+            resume_snapshot_info = (st.st_size, st.st_mtime_ns)
+        elif resume_from_training_run_id is not None:
+            raise ProjectSessionError(
+                "resume_from_training_run_id requires training_mode='resume'")
         config = parameters.to_config()
+        config["training_mode"] = training_mode
         task_type = "train"
     else:
         trained = next((run for run in session.tracking_runs() if run.run_id == training_run_id), None)
@@ -77,7 +115,9 @@ def prepare_tracking_request(session: ProjectSession, track_id: UUID,
         raise ProjectSessionError("Video file is missing")
     stat = path.stat()
     return TrackingRequest(session.project, session.project_root, run, parameters, detail,
-                           training_run_id, path.resolve(), (stat.st_size, stat.st_mtime_ns))
+                           training_run_id, path.resolve(), (stat.st_size, stat.st_mtime_ns),
+                           training_mode, resume_from_training_run_id,
+                           resume_snapshot_path, resume_snapshot_info)
 
 
 def _owned_session(project: Project, request: TrackingRequest) -> ProjectSession:
@@ -167,12 +207,28 @@ def _train(session, run_id, queue, cancel_event, request, adapter):
         reader.open(path)
         run, config_path = prepare_training(
             session, request.run.track_id, reader, parameters, adapter,
-            working_dir=request.project_root / "data" / "engines" / str(run_id))
+            working_dir=request.project_root / "data" / "engines" / str(run_id),
+            mode=request.training_mode,
+            resume_from_run_id=request.resume_from_training_run_id)
     finally:
         reader.close()
     if cancel_event.is_set():
         raise CancelledError()
-    outcome = adapter.train(run_id, queue, cancel_event, config_path, parameters)
+    resume_snapshot = request.resume_snapshot_path
+    if request.training_mode == "resume":
+        if resume_snapshot is None or not resume_snapshot.is_file():
+            raise ProjectSessionError(
+                "Resume source snapshot disappeared before training started")
+        if request.resume_snapshot_info is not None:
+            # worker 侧复核指纹，闭合 prepare→spawn 窗口内的 TOCTOU 篡改
+            st = resume_snapshot.stat()
+            if [st.st_size, st.st_mtime_ns] != [int(v) for v in request.resume_snapshot_info]:
+                raise ProjectSessionError(
+                    "Resume source snapshot changed between request and training start")
+        send_log(queue, run_id, "INFO",
+                 f"Resume training from snapshot: {resume_snapshot.name}")
+    outcome = adapter.train(run_id, queue, cancel_event, config_path, parameters,
+                            snapshot_path=resume_snapshot)
     if outcome.status == "cancelled":
         raise CancelledError()
     if outcome.status != "completed" or not outcome.snapshot_path or not Path(outcome.snapshot_path).is_file():

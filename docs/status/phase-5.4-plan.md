@@ -173,13 +173,14 @@ Human Review 在自动化、真实 DLC smoke 与独立 review 全绿后进行，
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：2026-09-03 / `13f48c2`
-- AC 勾选结果：收尾时曾标记 11 项通过；2026-09-03 复核后改为 **9/11 有充分证据**。待补：
-  双 train run 同 series/跨 series 比较测试，以及完整 history details 展示与 GUI 断言。
-- 偏离计划之处及原因：无实质偏离。在独立 Review 建议下增强了 DLC 配置的 `TrainingFraction` 自动同步，保证真实 DLC 引擎创建训练集后训练与评价路径严密匹配。
-- 遗留问题：`validation_series` writer 当前输出 list，与 ADR-0014 的 series-id mapping 表述不一致；
-  reader 已兼容两种形态。连同上述 2 项 AC 缺口，作为 5.5 实现前 Entry Gate 收口。GitHub Issue
-  未按工作流创建，文档曾误写为 #21，复核时已纠正。
+- 完成日期 / 合并 commit：2026-09-03 / `13f48c2`；Entry Gate 收口：2026-09-04（随 5.5 分支）
+- AC 勾选结果：**11/11 有充分证据**（Entry Gate 已于 2026-09-04 补齐：双 train run 同 series/
+  跨 series 不可比证据测试、`_runDetails`/详情面板完整迭代展示与 GUI 断言）。
+- 偏离计划之处及原因：无实质偏离。在独立 Review 建议下增强了 DLC 配置的 `TrainingFraction` 自动同步。
+- 遗留问题：`validation_series` writer 已改为 ADR-0014 的 series-id 映射形态（reader 兼容旧 list，
+  不迁移旧项目）；`ActivationRecord` 新增容错 `superseded_count` 字段（R2 复审 M-1 语义统一）。
+  复审其余延期项（崩溃恢复死锁、shuffle 编号、指纹策略）记录于
+  [phase-5.4-review.md](../reviews/phase-5.4-review.md) R2 轮，随 5.5+ 处置。
 - 独立 review 结论：
   - 派出 2 个子智能体（Domain & Transaction Reviewer + GUI & Test Reviewer），报告包含 F-01~F-09 以及领域边界 P1~P3 findings。
   - 全部 finding 均已 100% 针对性解决并编写补充测试覆盖。

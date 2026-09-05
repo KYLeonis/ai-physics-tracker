@@ -301,13 +301,15 @@ class DLCAdapter:
         cancel_event: Any,
         config_path: Path,
         params: TrainingParams,
+        snapshot_path: Path | None = None,
     ) -> TrainOutcome:
-        """在当前进程或子进程中调用 DLC 训练。"""
+        """在当前进程或子进程中调用 DLC 训练；snapshot_path 用于 Resume/fine-tune。"""
         outcome_dict = dlc_train_worker(
             run_id=run_id,
             queue=queue,
             cancel_event=cancel_event,
             config_path_str=str(config_path),
+            snapshot_path_str=str(snapshot_path) if snapshot_path is not None else None,
             max_epochs=params.epochs,
             shuffle=params.shuffle,
             device=params.device,
@@ -646,8 +648,13 @@ def dlc_train_worker(
     trainingsetindex: int = 0,
     save_iters: int = 50,
     learning_rate: float = 0.001,
+    snapshot_path_str: str | None = None,
 ) -> dict[str, Any]:
-    """子进程中的 DLC 训练工作入口函数。"""
+    """子进程中的 DLC 训练工作入口函数。
+
+    snapshot_path_str 非 None 时传入 DLC `train_network(snapshot_path=...)`，
+    从该 snapshot 继续权重训练（ADR-0015 Resume/fine-tune）。
+    """
 
     config_path = Path(config_path_str)
     send_log(queue, run_id, "INFO", f"DLC training process started for {config_path.name}")
@@ -675,8 +682,7 @@ def dlc_train_worker(
             }
             if cancel_event.is_set():
                 return {"status": "cancelled", "epochs_completed": 0}
-            deeplabcut.train_network(
-                str(config_path),
+            train_kwargs: dict[str, Any] = dict(
                 shuffle=shuffle,
                 trainingsetindex=trainingsetindex,
                 epochs=max_epochs,
@@ -686,6 +692,9 @@ def dlc_train_worker(
                 save_epochs=save_iters,
                 pytorch_cfg_updates={"runner.optimizer.params.lr": learning_rate},
             )
+            if snapshot_path_str is not None:
+                train_kwargs["snapshot_path"] = snapshot_path_str
+            deeplabcut.train_network(str(config_path), **train_kwargs)
 
             snapshots = _model_snapshots(config_path, shuffle, trainingsetindex)
             changed = [

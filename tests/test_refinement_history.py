@@ -274,12 +274,19 @@ def test_serialization_and_deserialization_roundtrips() -> None:
     assert restored_state.validation_series[0].name == "Test Series"
     assert restored_state.validation_series[0].label_snapshots[0].frame_index == 15
 
-    # Dictionary form of validation_series (ADR-0014 schema tolerance)
-    dict_form = dict(loaded_dict)
-    dict_form["validation_series"] = {str(series.series_id): loaded_dict["validation_series"][0]}
-    restored_from_dict = deserialize_refinement_state(dict_form)
+    # Writer now emits the ADR-0014 dict form natively (5.5 Entry Gate)
+    assert isinstance(loaded_dict["validation_series"], dict)
+    assert set(loaded_dict["validation_series"].keys()) == {str(series.series_id)}
+    restored_from_dict = deserialize_refinement_state(loaded_dict)
     assert len(restored_from_dict.validation_series) == 1
     assert restored_from_dict.validation_series[0].name == "Test Series"
+
+    # Legacy list form (early 5.4 files) still deserializes (schema tolerance)
+    legacy_form = dict(loaded_dict)
+    legacy_form["validation_series"] = list(loaded_dict["validation_series"].values())
+    restored_from_legacy = deserialize_refinement_state(legacy_form)
+    assert len(restored_from_legacy.validation_series) == 1
+    assert restored_from_legacy.validation_series[0].name == "Test Series"
 
     # RefinementIterationInfo roundtrip
     iter_info = RefinementIterationInfo(

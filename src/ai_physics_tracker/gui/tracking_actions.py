@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 from uuid import UUID
 
+import logging
+
 from PySide6.QtCore import QObject, QTimer, Qt
+
+logger = logging.getLogger(__name__)
 from PySide6.QtWidgets import QMessageBox
 
 from ai_physics_tracker.application.tracking_job import (
@@ -16,9 +20,47 @@ from ai_physics_tracker.application.tracking_job import (
     read_frame_selection_result, FrameSelectionRunner, FrameSelectionJobRequest,
 )
 from ai_physics_tracker.application.refinement_history import extract_refinement_state
+from ai_physics_tracker.application.training_advisor import (
+    OOM_MARKERS, AdvisorInput, RoundMetrics, recommend_training_action)
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
 from ai_physics_tracker.application.tracking_types import TaskProgress, TaskLog, TaskResult
 from ai_physics_tracker.gui.task_panel import TaskPanel
+
+
+def _evaluation_rmse(evaluation: dict) -> tuple[float, float, str, str] | None:
+    """从 train run 的 evaluation 提取 (train, validation) RMSE 与名称/单位。
+
+    兼容两种形态：DLC 原生 {train: {metrics: {...}}, test: {...}} 与
+    Mock 的 {metrics: {train_rmse, test_rmse}, unit}；无共同指标返回 None。
+    """
+    if not isinstance(evaluation, dict):
+        return None
+    unit = "px"
+    if isinstance(evaluation.get("metrics"), dict):
+        metrics = evaluation["metrics"]
+        if isinstance(metrics.get("train_rmse"), (int, float)) and                 isinstance(metrics.get("test_rmse"), (int, float)):
+            unit = str(evaluation.get("unit", "px"))
+            return float(metrics["train_rmse"]), float(metrics["test_rmse"]), "rmse", unit
+        return None
+    train_block = evaluation.get("train")
+    test_block = evaluation.get("test")
+    if not (isinstance(train_block, dict) and isinstance(test_block, dict)):
+        return None
+    train_metrics = train_block.get("metrics")
+    test_metrics = test_block.get("metrics")
+    if not (isinstance(train_metrics, dict) and isinstance(test_metrics, dict)):
+        return None
+    common = set(train_metrics) & set(test_metrics)
+    preferred = [name for name in sorted(common) if "rmse" in name.lower()]
+    if not preferred:
+        return None
+    name = preferred[0]
+    train_value, test_value = train_metrics[name], test_metrics[name]
+    if not (isinstance(train_value, (int, float)) and isinstance(test_value, (int, float))):
+        return None
+    if isinstance(evaluation.get("units"), dict):
+        unit = str((train_block.get("units") or {}).get(name, "px"))
+    return float(train_value), float(test_value), name, unit
 
 if TYPE_CHECKING:
     from ai_physics_tracker.gui.main_window import MainWindow
@@ -102,7 +144,11 @@ class TrackingActions(QObject):
         session = self.window.analysisSession
         video_id, track_id = self.window.activeVideoId, self.window.selectedTrackId
         key = (id(session.project) if session else None, video_id, track_id, self.pending,
-               session.can_measure(video_id) if session and video_id else False)
+               session.can_measure(video_id) if session and video_id else False,
+               self.window.projectActions.busy,
+               getattr(self.window, "frameSelectionActions", None) is not None
+               and self.window.frameSelectionActions.busy,
+               self.window.reviewActions.busy if hasattr(self.window, "reviewActions") else False)
         if key == self._context_key:
             return
         self._context_key = key
@@ -164,13 +210,135 @@ class TrackingActions(QObject):
         self.panel.setContext(video.display_name if video else "No video", track.name if track else "No track",
                               train_reason, infer_reason, self.pending,
                               project_busy=self.window.projectActions.busy)
+        if session and track_id:
+            recommendation = self._advisor_recommendation(session, track_id, runs)
+            if recommendation is None:
+                # 采集失败与"未选 track"区分（review #11）
+                self.panel.setAdvisorSummary(None)
+                self.panel.advisorLabel.setText(
+                    "Advisor: unavailable (input collection failed — see log)")
+            else:
+                self.panel.setAdvisorSummary(recommendation)
+        else:
+            self.panel.setAdvisorSummary(None)
         self.window.projectActions.refresh()
 
     def train(self) -> None:
-        self._start(self.panel.trainingParameters())
+        # 仅 Resume 模式携带 source；Restart 带选中项会被 prepare 拒绝（review Blocker 1）
+        resume_source = (self.panel.selectedTrainingRunId()
+                         if self.panel.trainingMode() == "resume" else None)
+        self._start(self.panel.trainingParameters(),
+                    training_mode=self.panel.trainingMode(),
+                    resume_from_run_id=resume_source)
 
     def infer(self) -> None:
         self._start(self.panel.inferenceParameters(), self.panel.selectedTrainingRunId())
+
+    def _advisor_recommendation(self, session, track_id, runs):
+        """从活动会话采集不可变快照并计算 Advisor 建议（纯计算，不落盘）。"""
+        try:
+            return recommend_training_action(self._build_advisor_input(session, track_id, runs))
+        except Exception as error:  # Advisor 属辅助信息，采集失败不阻塞面板
+            logger.warning("advisor input failed: %s", error)
+            return None
+
+    def _build_advisor_input(self, session, track_id, runs) -> AdvisorInput:
+        timeline = next((t for t in session.project.timelines if t.video_id == track_id), None)
+        completed_train = [r for r in runs
+                           if r.track_id == track_id and r.task_type == "train"
+                           and r.status == "completed"]
+        failed_train = [r for r in runs
+                        if r.track_id == track_id and r.task_type == "train"
+                        and r.status == "failed"]
+        last_failed = failed_train[-1] if failed_train else None
+        last_failure_oom = False
+        if last_failed is not None:
+            error_text = str(last_failed.error_message or "").lower()
+            last_failure_oom = any(marker in error_text for marker in OOM_MARKERS)
+
+        latest_train = completed_train[-1] if completed_train else None
+        manual_points = [p for p in session.manual_points(track_id)]
+        new_labels = 0
+        if latest_train is not None and latest_train.completed_at is not None:
+            new_labels = sum(
+                1 for p in manual_points if p.modified_at > latest_train.completed_at)
+
+        recent_rounds: list[RoundMetrics] = []
+        for train_run in completed_train:
+            evaluation = train_run.extra_fields.get("evaluation")
+            iteration = train_run.extra_fields.get("refinement_iteration_v1")
+            if not isinstance(evaluation, dict) or not isinstance(iteration, dict):
+                continue
+            metrics_pair = _evaluation_rmse(evaluation)
+            if metrics_pair is None:
+                continue
+            train_rmse, val_rmse, metric_name, unit = metrics_pair
+            recent_rounds.append(RoundMetrics(
+                training_run_id=str(train_run.run_id),
+                validation_series_id=iteration.get("validation_series_id"),
+                train_rmse=train_rmse,
+                validation_rmse=val_rmse,
+                metric_name=metric_name,
+                metric_unit=unit,
+            ))
+
+        # 审核统计：当前 track 最新 completed infer run 的 review summary
+        infer_runs = [r for r in runs
+                      if r.track_id == track_id and r.task_type == "infer"
+                      and r.status == "completed"]
+        pending_candidates = 0
+        correction_yield = None
+        if infer_runs:
+            latest_infer = infer_runs[-1]
+            try:
+                rev_sum = session.get_review_summary(latest_infer.run_id)
+            except Exception:
+                rev_sum = None
+            if rev_sum is not None:
+                pending_candidates = rev_sum.pending_count
+                if rev_sum.total_reviewed > 0:
+                    correction_yield = rev_sum.corrected_count / rev_sum.total_reviewed
+
+        has_compatible_source = any(
+            r.model_snapshot and (session.project_root / r.model_snapshot).is_file()
+            for r in completed_train
+        ) if session.project_root is not None else False
+
+        uncovered = False
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        if (timeline is not None and track is not None and manual_points):
+            # timeline.video_id 对齐 track.video_id（review #3：原实现误用 track_id，
+            # 导致 uncovered 恒 False、plateau 分支静默失效）
+            zone_start, zone_end = timeline.working_zone
+            span = max(zone_end - zone_start, 1)
+            quarter_size = span / 4
+            covered = set()
+            for p in manual_points:
+                covered.add(max(0, min(int((p.frame_index - zone_start) / quarter_size), 3)))
+            uncovered = len(covered) < 4
+
+        _ = track_id  # 已由 runs 过滤；保留参数签名稳定
+        any_task_running = self.pending or any(
+            r.status in {"pending", "running"} for r in runs)
+        return AdvisorInput(
+            has_active_task=any_task_running,
+            artifacts_missing=False,
+            validation_valid=session.validate_active_validation_series(track_id)[0]
+            if session.get_refinement_state(track_id).active_series is not None else True,
+            validation_invalid_reason=session.validate_active_validation_series(track_id)[1]
+            if session.get_refinement_state(track_id).active_series is not None else None,
+            last_train_failed=last_failed is not None,
+            last_failure_is_oom=last_failure_oom,
+            pending_candidates=pending_candidates,
+            completed_train_runs=len(completed_train),
+            new_labels_since_last_train=new_labels,
+            has_compatible_source=has_compatible_source,
+            recent_rounds=tuple(recent_rounds),
+            correction_yield=correction_yield,
+            uncovered_zone_segments=uncovered,
+            requested_batch_size=self.panel.batchSizeSpinBox.value(),
+            requested_epochs=self.panel.epochsSpinBox.value(),
+        )
 
     def _interaction_blocked(self) -> bool:
         """激活/验证集操作的统一互斥口径，与 refresh() 的禁用原因对齐（review F-5）。"""
@@ -315,7 +483,8 @@ class TrackingActions(QObject):
         self._context_key = None
         self.refresh()
 
-    def _start(self, parameters, training_run_id=None) -> None:
+    def _start(self, parameters, training_run_id=None,
+               training_mode: str = "restart", resume_from_run_id: UUID | None = None) -> None:
         if self.pending or self.window.projectActions.busy:
             return
         if self.window.frameSelectionActions.busy:
@@ -326,7 +495,9 @@ class TrackingActions(QObject):
             return
         session = self.window.analysisSession
         try:
-            request = prepare_tracking_request(session, self.window.selectedTrackId, parameters, training_run_id)
+            request = prepare_tracking_request(
+                session, self.window.selectedTrackId, parameters, training_run_id,
+                training_mode=training_mode, resume_from_training_run_id=resume_from_run_id)
             run = replace(request.run, extra_fields={"log_path": f"data/engines/{request.run.run_id}.log"})
             request = replace(request, run=run)
             session.record_tracking_run(run)
