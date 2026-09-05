@@ -18,7 +18,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | 5.1 | [phase-5.1-review.md](phase-5.1-review.md) | 修改后通过；3 智能体并发审查识别 7 项 finding 全部闭环，长视频性能优化 46 倍，Human Review 验收通过，495 测试全绿 | 2026-09-02 |
 | 5.2 | [phase-5.2-review.md](phase-5.2-review.md) | 修改后通过；R1/R2 findings 闭环 + R2.5 真实数据语义修正 + R3 基准达成（policy 0.800/0.300 vs baseline 0.600/0.000）+ R4 终审 4 项轻量加固，581 测试全绿 | 2026-09-02 |
 | 5.3 | [phase-5.3-review.md](phase-5.3-review.md) | 通过（R1 双智能体并发审查，12 项 finding 全部闭环，621 测试全绿） | 2026-09-03 |
-| 5.5 | [phase-5.5-review.md](phase-5.5-review.md) | 修改后通过；R1 三路（A/B subagent，C 配额失败自查补位）20 条 findings 全部闭环（含 2 Blocker），693 测试 + 真实 DLC restart/resume smoke 通过；待 Human Review | 2026-09-04 |
+| 5.5 | [phase-5.5-review.md](phase-5.5-review.md) | 修改后通过；R1 三路 20 条 findings 全部闭环（含 2 Blocker），693 测试 + 真实 DLC restart/resume smoke + Human Review 通过 | 2026-09-04 |
 | 5.4 | [phase-5.4-review.md](phase-5.4-review.md) | 初始 17 项 findings 闭环；R2 三路复审（激活事务/泄漏防线/GUI）15 项轻量直修 + 5 项决策/大修记录（A 崩溃恢复死锁、B shuffle 编号、C 指纹策略待批准），658 测试全绿 | 2026-09-03 |
 
 > 4.3 / 4.4 的独立 review 发生于本机制建立之前，不回溯补建独立文件；自下一个触发的 subphase 起使用本目录。

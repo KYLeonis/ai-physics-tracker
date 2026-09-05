@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-03（**5.4 完成状态复核发现收口缺口；5.5 mini-plan 待确认**）
+- 最后更新：2026-09-04（**5.5 完成并合并；下一步 5.6**）
 
 ---
 
@@ -17,7 +17,8 @@
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
 | Subphase | 5.4 — Iteration History & Result Activation | ⚠️ 实现已合并、Human Review 通过；复核收口待办 |
-| Subphase | 5.5 — Training Advisor & Retraining | 📝 mini-plan 草案待用户确认 |
+| Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
+| Subphase | 5.6 — Refinement Loop Integration & Acceptance | ⬜ 待开始 |
 
 ## Recently Completed
 
@@ -109,9 +110,9 @@
 
 ## Current Goal
 
-**5.5 实现与独立 review 完成**（R1 三路审查 findings 全部闭环，含 2 Blocker；693 tests +
-真实 DLC restart/resume smoke）。等待用户 **Human Review**（5 项清单见
-[phase-5.5-review.md](../reviews/phase-5.5-review.md) §4）；通过后合并、关闭 Issue #21、push。
+**5.5 已完成并合并**（693 tests、真实 DLC restart/resume smoke、独立 review 三路 20 条
+findings 闭环、Human Review 通过）。等待下一条指令进入 **5.6**（Refinement Loop
+Integration & Acceptance：单摆端到端闭环与 AC-9）。
 
 ## Current Worktree Note
 

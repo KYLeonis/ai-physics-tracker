@@ -68,7 +68,15 @@ lineage 在失败/取消路径的 run 状态由统一 runner 既有语义处理�
   `train_network(snapshot_path=...)`）→ 新 snapshot-002，epoch 编号延续，parent 未覆盖。
 - 定向：advisor 20 项、advisor GUI 7 项、tracking_job 11 项、refinement 9 项、repository 20 项。
 
-## 4. Human Review（合并前关卡，等待用户）
+## 4. Human Review（2026-09-04 · ✅ 用户通过）
+
+用户真机逐项确认：①Advisor 证据与限制可解释（含"单轮无可比"与修正后措辞）；②Apply
+Suggestion 只填表；③Restart + 模型选中直接启动（B1 修复验证）；④Resume 25 epochs 完成，
+详情显示 `training_mode=resume · resume_source=9d310620 · epochs_this_run=25`，真实数据
+train(n=19)/test(n=11) 与 series 快照对账一致；⑤保存重开后 lineage 可追溯。
+（HR 过程中发现详情缺 mode/source 展示，已修复 `181ed56` 并复验。）
+
+### 原 Human Review 清单（存档）
 
 按 plan AC，以下 5 项请用户真机验证（启动：`.venv/bin/python -m ai_physics_tracker`，打开 AI_test2 项目）：
 

@@ -3,7 +3,7 @@
 - Issue：待创建（mini-plan 批准后同步到 GitHub）
 - 分支：`feat/p5.5-training-advisor-retraining`（尚未创建）
 - Issue：[#21](https://github.com/KYLeonis/ai-physics-tracker/issues/21)
-- 日期 / 状态：2026-09-04 · 🚧 Slices 0–4 实现完成；独立 review 与 Human Review 进行中
+- 日期 / 状态：2026-09-04 · ✅ 已完成（Human Review 通过）
 
 ## Goal
 
@@ -195,9 +195,10 @@ history 的 mode/source/produced snapshot 可追溯。
 ## Result（收尾时填写）
 
 - 完成日期 / 合并 commit：实现 2026-09-04（分支 `feat/p5.5-training-advisor-retraining`，
-  Slice 0 `d830afd`、Slice 1 `94f67b0`、Slices 2–4 `9c64416` + smoke 提交）；合并 commit 待
-  Human Review 通过后补记
-- AC 勾选结果：9/9 勾选（独立 review 与 Human Review 证据收集中）
+  Slice 0 `d830afd`、Slice 1 `94f67b0`、Slices 2–4 `9c64416`）；R2 修复 `1c8aafe`/`15d7be4`/
+  `181ed56`/`e6b3f60`；Human Review 于 2026-09-04 通过，合并 commit 见 Review Record
+- AC 勾选结果：**9/9 全部通过**（独立 review 闭环 + 真实 DLC smoke + 用户 Human Review：
+  lineage 详情/Advisor 证据/Apply 只填表/Restart+Resume 启动/保存重开全部亲测确认）
 - 偏离计划之处及原因：
   - 真实 DLC smoke 验证 resume 的 epoch 编号从 snapshot 元数据延续
     （001 → 002），证实"epochs = 本次追加"语义与实现一致
@@ -207,4 +208,5 @@ history 的 mode/source/produced snapshot 可追溯。
     输入采集与 5.4 遗留的 training_job 对接处均按实际字段修正
 - 遗留问题：R2 复审延期项（崩溃恢复死锁、shuffle 编号分配、指纹策略）不在本
   Subphase 范围，仍待用户批复
-- 独立 review 结论：进行中（多 subagent 并行审查后补充）
+- 独立 review 结论：三路审查（A 引擎/B GUI/C 管线自查）20 条 findings 全部闭环
+  （含 2 Blocker），见 [phase-5.5-review.md](../reviews/phase-5.5-review.md)；693 tests
