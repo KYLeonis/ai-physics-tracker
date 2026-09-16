@@ -23,6 +23,7 @@ from ai_physics_tracker.application.refinement_history import (
     extract_refinement_iteration,
     validation_training_exposure,
 )
+from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.application.training_advisor import (
     OOM_MARKERS,
     AdvisorInput,
@@ -43,7 +44,9 @@ def _evaluation_rmse(evaluation: dict) -> tuple[float, float, str, str] | None:
     unit = "px"
     if isinstance(evaluation.get("metrics"), dict):
         metrics = evaluation["metrics"]
-        if isinstance(metrics.get("train_rmse"), (int, float)) and                 isinstance(metrics.get("test_rmse"), (int, float)):
+        has_train = isinstance(metrics.get("train_rmse"), (int, float))
+        has_test = isinstance(metrics.get("test_rmse"), (int, float))
+        if has_train and has_test:
             unit = str(evaluation.get("unit", "px"))
             return float(metrics["train_rmse"]), float(metrics["test_rmse"]), "rmse", unit
         return None
@@ -71,7 +74,7 @@ def _evaluation_rmse(evaluation: dict) -> tuple[float, float, str, str] | None:
 def collect_advisor_input(
     session: ProjectSession,
     track_id: UUID,
-    runs: tuple,
+    runs: tuple[TrackingRun, ...],
     *,
     has_active_task: bool,
     requested_batch_size: int,
@@ -152,7 +155,11 @@ def collect_advisor_input(
         latest_infer = infer_runs[-1]
         try:
             rev_sum = session.get_review_summary(latest_infer.run_id)
-        except Exception:
+        except Exception as error:
+            # 审核摘要仅是 Advisor 输入的证据之一；不可读时降级为无统计而非失败，
+            # 但不留静默吞错（CODE_STANDARD §8）
+            logger.debug("review summary unavailable for run %s: %s",
+                         latest_infer.run_id, error)
             rev_sum = None
         if rev_sum is not None:
             pending_candidates = rev_sum.pending_count

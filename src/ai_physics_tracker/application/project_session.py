@@ -122,6 +122,8 @@ TRACK_COLOR_PALETTE = (
 # 会话历史快照（含 TrackStore 数据、标定、派生数据、TrackingRun 注册表与可选的
 # 审核事务作用域快照）。registry 参与快照使 Undo/Redo 能感知 Track↔run 结构依赖
 # （P6R-01）；合并规则见 ProjectSession._history_transition。
+# 前 _SNAPSHOT_DATA_FIELDS 个元素是"用户数据"；末位的 registry 仅用于历史转换，
+# 不参与 accept_saved_snapshot 的"保存期间产生新数据"判定（stabilization R1 F2）。
 _SessionDataSnapshot = tuple[
     tuple[Track, ...],
     tuple[TrackPoint, ...],
@@ -131,6 +133,7 @@ _SessionDataSnapshot = tuple[
     dict[UUID, dict[str, Any] | None] | None,
     tuple[TrackingRun, ...],
 ]
+_SNAPSHOT_DATA_FIELDS = 6
 
 
 class ProjectSessionError(Exception):
@@ -480,7 +483,11 @@ class ProjectSession:
         """更新磁盘保存基线，保持活动会话与保存期间产生的数据。"""
         if saved.project.project_id != self.project.project_id:
             raise ProjectSessionError("Saved snapshot belongs to another project")
-        changed = self._current_data_snapshot() != saved._current_data_snapshot()
+        # registry 不参与"保存期间产生了新数据"判定：run 状态演进（如
+        # pending→running）不是需要保留撤销步的用户数据变化（stabilization R1 F2）。
+        current = self._current_data_snapshot()
+        changed = current[:_SNAPSHOT_DATA_FIELDS] != (
+            saved._current_data_snapshot()[:_SNAPSHOT_DATA_FIELDS])
         self._project_root = saved.project_root
         self._saved_project = saved._saved_project
         self._project = replace(self._project, modified_at=saved.project.modified_at,
@@ -1118,11 +1125,13 @@ class ProjectSession:
                     continue  # 恢复 Track 的 run 一律以快照为准
                 if run.track_id in removed_ids:
                     if is_undo and run.run_id not in snapshot_run_ids:
+                        # 该拒绝仅在 undo 方向可达：redo 的栈在每次前向写入
+                        # （含 record_tracking_run）时已清空，被移除 track 的 run
+                        # 只可能来自配对快照的恢复。
                         raise ProjectSessionError(
-                            f"cannot {'undo' if is_undo else 'redo'}: tracking run "
-                            f"{run.run_id} references a track created after this "
-                            "history point; undo across a registered AI task is not "
-                            "supported"
+                            f"cannot undo: tracking run {run.run_id} references a "
+                            "track created after this history point; undo across a "
+                            "registered AI task is not supported"
                         )
                     continue
                 merged_runs.append(run)

@@ -246,3 +246,31 @@ def test_recording_a_run_invalidates_redo_navigation(tmp_path: Path) -> None:
 
     # 新 run 登记是前向写入：redo 不能越过它恢复"删除前的世界"
     assert not session.can_redo
+
+
+def test_run_only_progression_during_save_keeps_no_ghost_undo_step(
+    tmp_path: Path,
+) -> None:
+    # stabilization R1 F2：保存窗口期间仅 run 状态演进（pending→running）不产生
+    # 空撤销步；真实数据变化仍保留一次回到保存点的撤销。
+    session, track, _proj_dir = _saved_session_with_track(tmp_path)
+    run = create_tracking_run(track.video_id, track.track_id, "train", engine_version="mock")
+    session.record_tracking_run(run)
+    saved = session.detached()
+    saved.save()
+    # 保存期间后台仅推进 run 状态
+    session.update_tracking_run(mark_run_running(run))
+
+    session.accept_saved_snapshot(saved)
+
+    assert not session.can_undo  # run-only 变化不再是"保存期间的新数据"
+
+    # 对照：保存期间发生真实数据编辑（新标注）→ 保留一个撤销步
+    session.mark_point(track.track_id, 1, 3.0, 4.0)
+    saved2 = session.detached()
+    saved2.save()
+    session.mark_point(track.track_id, 2, 5.0, 6.0)
+    session.accept_saved_snapshot(saved2)
+    assert session.can_undo
+    assert session.undo()
+    assert len(session.manual_points(track.track_id)) == 1
