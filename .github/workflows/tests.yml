@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [main, "feat/**", "fix/**"]
+    branches: [main, "feat/**", "fix/**", "ci/**"]
   pull_request:
     branches: [main]
 
@@ -34,4 +34,43 @@ jobs:
       - name: Verify FFprobe
         run: ffprobe -version
       - name: Run tests
+        if: runner.os != 'Windows'
         run: python -m pytest
+      # 诊断分支专用：用 cdb 包住 pytest，在 0xc0000374（heap corruption）
+      # 触发时打印 native 调用栈并保存 minidump，用于定位崩溃线程与模块。
+      - name: Write cdb script
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $script = @"
+          .symfix
+          .reload
+          sxe -c "kn 80; .dump /ma ${{ runner.temp }}\crash.dmp; q" 0xc0000374
+          sxe -c "kn 80; .dump /ma ${{ runner.temp }}\crash_av.dmp; q" 0xc0000005
+          g
+          "@
+          Set-Content -Path cdb_script.txt -Value $script -Encoding ascii
+      - name: Run tests under cdb (Windows diagnostics)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $cdb = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe" -ErrorAction SilentlyContinue
+          if ($null -eq $cdb) {
+            Write-Host "cdb not found, falling back to plain pytest"
+            python -m pytest
+            exit $LASTEXITCODE
+          }
+          & $cdb.FullName -cf cdb_script.txt -logo pytest_cdb.log -g -G python -m pytest
+          $code = $LASTEXITCODE
+          Get-Content pytest_cdb.log -Tail 400
+          exit $code
+      - name: Upload crash dump
+        if: runner.os == 'Windows' && failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-dump
+          path: |
+            ${{ runner.temp }}/crash.dmp
+            ${{ runner.temp }}/crash_av.dmp
+            pytest_cdb.log
+          if-no-files-found: ignore
