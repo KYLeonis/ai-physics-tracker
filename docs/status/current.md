@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-16（**Phase 5.6 完成并合并，Phase 5 收官；下一步 Phase 6 + 交互重构立项**）
+- 最后更新：2026-09-16（**Windows CI 崩溃已修复，main CI 双平台恢复绿；下一步 Pre-Phase 6 Review / Phase 6 立项**）
 
 ---
 
@@ -11,7 +11,8 @@
 
 | Level | Name | Status |
 | --- | --- | --- |
-| Phase | Phase 5 — AI-assisted Annotation & Refinement | 🚧 进行中 |
+| Current | CI baseline 恢复（Pre-Phase 6 前置） | ✅ 已完成 (2026-09-16) |
+| Phase | Phase 5 — AI-assisted Annotation & Refinement | ✅ 已收官 (5.0–5.6 全部完成) |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
@@ -21,6 +22,27 @@
 | Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 以明示缺口归档) |
 
 ## Recently Completed
+
+- **Windows CI 崩溃修复（2026-09-16，`fix/windows-ci-crash` 已合并 main）**：
+  - 现象：9 月 16 日起 main 的 Windows job 在 GUI tests teardown 附近
+    `0xc0000374`（heap corruption）退出，概率约 3/7 次（同代码分支 CI 绿、main 红，
+    非 flaky 可跳过类问题）；macOS 从不触发。
+  - 取证：临时 cdb 诊断分支捕获到 first-chance access violation——
+    `PyObject_GenericGetAttrWithDict` 对垃圾指针（rdi=0x2）做 incref，发生在主线程
+    qtbot 处理 queued `decodeCompleted` 回调时；崩溃点在测试文件间漂移。
+  - 根因：decoder worker 线程直接 emit 携带 Python 对象（DecodeDelivery/DecodedFrame）
+    的 queued Qt signal；PySide6 6.11 在 Windows 特定调度时序下对 queued 参数对象的
+    引用管理产生损坏。GUI 测试进程窗口从不销毁（每文件堆积）+ runner 镜像 9 月更新
+    改变时序，使长期潜伏的路径显形（5.6 改动未触碰 playback，只是时序扰动）。
+  - 修复（`src/ai_physics_tracker/gui/main_window.py`）：新增 `_DecodeDeliveryBridge`——
+    交付对象走 `queue.SimpleQueue`，Qt 信号只发**无参** `pending` 唤醒，GUI 线程 drain 后
+    经原有 `frameDelivered/decodeFailed/decodeCompleted` 分发（这些信号现在只在 GUI 线程
+    发出）。`AsyncVideoSession` 接口与其余调用方不变。
+  - 验证：新增 4 项回归（FIFO drain、并发入队不丢、交付信号仅 GUI 线程、close 后无
+    decoder/executor 线程残留的 lifecycle 守卫）；Windows CI 在 cdb 下全量
+    **702 passed, 2 skipped** 完整跑通；合并后 main CI 双平台绿
+    （[run 35079898823](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35079898823)）。
+  - 诊断分支 `ci/diag-windows-crash` 保留作取证记录（含 cdb workflow），未合并。
 
 - **Phase 5.6 真实闭环执行与验收（2026-09-16）**：
   - Slice 0：批复决策落地——A 核实为 Phase 4 已实现（无需改动）；B 强制 fresh per-run DLC 目录；
@@ -125,9 +147,10 @@
 
 ## Current Goal
 
-**Phase 5 已收官**（5.0–5.6 全部完成；AC-1~8/10/11 达成，AC-9 闭环完成但"≥5% 可复现改善"
-以明示缺口归档——成因与建议见 [phase-5.6-review.md](../reviews/phase-5.6-review.md) F1/F4/F5）。
-等待下一条指令进入 **Phase 6**（Advanced Physics Analysis）。
+**CI baseline 已恢复，进入 Phase 6 的前置障碍清除**（Phase 5 已收官：5.0–5.6 全部完成；
+AC-1~8/10/11 达成，AC-9 闭环完成但"≥5% 可复现改善"以明示缺口归档——成因与建议见
+[phase-5.6-review.md](../reviews/phase-5.6-review.md) F1/F4/F5）。
+等待下一条指令进入 **Pre-Phase 6 Review** 或 **Phase 6**（Advanced Physics Analysis）立项。
 
 ## Current Worktree Note
 
@@ -163,9 +186,7 @@
 
 ## Next Recommended Action
 
-**Phase 5.6 Mini-plan 已按讨论结论修订（2026-09-05）**：测试床 = 继续用 `experiment/AI_test2`；
-三类 delta 全部内化为 Advisor 后台输入（无用户可见报告；coverage 仅证据不入规则）；
-激活由 Advisor 给事实性建议、用户显式执行；归档报告由 Agent 生成于 docs/benchmarks。
-
-等待用户对修订版 [phase-5.6-plan.md](phase-5.6-plan.md) 最终确认后，创建 Issue、建立
-`feat/p5.6-loop-acceptance` 分支并执行 Slice 0（A/B/C 落地）。
+**发起 Pre-Phase 6 Review**：CI baseline 已恢复（2026-09-16，Windows 崩溃修复见
+Recently Completed 首条），具备进入 Phase 6 前置审查的条件。审查范围建议：
+Phase 5 收官状态（AC-9 缺口归档）、交互重构草案
+（[interaction-experience.md](../notes/interaction-experience.md)）与 Phase 6 范围的衔接。
