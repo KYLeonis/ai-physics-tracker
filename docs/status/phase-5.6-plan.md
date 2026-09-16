@@ -139,6 +139,27 @@ F2 冻结 series 从 project.json 消失但可重建、F3 基准分辨率不足�
 ① 如实归档"未达成"并作为明示缺口处置；② 采信进行中的方差实验结果再定论；
 ③ 追加更大规模实验（新项目、更大标签集、重复训练）后再判定。
 
+## Slice 3 — AC-1~AC-11 总验收核对表（2026-09-16）
+
+| AC | 结论 | 证据 |
+| --- | --- | --- |
+| AC-1 DLC uniform/K-means 在 working zone 返回去重帧号、排除 manual、不自动造标签 | ✅ | `tests/test_frame_selection.py::test_dlc_adapter_uniform_synthetic` / `kmeans_synthetic`；`tests/gui/test_frame_selection_actions.py::test_suggest_frames_not_creating_track_points_invariant`；5.1 HR |
+| AC-2 挖掘消费指定 infer run 全帧原始预测，低置信/缺测不丢 | ✅ | `tests/test_difficult_frames.py::test_keeps_low_confidence_and_missing_rows`、`test_hdf5_roundtrip_keeps_low_confidence_and_missing_rows`；真实 run `cffbed09` 148 行 × 0 缺测 |
+| AC-3 pipeline 顺序被测试固定；连续异常段不垄断 Top N | ✅ | `test_consecutive_low_confidence_burst_does_not_monopolize_top_n`、`test_min_gap_seconds_rounds_up_to_frames` |
+| AC-4 每帧可解释原因；同输入/参数/seed 可复核 | ✅ | `test_same_inputs_same_outcome`、`test_component_scores_finite_and_normalized`；5.3 HR（候选原因真机核对） |
+| AC-5 Accept 不加 label；Correct 保留 provenance；Skip 不造坐标；保存重开一致 | ✅ | `tests/test_suggested_frame_review.py`（11 例）、`tests/gui/test_suggested_frame_review_actions.py`（21 例）；5.3 HR |
+| AC-6 completed run 可显式激活；clear/replace 不丢 manual/旧产物，原子、可撤销、派生 stale | ✅ | `tests/test_result_activation.py::test_activate_replace_clear_lifecycle_and_undo_redo`（8 例）、`tests/gui/test_tracking_activation_actions.py`（5 例）；5.4 HR；本轮真实激活 `cffbed09`（98 AI / 50 manual 保留 / 50 superseded） |
+| AC-7 至少两轮使用同一 fixed validation；RMSE 与 coverage 分栏展示 | ✅ | iter1–iter4 全部记录 `validation_series_id=f13d5bbd`；详情面板与 [loop report](../benchmarks/phase-5-loop-report.md) 分列 RMSE / coverage |
+| AC-8 Advisor 覆盖 labels/resume-restart/epochs/batch/snapshot，建议有限且不自动训练 | ✅ | `tests/test_training_advisor.py`（20 例表驱动）、`tests/gui/test_training_advisor_actions.py`（Apply 不启动）；5.5 HR |
+| AC-9 单摆完成建议→Correct→再训练→再推理→比较→激活闭环，报告三类 delta | ⚠️ **部分达成** | 闭环与三类 delta 全部真实完成并归档（[loop report](../benchmarks/phase-5-loop-report.md)、4 轮真实 DLC run、激活 `cffbed09`）；**"同一冻结基准上 ≥5% 可复现改善"未达成**（最佳 −3.3%），按用户决定（2026-09-16）如实归档为明示缺口，成因见 [review](../reviews/phase-5.6-review.md) F1/F4/F5 |
+| AC-10 冻结人工审计集报告 Precision@N / review yield 并优于最低置信度基线 | ✅ | [phase-5.2-report.md](../benchmarks/phase-5.2-report.md)：policy 0.800 / 0.300 vs baseline 0.600 / 0.000 |
+| AC-11 单一任务生命周期；全回归与独立 review 通过；有可感知交互变化时 HR | ✅ | 5.0 统一 runner（`tests/test_tracking_job.py`）；全回归 **698 passed**；各 Subphase 独立 review + HR 记录见 `docs/reviews/` |
+
+**AC-9 缺口说明（供 Phase 5 收官与后续决策）**：闭环本身（流程、数据、产物、可追溯性）完整可复现；
+缺的是"改善幅度 ≥5%"。根因：①挖掘在饱和模型上无信号（F4），screening 补齐把非困难帧推给用户（F1，
+已修正）；②该 11 帧基准被反复用于模式选择，存在选择性污染（F5，用户提出）；③残差已接近人工
+标注精度下限。建议后续以"未参与决策的保留帧/第二个视频"重建基准再评估改善。
+
 ## Result（收尾时填写）
 
 - 完成日期 / 合并 commit：Slice 0/1 已提交（`ec4ae0c`/`3d9de31`/`f3f2743`）；Slice 2 执行完毕
