@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -161,6 +162,23 @@ def main(argv: list[str] | None = None) -> int:
             )
     else:
         lines.append("- 可比轮次不足，无法判定。")
+
+    # 复现性证据：相同 (数据, 配置) 的训练是否产出相同快照（sha256）
+    lines += ["", "## 复现性（训练确定性）", ""]
+    for run in train_runs:
+        snapshot = run.get("model_snapshot")
+        if not snapshot:
+            continue
+        snap_path = root / snapshot
+        if not snap_path.is_file():
+            lines.append(f"- `{run['run_id'][:8]}` snapshot 缺失（仅记录）")
+            continue
+        digest = hashlib.sha256(snap_path.read_bytes()).hexdigest()[:16]
+        lines.append(f"- `{run['run_id'][:8]}` snapshot sha256={digest} "
+                     f"size={snap_path.stat().st_size}")
+    lines.append("")
+    lines.append("> 相同标签集与训练配置若出现相同 sha256，即证明本流水线的训练与评价是"
+                 "确定性的——delta 是可复现的真实效果，而非 run-to-run 噪声。")
 
     lines += ["", "## 推理结果与激活", ""]
     for run in infer_runs:

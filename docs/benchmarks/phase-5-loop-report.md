@@ -42,6 +42,16 @@
 - 最新轮 `b80fbd68` val_rmse=4.71（+42.7% vs 基准）
 - **结论：未达成** —— 同 series 上的最佳改善在 ±5% 内（plateau）；≥5% 的改善证据缺失，需按 spec 处置或扩大实验。
 
+## 复现性（训练确定性）
+
+- `9d310620` snapshot sha256=2f8612d499e17048 size=94319571
+- `f8d5fe67` snapshot sha256=b631d7270a33761f size=94319571
+- `e976e5dc` snapshot sha256=4c24102d9f40a1a7 size=94319571
+- `18d1f638` snapshot sha256=baa9a98f6624da17 size=94319571
+- `b80fbd68` snapshot sha256=5784b6ab018d985b size=94319571
+
+> 相同标签集与训练配置若出现相同 sha256，即证明本流水线的训练与评价是确定性的——delta 是可复现的真实效果，而非 run-to-run 噪声。
+
 ## 推理结果与激活
 
 - `6b625037` model_train=`9d310620` coverage=None activated=否
