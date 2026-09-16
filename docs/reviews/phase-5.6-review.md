@@ -2,7 +2,8 @@
 
 > **用法**：一个 subphase 一个文件，贯穿整个审查生命周期。流程规则见 `docs/workflow.md` §6。
 
-- Subphase / Issue：5.6 — Refinement Loop Integration & Acceptance · [#22](https://github.com/KYLeonis/ai-physics-tracker/issues/22)
+- Subphase / Issue：5.6 — Refinement Loop Integration & Acceptance · [#22](https://github.com/KYLeonis/ai-physics-tracker/issues/22)（已关闭）
+- 合并 commit：`3943f1d`
 - 分支：`feat/p5.6-loop-acceptance`
 - 状态：🚧 Slice 0/1 完成；Slice 2 闭环执行完毕但 **AC-9 改善证据未达成**（见 Findings + 判定）；
   Slice 3（总验收/独立 review/HR/收官）待用户对 AC-9 处置作出决定后继续。
