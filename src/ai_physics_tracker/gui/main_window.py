@@ -1,5 +1,6 @@
 import logging
 import math
+import queue
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
@@ -7,7 +8,7 @@ from threading import Event
 from typing import Callable
 from uuid import UUID
 
-from PySide6.QtCore import QPoint, QPointF, QSignalBlocker, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QPoint, QPointF, QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
@@ -51,6 +52,39 @@ from ai_physics_tracker.gui.video_view import CalibrationView, MarkerView, Video
 logger = logging.getLogger(__name__)
 
 
+class _DecodeDeliveryBridge(QObject):
+    """把 decoder worker 的交付转投 GUI 线程：数据走线程安全队列，
+    Qt 信号只发无参唤醒。
+
+    不再让 worker 直接 emit 携带 Python 对象的 queued signal：PySide6
+    6.11 在 Windows 的特定调度时序下，queued 投递对参数对象的引用管理
+    会产生损坏（CI 崩溃 0xc0000374 / c0000005，AV at incref on garbage
+    pointer）。队列承载对象，信号只传递"有新交付"这一事实。
+    """
+
+    pending = Signal()
+
+    def __init__(self, parent: QObject) -> None:
+        super().__init__(parent)
+        self._queue: queue.SimpleQueue = queue.SimpleQueue()
+
+    def enqueue(self, item: object) -> None:
+        """worker 线程调用：入队后唤醒 GUI 线程（无参 queued signal）。"""
+
+        self._queue.put(item)
+        self.pending.emit()
+
+    def drain(self) -> list[object]:
+        """GUI 线程调用：取走当前全部在途交付（FIFO，与解码顺序一致）。"""
+
+        items: list[object] = []
+        while True:
+            try:
+                items.append(self._queue.get_nowait())
+            except queue.Empty:
+                return items
+
+
 class MainWindow(QMainWindow):
     """包裹 Qt-free AsyncVideoSession 的薄 Qt 外壳。
 
@@ -83,6 +117,9 @@ class MainWindow(QMainWindow):
         self._annotation_repository = annotation_repository
         self._session_factory = session_factory
         self._timing_probe = timing_probe
+        # 解码交付桥：worker 只入队，Qt 信号无参唤醒，对象不过 Qt 元对象系统
+        self._delivery_bridge = _DecodeDeliveryBridge(self)
+        self._delivery_bridge.pending.connect(self._drainDeliveries)
         self._generation_counter = 0
         self._async = self._makeDecoder(0)
         self._measurement_allowed = False
@@ -451,10 +488,23 @@ class MainWindow(QMainWindow):
 
     def _makeDecoder(self, token: int) -> AsyncVideoSession:
         # token 在创建时固定；旧 worker 发射迟到帧时不能冒充当前会话。
+        # 回调在 worker 线程执行，只入队（见 _DecodeDeliveryBridge）。
+        bridge = self._delivery_bridge
         return AsyncVideoSession(self._session_factory(),
-            lambda frame: self.frameDelivered.emit(frame, token),
-            lambda error: self.decodeFailed.emit(str(error), token),
-            on_result=lambda result: self.decodeCompleted.emit(result, token))
+            lambda frame: bridge.enqueue(("frame", frame, token)),
+            lambda error: bridge.enqueue(("failed", str(error), token)),
+            on_result=lambda result: bridge.enqueue(("completed", result, token)))
+
+    def _drainDeliveries(self) -> None:
+        """GUI 线程分发在途解码交付（FIFO 顺序与单 worker 解码顺序一致）。"""
+
+        for kind, payload, token in self._delivery_bridge.drain():
+            if kind == "completed":
+                self.decodeCompleted.emit(payload, token)
+            elif kind == "frame":
+                self.frameDelivered.emit(payload, token)
+            else:
+                self.decodeFailed.emit(payload, token)
 
     def candidateService(self, *, deferTiming: bool = False) -> tuple[int, ProjectMediaService]:
         self._generation_counter += 1
