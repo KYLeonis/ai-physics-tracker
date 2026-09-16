@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-16（**5.6 Slices 0–3 执行完毕：闭环完成、AC-9 以明示缺口归档；待 HR 确认后合并**）
+- 最后更新：2026-09-16（**Phase 5.6 完成并合并，Phase 5 收官；下一步 Phase 6 + 交互重构立项**）
 
 ---
 
@@ -18,7 +18,7 @@
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
 | Subphase | 5.4 — Iteration History & Result Activation | ⚠️ 实现已合并、Human Review 通过；复核收口待办 |
 | Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
-| Subphase | 5.6 — Refinement Loop Integration & Acceptance | 🚧 Slices 0–3 完成；AC-9 明示缺口；待 HR/合并 |
+| Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 以明示缺口归档) |
 
 ## Recently Completed
 
@@ -125,9 +125,9 @@
 
 ## Current Goal
 
-**5.5 已完成并合并**（693 tests、真实 DLC restart/resume smoke、独立 review 三路 20 条
-findings 闭环、Human Review 通过）。等待下一条指令进入 **5.6**（Refinement Loop
-Integration & Acceptance：单摆端到端闭环与 AC-9）。
+**Phase 5 已收官**（5.0–5.6 全部完成；AC-1~8/10/11 达成，AC-9 闭环完成但"≥5% 可复现改善"
+以明示缺口归档——成因与建议见 [phase-5.6-review.md](../reviews/phase-5.6-review.md) F1/F4/F5）。
+等待下一条指令进入 **Phase 6**（Advanced Physics Analysis）。
 
 ## Current Worktree Note
 
