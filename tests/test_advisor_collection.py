@@ -7,6 +7,8 @@
 - last_train_failed 表示最近一次相关训练的状态（OOM 失败后成功重训 → False）。
 """
 
+import dataclasses
+from datetime import timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -43,10 +45,10 @@ def _labels(frames) -> tuple[ValidationLabelSnapshot, ...]:
     )
 
 
-def _session_with_clustered_labels(tmp_path: Path):
+def _session_with_clustered_labels(tmp_path: Path, *, dir_name: str = "proj"):
     """40 帧视频；manual 点只集中在 working zone 第一段（frames 0–2）。"""
     session = ProjectSession.start(ProjectRepository(), name="Advisor collection")
-    proj_dir = tmp_path / "proj"
+    proj_dir = tmp_path / dir_name
     session.save_as(proj_dir)
     video_file = tmp_path / "clip.mp4"
     video_file.write_bytes(b"dummy video")
@@ -59,10 +61,13 @@ def _session_with_clustered_labels(tmp_path: Path):
 
 
 def _completed_train(session, track, proj_dir, *, training_frames, series_id,
-                     val_rmse: float):
+                     val_rmse: float, created_at=None):
     import dataclasses
 
     run = create_tracking_run(track.video_id, track.track_id, "train", engine_version="mock")
+    if created_at is not None:
+        # 显式时间戳：Windows 时钟分辨率较粗，连续 utc_now() 可能相同（CI 实测）
+        run = dataclasses.replace(run, created_at=created_at)
     snapshot_rel = f"data/engines/{run.run_id}/snapshot.pt"
     snapshot_file = proj_dir / snapshot_rel
     snapshot_file.parent.mkdir(parents=True, exist_ok=True)
@@ -88,13 +93,16 @@ def test_collector_reports_clustered_labels_oom_recovery_and_drives_recommendati
     session, track, proj_dir = _session_with_clustered_labels(tmp_path)
     series = session.create_validation_series(track.track_id, "fixed", [2])
 
+    base = utc_now()
     # 第一轮：干净 restart，labels {0,1} 与验证帧 {2} 互斥
     _completed_train(session, track, proj_dir, training_frames=[0, 1],
-                     series_id=series.series_id, val_rmse=5.00)
+                     series_id=series.series_id, val_rmse=5.00,
+                     created_at=base - timedelta(seconds=30))
 
     # 一次 OOM 失败（此刻是最近一次相关训练）
-    oom_run = create_tracking_run(track.video_id, track.track_id, "train",
-                                  engine_version="mock")
+    oom_run = dataclasses.replace(
+        create_tracking_run(track.video_id, track.track_id, "train", engine_version="mock"),
+        created_at=base - timedelta(seconds=10))
     session.record_tracking_run(oom_run)
     session.update_tracking_run(mark_run_running(oom_run))
     session.update_tracking_run(mark_run_failed(oom_run, "CUDA out of memory"))
@@ -115,7 +123,7 @@ def test_collector_reports_clustered_labels_oom_recovery_and_drives_recommendati
 
     # 之后成功重训：同 series 干净第二轮，validation RMSE 处于 plateau（+0.4%）
     _completed_train(session, track, proj_dir, training_frames=[0, 1],
-                     series_id=series.series_id, val_rmse=5.02)
+                     series_id=series.series_id, val_rmse=5.02, created_at=base)
 
     runs = session.tracking_runs()
     recovered = collect_advisor_input(
@@ -132,3 +140,38 @@ def test_collector_reports_clustered_labels_oom_recovery_and_drives_recommendati
     rec = recommend_training_action(recovered)
     assert rec.action == ACTION_LABEL_MORE  # plateau + 时间段缺口 → 补标注
     assert any("working zone" in e for e in rec.evidence)
+
+
+def test_equal_created_at_tie_breaks_to_most_recently_registered(tmp_path: Path) -> None:
+    """created_at 相同（时钟分辨率限制）时，按注册顺序取最新尝试。"""
+    session, track, proj_dir = _session_with_clustered_labels(tmp_path)
+    same_time = utc_now() - timedelta(seconds=5)
+
+    completed = _completed_train(session, track, proj_dir, training_frames=[0, 1],
+                                 series_id=uuid4(), val_rmse=5.0, created_at=same_time)
+    failed = dataclasses.replace(
+        create_tracking_run(track.video_id, track.track_id, "train", engine_version="mock"),
+        created_at=same_time)
+    session.record_tracking_run(failed)
+    session.update_tracking_run(mark_run_failed(failed, "out of memory"))
+
+    later_attempt_is_failure = collect_advisor_input(
+        session, track.track_id, session.tracking_runs(), has_active_task=False,
+        requested_batch_size=8, requested_epochs=50)
+    assert later_attempt_is_failure.last_train_failed
+    assert later_attempt_is_failure.last_failure_is_oom
+
+    # 反序：失败在前、成功在后 → 不再报失败
+    session2, track2, proj_dir2 = _session_with_clustered_labels(tmp_path, dir_name="proj2")
+    failed_first = dataclasses.replace(
+        create_tracking_run(track2.video_id, track2.track_id, "train", engine_version="mock"),
+        created_at=same_time)
+    session2.record_tracking_run(failed_first)
+    session2.update_tracking_run(mark_run_failed(failed_first, "out of memory"))
+    _completed_train(session2, track2, proj_dir2, training_frames=[0, 1],
+                     series_id=uuid4(), val_rmse=5.0, created_at=same_time)
+
+    recovered = collect_advisor_input(
+        session2, track2.track_id, session2.tracking_runs(), has_active_task=False,
+        requested_batch_size=8, requested_epochs=50)
+    assert not recovered.last_train_failed

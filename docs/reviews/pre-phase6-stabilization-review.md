@@ -118,6 +118,11 @@ record 的关闭条件核对，原文要点：无"先改状态后校验"路径�
   第 4 个提交无新问题。实测 batch 53/55 passed、全量 **733 passed**、
   compileall OK。
 - **Final Verdict：CLOSED**（2026-09-16，R2）。
+- 合并后 Windows CI 发现 1 项测试非确定性（stabilization 新增 collector 测试依赖
+  `datetime.now()` 分辨率：Windows 时钟较粗使 OOM run 与前一轮 created_at 相同，
+  `max()` 取到先注册者）。修复：测试改显式时间戳（确定性）+ 采集器平局时取注册表
+  更靠后者（注册顺序即尝试顺序），新增 `test_equal_created_at_tie_breaks_to_most_
+  recently_registered`。分支 `fix/advisor-latest-train-tiebreak`；全量 734 passed。
 
 ## 附：处置提交索引
 
