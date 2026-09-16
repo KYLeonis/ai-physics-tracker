@@ -332,10 +332,13 @@ class DifficultFrameReviewActions(QObject):
         # 实例化控制器并更新 UI
         self._controller = ReviewQueueController(session, run_id)
         if result.actual_n == 0:
-            # 模型饱和：如实告知，不制造"待审核帧"（用户批准 2026-09-16）
-            self.panel.setMineStatus(
-                "No difficult frames found — this model is confident and consistent "
-                "on every frame in the working zone; nothing to review.")
+            # 模型饱和：如实告知，不制造"待审核帧"（用户批准 2026-09-16）；
+            # 5.7 §13：附"不证明整段准确"边界与下一步
+            from ai_physics_tracker.application.user_messages import (
+                no_difficult_frames,
+            )
+            self.panel.setMineStatus(no_difficult_frames(
+                excluded_count=getattr(result, "excluded_count", 0)).full_text())
         else:
             self.panel.setMineStatus(f"Found {result.actual_n} difficult frame(s)")
         self._sync_panel_with_controller()
@@ -348,14 +351,18 @@ class DifficultFrameReviewActions(QObject):
         self._refresh_mining_enabled()
 
     def _finish_cancelled(self, message: str = "Mining cancelled") -> None:
+        from ai_physics_tracker.application.user_messages import task_cancelled
+
         self._timer.stop()
-        self.panel.setMineStatus(message)
+        self.panel.setMineStatus(task_cancelled("mining").full_text())
         self._reset()
         self._refresh_mining_enabled()
 
     def _finish_error(self, message: str) -> None:
+        from ai_physics_tracker.application.user_messages import mining_failure
+
         self._timer.stop()
-        self.panel.setMineStatus(f"Failed: {message}")
+        self.panel.setMineStatus(mining_failure(message).full_text())
         self._reset()
         self._refresh_mining_enabled()
 

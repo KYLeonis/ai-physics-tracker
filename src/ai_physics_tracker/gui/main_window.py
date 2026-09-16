@@ -314,13 +314,22 @@ class MainWindow(QMainWindow):
         self._analysisReferenceCaption = QLabel("Video reference", self)
         self._analysisReferenceCaption.setWordWrap(True)
         reference_layout.addWidget(self._analysisReferenceCaption)
-        self._analysisPage = QSplitter(Qt.Orientation.Horizontal, self)
+        self._analysisSplitter = QSplitter(Qt.Orientation.Horizontal, self)
         self._analysisChartHost = QWidget(self)  # ChartPanel 挂入点（见 _installChartPanel）
         self._analysisChartHost.setLayout(QVBoxLayout())
-        self._analysisPage.addWidget(self._analysisChartHost)
-        self._analysisPage.addWidget(self._analysisReferenceHost)
-        self._analysisPage.setStretchFactor(0, 3)
-        self._analysisPage.setStretchFactor(1, 1)
+        self._analysisSplitter.addWidget(self._analysisChartHost)
+        self._analysisSplitter.addWidget(self._analysisReferenceHost)
+        self._analysisSplitter.setStretchFactor(0, 3)
+        self._analysisSplitter.setStretchFactor(1, 1)
+        # 来源条（设计 §8.2/§11.2）：图表始终显示当前输入来自哪里
+        self._analysisSourceLabel = QLabel("No analysis source selected", self)
+        self._analysisSourceLabel.setWordWrap(True)
+        analysis_layout = QVBoxLayout()
+        analysis_layout.setContentsMargins(6, 4, 6, 0)
+        analysis_layout.addWidget(self._analysisSourceLabel)
+        analysis_layout.addWidget(self._analysisSplitter, 1)
+        self._analysisPage = QWidget(self)
+        self._analysisPage.setLayout(analysis_layout)
 
         self.workflowHeader = WorkflowHeader(self)
         self.workflowHeader.workspaceRequested.connect(self.setWorkspace)
@@ -526,6 +535,7 @@ class MainWindow(QMainWindow):
             return
         if workspace == WORKSPACE_ANALYSIS:
             self._enterAnalysis()
+            self.refreshAnalysisSourceBar()
         else:
             if self._workspace == WORKSPACE_ANALYSIS:
                 self._leaveAnalysis()
@@ -545,6 +555,36 @@ class MainWindow(QMainWindow):
                 panel.hide()
         self.workflowHeader.setWorkspace(workspace)
         self.analysisChanged.emit()
+        if workspace == WORKSPACE_ANALYSIS:
+            self.refreshAnalysisSourceBar()
+
+    def refreshAnalysisSourceBar(self) -> None:
+        """分析页顶部：当前输入来源 + 标定 + 时间依据（§11.2）。"""
+        session = self.analysisSession
+        track_id = self.selectedTrackId
+        if session is None or track_id is None:
+            self._analysisSourceLabel.setText("No analysis source selected")
+            return
+        state = getattr(self.trackingActions, "_current_workflow_state", None)
+        traj = state.trajectory if state is not None else None
+        manual_count = traj.manual_count if traj is not None else len(
+            session.manual_points(track_id))
+        if traj is not None and traj.active_label:
+            source = (f"Using {traj.active_label} AI result + {manual_count} "
+                      "manual position(s)")
+        else:
+            source = f"Using manual positions only ({manual_count})"
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        if track is not None:
+            calibration = self.activeCalibrationFor(track.video_id) \
+                if hasattr(self, "activeCalibrationFor") else None
+            if calibration is None:
+                calibration = session.active_calibration(track.video_id)
+            unit = calibration.unit if calibration is not None else "px (no calibration)"
+            timing = session.measurement_timing_detail(track.video_id)
+            timing_note = "approximate timing" if timing else "verified CFR timing"
+            source += f" · Units: {unit} · Timing: {timing_note}"
+        self._analysisSourceLabel.setText(source)
 
     def _enterAnalysis(self) -> None:
         """视频视图重挂为分析页参照窗；解码与 overlay 管线不变。"""

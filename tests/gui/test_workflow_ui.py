@@ -282,3 +282,21 @@ def test_adopt_card_replaces_after_confirmation_and_history_only_previews(
             history.setCurrentRow(i)
             break
     assert session.get_track_activation_status(track_id)[1] == infer2.run_id
+
+
+def test_analysis_source_bar_and_chip_reflect_projection(
+    qtbot, synthetic_video_path, tmp_path
+) -> None:
+    window, session, track_id, infer1, _infer2 = _better_candidate_setup(
+        qtbot, synthetic_video_path, tmp_path)
+    window.setWorkspace("analysis")
+
+    # 来源条：版本 + 人工点数 + 单位 + 时间依据
+    source = window._analysisSourceLabel.text()
+    assert "version 1 AI result" in source
+    assert "manual position(s)" in source
+    assert "px (no calibration)" in source
+    assert "Timing:" in source
+
+    # 状态头 chip：采用后待更新
+    assert "charts need update" in window.workflowHeader.analysisChipLabel.text()

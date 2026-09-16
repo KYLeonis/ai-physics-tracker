@@ -326,7 +326,9 @@ def test_cancelled_slow_job_returns_without_committing_results(
         assert gate.finished.is_set()
         assert window.analysisSession is not None
         assert window.analysisSession.project.derived == ()
-        assert "no results committed" in window.chartActions.panel.jobLabel.text()
+        cancelled_text = window.chartActions.panel.jobLabel.text()
+        assert "Charts were not updated: calculation cancelled" in cancelled_text
+        assert "unchanged" in cancelled_text
     finally:
         gate.release.set()
         qtbot.waitUntil(gate.finished.is_set, timeout=5000)
@@ -437,7 +439,10 @@ def test_input_mutation_discards_late_result_but_keeps_new_raw_point(
         qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
         assert session.manual_points(track.track_id)[-1] == changed
         assert session.project.derived == ()
-        assert "not committed" in window.chartActions.panel.jobLabel.text()
+        # Phase 5.7 §13：未提交结论的三问文案（保留“结果被丢弃”语义）
+        job_text = window.chartActions.panel.jobLabel.text()
+        assert "Charts were not updated" in job_text
+        assert "unchanged" in job_text
     finally:
         gate.release.set()
         qtbot.waitUntil(gate.finished.is_set, timeout=5000)

@@ -281,7 +281,10 @@ def test_mining_cancellation_neutral_status_ac9(test_window: MainWindow, tmp_pat
 
     assert not window.reviewActions.busy
     assert fake_handle.cancelled
-    assert panel.mineStatusLabel.text() == "Mining cancelled"
+    # Phase 5.7 §13：取消是中性结论（三问文案），不出现 Failed 前缀
+    status = panel.mineStatusLabel.text()
+    assert status.startswith("Checking cancelled")
+    assert "intact" in status and not status.startswith("Failed")
     assert "Failed" not in panel.mineStatusLabel.text()
 
 
@@ -1016,7 +1019,9 @@ def test_empty_mining_result_reports_no_difficult_frames(test_window: MainWindow
     QTest.qWait(50)
 
     text = panel.mineStatusLabel.text()
-    assert "No difficult frames found" in text
+    # Phase 5.7 §13：空结果有边界（不证明整段准确）与下一步
+    assert "No new frames to check" in text
+    assert "does not prove every position is accurate" in text
     assert "Failed" not in text
     assert not window.reviewActions.busy
     # 空批次已写入会话但无候选：控制器不崩、无“当前候选”

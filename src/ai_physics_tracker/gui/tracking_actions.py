@@ -810,13 +810,24 @@ class TrackingActions(QObject):
         if run and run.status in {"pending", "running"}:
             self._session.update_tracking_run(mark_run_failed(run, error))
         self.panel.appendLog(error)
+        # Phase 5.7 §13：失败结论回答三问；原始错误进日志，卡片给恢复出口。
+        # ux 标题作为 activity 文案，后续 _finish(f"Failed: …") 调用点替换为该标题。
+        from ai_physics_tracker.application import user_messages
+        if self._request.run.task_type == "train":
+            self._ux_failure = user_messages.training_failure(
+                error, unsaved_changes=self._session.is_dirty)
+        else:
+            self._ux_failure = user_messages.inference_failure(error)
+        for line in (*self._ux_failure.body, f"Next: {self._ux_failure.next_hint}"):
+            self.panel.appendLog(line)
         if self._handle is not None and self._handle.is_alive():
             self._failure_error = error
             self._cancelling = True
             self.panel.setActivity("Stopping failed task")
             self._future = self._executor.submit(cancel_tracking_job, self._handle, self._request)
             return
-        self._finish(f"Failed: {error}")
+        self._finish(getattr(self, "_ux_failure", None) and self._ux_failure.title
+                     or f"Failed: {error}")
 
     def cancel(self, after: Callable | None = None) -> None:
         if not self.pending:
@@ -853,7 +864,14 @@ class TrackingActions(QObject):
         run = next((r for r in self._session.tracking_runs() if r.run_id == self._request.run.run_id), None)
         if run and run.status in {"pending", "running"}:
             self._session.update_tracking_run(mark_run_cancelled(run))
-        self._finish(f"Failed: {self._failure_error}" if self._failure_error else "Cancelled")
+        from ai_physics_tracker.application import user_messages
+        if self._failure_error:
+            ux = getattr(self, "_ux_failure", None) or user_messages.inference_failure(
+                self._failure_error)
+            self._finish(ux.title)
+        else:
+            self._finish(user_messages.task_cancelled(
+                self._request.run.task_type).title)
 
     def _finish(self, message: str) -> None:
         session = self._session
