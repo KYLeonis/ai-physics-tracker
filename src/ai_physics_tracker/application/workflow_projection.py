@@ -640,3 +640,98 @@ def _learning_evidence(state: WorkflowState) -> tuple[str, ...]:
         "Before learning starts you can confirm a suggested set of fixed-check "
         "frames for fair comparison.",
     )
+
+
+# ---------------------------------------------------------------------------
+# C2 — 推荐 → 执行计划（与 Advanced 同一执行入口；Advisor Apply 语义不变）
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class LearningPlan:
+    """一次学习的系统计划；执行仍由用户显式启动。"""
+
+    training_mode: str                  # "restart" | "resume"
+    epochs: int
+    batch_size: int
+    resume_from_run_id: "UUID | None" = None
+    basis: str = ""                     # 计划依据（卡片“依据”行）
+
+    def summary_line(self) -> str:
+        parts = [f"{self.epochs} epochs", f"batch {self.batch_size}"]
+        if self.training_mode == "resume":
+            parts.insert(0, "continue from the last learning")
+        else:
+            parts.insert(0, "learn from scratch")
+        return f"{self.training_mode}: " + " · ".join(parts)
+
+
+def recommended_learning_plan(
+    recommendation,
+    *,
+    first_training: bool,
+    resume_source_run_id: UUID | None,
+    default_epochs: int = 50,
+    default_batch: int = 8,
+) -> LearningPlan:
+    """把 Advisor 建议（或首轮默认）转换为可执行学习计划。
+
+    recommendation 为 None（无 Advisor 输入）且非首轮时保守 restart。
+    resume 仅在存在可用源时生效；入口（prepare_tracking_request）会再校验。
+    """
+    if first_training:
+        return LearningPlan(
+            training_mode="restart",
+            epochs=default_epochs,
+            batch_size=default_batch,
+            basis="first learning run with current system defaults",
+        )
+    mode, epochs, batch = "restart", default_epochs, default_batch
+    basis = "no comparable evidence; conservative fresh learning"
+    if recommendation is not None:
+        if recommendation.epochs is not None:
+            epochs = recommendation.epochs
+        if recommendation.batch_size is not None:
+            batch = recommendation.batch_size
+        if recommendation.training_mode == "resume" and resume_source_run_id is not None:
+            mode = "resume"
+            basis = "; ".join(recommendation.evidence[:2]) or "advisor recommendation"
+        elif recommendation.training_mode == "resume":
+            # 建议继续但没有合格源（资格/快照缺失）：诚实降级并说明原因
+            basis = ("; ".join(recommendation.evidence[:2]) or "advisor recommendation"
+                     ) + "; no eligible resume source, falling back to restart"
+        elif recommendation.training_mode == "restart":
+            basis = "; ".join(recommendation.evidence[:2]) or "advisor recommendation"
+    if mode == "resume" and resume_source_run_id is None:
+        mode = "restart"
+        basis = (basis + "; no eligible resume source, falling back to restart").strip("; ")
+    return LearningPlan(
+        training_mode=mode,
+        epochs=epochs,
+        batch_size=batch,
+        resume_from_run_id=resume_source_run_id if mode == "resume" else None,
+        basis=basis,
+    )
+
+
+def default_resume_source(
+    session: ProjectSession,
+    track_id: UUID,
+    runs: Sequence[TrackingRun],
+) -> UUID | None:
+    """系统默认 resume 源：最新 completed train run（有 snapshot）且对当前
+    活动验证集 clean（P6R-02 资格；无活动验证集时不设限）。"""
+    from ai_physics_tracker.application.refinement_history import (
+        validation_training_exposure,
+    )
+    active_series = session.get_refinement_state(track_id).active_series
+    for run in reversed(_completed_of(runs, track_id, "train")):
+        if not run.model_snapshot:
+            continue
+        if active_series is not None:
+            exposure = validation_training_exposure(
+                runs, run.run_id, active_series.frame_indices)
+            if exposure.qualification != "clean":
+                continue
+        return run.run_id
+    return None

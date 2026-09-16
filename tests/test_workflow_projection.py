@@ -358,3 +358,97 @@ def test_projection_marks_failed_training_for_recovery(tmp_path: Path) -> None:
     card = select_task_card(state)
     assert card.mode == "blocked"
     assert card.primary.action_id == ACTION_RETRY_LEARNING
+
+
+# ---------------------------------------------------------------------------
+# C2 — 推荐学习计划 / 默认 resume 源
+# ---------------------------------------------------------------------------
+
+
+def test_learning_plan_first_training_uses_defaults() -> None:
+    from ai_physics_tracker.application.workflow_projection import (
+        recommended_learning_plan,
+    )
+    plan = recommended_learning_plan(None, first_training=True,
+                                     resume_source_run_id=None)
+    assert plan.training_mode == "restart"
+    assert plan.epochs == 50 and plan.batch_size == 8
+    assert plan.resume_from_run_id is None
+
+
+def test_learning_plan_maps_advisor_resume_with_source() -> None:
+    from ai_physics_tracker.application.training_advisor import (
+        AdvisorRecommendation,
+    )
+    from ai_physics_tracker.application.workflow_projection import (
+        recommended_learning_plan,
+    )
+    rec = AdvisorRecommendation(
+        action="resume", epochs=25, training_mode="resume",
+        evidence=("3 new label(s)",))
+    source = uuid4()
+    plan = recommended_learning_plan(rec, first_training=False,
+                                     resume_source_run_id=source)
+    assert plan.training_mode == "resume"
+    assert plan.epochs == 25 and plan.resume_from_run_id == source
+
+
+def test_learning_plan_resume_without_source_falls_back_to_restart() -> None:
+    from ai_physics_tracker.application.training_advisor import (
+        AdvisorRecommendation,
+    )
+    from ai_physics_tracker.application.workflow_projection import (
+        recommended_learning_plan,
+    )
+    rec = AdvisorRecommendation(action="resume", training_mode="resume")
+    plan = recommended_learning_plan(rec, first_training=False,
+                                     resume_source_run_id=None)
+    assert plan.training_mode == "restart"
+    assert "falling back" in plan.basis
+
+
+def test_default_resume_source_requires_clean_qualification(tmp_path: Path) -> None:
+    from ai_physics_tracker.application.refinement_history import (
+        RefinementIterationInfo,
+        ValidationLabelSnapshot,
+        attach_refinement_iteration,
+    )
+    from ai_physics_tracker.application.workflow_projection import (
+        default_resume_source,
+    )
+
+    session, track, _video = _session_with_track(tmp_path, zone_frames=8)
+    for frame in range(4):
+        session.mark_point(track.track_id, frame, 1.0, 1.0)
+    series = session.create_validation_series(track.track_id, "fixed", [3])
+
+    def _labels(frames):
+        return tuple(
+            ValidationLabelSnapshot(point_id=uuid4(), frame_index=f,
+                                    pixel_x=1.0, pixel_y=1.0,
+                                    modified_at="2026-01-01T00:00:00+00:00")
+            for f in frames)
+
+    clean = create_tracking_run(track.video_id, track.track_id, "train",
+                                engine_version="mock")
+    clean = attach_refinement_iteration(clean, RefinementIterationInfo(
+        iteration_index=0, training_mode="restart", training_labels=_labels([0, 1])))
+    clean = mark_run_completed(clean, model_snapshot="data/engines/x/s.pt")
+    contaminated = create_tracking_run(track.video_id, track.track_id, "train",
+                                       engine_version="mock")
+    contaminated = attach_refinement_iteration(contaminated, RefinementIterationInfo(
+        iteration_index=1, training_mode="restart",
+        training_labels=_labels([3, 2])))  # 训练过验证帧 3
+    contaminated = mark_run_completed(contaminated,
+                                      model_snapshot="data/engines/y/s.pt")
+    session.record_tracking_run(clean)
+    session.record_tracking_run(contaminated)
+    runs = session.tracking_runs()
+
+    # 有活动验证集：污染源被跳过，即使它更新
+    assert default_resume_source(session, track.track_id, runs) == clean.run_id
+
+    # 无活动验证集：资格不设限，取最新
+    session.set_active_validation_series(track.track_id, None)
+    assert default_resume_source(session, track.track_id, runs) \
+        == contaminated.run_id

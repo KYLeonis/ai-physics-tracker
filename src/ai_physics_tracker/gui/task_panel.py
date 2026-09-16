@@ -570,6 +570,14 @@ class TaskPanel(QDockWidget):
             batch_size=self.batchSizeSpinBox.value(),
         )
 
+    def setSelectedTrainingRun(self, run_id: UUID | None) -> None:
+        """在模型列表中选中指定训练 run（系统计划指定 resume 源用）。"""
+        for index in range(self.modelList.count()):
+            item = self.modelList.item(index)
+            if item.data(_RUN_ID_ROLE) == run_id:
+                self.modelList.setCurrentItem(item)
+                return
+
     def selectedTrainingRunId(self) -> UUID | None:
         """返回模型列表当前选中的训练运行 ID。"""
 

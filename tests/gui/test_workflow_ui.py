@@ -104,3 +104,88 @@ def test_card_running_task_shows_cancel(qtbot: QtBot, synthetic_video_path: Path
         lambda: panel.cardTitleLabel.text().startswith("Current: picking"),
         timeout=3000)
     assert panel.cardPrimaryButton.text() == "Cancel"
+
+
+def test_start_learning_card_confirms_fixed_check_then_trains(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch
+) -> None:
+    """C1+C2：卡片“开始学习”→ 预选确认 → freeze → 以系统计划启动训练。"""
+    from ai_physics_tracker.gui.fixed_check_dialog import (
+        RESULT_KEEP,
+        FixedCheckConfirmDialog,
+    )
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+
+    window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
+                                               _FakeRunner(_FakeHandle()))
+    session.mark_point(track_id, 3, 40.0, 50.0)  # 共 4 帧 → 预选 1 帧检查
+
+    captured = {}
+
+    def fake_exec(self):
+        captured["frames"] = [
+            self.frameList.item(i).data(0x0100) for i in range(self.frameList.count())
+        ]
+        captured["choice"] = self.result_choice = RESULT_KEEP
+        return True
+
+    monkeypatch.setattr(FixedCheckConfirmDialog, "exec", fake_exec)
+    panel = window.trackingActions.panel
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+
+    assert panel.cardPrimaryButton.text() == "Start learning"
+    panel.cardPrimaryButton.click()
+
+    # C1：预选集合经用户确认后才 freeze
+    assert captured["frames"] == [1]  # 4 帧 [0,1,2,3] → 预选内部帧 1（floor 平局取早）
+    state = session.get_refinement_state(track_id)
+    assert state.active_series is not None
+    assert tuple(state.active_series.frame_indices) == tuple(captured["frames"])
+
+    # C2：系统计划写入表单（restart/50/8）并启动（同一执行入口）
+    assert window.trackingActions.runner.calls == 1
+    assert panel.trainingMode() == "restart"
+    assert panel.epochsSpinBox.value() == 50
+    train_runs = [r for r in session.tracking_runs() if r.task_type == "train"]
+    assert len(train_runs) == 1 and train_runs[0].status in {"pending", "running"}
+
+
+def test_generate_trajectory_binds_latest_completed_model(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+
+    window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
+                                               _FakeRunner(_FakeHandle()))
+    # 构造一个完成的训练 run（带 snapshot 文件）
+    from ai_physics_tracker.domain.tracking_run import (
+        create_tracking_run,
+        mark_run_completed,
+    )
+    run = create_tracking_run(track_id.video_id if hasattr(track_id, "video_id")
+                              else _video_id(session, window), track_id, "train",
+                              engine_version="mock")
+    snap_rel = f"data/engines/{run.run_id}/snap.pt"
+    snap = session.project_root / snap_rel
+    snap.parent.mkdir(parents=True, exist_ok=True)
+    snap.write_bytes(b"w")
+    run = mark_run_completed(run, model_snapshot=snap_rel)
+    session.record_tracking_run(run)
+
+    panel = window.trackingActions.panel
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+
+    assert panel.cardPrimaryButton.text() == "Generate trajectory"
+    panel.cardPrimaryButton.click()
+
+    assert window.trackingActions.runner.calls == 1
+    infer_runs = [r for r in session.tracking_runs() if r.task_type == "infer"]
+    assert len(infer_runs) == 1
+    assert infer_runs[0].config.get("training_run_id") == str(run.run_id)
+
+
+def _video_id(session, window):
+    track = next(t for t in session.tracks if t.track_id == window.selectedTrackId)
+    return track.video_id

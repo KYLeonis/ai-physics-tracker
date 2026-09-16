@@ -278,6 +278,162 @@ class TrackingActions(QObject):
             window.workflowHeader.setTaskStrip("")
         window.workflowHeader.setStatus(context, trajectory_text, state.analysis.state)
 
+    # --- C2：系统计划 → 显式执行（与 Advanced 同一入口与校验）---
+
+    def _advisor_recommendation(self, session, track_id, runs):
+        from ai_physics_tracker.application.advisor_collection import (
+            collect_advisor_input,
+        )
+        from ai_physics_tracker.application.training_advisor import (
+            recommend_training_action,
+        )
+        return recommend_training_action(collect_advisor_input(
+            session, track_id, runs,
+            has_active_task=False,
+            requested_batch_size=self.panel.batchSizeSpinBox.value(),
+            requested_epochs=self.panel.epochsSpinBox.value(),
+        ))
+
+    def _learning_plan(self, session, track_id, runs):
+        from ai_physics_tracker.application.workflow_projection import (
+            default_resume_source,
+            recommended_learning_plan,
+        )
+        completed = any(
+            r.track_id == track_id and r.task_type == "train"
+            and r.status == "completed" for r in runs)
+        resume_source = default_resume_source(session, track_id, runs)
+        recommendation = None
+        if completed:
+            recommendation = self._advisor_recommendation(session, track_id, runs)
+        return recommended_learning_plan(
+            recommendation, first_training=not completed,
+            resume_source_run_id=resume_source,
+            default_epochs=self.panel.epochsSpinBox.value(),
+            default_batch=self.panel.batchSizeSpinBox.value(),
+        )
+
+    def _start_learning_with_system_plan(self, session, track_id, runs) -> None:
+        """C1+C2：必要时确认预选检查帧，然后把系统计划写入表单并启动。"""
+        from ai_physics_tracker.gui.fixed_check_dialog import (
+            RESULT_CHOOSE,
+            RESULT_KEEP,
+            FixedCheckConfirmDialog,
+        )
+        from ai_physics_tracker.application.workflow_projection import (
+            preselect_fixed_check_frames,
+        )
+
+        ref_state = session.get_refinement_state(track_id)
+        active_series = ref_state.active_series
+        needs_check_set = (
+            active_series is None
+            or not session.validate_active_validation_series(track_id)[0])
+        if needs_check_set:
+            manual_frames = tuple(
+                p.frame_index for p in session.manual_points(track_id))
+            preselect = preselect_fixed_check_frames(manual_frames)
+            if preselect and not active_series:
+                dialog = FixedCheckConfirmDialog(
+                    preselect, len(manual_frames), self.window)
+                dialog.frameJumpRequested.connect(self.window.jumpToFrame)
+                dialog.exec()
+                if dialog.result_choice == RESULT_KEEP:
+                    session.create_validation_series(
+                        track_id, "Fixed check frames", preselect)
+                    self.window.statusBar().showMessage(
+                        f"Kept {len(preselect)} fixed-check frame(s)")
+                elif dialog.result_choice == RESULT_CHOOSE:
+                    from ai_physics_tracker.gui.validation_dialog import (
+                        ManageValidationDialog,
+                    )
+                    ManageValidationDialog(session, track_id, self.window).exec()
+                # skip：沿用无 fixed validation 的能力，不建立虚假基准
+
+        plan = self._learning_plan(session, track_id, session.tracking_runs())
+        self.panel.setTrainingMode(plan.training_mode)
+        self.panel.epochsSpinBox.setValue(plan.epochs)
+        self.panel.batchSizeSpinBox.setValue(plan.batch_size)
+        if plan.training_mode == "resume":
+            self.panel.setSelectedTrainingRun(plan.resume_from_run_id)
+        self._context_key = None
+        self.train()
+
+    def _generate_trajectory_with_latest_model(self, session, track_id, runs) -> None:
+        """生成轨迹绑定本目标最新完成的模型，不让用户在列表里挑（§12.1）。"""
+        latest_train = next(
+            (r for r in reversed(runs)
+             if r.track_id == track_id and r.task_type == "train"
+             and r.status == "completed" and r.model_snapshot),
+            None)
+        if latest_train is None:
+            self.panel.setActivity("Cannot generate: no completed learning run")
+            return
+        self.panel.setSelectedTrainingRun(latest_train.run_id)
+        self._context_key = None
+        self.infer()
+
+    def _jump_to_next_attention_frame(self, session, track_id) -> None:
+        """跳到下一个待标注/待审核画面（不创建任何数据）。"""
+        window = self.window
+        review = getattr(window, "reviewActions", None)
+        if review is not None and getattr(review, "busy", False):
+            return  # 审核队列自己负责导航
+        state = getattr(self, "_current_workflow_state", None)
+        if state is not None and state.trajectory.candidate is not None:
+            # 候选待审：打开审核队列（显式筛查入口）
+            candidate_run = state.trajectory.candidate.run_id
+            window.reviewActions.requestMining(candidate_run)
+            return
+        # 标注路径：跳到第一个无 manual 点的帧
+        manual_frames = {p.frame_index for p in session.manual_points(track_id)}
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        if track is None:
+            return
+        timeline = next(
+            (t for t in session.project.timelines if t.video_id == track.video_id),
+            None)
+        if timeline is None:
+            return
+        for frame in range(timeline.working_zone[0], timeline.working_zone[1] + 1):
+            if frame not in manual_frames:
+                window.jumpToFrame(frame)
+                return
+
+    def _adopt_candidate(self, session, track_id, facts) -> None:
+        """[采用此轨迹]：影响预览 + 既有原子事务（activate/replace）。"""
+        candidate_run_id = facts.candidate.run_id
+        manual_count = facts.manual_count
+        newline = "\n"
+        if facts.has_active_result:
+            message = (
+                f"Adopt {facts.candidate.label} for this object?{newline}{newline}"
+                f"This replaces the currently adopted {facts.active_label} AI "
+                f"result.{newline}{manual_count} manual position(s) stay and keep "
+                f"priority.{newline}Charts will need an update afterwards.")
+            if not self._confirm_adopt(message):
+                return
+            self.replaceRun(candidate_run_id)
+        else:
+            message = (
+                f"Adopt {facts.candidate.label} for this object?{newline}{newline}"
+                f"{manual_count} manual position(s) stay and keep priority."
+                f"{newline}Charts will need an update afterwards.")
+            if not self._confirm_adopt(message):
+                return
+            self.activateRun(candidate_run_id)
+
+    def _confirm_adopt(self, message: str) -> bool:
+        from PySide6.QtWidgets import QMessageBox
+
+        # 测试环境（offscreen conftest）将 question 桩化为 Discard；这里用
+        # Yes/No 对话框，测试经 monkeypatch 控制回答
+        reply = QMessageBox.question(
+            self.window, "Adopt trajectory", message,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes)
+        return reply == QMessageBox.StandardButton.Yes
+
     def _onCardAction(self, action_id: str) -> None:
         """任务卡动作分发：全部走既有执行入口（与 Advanced 同一验证路径）。"""
         window = self.window
@@ -310,11 +466,40 @@ class TrackingActions(QObject):
         if action_id == "add_video":
             window.projectActions.openVideo()
             return
-        # 学习/生成/检查/采用/优化在 5.7 后续切片接线；先给可见反馈
-        if session is None:
+        track_id = window.selectedTrackId
+        if session is None or track_id is None:
             return
-        window.statusBar().showMessage(
-            f"Action “{action_id}” is being wired up in this workspace redesign")
+        runs = session.tracking_runs()
+
+        if action_id in ("start_learning", "retry_learning", "continue_optimizing"):
+            window.setWorkspace("acquire")
+            self._start_learning_with_system_plan(session, track_id, runs)
+            return
+        if action_id == "generate_trajectory":
+            window.setWorkspace("acquire")
+            self._generate_trajectory_with_latest_model(session, track_id, runs)
+            return
+        if action_id == "inspect_trajectory":
+            window.setWorkspace("acquire")
+            candidate = next(
+                (r for r in runs if r.track_id == track_id
+                 and r.task_type == "infer" and r.status == "completed"),
+                None)
+            if candidate is not None:
+                self.window.reviewActions.requestMining(candidate.run_id)
+            return
+        if action_id == "adopt_trajectory":
+            from ai_physics_tracker.application.workflow_projection import (
+                trajectory_facts,
+            )
+            facts = trajectory_facts(session, track_id, runs)
+            if facts.candidate is not None:
+                self._adopt_candidate(session, track_id, facts)
+            return
+        if action_id == "label_frame":
+            self._jump_to_next_attention_frame(session, track_id)
+            return
+        logger.warning("unhandled task-card action: %s", action_id)
 
     def train(self) -> None:
         # 仅 Resume 模式携带 source；Restart 带选中项会被 prepare 拒绝（review Blocker 1）
