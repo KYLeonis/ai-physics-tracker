@@ -331,7 +331,13 @@ class DifficultFrameReviewActions(QObject):
 
         # 实例化控制器并更新 UI
         self._controller = ReviewQueueController(session, run_id)
-        self.panel.setMineStatus(f"Found {result.actual_n} difficult frame(s)")
+        if result.actual_n == 0:
+            # 模型饱和：如实告知，不制造"待审核帧"（用户批准 2026-09-16）
+            self.panel.setMineStatus(
+                "No difficult frames found — this model is confident and consistent "
+                "on every frame in the working zone; nothing to review.")
+        else:
+            self.panel.setMineStatus(f"Found {result.actual_n} difficult frame(s)")
         self._sync_panel_with_controller()
 
         # 跳到首个候选帧

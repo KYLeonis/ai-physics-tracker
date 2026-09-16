@@ -333,10 +333,13 @@ class TrackingActions(QObject):
 
         coverage_previous = _coverage(infer_runs_all[-2]) if len(infer_runs_all) >= 2 else None
         coverage_latest = _coverage(infer_runs_all[-1]) if infer_runs_all else None
-        # model_snapshot 为 None 表示该 infer 结果仍是未激活的 Candidate —— 适合激活引导
-        latest_infer_id = (str(infer_runs_all[-1].run_id)
-                           if infer_runs_all and infer_runs_all[-1].model_snapshot is None
-                           else None)
+        # 激活引导：最新 completed infer run 若尚未成为活动结果（指针不指向它），
+        # 就是可激活的候选；判据必须是 active 指针而非 model_snapshot
+        # （候选 run 同样带 snapshot，此前判据恒为假 → 引导永不出现）
+        active_infer_id = session.get_track_activation_status(track_id)[1]
+        latest_infer_id = None
+        if infer_runs_all and str(infer_runs_all[-1].run_id) != str(active_infer_id):
+            latest_infer_id = str(infer_runs_all[-1].run_id)
 
         _ = track_id  # 已由 runs 过滤；保留参数签名稳定
         any_task_running = self.pending or any(

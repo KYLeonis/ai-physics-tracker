@@ -220,3 +220,34 @@ def test_training_after_active_infer_run_succeeds(
     recorded = next(r for r in session.tracking_runs()
                     if r.run_id == win.trackingActions._request.run.run_id)
     assert recorded.status in {"pending", "running"}
+
+
+def test_activation_guidance_targets_unactivated_latest_run(
+    qtbot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    """采集层：激活引导字段指向最新的未激活 infer run（判据是 active 指针）。"""
+    win, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
+                                            _FakeRunner(_FakeHandle()))
+    video = session.project.videos[0]
+    import json as _json
+    folder = session.project_root / "data" / "engines" / "guidance-fixture"
+    folder.mkdir(parents=True, exist_ok=True)
+    obs = folder / "observations.json"
+    obs.write_text(_json.dumps([]), encoding="utf-8")
+    st_obs = obs.stat()
+    run = create_tracking_run(video.video_id, track_id, "infer", engine="dlc",
+                             source_detail="test-engine")
+    run = mark_run_completed(replace(run, extra_fields={
+        "observations_path": obs.relative_to(session.project_root).as_posix(),
+        "observations_file_info": [st_obs.st_size, st_obs.st_mtime_ns],
+    }))
+    session.record_tracking_run(run)
+
+    collected = win.trackingActions._build_advisor_input(
+        session, track_id, session.tracking_runs())
+    assert collected.latest_infer_run_id == str(run.run_id)  # 未激活 → 引导目标
+
+    session.activate_infer_run(track_id, run.run_id)
+    collected_after = win.trackingActions._build_advisor_input(
+        session, track_id, session.tracking_runs())
+    assert collected_after.latest_infer_run_id is None  # 已激活 → 不再引导
