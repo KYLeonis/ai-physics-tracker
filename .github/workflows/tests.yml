@@ -60,9 +60,9 @@ jobs:
             python -m pytest
             exit $LASTEXITCODE
           }
-          & $cdb.FullName -cf cdb_script.txt -logo pytest_cdb.log -g -G python -m pytest
+          & $cdb.FullName -cf cdb_script.txt -logo pytest_cdb.log -g -G python -m pytest -s
           $code = $LASTEXITCODE
-          Get-Content pytest_cdb.log -Tail 400
+          Get-Content pytest_cdb.log -Tail 500
           exit $code
       - name: Upload crash dump
         if: runner.os == 'Windows' && failure()
