@@ -188,8 +188,9 @@ Astra 的 `READY AFTER BLOCKERS` Entry Gate blocker 条件已满足。
 
 ## Current Worktree Note
 
-工作区仅剩未跟踪的 `docs/design/phase-5.7-interaction-redesign.md`（Phase 5.7 设计
-草案，归属 5.7 立项时处理）。 stabilization 分支已合并 main 并推送。
+工作区干净。`docs/design/phase-5.7-interaction-redesign.md`（Phase 5.7 设计草案）
+已随 stabilization 后续修复提交入库（原为 untracked 草案，被 `git add -A` 一并
+纳入——内容未改动，归属 5.7 立项时评审）。
 
 ## Current Decisions / Deferred Checks
 
@@ -224,6 +225,6 @@ Astra 的 `READY AFTER BLOCKERS` Entry Gate blocker 条件已满足。
 baseline（733 tests、CI 双平台绿、R2 CLOSED）。5.7 的输入：
 [interaction-experience.md](../notes/interaction-experience.md)（用户交互记录与改进草案）、
 [docs/design/phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)
-（设计草案，未跟踪）。立项时一并处理：GUI 测试 teardown 模态隐患（stabilization
+（设计草案，已入库）。立项时一并处理：GUI 测试 teardown 模态隐患（stabilization
 R1 F1，Defer 至 5.7，复现配方见
 [pre-phase6-stabilization-review.md](../reviews/pre-phase6-stabilization-review.md)）。
