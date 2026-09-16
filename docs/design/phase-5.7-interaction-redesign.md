@@ -1,8 +1,8 @@
 # Phase 5.7 — Interaction Architecture Redesign
 
-> 状态：**Proposed / 待用户批准；不是实施授权，也不是已接受 ADR。**  
-> 日期：2026-09-16；角色：Product Interaction Architecture Reviewer。  
-> 基线：`main @ daad086`。本轮为仓库静态研究与产品设计，未运行新 GUI Human Review、DLC 实验或产品测试。  
+> 状态：**Proposed / 待用户批准；不是实施授权，也不是已接受 ADR。**
+> 日期：2026-09-16；角色：Product Interaction Architecture Reviewer。
+> 初始研究基线：`main @ daad086`；收尾增量核对：`main @ d606bb4`（已合并 Pre-Phase 6 Stabilization 及 latest-train tie-break 修复）。本轮为仓库静态研究与产品设计，未运行新 GUI Human Review、DLC 实验或产品测试。
 > 交付对象：后续 Sol / implementation Agent。只设计信息架构、交互、推荐职责与验收；不修改产品代码、数据格式、数值算法或既有验收结果。
 
 ## 1. Executive Product Diagnosis
@@ -52,7 +52,7 @@
 
 ## 3. Current Interaction Failure Analysis
 
-下表区分直接观察与产品推断。历史 Human Review 证明局部操作可用，不等于初学者可以独立理解整个流程。
+下表的 GUI 诊断基于初始研究基线；收尾时主要布局仍沿用该结构，Advisor 事实采集已移入 `application/advisor_collection.py`，修复状态见 §15。下表区分直接观察与产品推断。历史 Human Review 证明局部操作可用，不等于初学者可以独立理解整个流程。
 
 | 当前事实及定位 | 对三个核心问题的影响 | 设计回应 |
 | --- | --- | --- |
@@ -66,7 +66,7 @@
 | [ChartActions](../../src/ai_physics_tracker/gui/chart_actions.py) 显式 `recompute`；参数变化与输入代际都有独立语义 | 用户不知道采用后为何图没变，或把旧图误认成新结果 | “待更新”状态、指定来源、明确更新按钮 |
 | Phase 5.6 实验增加标签／重训并不持续改善，最终 ≥5% 改善未达成 | “再训练一次”不能充当默认出口 | 先判断是否有值得处理的问题；保留旧结果并结束无收益循环 |
 
-证据来源：[Pre-Phase 6 evidence package](../reviews/pre-phase6-evidence-package.md) §3/§8/§9、[Phase 5 spec](../spec/phase5-requirements.md)、[5.1 review](../reviews/phase-5.1-review.md)、[5.3 review](../reviews/phase-5.3-review.md)、[5.4 review](../reviews/phase-5.4-review.md)、[5.5 HR](../reviews/phase-5.5-review.md#4-human-review2026-09-04--用户通过)、[5.6 review](../reviews/phase-5.6-review.md)。用户真实困惑来自体验记录；本报告的方案效果尚待验证。
+证据来源：[Pre-Phase 6 evidence package](../reviews/pre-phase6-evidence-package.md) §3/§8/§9、[Phase 5 spec](../spec/phase5-requirements.md)、[5.1 review](../reviews/phase-5.1-review.md)、[5.3 review](../reviews/phase-5.3-review.md)、[5.4 review](../reviews/phase-5.4-review.md)、[5.5 HR](../reviews/phase-5.5-review.md)、[5.6 review](../reviews/phase-5.6-review.md)。用户真实困惑来自体验记录；本报告的方案效果尚待验证。
 
 ## 4. Product Principles
 
@@ -409,13 +409,15 @@ flowchart LR
 | --- | --- | --- |
 | C1 — 显式选择固定检查成员 | ADR-0014 Decision 5 写用户显式选择帧。自动冻结会越过约定；预选并让用户确认能保留知情动作，但属于交互政策细化 | 批准“系统预选、用户预览确认”；实现计划明确不自动 freeze。若要求无确认后台冻结，另行决策，不作为默认方案 |
 | C2 — Advisor Apply 只填表及规则合同 | ADR-0015 固定 Apply 只填表，5.5 规则有 restart 分支。本设计的一键显式“开始推荐学习”和停止规则不能冒称原 Apply 行为 | 保留 Apply 原语义，新显式启动入口提交可见推荐计划；批准后用新 ADR／spec 修订记录被替代的行为条款，不修改已接受 ADR 正文 |
-| C3 — Resume 祖先的固定检查污染／未知资格 | 仅改文字不能让曾参与祖先训练的帧变成独立留出；series 相同也不够 | 关联 [工程 review P6R-02](../reviews/pre-phase6-project-review.md)：先核实并落实执行／推荐资格守卫；未知时不作改善推荐，优先建议显式 restart。不可把更改底层检查藏在 UX 实现内 |
-| C4 — 历史检查集合被删除后的溯源缺口 | UI 折叠历史不能恢复已删除的标签快照 | 关联工程 review P6R-03；建议保留被引用集合／归档，而不是删除。需要应用层政策裁定；5.7 默认不提供破坏性清理捷径 |
-| C5 — 跨 Track/run Undo 一致性 | 不能靠按钮换名兑现无损撤销；现有契约仍必须成立 | 关联工程 review P6R-01，独立修复并验证原子性，不在设计中重新定义 Undo。5.7 交付前复验相关路径 |
+| C3 — Resume 祖先的固定检查污染／未知资格 | 仅改文字不能让曾参与祖先训练的帧变成独立留出；series 相同也不够 | 初始发现见 [工程 review P6R-02](../reviews/pre-phase6-project-review.md)，收尾时已由 `c384cd8` 修复。5.7 复用 clean/contaminated/unknown 资格和 Resume 守卫；未知时不作改善推荐。若需扩大资格／记录含义，另行决策 |
+| C4 — 历史检查集合被删除后的溯源缺口 | UI 折叠历史不能恢复已删除的标签快照 | 收尾时 `1c3769d` 已拒绝删除被引用集合，停用仍保留历史。5.7 复用该规则，普通入口说“停止使用这组检查帧”；任何归档新语义另行提案 |
+| C5 — 跨 Track/run Undo 一致性 | 不能靠按钮换名兑现无损撤销；现有契约仍必须成立 | 收尾时 `7c160b0` 与后续修复已落实原子拒绝／按作用域恢复。5.7 复用最新语义，保留拒绝反馈并回归验证；不重新定义 Undo |
 | C6 — “已人工审查整段／已验证可发表”的记录缺失 | run-scoped 批次记录无法表示通用质量认证、科学容差或独立最终审计 | 5.7 不引入该 badge／确认框／持久化字段。若未来需要最终审核证书与独立保留集，单独设计领域契约 |
 | C7 — 初始代表帧待办恢复 | 当前代表帧建议不等同持久化审核队列；仅靠 UI 状态无法保证重开回到未标列表 | 5.7 保留已保存 manual，重开可显式重新选未标帧。若要求原批次精确恢复，另提持久化扩展，不借用 infer review schema |
 
-工程 review 文件在本次开始时已存在且尚未提交；上述 P6R 引用是**另一报告的发现，不是本次重新运行 probe 的结论**。实现前需核实其处置状态。其 P6R-04 提醒 Advisor 输入采集可能选错 timeline／旧 OOM；在普通用户依赖系统推荐的设计下，该事实采集修复应是推荐能力交付前置，不能仅相信纯规则单测。
+工程 review 文件在本次开始时已存在且尚未提交；上述 P6R 引用是**另一报告的历史发现，不是本次重新运行 probe 的结论**。收尾核对发现仓库已推进至 `d606bb4`：[stabilization review](../reviews/pre-phase6-stabilization-review.md) 记录 P6R-01/02/03/04 均关闭，R2 CLOSED。静态核对确认 Resume 资格守卫、被引用集合删除保护、比较资格已在源码中；事实采集已提取至 `application/advisor_collection.py`，latest-train 时间戳平局按最近注册者处理（`f17cf32`）。因此 C3–C5 是已落实的底层约束与 5.7 回归前置，**不是要求再次修复的开放项**。本轮不重认证该工程审查的测试结论。
+
+仍需带入 5.7 的明确技术待办：stabilization R1 F1 的特定 pytest 排序下 GUI teardown 保存模态挂起，按该 review 的复现配方在 GUI 测试刷新时处理；这不属于产品流程本身的失败设计。
 
 ## 16. Implementation Handoff（批准后执行）
 
@@ -423,12 +425,12 @@ flowchart LR
 
 | Slice | 交付 | 复用与边界 |
 | --- | --- | --- |
-| 0 — 事实与规则定稿 | 明确 §15 处置；固定推荐资格、状态优先级和分析条件的表驱动样例 | 不先拆整个 ProjectSession；不要求本轮设计代替工程稳定化 |
+| 0 — 事实与规则定稿 | 复用已完成 stabilization，明确 §15 剩余决策；固定推荐资格、状态优先级和分析条件的表驱动样例 | 不先拆整个 ProjectSession；不要求本轮设计代替工程稳定化 |
 | 1 — 工作区与状态头 | 三个工作区、上下文卡、独立分析状态、历史入口；原能力可达 | MainWindow / TaskPanel / ChartPanel 呈现重组，不重写播放器与数值管线 |
 | 2 — 标注与推荐执行 | 初始标注路径、检查帧预览确认、推荐学习／生成计划、三层信息 | 复用 FrameSelectionActions / TrackingActions / training_advisor；执行前重验捕获的上下文与参数 |
 | 3 — 检查与采用 | 候选预览、逐帧处理、空结果结论、比较卡、显式采用 | 复用 DifficultFrameReviewActions 和 session 原子事务；候选 preview 不能混入 effective points |
 | 4 — 分析交接与异常 | Ready 分类、过期重算、旧结果并行、失败恢复／legacy／保存重开 | 复用 ChartActions 的 request identity 和 Recompute；不新建任务 runner |
-| 5 — 验收与收尾 | 自动化语义回归、目标用户 Human Review、文档同步 | 未通过真人闭环不宣告 Phase 5.7 完成 |
+| 5 — 验收与收尾 | 自动化语义回归、teardown 模态待办、目标用户 Human Review、文档同步 | 未通过真人闭环不宣告 Phase 5.7 完成 |
 
 不要求具体类名或通用 workflow engine。可以增加小型只读状态／推荐投影与可测试的计划构造函数，但不维护第二份 task 生命周期和项目事实。默认／高级都调用同一执行入口；高级展开状态不是权限模型。
 
@@ -482,5 +484,5 @@ flowchart LR
 - 范围：[Phase 5 requirements](../spec/phase5-requirements.md)、[总计划](../status/phase-5-plan.md)、[5.4 plan](../status/phase-5.4-plan.md)、[5.5 plan](../status/phase-5.5-plan.md)、[5.6 plan](../status/phase-5.6-plan.md)。部分计划标题滞后，事实状态优先看 current 与实际实现，不把旧标题当未实现证明。
 - 契约：[ADR-0012](../decisions/0012-gui-tracking-task-boundaries.md)、[ADR-0013](../decisions/0013-run-scoped-suggested-frame-review-state.md)、[ADR-0014](../decisions/0014-result-activation-and-fixed-validation-history.md)、[ADR-0015](../decisions/0015-training-advisor-and-resume-retraining.md)、[ADR-0009](../decisions/0009-interactive-charts-and-analysis-transactions.md)、[ADR-0010](../decisions/0010-current-chart-png-snapshots.md)。
 - GUI：`main_window.py`、`task_panel.py`、`tracking_actions.py`、`suggested_frame_review_actions.py`、`validation_dialog.py`、`chart_actions.py`、`chart_panel.py`，均在 `src/ai_physics_tracker/gui/`。
-- 推荐与标签事实：`application/training_advisor.py`、`application/training_job.py`；主流程的现有原语及相关测试入口见证据包 §2/§9。
+- 推荐与标签事实：`application/training_advisor.py`、`application/training_job.py`；收尾补读 `application/advisor_collection.py` 及 stabilization 守卫；主流程的现有原语及相关测试入口见证据包 §2/§9。
 - 审查：[5.1](../reviews/phase-5.1-review.md)、[5.3](../reviews/phase-5.3-review.md)、[5.4](../reviews/phase-5.4-review.md)、[5.5](../reviews/phase-5.5-review.md)、[5.6](../reviews/phase-5.6-review.md)、[Pre-Phase 6 工程 review](../reviews/pre-phase6-project-review.md)。本轮未独立重跑它们的实验／探针或重验历史 HR。

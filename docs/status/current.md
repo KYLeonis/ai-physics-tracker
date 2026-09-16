@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-16（**Pre-Phase 6 Stabilization 完成：P6R-01/02/04/03 全部关闭并经 R1/R2 独立复核；下一步 Phase 5.7 交互重构**）
+- 最后更新：2026-09-16（**Pre-Phase 6 Stabilization 完成：P6R-01/02/04/03 全部关闭并经 R1/R2 独立复核；Phase 5.7 交互架构设计已完成，待用户批准**）
 
 ---
 
@@ -11,7 +11,7 @@
 
 | Level | Name | Status |
 | --- | --- | --- |
-| Current | Pre-Phase 6 Stabilization（P6R-01/02/04/03） | ✅ 已完成 (2026-09-16, R2 CLOSED) |
+| Current | Phase 5.7 — Interaction Architecture Design | 📝 设计已完成，待用户批准；未开始产品实现 |
 | Phase | Phase 5 — AI-assisted Annotation & Refinement | ✅ 已收官 (5.0–5.6 全部完成) |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
@@ -22,6 +22,13 @@
 | Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 以明示缺口归档) |
 
 ## Recently Completed
+
+- **Phase 5.7 交互架构设计（2026-09-16，仅研究与设计）**：完成
+  [phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)。建议以
+  “实验设置 → 获取轨迹 → 分析与图表”工作区和上下文任务卡替代 AI Tasks 总表；
+  明确普通／高级职责、逐状态主动作、失败恢复、可分析条件、科研契约和实施验收。
+  收尾已对齐 stabilization 的已关闭事项；没有修改产品代码。下一步先由用户批准设计，
+  再由 Sol / implementation Agent 制定 mini-plan 并实现。
 
 - **Pre-Phase 6 Stabilization（2026-09-16，分支 `fix/pre-phase6-stabilization` 已合并 main）**：
   - 依据 [pre-phase6-project-review.md](../reviews/pre-phase6-project-review.md)（P6R-01…04）与
@@ -182,15 +189,15 @@
 **Pre-Phase 6 Stabilization 已完成**：P6R-01/02（Phase 6 blocker）与 P6R-04/03 全部
 关闭并经独立复核（[R2 CLOSED](../reviews/pre-phase6-stabilization-review.md)）；
 Astra 的 `READY AFTER BLOCKERS` Entry Gate blocker 条件已满足。
-下一步按用户指令进入 **Phase 5.7 Interaction Flow Redesign**（草案见
-[docs/design/phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)，
-尚未入库），随后 Phase 6（Advanced Physics Analysis）立项。
+**Phase 5.7 交互架构设计已交付，等待用户批准**（见
+[phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)）。
+批准前不开始产品实现；Phase 6 仍待另行立项。
 
 ## Current Worktree Note
 
-工作区干净。`docs/design/phase-5.7-interaction-redesign.md`（Phase 5.7 设计草案）
-已随 stabilization 后续修复提交入库（原为 untracked 草案，被 `git add -A` 一并
-纳入——内容未改动，归属 5.7 立项时评审）。
+`docs/design/phase-5.7-interaction-redesign.md` 初稿已随 stabilization 后续修复
+提交入库；本次设计收尾仅更新该报告与本状态文件，补齐最新工程基线与审批交接。
+没有产品代码改动；设计处于 Proposed，入库不代表实现批准。
 
 ## Current Decisions / Deferred Checks
 
@@ -221,10 +228,11 @@ Astra 的 `READY AFTER BLOCKERS` Entry Gate blocker 条件已满足。
 
 ## Next Recommended Action
 
-**发起 Phase 5.7 Interaction Flow Redesign 立项**：stabilization 已交付干净工程
-baseline（733 tests、CI 双平台绿、R2 CLOSED）。5.7 的输入：
-[interaction-experience.md](../notes/interaction-experience.md)（用户交互记录与改进草案）、
-[docs/design/phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)
-（设计草案，已入库）。立项时一并处理：GUI 测试 teardown 模态隐患（stabilization
-R1 F1，Defer 至 5.7，复现配方见
-[pre-phase6-stabilization-review.md](../reviews/pre-phase6-stabilization-review.md)）。
+**请用户审阅并批准 Phase 5.7 交互架构设计**：
+[phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)
+（重点 §5 普通／高级职责、§8 布局、§11 分析交接、§15/§17 决策边界）。
+批准后由 Sol / implementation Agent 制定 5.7 mini-plan，再进入实现；本轮设计不构成实现授权。
+复用已完成的 stabilization，不重复修复 P6R-01/02/03/04；GUI 测试 teardown 模态隐患
+（stabilization R1 F1，复现配方见
+[pre-phase6-stabilization-review.md](../reviews/pre-phase6-stabilization-review.md)）
+仍需在 5.7 测试刷新时处理。产品交互增量最终须经 Human Review。
