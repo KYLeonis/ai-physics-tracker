@@ -131,20 +131,21 @@ def test_remove_track_cascades_observations(tmp_path: Path) -> None:
         session.mark_point(track.track_id, 0, 2.0, 2.0)
 
 
-def test_remove_track_with_runs_succeeds_and_undo_keeps_runs_deleted(
+def test_remove_track_with_runs_succeeds_and_undo_restores_track_and_runs(
     tmp_path: Path,
 ) -> None:
-    # review F1 回归：带 TrackingRun 的 track 删除不再被聚合校验拒绝；
-    # undo 恢复 track/观测（数据层），run 注册表是审计日志、不进撤销快照。
+    # review F1 回归 + P6R-01 政策更新：带 TrackingRun 的 track 删除不再被聚合
+    # 校验拒绝；undo 恢复 track/观测的同时恢复该 track 的 run——Phase 5.4 起
+    # refinement state 含 active run pointer，旧契约"run 不随撤销恢复"会留下
+    # 悬空引用（pre-phase6 review P6R-01 复现 B），已不再成立。
     session = _session_with_video(tmp_path)
     video = session.project.videos[0]
     track = session.add_track(video.video_id)
     session.mark_point(track.track_id, 0, 1.0, 1.0)
-    session.record_tracking_run(
-        create_tracking_run(
-            video.video_id, track.track_id, "train", engine_version="3.0.1-mock"
-        )
+    run = create_tracking_run(
+        video.video_id, track.track_id, "train", engine_version="3.0.1-mock"
     )
+    session.record_tracking_run(run)
 
     session.remove_track(track.track_id)
 
@@ -156,7 +157,7 @@ def test_remove_track_with_runs_succeeds_and_undo_keeps_runs_deleted(
 
     assert session.tracks == (track,)
     assert len(session.project.observations) == 1
-    assert session.project.tracking_runs == ()
+    assert [r.run_id for r in session.project.tracking_runs] == [run.run_id]
 
 
 def test_detached_snapshot_is_isolated_from_subsequent_writes(

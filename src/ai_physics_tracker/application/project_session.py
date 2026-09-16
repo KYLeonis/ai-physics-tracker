@@ -24,6 +24,7 @@ from ai_physics_tracker.application.refinement_history import (
     _now_iso_utc,
     attach_refinement_state,
     check_validation_series_consistency,
+    extract_refinement_iteration,
     extract_refinement_state,
 )
 from ai_physics_tracker.application.suggested_frame_review import (
@@ -118,7 +119,11 @@ TRACK_COLOR_PALETTE = (
 )
 
 
-# 会话历史快照（含 TrackStore 数据、标定、派生数据与可选的审核事务作用域快照）
+# 会话历史快照（含 TrackStore 数据、标定、派生数据、TrackingRun 注册表与可选的
+# 审核事务作用域快照）。registry 参与快照使 Undo/Redo 能感知 Track↔run 结构依赖
+# （P6R-01）；合并规则见 ProjectSession._history_transition。
+# 前 _SNAPSHOT_DATA_FIELDS 个元素是"用户数据"；末位的 registry 仅用于历史转换，
+# 不参与 accept_saved_snapshot 的"保存期间产生新数据"判定（stabilization R1 F2）。
 _SessionDataSnapshot = tuple[
     tuple[Track, ...],
     tuple[TrackPoint, ...],
@@ -126,7 +131,9 @@ _SessionDataSnapshot = tuple[
     dict[UUID, UUID],
     tuple[DerivedData, ...],
     dict[UUID, dict[str, Any] | None] | None,
+    tuple[TrackingRun, ...],
 ]
+_SNAPSHOT_DATA_FIELDS = 6
 
 
 class ProjectSessionError(Exception):
@@ -476,7 +483,11 @@ class ProjectSession:
         """更新磁盘保存基线，保持活动会话与保存期间产生的数据。"""
         if saved.project.project_id != self.project.project_id:
             raise ProjectSessionError("Saved snapshot belongs to another project")
-        changed = self._current_data_snapshot() != saved._current_data_snapshot()
+        # registry 不参与"保存期间产生了新数据"判定：run 状态演进（如
+        # pending→running）不是需要保留撤销步的用户数据变化（stabilization R1 F2）。
+        current = self._current_data_snapshot()
+        changed = current[:_SNAPSHOT_DATA_FIELDS] != (
+            saved._current_data_snapshot()[:_SNAPSHOT_DATA_FIELDS])
         self._project_root = saved.project_root
         self._saved_project = saved._saved_project
         self._project = replace(self._project, modified_at=saved.project.modified_at,
@@ -596,13 +607,18 @@ class ProjectSession:
         return self.video_path(video)
 
     def record_tracking_run(self, run: TrackingRun) -> None:
-        """登记一个新的 TrackingRun。"""
+        """登记一个新的 TrackingRun。
+
+        新 run 登记是一次前向写入：清空 redo 栈，防止 redo 越过它恢复到
+        "该 run 所依赖的 Track 尚不存在/已被删除"的历史状态（P6R-01）。
+        """
         if any(r.run_id == run.run_id for r in self._project.tracking_runs):
             raise ProjectSessionError(f"tracking run_id already exists: {run.run_id}")
         self._project = replace(
             self._project,
             tracking_runs=(*self._project.tracking_runs, run),
         )
+        self._redo_stack.clear()
 
     def update_tracking_run(self, run: TrackingRun) -> None:
         """更新已存在的 TrackingRun 状态或结果。"""
@@ -1027,31 +1043,104 @@ class ProjectSession:
         return bool(self._redo_stack)
 
     def undo(self) -> bool:
-        """撤销最近一次写操作（含"替换后恢复旧点"与审核记录）；无可撤销时返回 False。"""
+        """撤销最近一次写操作；无可撤销时返回 False。
+
+        越过"快照之外登记的 run 依赖"的结构性撤销（如新建 Track 后又登记了
+        训练任务再撤销建 Track）抛出 ProjectSessionError 且五个状态——Project、
+        TrackStore、Undo 栈、Redo 栈、run registry——完全不变（P6R-01）。
+        """
 
         if not self._undo_stack:
             return False
-        snapshot = self._undo_stack.pop()
-        tracks, observations, calibrations, active_calibration_by_video, derived, scoped_reviews = snapshot
+        snapshot = self._undo_stack[-1]  # 先 peek：校验失败不动任何栈
+        current_scoped = self._capture_current_scoped_reviews(snapshot[5])
+        candidate_project, candidate_store = self._history_transition(snapshot, is_undo=True)
+        self._undo_stack.pop()
+        self._redo_stack.append(self._current_data_snapshot(current_scoped))
+        self._store = candidate_store
+        self._project = candidate_project
+        return True
 
-        # 抓取当前受影响 run 的 review 状态作为 redo 恢复点
-        current_scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None
-        if scoped_reviews is not None:
-            current_scoped_reviews = {}
-            for r_id in scoped_reviews:
-                run = next((r for r in self._project.tracking_runs if r.run_id == r_id), None)
-                if run is not None:
-                    rev_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
-                    current_scoped_reviews[r_id] = (
-                        deepcopy(rev_dict) if isinstance(rev_dict, dict) else None
-                    )
-                else:
-                    current_scoped_reviews[r_id] = None
+    def redo(self) -> bool:
+        """重做被撤销的操作；无可重做时返回 False。事务边界与 undo 对称。"""
 
-        self._redo_stack.append(self._current_data_snapshot(current_scoped_reviews))
-        self._store = TrackStore(tracks, observations)
+        if not self._redo_stack:
+            return False
+        snapshot = self._redo_stack[-1]
+        current_scoped = self._capture_current_scoped_reviews(snapshot[5])
+        candidate_project, candidate_store = self._history_transition(snapshot, is_undo=False)
+        self._redo_stack.pop()
+        self._undo_stack.append(self._current_data_snapshot(current_scoped))
+        self._store = candidate_store
+        self._project = candidate_project
+        return True
 
-        updated_runs = self._project.tracking_runs
+    def _capture_current_scoped_reviews(
+        self, scoped_reviews: dict[UUID, dict[str, Any] | None] | None
+    ) -> dict[UUID, dict[str, Any] | None] | None:
+        """抓取当前受影响 run 的 review 状态，作为反向步骤的恢复点。"""
+
+        if scoped_reviews is None:
+            return None
+        current_scoped: dict[UUID, dict[str, Any] | None] = {}
+        for run_id in scoped_reviews:
+            run = next((r for r in self._project.tracking_runs if r.run_id == run_id), None)
+            if run is not None:
+                rev_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
+                current_scoped[run_id] = deepcopy(rev_dict) if isinstance(rev_dict, dict) else None
+            else:
+                current_scoped[run_id] = None
+        return current_scoped
+
+    def _history_transition(
+        self, snapshot: _SessionDataSnapshot, *, is_undo: bool
+    ) -> tuple[Project, TrackStore]:
+        """构造历史切换的目标状态；任何校验失败都不触碰当前会话（P6R-01）。
+
+        run registry 合并规则：
+        - 存续 Track 的 run 保持当前状态——pending/running/completed 的生命周期
+          演进（后台事实）不被 Undo/Redo 回滚；
+        - 被恢复 Track（当前不存在、快照存在）的 run 随快照恢复，保证 active
+          pointer / observations / refinement state 引用可解析；
+        - 被移除 Track 的当前 run 随之移除；undo 方向上若存在快照之外登记的
+          run（record_tracking_run 不产生快照），说明该 run 依赖未被任何历史
+          步骤覆盖，原子拒绝。
+        """
+
+        tracks, observations, calibrations, active_map, derived, scoped_reviews, snapshot_runs = snapshot
+        target_ids = {t.track_id for t in tracks}
+        current_ids = {t.track_id for t in self._store.tracks}
+        restored_ids = target_ids - current_ids
+        removed_ids = current_ids - target_ids
+
+        merged_runs: list[TrackingRun]
+        if restored_ids or removed_ids:
+            snapshot_run_ids = {r.run_id for r in snapshot_runs}
+            snapshot_runs_by_track: dict[UUID, list[TrackingRun]] = {}
+            for run in snapshot_runs:
+                snapshot_runs_by_track.setdefault(run.track_id, []).append(run)
+            merged_runs = []
+            for run in self._project.tracking_runs:
+                if run.track_id in restored_ids:
+                    continue  # 恢复 Track 的 run 一律以快照为准
+                if run.track_id in removed_ids:
+                    if is_undo and run.run_id not in snapshot_run_ids:
+                        # 该拒绝仅在 undo 方向可达：redo 的栈在每次前向写入
+                        # （含 record_tracking_run）时已清空，被移除 track 的 run
+                        # 只可能来自配对快照的恢复。
+                        raise ProjectSessionError(
+                            f"cannot undo: tracking run {run.run_id} references a "
+                            "track created after this history point; undo across a "
+                            "registered AI task is not supported"
+                        )
+                    continue
+                merged_runs.append(run)
+            for track_id in restored_ids:
+                merged_runs.extend(snapshot_runs_by_track.get(track_id, ()))
+        else:
+            merged_runs = list(self._project.tracking_runs)
+
+        updated_runs = tuple(merged_runs)
         if scoped_reviews is not None:
             runs_list: list[TrackingRun] = []
             for existing in updated_runs:
@@ -1067,67 +1156,17 @@ class ProjectSession:
                     runs_list.append(existing)
             updated_runs = tuple(runs_list)
 
-        self._project = replace(
+        # replace() 触发 validate_project：聚合级引用完整性先于任何赋值
+        candidate_project = replace(
             self._project,
             tracks=tracks,
             observations=observations,
             calibrations=calibrations,
-            active_calibration_by_video=active_calibration_by_video,
+            active_calibration_by_video=active_map,
             derived=derived,
             tracking_runs=updated_runs,
         )
-        return True
-
-    def redo(self) -> bool:
-        """重做被撤销的操作；无可重做时返回 False。"""
-
-        if not self._redo_stack:
-            return False
-        snapshot = self._redo_stack.pop()
-        tracks, observations, calibrations, active_calibration_by_video, derived, scoped_reviews = snapshot
-
-        current_scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None
-        if scoped_reviews is not None:
-            current_scoped_reviews = {}
-            for r_id in scoped_reviews:
-                run = next((r for r in self._project.tracking_runs if r.run_id == r_id), None)
-                if run is not None:
-                    rev_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
-                    current_scoped_reviews[r_id] = (
-                        deepcopy(rev_dict) if isinstance(rev_dict, dict) else None
-                    )
-                else:
-                    current_scoped_reviews[r_id] = None
-
-        self._undo_stack.append(self._current_data_snapshot(current_scoped_reviews))
-        self._store = TrackStore(tracks, observations)
-
-        updated_runs = self._project.tracking_runs
-        if scoped_reviews is not None:
-            runs_list: list[TrackingRun] = []
-            for existing in updated_runs:
-                if existing.run_id in scoped_reviews:
-                    target_rev = scoped_reviews[existing.run_id]
-                    extras = dict(existing.extra_fields)
-                    if target_rev is None:
-                        extras.pop(SUGGESTED_FRAME_REVIEW_KEY, None)
-                    else:
-                        extras[SUGGESTED_FRAME_REVIEW_KEY] = deepcopy(target_rev)
-                    runs_list.append(replace(existing, extra_fields=extras))
-                else:
-                    runs_list.append(existing)
-            updated_runs = tuple(runs_list)
-
-        self._project = replace(
-            self._project,
-            tracks=tracks,
-            observations=observations,
-            calibrations=calibrations,
-            active_calibration_by_video=active_calibration_by_video,
-            derived=derived,
-            tracking_runs=updated_runs,
-        )
-        return True
+        return candidate_project, TrackStore(tracks, observations)
 
     def _current_data_snapshot(
         self,
@@ -1140,6 +1179,7 @@ class ProjectSession:
             dict(self._project.active_calibration_by_video),
             self._project.derived,
             deepcopy(scoped_reviews) if scoped_reviews is not None else None,
+            self._project.tracking_runs,
         )
 
     def _push_undo_snapshot(
@@ -1600,7 +1640,12 @@ class ProjectSession:
         track_id: UUID,
         series_id: UUID,
     ) -> None:
-        """删除指定 Track 的固定验证集。若为活动验证集则自动清空活动指针。"""
+        """删除指定 Track 的固定验证集。若为活动验证集则自动清空活动指针。
+
+        P6R-03：series 是历史 validation labels 的第一方快照；被本 Track 任一
+        train run 的迭代记录引用时拒绝物理删除（改用停用保留溯源），未被引用
+        的 series 删除行为不变。
+        """
         track = next((t for t in self._store.tracks if t.track_id == track_id), None)
         if track is None:
             raise ProjectSessionError(f"unknown track_id: {track_id}")
@@ -1610,6 +1655,21 @@ class ProjectSession:
         if target is None:
             raise ProjectSessionError(
                 f"Validation series '{series_id}' does not exist on track '{track.name}'"
+            )
+
+        # 5.4 前 legacy run 无 iteration 记录，不可能引用 series，不阻止删除
+        referencing_runs = [
+            run for run in self._project.tracking_runs
+            if run.track_id == track_id and run.task_type == "train"
+            and (info := extract_refinement_iteration(run)) is not None
+            and info.validation_series_id == series_id
+        ]
+        if referencing_runs:
+            raise ProjectSessionError(
+                f"Validation series '{target.name}' is referenced by "
+                f"{len(referencing_runs)} training run(s) on track '{track.name}'; "
+                "deactivate it instead of deleting so historical validation labels "
+                "stay traceable"
             )
 
         new_series_list = tuple(s for s in current_state.validation_series if s.series_id != series_id)

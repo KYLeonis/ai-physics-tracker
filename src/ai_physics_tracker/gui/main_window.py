@@ -693,12 +693,28 @@ class MainWindow(QMainWindow):
         self.frameRequestFailed.emit()
 
     def _undo(self) -> None:
-        if self._annotation_session is None or not self._annotation_session.undo():
+        # P6R-01：会话层原子拒绝（如撤销越过已登记 AI 任务的建 Track 操作）时，
+        # 给出可见反馈而不是让异常穿透 GUI 事件循环；状态已保证完全不变。
+        if self._annotation_session is None:
+            return
+        try:
+            stepped = self._annotation_session.undo()
+        except ProjectSessionError as error:
+            self.statusBar().showMessage(f"Undo unavailable: {error}")
+            return
+        if not stepped:
             return
         self._afterHistoryStep()
 
     def _redo(self) -> None:
-        if self._annotation_session is None or not self._annotation_session.redo():
+        if self._annotation_session is None:
+            return
+        try:
+            stepped = self._annotation_session.redo()
+        except ProjectSessionError as error:
+            self.statusBar().showMessage(f"Redo unavailable: {error}")
+            return
+        if not stepped:
             return
         self._afterHistoryStep()
 

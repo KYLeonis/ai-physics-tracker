@@ -10,6 +10,11 @@ from typing import Any
 from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
+from ai_physics_tracker.application.refinement_history import (
+    VALIDATION_COMPARISON_CONTAMINATED,
+    VALIDATION_COMPARISON_UNKNOWN,
+    validation_training_exposure,
+)
 from ai_physics_tracker.application.training_job import prepare_training
 from ai_physics_tracker.application.inference_job import (
     _inference_process_worker,
@@ -93,6 +98,29 @@ def prepare_tracking_request(session: ProjectSession, track_id: UUID,
                     "Resume source snapshot has changed; select a current training run")
             resume_snapshot_path = snapshot
             resume_snapshot_info = (st.st_size, st.st_mtime_ns)
+            # P6R-02：本轮 train/test 互斥不足以证明 resume 模型从未见过验证帧；
+            # parent 及更早祖先的训练成员必须与当前活动验证集无交集。
+            active_series = session.get_refinement_state(track_id).active_series
+            if active_series is not None:
+                exposure = validation_training_exposure(
+                    session.tracking_runs(),
+                    resume_from_training_run_id,
+                    active_series.frame_indices,
+                )
+                if exposure.qualification == VALIDATION_COMPARISON_CONTAMINATED:
+                    raise ProjectSessionError(
+                        f"Resume blocked: the selected model's training lineage already "
+                        f"trained on validation frame(s) {list(exposure.exposed_frames)} of "
+                        f"series '{active_series.name}' (ancestor run "
+                        f"{str(exposure.exposed_ancestors[0])[:8]}). Use Restart training, "
+                        "pick another resume source, or deactivate the validation series "
+                        "to resume without fixed-validation comparison.")
+                if exposure.qualification == VALIDATION_COMPARISON_UNKNOWN:
+                    raise ProjectSessionError(
+                        f"Resume blocked: {exposure.reasons[0]}. Training membership of "
+                        "the resume lineage cannot be verified against the active "
+                        "validation series. Use Restart training or deactivate the "
+                        "validation series.")
         elif resume_from_training_run_id is not None:
             raise ProjectSessionError(
                 "resume_from_training_run_id requires training_mode='resume'")

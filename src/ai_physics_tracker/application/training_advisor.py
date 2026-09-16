@@ -9,6 +9,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from math import isfinite
 
+from ai_physics_tracker.application.refinement_history import (
+    VALIDATION_COMPARISON_CLEAN,
+    VALIDATION_COMPARISON_QUALIFICATIONS,
+)
+
 # 固定阈值与档位（mini-plan 已批准的第一版可解释值；进入 evidence，不伪装成
 # 统计显著性或通用物理精度标准）
 RMSE_TREND_THRESHOLD = 0.05          # 相对变化 ≥±5% 视为 improved/worsened
@@ -40,15 +45,27 @@ class RoundMetrics:
     """一轮 completed 训练在同 series 下的评价快照（recent last）。
 
     metric_name/unit 用于确保只比较同名同单位指标；validation_series_id
-    不同（或为 None）的轮次之间禁止计算 delta。
+    不同（或为 None）的轮次之间禁止计算 delta。comparison_qualification
+    （P6R-02）由输入采集方按该 run 的完整 Resume ancestry 计算并显式传入：
+    只有 clean（模型从未训练过该 series 的验证帧）的轮次才参与独立比较；
+    contaminated/unknown 的轮次之间不得计算 improved/worsened。该字段无
+    默认值——构造方必须声明资格，避免静默 fail-open。
     """
 
     training_run_id: str
     validation_series_id: str | None
     train_rmse: float
     validation_rmse: float
+    comparison_qualification: str
     metric_name: str = "rmse"
     metric_unit: str = "px"
+
+    def __post_init__(self) -> None:
+        if self.comparison_qualification not in VALIDATION_COMPARISON_QUALIFICATIONS:
+            raise ValueError(
+                "comparison_qualification must be one of "
+                f"{sorted(VALIDATION_COMPARISON_QUALIFICATIONS)}, "
+                f"got {self.comparison_qualification!r}")
 
 
 @dataclass(frozen=True)
@@ -325,6 +342,23 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
             ),
         )
     has_series = any(r.validation_series_id for r in inp.recent_rounds)
+    # P6R-02：同 series 且同名同单位的评价对若因 lineage 资格不足而不可比——
+    # 此时正确的动作是 restart（或停用验证集），不是"再冻一个 series"。
+    if _lineage_blocked_pair(inp.recent_rounds):
+        return AdvisorRecommendation(
+            action=ACTION_RESTART,
+            epochs=inp.requested_epochs,
+            batch_size=inp.requested_batch_size,
+            training_mode=ACTION_RESTART,
+            evidence=(
+                "evaluations share the validation series but their training lineage "
+                "saw validation frames or cannot be verified — not independently comparable",
+            ),
+            limits=(
+                "Restart training (or deactivate the validation series) to regain an "
+                "independent holdout comparison; historical RMSE values are kept as-is.",
+            ),
+        )
     evidence = (
         "a validation series exists but fewer than two completed evaluations "
         "share it — no comparable pair yet" if has_series else
@@ -362,7 +396,11 @@ def _evidence_extras(inp: AdvisorInput) -> tuple[str, ...]:
 def _same_series_comparison(
     rounds: Sequence[RoundMetrics],
 ) -> tuple[RoundMetrics, RoundMetrics] | None:
-    """取最近一轮与其之前最近一轮同 series 且同名同单位指标的组合；否则 None。"""
+    """取最近一轮与其之前最近一轮同 series 且同名同单位指标的组合；否则 None。
+
+    P6R-02：两轮还必须同为 clean 资格——resume 模型继承祖先权重，祖先训练过
+    验证帧时，"本轮 train/test 互斥"不构成独立 holdout 证据，禁止计算 delta。
+    """
     if len(rounds) < 2:
         return None
     last = rounds[-1]
@@ -372,9 +410,33 @@ def _same_series_comparison(
         if (previous.validation_series_id == last.validation_series_id
                 and previous.metric_name == last.metric_name
                 and previous.metric_unit == last.metric_unit
+                and previous.comparison_qualification == VALIDATION_COMPARISON_CLEAN
+                and last.comparison_qualification == VALIDATION_COMPARISON_CLEAN
                 and previous.validation_rmse > 0 and previous.train_rmse > 0):
             return previous, last
     return None
+
+
+def _lineage_blocked_pair(rounds: Sequence[RoundMetrics]) -> bool:
+    """同 series 且同名同单位的最近一对是否仅因 lineage 资格不足而不可比。
+
+    用于区分"没有可比对"（freeze/再训练建议）与"有对但被 P6R-02 资格挡住"
+    （restart/停用建议）；指标或单位不匹配不属于 lineage 资格问题。
+    """
+    if len(rounds) < 2:
+        return False
+    last = rounds[-1]
+    if last.validation_series_id is None:
+        return False
+    for previous in reversed(rounds[:-1]):
+        if (previous.validation_series_id == last.validation_series_id
+                and previous.metric_name == last.metric_name
+                and previous.metric_unit == last.metric_unit
+                and previous.validation_rmse > 0 and previous.train_rmse > 0
+                and (previous.comparison_qualification != VALIDATION_COMPARISON_CLEAN
+                     or last.comparison_qualification != VALIDATION_COMPARISON_CLEAN)):
+            return True
+    return False
 
 
 def _validation_worsened(comparison: tuple[RoundMetrics, RoundMetrics]) -> bool:

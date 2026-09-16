@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-16（**Windows CI 崩溃已修复，main CI 双平台恢复绿；下一步 Pre-Phase 6 Review / Phase 6 立项**）
+- 最后更新：2026-09-16（**Pre-Phase 6 Stabilization 完成：P6R-01/02/04/03 全部关闭并经 R1/R2 独立复核；下一步 Phase 5.7 交互重构**）
 
 ---
 
@@ -11,17 +11,49 @@
 
 | Level | Name | Status |
 | --- | --- | --- |
-| Current | CI baseline 恢复（Pre-Phase 6 前置） | ✅ 已完成 (2026-09-16) |
+| Current | Pre-Phase 6 Stabilization（P6R-01/02/04/03） | ✅ 已完成 (2026-09-16, R2 CLOSED) |
 | Phase | Phase 5 — AI-assisted Annotation & Refinement | ✅ 已收官 (5.0–5.6 全部完成) |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
-| Subphase | 5.4 — Iteration History & Result Activation | ⚠️ 实现已合并、Human Review 通过；复核收口待办 |
+| Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, HR 通过；复核收口随 stabilization 完成) |
 | Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
 | Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 以明示缺口归档) |
 
 ## Recently Completed
+
+- **Pre-Phase 6 Stabilization（2026-09-16，分支 `fix/pre-phase6-stabilization` 已合并 main）**：
+  - 依据 [pre-phase6-project-review.md](../reviews/pre-phase6-project-review.md)（P6R-01…04）与
+    [pre-phase6-stabilization-plan.md](../status/pre-phase6-stabilization-plan.md) 实施；
+    完整审查生命周期见 [pre-phase6-stabilization-review.md](../reviews/pre-phase6-stabilization-review.md)
+    （R1 PASS → findings 处置 → R2 **CLOSED**）。
+  - **P6R-01（Undo/Redo 事务完整性）**：历史快照携带 run registry；撤销删除的 Track
+    时其 run 随快照恢复（active pointer/observations/refinement 引用一致，save/reopen
+    一致）；undo 越过快照外登记的 run 依赖改为**原子拒绝**（Project/Store/双栈/registry
+    完全不变，GUI 给可见反馈）；`record_tracking_run` 清空 redo；存续 Track 的 run
+    生命周期不被 Undo/Redo 回滚。旧契约"undo 后 run 保持删除"为 Phase 4 时代
+    （无 refinement state）产物，已按 P6R-01 更新并记录理由。
+  - **P6R-02（Resume ancestry × 固定验证集）**：新增纯函数
+    `validation_training_exposure`（沿 resume 链累加各代 training_labels 与验证帧求交，
+    三态 clean/contaminated/unknown；legacy 无记录/缺失祖先/环路一律 unknown，不默认
+    clean）；存在 active series 且资格非 clean 时 Resume 入口**阻止**（消息给出暴露帧
+    与出路：restart/换源/停用 series）；`RoundMetrics.comparison_qualification` 显式
+    fail-closed 字段，Advisor 同 series 比较要求两轮均 clean，contaminated/unknown
+    轮次不再产生 improved/worsened；资格为 compute-on-read，**历史 RMSE/benchmark
+    未改写**（AI_test2 的真实历史污染现在会被如实标记为不可独立比较）。
+  - **P6R-04（Advisor 输入采集）**：采集器提升为 Qt-free
+    `application/advisor_collection.py`；timeline 按所选 Track 的真实 video_id 解析
+    （uncovered-zone/plateau 分支恢复工作）；last_train_failed 取"最近一次相关训练"
+    状态（OOM 后成功重训不再永久报失败）；新增 collector → AdvisorInput →
+    recommendation 全链组合测试。
+  - **P6R-03（按条件实施）**：被本 track train run iteration 引用的 validation series
+    拒绝物理删除（提示改用停用），未引用 series 删除行为不变；无 schema 变更。
+    保存重开后历史 validation 标签仍由 series 第一方快照解析。
+  - 验证：新增 29 项测试（undo 完整性 9 + lineage 16 + collector 1 + GUI 1 + advisor
+    门控 2），全量 **733 passed**（基线 704），`compileall` 通过，双平台 CI 绿。
+  - R1 附带 F1（GUI 测试在人为文件排序下 teardown 模态挂起——**main 上既有隐患**，
+    已复现并记录配方，Defer 至 Phase 5.7 测试刷新）。
 
 - **Windows CI 崩溃修复（2026-09-16，`fix/windows-ci-crash` 已合并 main）**：
   - 现象：9 月 16 日起 main 的 Windows job 在 GUI tests teardown 附近
@@ -147,15 +179,17 @@
 
 ## Current Goal
 
-**CI baseline 已恢复，进入 Phase 6 的前置障碍清除**（Phase 5 已收官：5.0–5.6 全部完成；
-AC-1~8/10/11 达成，AC-9 闭环完成但"≥5% 可复现改善"以明示缺口归档——成因与建议见
-[phase-5.6-review.md](../reviews/phase-5.6-review.md) F1/F4/F5）。
-等待下一条指令进入 **Pre-Phase 6 Review** 或 **Phase 6**（Advanced Physics Analysis）立项。
+**Pre-Phase 6 Stabilization 已完成**：P6R-01/02（Phase 6 blocker）与 P6R-04/03 全部
+关闭并经独立复核（[R2 CLOSED](../reviews/pre-phase6-stabilization-review.md)）；
+Astra 的 `READY AFTER BLOCKERS` Entry Gate blocker 条件已满足。
+下一步按用户指令进入 **Phase 5.7 Interaction Flow Redesign**（草案见
+[docs/design/phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)，
+尚未入库），随后 Phase 6（Advanced Physics Analysis）立项。
 
 ## Current Worktree Note
 
-（已解决 2026-09-04）此前记录的 4 个未提交源码改动为 5.4 R2 复审加固（提交 `8352191`/`c54e875`），
-全量 **658 passed**，`compileall` 通过；worktree 现已干净。
+工作区仅剩未跟踪的 `docs/design/phase-5.7-interaction-redesign.md`（Phase 5.7 设计
+草案，归属 5.7 立项时处理）。 stabilization 分支已合并 main 并推送。
 
 ## Current Decisions / Deferred Checks
 
@@ -186,7 +220,10 @@ AC-1~8/10/11 达成，AC-9 闭环完成但"≥5% 可复现改善"以明示缺口
 
 ## Next Recommended Action
 
-**发起 Pre-Phase 6 Review**：CI baseline 已恢复（2026-09-16，Windows 崩溃修复见
-Recently Completed 首条），具备进入 Phase 6 前置审查的条件。审查范围建议：
-Phase 5 收官状态（AC-9 缺口归档）、交互重构草案
-（[interaction-experience.md](../notes/interaction-experience.md)）与 Phase 6 范围的衔接。
+**发起 Phase 5.7 Interaction Flow Redesign 立项**：stabilization 已交付干净工程
+baseline（733 tests、CI 双平台绿、R2 CLOSED）。5.7 的输入：
+[interaction-experience.md](../notes/interaction-experience.md)（用户交互记录与改进草案）、
+[docs/design/phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)
+（设计草案，未跟踪）。立项时一并处理：GUI 测试 teardown 模态隐患（stabilization
+R1 F1，Defer 至 5.7，复现配方见
+[pre-phase6-stabilization-review.md](../reviews/pre-phase6-stabilization-review.md)）。

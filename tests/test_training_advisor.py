@@ -5,6 +5,11 @@
 
 import pytest
 
+from ai_physics_tracker.application.refinement_history import (
+    VALIDATION_COMPARISON_CLEAN,
+    VALIDATION_COMPARISON_CONTAMINATED,
+    VALIDATION_COMPARISON_UNKNOWN,
+)
 from ai_physics_tracker.application.training_advisor import (
     ACTION_FIX_PREREQUISITE,
     ACTION_LABEL_MORE,
@@ -23,12 +28,14 @@ SERIES = "series-a"
 SERIES_B = "series-b"
 
 
-def _round(run_id: str, val_rmse: float, train_rmse: float, series: str = SERIES) -> RoundMetrics:
+def _round(run_id: str, val_rmse: float, train_rmse: float, series: str = SERIES,
+           qualification: str = VALIDATION_COMPARISON_CLEAN) -> RoundMetrics:
     return RoundMetrics(
         training_run_id=run_id,
         validation_series_id=series,
         train_rmse=train_rmse,
         validation_rmse=val_rmse,
+        comparison_qualification=qualification,
     )
 
 
@@ -186,10 +193,52 @@ def test_cross_series_and_cross_metric_comparisons_are_rejected() -> None:
     assert rec.action == ACTION_FIX_PREREQUISITE
 
     # 指标名不同 → 不比较
-    renamed = (RoundMetrics("r1", SERIES, 5.0, 4.0, metric_name="rmse", metric_unit="mm"),
-               RoundMetrics("r2", SERIES, 4.0, 4.0, metric_name="rmse", metric_unit="px"))
+    renamed = (RoundMetrics("r1", SERIES, 5.0, 4.0, VALIDATION_COMPARISON_CLEAN,
+                            metric_name="rmse", metric_unit="mm"),
+               RoundMetrics("r2", SERIES, 4.0, 4.0, VALIDATION_COMPARISON_CLEAN,
+                            metric_name="rmse", metric_unit="px"))
     rec_metric = recommend_training_action(AdvisorInput(recent_rounds=renamed, completed_train_runs=2))
     assert rec_metric.action == ACTION_FIX_PREREQUISITE
+
+
+def test_contaminated_lineage_never_counts_as_independent_comparison() -> None:
+    """P6R-02：同 series 但 lineage 污染/不可验证 → 不算 improved/worsened。"""
+    # 数字上"改善"5.8%，但上一轮 contaminated → 不得作为 resume 依据
+    contaminated_pair = (
+        _round("r1", 5.0, 4.0, qualification=VALIDATION_COMPARISON_CONTAMINATED),
+        _round("r2", 4.71, 3.9),
+    )
+    rec = recommend_training_action(AdvisorInput(
+        recent_rounds=contaminated_pair, completed_train_runs=2))
+    assert rec.action == ACTION_RESTART
+    assert any("not independently comparable" in e for e in rec.evidence)
+    assert any("historical RMSE" in limit for limit in rec.limits)
+
+    # 最新一轮 unknown（lineage 不可验证）同样不可比
+    unknown_pair = (
+        _round("r1", 5.0, 4.0),
+        _round("r2", 4.0, 3.9, qualification=VALIDATION_COMPARISON_UNKNOWN),
+    )
+    rec_unknown = recommend_training_action(AdvisorInput(
+        recent_rounds=unknown_pair, completed_train_runs=2))
+    assert rec_unknown.action == ACTION_RESTART
+    assert any("not independently comparable" in e for e in rec_unknown.evidence)
+
+
+def test_clean_pairs_still_compare_normally() -> None:
+    clean_pair = (_round("r1", 5.0, 4.0), _round("r2", 4.6, 3.9))
+    rec = recommend_training_action(AdvisorInput(recent_rounds=clean_pair,
+                                                 completed_train_runs=2))
+    assert rec.action == ACTION_RESUME
+    assert any("improved" in e for e in rec.evidence)
+
+
+def test_round_metrics_requires_explicit_qualification() -> None:
+    # 资格字段无默认值：漏传/非法值都在构造边界被拒绝（fail-closed）
+    with pytest.raises(TypeError):
+        RoundMetrics("r1", SERIES, 5.0, 4.0)
+    with pytest.raises(ValueError, match="comparison_qualification"):
+        RoundMetrics("r1", SERIES, 5.0, 4.0, "probably-fine")
 
 
 def test_determinism_same_input_same_output() -> None:
