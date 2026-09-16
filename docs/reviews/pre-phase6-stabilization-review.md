@@ -14,27 +14,28 @@
   [pre-phase6-project-review.md](pre-phase6-project-review.md)（关闭条件）、
   [pre-phase6-stabilization-plan.md](../status/pre-phase6-stabilization-plan.md)（设计决策）、
   ADR-0013/0014/0015、`docs/workflow.md` §6。
-- 轮次：R1 2026-09-16（首轮）· R2 待定
+- 轮次：R1 2026-09-16（首轮，fresh reviewer，Verdict PASS + F1–F3）·
+  R2 2026-09-16（复审，fresh reviewer，Verdict **CLOSED**）
 
 ## Checklist
 
 **正确性**
 
-- [ ] P6R-01 关闭条件逐项满足（原子拒绝五不变量、恢复引用一致、无关 run 不回滚、save/reopen、GUI 路径）
-- [ ] P6R-02 关闭条件逐项满足（clean/直接 parent/祖先/换 series/legacy unknown/restart/比较资格/旧数字不篡改）
-- [ ] P6R-04 事实口径修复且组合测试真实走 production collector
-- [ ] P6R-03 守卫语义正确（被引用拒绝删除、停用保留、未引用可删）
+- [x] P6R-01 关闭条件逐项满足（原子拒绝五不变量、恢复引用一致、无关 run 不回滚、save/reopen、GUI 路径）
+- [x] P6R-02 关闭条件逐项满足（clean/直接 parent/祖先/换 series/legacy unknown/restart/比较资格/旧数字不篡改）
+- [x] P6R-04 事实口径修复且组合测试真实走 production collector
+- [x] P6R-03 守卫语义正确（被引用拒绝删除、停用保留、未引用可删）
 
 **质量**
 
-- [ ] diff 无范围外改动；无 schema migration / 新持久化状态
-- [ ] 遵守可移植性规则；命名与既有代码一致
-- [ ] 新增测试覆盖失败路径而非只覆盖 happy path
+- [x] diff 无范围外改动；无 schema migration / 新持久化状态
+- [x] 遵守可移植性规则；命名与既有代码一致
+- [x] 新增测试覆盖失败路径而非只覆盖 happy path
 
 **流程**
 
-- [ ] 提交信息符合 Conventional Commits
-- [ ] 无需新 ADR（既有 ADR-0013/0014/0015 语义内收窄，未改变数据契约形态）
+- [x] 提交信息符合 Conventional Commits
+- [x] 无需新 ADR（既有 ADR-0013/0014/0015 语义内收窄，未改变数据契约形态）
 
 ## Findings
 
@@ -104,5 +105,25 @@ record 的关闭条件核对，原文要点：无"先改状态后校验"路径�
 
 ## Review Log
 
-- R1（2026-09-16）： dispatched fresh-context independent reviewer（只读），focus =
+- R1（2026-09-16）：dispatched fresh-context independent reviewer（只读），focus =
   四项 closing conditions + 是否引入新的 state/persistence regression。
+  Verdict **PASS**；findings F1（Defer，既有测试基建隐患）/ F2 / F3（Fix Now）。
+- Findings 处置（主会话，提交 `405b91b`）：F2 修复（`_SNAPSHOT_DATA_FIELDS`
+  切片比较 + 双向回归测试）；F3 修复（类型标注/debug 日志/长行/消息措辞）；
+  F1 经 main worktree 复现确认为既有隐患后 Defer 并记录配方。
+- R2（2026-09-16）：fresh re-reviewer 只验证 findings 处置与第 4 个提交的
+  diff。逐项结论：F2 修复语义精确（切片恰好排除 registry、双向测试真实、
+  既有 workflow/session/activation 55 passed 无回归）；F3 无行为变化；F1
+  Defer 有据（`git diff main..HEAD` 对挂起点三文件为空、复现配方独立抽查成立）；
+  第 4 个提交无新问题。实测 batch 53/55 passed、全量 **733 passed**、
+  compileall OK。
+- **Final Verdict：CLOSED**（2026-09-16，R2）。
+
+## 附：处置提交索引
+
+| Finding | 提交 |
+| --- | --- |
+| P6R-01 | `7c160b0` |
+| P6R-02 | `c384cd8` |
+| P6R-04 + P6R-03 | `1c3769d` |
+| R1 F2/F3 修复、F1 Defer 记录 | `405b91b` |

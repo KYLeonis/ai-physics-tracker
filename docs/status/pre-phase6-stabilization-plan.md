@@ -114,31 +114,31 @@ Low 则 defer）。完成后交付经独立复核的干净工程 baseline。
 
 ### P6R-01
 
-- [ ] Undo 不再留下 Project / TrackStore 半提交（复现 A 关闭）
-- [ ] run 依赖情况要么合法 Undo，要么原子拒绝（拒绝后五项不变量逐一断言）
-- [ ] active pointer 永远引用有效 run 或为空（复现 B 关闭，save/reopen 一致）
-- [ ] 无关 TrackingRun 生命周期不被 Undo/Redo 回滚
-- [ ] pending/running/completed 相关边界有测试
-- [ ] GUI Undo 快捷键/按钮路径有相称验证（拒绝时给出可见反馈且状态不变）
+- [x] Undo 不再留下 Project / TrackStore 半提交（复现 A 关闭）— `test_undo_of_track_creation_with_run_dependency_is_atomic_rejection[pending/running/completed]`
+- [x] run 依赖情况要么合法 Undo，要么原子拒绝（拒绝后五项不变量逐一断言）— 同上测试 + `test_undo_of_track_creation_without_runs_still_succeeds`
+- [x] active pointer 永远引用有效 run 或为空（复现 B 关闭，save/reopen 一致）— `test_undo_remove_track_restores_runs_and_active_pointer_and_survives_reopen`
+- [x] 无关 TrackingRun 生命周期不被 Undo/Redo 回滚 — `test_undo_keeps_unrelated_run_lifecycle_progress`、`test_recording_a_run_invalidates_redo_navigation`
+- [x] pending/running/completed 相关边界有测试 — 复现 A 参数化三态
+- [x] GUI Undo 快捷键/按钮路径有相称验证（拒绝时给出可见反馈且状态不变）— `tests/gui/test_undo_rejection_ui.py`
 
 ### P6R-02
 
-- [ ] clean Resume 正常工作（含无 active series）
-- [ ] direct-parent contamination 被识别并阻止
-- [ ] ancestor contamination 被识别并阻止
-- [ ] 更换 validation series 后 Resume 老模型被正确处理
-- [ ] legacy unknown lineage 不默认 clean
-- [ ] restart 语义不受影响
-- [ ] contaminated/unknown 轮次不再被无提示当成独立 validation comparison
-- [ ] Advisor 比较使用资格状态而非仅 series ID
-- [ ] 旧 RMSE / benchmark 不被篡改
+- [x] clean Resume 正常工作（含无 active series）— `test_clean_resume_with_active_series_is_allowed`、`test_resume_without_active_series_is_not_gated`
+- [x] direct-parent contamination 被识别并阻止 — `test_resume_blocked_when_parent_trained_validation_frames`
+- [x] ancestor contamination 被识别并阻止 — `test_resume_blocked_when_only_earlier_ancestor_is_contaminated`
+- [x] 更换 validation series 后 Resume 老模型被正确处理 — `test_changing_validation_series_requalifies_resume_source`
+- [x] legacy unknown lineage 不默认 clean — `test_legacy_ancestor_without_membership_is_unknown_not_clean`、`test_legacy_parent_without_membership_blocks_resume`、`test_missing_ancestor_*`、cycle 测试
+- [x] restart 语义不受影响 — `test_restart_is_not_gated_by_lineage_exposure`
+- [x] contaminated/unknown 轮次不再被无提示当成独立 validation comparison — `test_contaminated_lineage_never_counts_as_independent_comparison`、`test_round_metrics_requires_explicit_qualification`
+- [x] Advisor 比较使用资格状态而非仅 series ID — `_same_series_comparison` 门控 + `_lineage_blocked_pair` restart 路径测试
+- [x] 旧 RMSE / benchmark 不被篡改 — 资格为计算态（compute-on-read），无任何写入旧 run 的路径（R1 核对）
 
 ### P6R-04
 
-- [ ] Advisor 使用 Track 对应真实 video/timeline（uncovered 分支恢复工作）
-- [ ] OOM 失败后出现成功训练时不再报 last_train_failed
-- [ ] 至少一条 Project/Session/runs → collector → AdvisorInput → recommendation 组合测试
+- [x] Advisor 使用 Track 对应真实 video/timeline（uncovered 分支恢复工作）— `test_collector_reports_clustered_labels_oom_recovery_and_drives_recommendation`
+- [x] OOM 失败后出现成功训练时不再报 last_train_failed — 同上组合测试（during_failure/recovered 两段断言）
+- [x] 至少一条 Project/Session/runs → collector → AdvisorInput → recommendation 组合测试 — `tests/test_advisor_collection.py`（Qt-free 全链）
 
 ### P6R-03
 
-- [ ] 被 train run 引用的 series 拒绝删除；停用后 save/reopen 历史标签仍可追溯
+- [x] 被 train run 引用的 series 拒绝删除；停用后 save/reopen 历史标签仍可追溯 — `test_referenced_series_deletion_is_rejected_and_deactivation_preserves_trace`
