@@ -135,6 +135,33 @@ def main(argv: list[str] | None = None) -> int:
     if deltas_written == 0:
         lines.append("- 暂无可比的同 series 两轮评价。")
 
+    # 机械判定：同一 series 下基准轮 → 最佳轮 / 最新轮（AC-9 阈值 ±5%）
+    lines += ["", "## 判定（AC-9：同 series 上 ≥5% 改善才算达成）", ""]
+    if len(comparable) >= 2:
+        first_run, _first_it, first_val, _ = comparable[0]
+        best_run, _best_it, best_val, _ = min(comparable[1:], key=lambda item: item[2]) \
+            if len(comparable) > 1 else comparable[0]
+        last_run, _last_it, last_val, _ = comparable[-1]
+        best_delta = (best_val - first_val) / first_val
+        lines.append(
+            f"- 基准轮 `{first_run['run_id'][:8]}` val_rmse={first_val:.4g}；"
+            f"最佳轮 `{best_run['run_id'][:8]}` val_rmse={best_val:.4g}"
+            f"（{best_delta:+.1%}）"
+        )
+        lines.append(
+            f"- 最新轮 `{last_run['run_id'][:8]}` val_rmse={last_val:.4g}"
+            f"（{(last_val - first_val) / first_val:+.1%} vs 基准）"
+        )
+        if best_delta <= -RMSE_TREND_THRESHOLD:
+            lines.append("- **结论：达成** —— 同 series 上出现 ≥5% 的可复现改善。")
+        else:
+            lines.append(
+                "- **结论：未达成** —— 同 series 上的最佳改善在 ±5% 内（plateau）；"
+                "≥5% 的改善证据缺失，需按 spec 处置或扩大实验。"
+            )
+    else:
+        lines.append("- 可比轮次不足，无法判定。")
+
     lines += ["", "## 推理结果与激活", ""]
     for run in infer_runs:
         lines.append(

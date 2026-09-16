@@ -126,10 +126,25 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest           # 全量
 .venv/bin/python scripts/generate_loop_report.py --project experiment/AI_test2  # 归档证据
 ```
 
+## Slice 2 执行记录（2026-09-16）
+
+闭环后半段在 AI_test2 真实执行完毕（iter1 resume → iter2 resume+10 → iter3 restart → iter4 restart+10）；
+同 series 11 帧冻结基准 val RMSE = 3.30 / 4.80 / 3.19 / 4.71 → **AC-9 改善证据未达成**
+（最佳 −3.3%，±5% 内；三轮预算用尽）。三类 delta 与判定见
+[phase-5-loop-report.md](../benchmarks/phase-5-loop-report.md)；三项 findings（F1 screening 假困难帧、
+F2 冻结 series 从 project.json 消失但可重建、F3 基准分辨率不足）见
+[phase-5.6-review.md](../reviews/phase-5.6-review.md)。
+
+**AC-9 处置待用户在以下选项中决定**（Slice 3 之前）：
+① 如实归档"未达成"并作为明示缺口处置；② 采信进行中的方差实验结果再定论；
+③ 追加更大规模实验（新项目、更大标签集、重复训练）后再判定。
+
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：
-- AC 勾选结果（含 AC-1–AC-11 核对表）：
-- 偏离计划之处及原因：
-- 遗留问题：
-- 独立 review 结论：
+- 完成日期 / 合并 commit：Slice 0/1 已提交（`ec4ae0c`/`3d9de31`/`f3f2743`）；Slice 2 执行完毕
+  待 AC-9 决策；Slice 3 待续
+- AC 勾选结果（含 AC-1–AC-11 核对表）：AC-9 未达成（见上）；其余待 Slice 3 核对
+- 偏离计划之处及原因：第三轮追加的 10 个挖掘候选均为 screening 补齐（模型无真实困难帧），
+  未带来新信息并使基准恶化——详见 review F1
+- 遗留问题：F1（screening 语义，需决策）、F2（series 丢失，可重建）、F3（基准分辨率）
+- 独立 review 结论：待 Slice 3

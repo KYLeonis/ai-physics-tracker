@@ -11,6 +11,7 @@
 - `e976e5dc` iter=2 mode=resume series=f13d5bbd train_labels=29 val_rmse=4.8 train_rmse=4.91 epochs=25
   - resume_from: `f8d5fe67`
 - `18d1f638` iter=3 mode=restart series=f13d5bbd train_labels=29 val_rmse=3.19 train_rmse=3.16 epochs=50
+- `b80fbd68` iter=4 mode=restart series=f13d5bbd train_labels=39 val_rmse=4.71 train_rmse=4.67 epochs=50
 
 ## 三类 delta（同 series 相邻两轮）
 
@@ -27,6 +28,19 @@
 - **覆盖**：prediction coverage 100.0% → 100.0% （informational only, not accuracy）
 - **工作量**：审核 remaining — → —；correction yield 0/0
 
+### 18d1f638 → b80fbd68
+
+- **精度**：validation RMSE 3.19 → 4.71 （+47.6%，worsened）
+- 训练集 RMSE 3.16 → 4.67 （+47.8%）
+- **覆盖**：prediction coverage 100.0% → 100.0% （informational only, not accuracy）
+- **工作量**：审核 remaining — → —；correction yield 0/0
+
+
+## 判定（AC-9：同 series 上 ≥5% 改善才算达成）
+
+- 基准轮 `f8d5fe67` val_rmse=3.3；最佳轮 `18d1f638` val_rmse=3.19（-3.3%）
+- 最新轮 `b80fbd68` val_rmse=4.71（+42.7% vs 基准）
+- **结论：未达成** —— 同 series 上的最佳改善在 ±5% 内（plateau）；≥5% 的改善证据缺失，需按 spec 处置或扩大实验。
 
 ## 推理结果与激活
 
@@ -35,6 +49,7 @@
 - `cee507bc` model_train=`e976e5dc` coverage=1.0 activated=否
 - `19c2223c` model_train=`e976e5dc` coverage=1.0 activated=否
 - `cffbed09` model_train=`18d1f638` coverage=1.0 activated=否
+- `aa1ade22` model_train=`b80fbd68` coverage=1.0 activated=否
 
 ## 激活历史
 
