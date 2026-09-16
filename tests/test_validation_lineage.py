@@ -315,3 +315,46 @@ def test_resume_without_active_series_is_not_gated(tmp_path: Path) -> None:
     request = _resume(session, track, parent.run_id)
 
     assert request.training_mode == "resume"
+
+
+# ---------------------------------------------------------------------------
+# P6R-03：被 train run 引用的 series 拒绝物理删除；停用保留第一方快照
+# ---------------------------------------------------------------------------
+
+
+def test_referenced_series_deletion_is_rejected_and_deactivation_preserves_trace(
+    tmp_path: Path,
+) -> None:
+    session, track, proj_dir = _saved_session(tmp_path)
+    series = session.create_validation_series(track.track_id, "frozen", [0, 3])
+    parent = _register_completed_train(
+        session, track, proj_dir, training_frames=[1, 2],
+    )
+    # 让 run 的 iteration 显式引用该 series（真实形态：prepare_training 记录）
+    from dataclasses import replace as dataclass_replace
+
+    from ai_physics_tracker.application.refinement_history import (
+        attach_refinement_iteration as attach,
+        extract_refinement_iteration as extract,
+    )
+
+    info = extract(parent)
+    session.update_tracking_run(
+        attach(parent, dataclass_replace(info, validation_series_id=series.series_id)))
+
+    with pytest.raises(ProjectSessionError) as excinfo:
+        session.delete_validation_series(track.track_id, series.series_id)
+    assert "deactivate" in str(excinfo.value)
+
+    # 停用后历史标签仍可追溯：保存重开后 series 与 label snapshot 完整
+    session.set_active_validation_series(track.track_id, None)
+    session.save()
+    reopened = ProjectSession.load(ProjectRepository(), proj_dir)
+    state = reopened.get_refinement_state(track.track_id)
+    persisted = state.get_series(series.series_id)
+    assert persisted is not None
+    assert persisted.label_snapshots == series.label_snapshots
+    # 未被引用的 series 仍可删除
+    unused = reopened.create_validation_series(track.track_id, "unused", [1])
+    reopened.delete_validation_series(track.track_id, unused.series_id)
+    assert reopened.get_refinement_state(track.track_id).get_series(unused.series_id) is None

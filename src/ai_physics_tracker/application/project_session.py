@@ -24,6 +24,7 @@ from ai_physics_tracker.application.refinement_history import (
     _now_iso_utc,
     attach_refinement_state,
     check_validation_series_consistency,
+    extract_refinement_iteration,
     extract_refinement_state,
 )
 from ai_physics_tracker.application.suggested_frame_review import (
@@ -1630,7 +1631,12 @@ class ProjectSession:
         track_id: UUID,
         series_id: UUID,
     ) -> None:
-        """删除指定 Track 的固定验证集。若为活动验证集则自动清空活动指针。"""
+        """删除指定 Track 的固定验证集。若为活动验证集则自动清空活动指针。
+
+        P6R-03：series 是历史 validation labels 的第一方快照；被本 Track 任一
+        train run 的迭代记录引用时拒绝物理删除（改用停用保留溯源），未被引用
+        的 series 删除行为不变。
+        """
         track = next((t for t in self._store.tracks if t.track_id == track_id), None)
         if track is None:
             raise ProjectSessionError(f"unknown track_id: {track_id}")
@@ -1640,6 +1646,21 @@ class ProjectSession:
         if target is None:
             raise ProjectSessionError(
                 f"Validation series '{series_id}' does not exist on track '{track.name}'"
+            )
+
+        # 5.4 前 legacy run 无 iteration 记录，不可能引用 series，不阻止删除
+        referencing_runs = [
+            run for run in self._project.tracking_runs
+            if run.track_id == track_id and run.task_type == "train"
+            and (info := extract_refinement_iteration(run)) is not None
+            and info.validation_series_id == series_id
+        ]
+        if referencing_runs:
+            raise ProjectSessionError(
+                f"Validation series '{target.name}' is referenced by "
+                f"{len(referencing_runs)} training run(s) on track '{track.name}'; "
+                "deactivate it instead of deleting so historical validation labels "
+                "stay traceable"
             )
 
         new_series_list = tuple(s for s in current_state.validation_series if s.series_id != series_id)
