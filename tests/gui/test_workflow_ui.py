@@ -300,3 +300,38 @@ def test_analysis_source_bar_and_chip_reflect_projection(
 
     # 状态头 chip：采用后待更新
     assert "charts need update" in window.workflowHeader.analysisChipLabel.text()
+
+
+def test_candidate_preview_does_not_pollute_charts(
+    qtbot, synthetic_video_path, tmp_path
+) -> None:
+    """候选只登记 run，不进入 effective 投影与图表输入（ADR-0014 隔离）。"""
+    from ai_physics_tracker.domain.tracking_run import (
+        create_tracking_run,
+        mark_run_completed,
+    )
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+
+    window, session, track_id = _opened_window(qtbot, synthetic_video_path,
+                                               tmp_path, _FakeRunner(_FakeHandle()))
+    # manual-only 轨迹 + 已计算图表
+    session.mark_point(track_id, 3, 30.0, 40.0)
+    session.mark_point(track_id, 4, 35.0, 45.0)
+    session.compute_kinematics(track_id)
+    effective_before = session.effective_points(track_id)
+    derived_before = session.project.derived
+
+    # 新候选（未激活）登记：completed infer run
+    candidate = create_tracking_run(_video_id(session, window), track_id, "infer",
+                                    engine="dlc", engine_version="mock")
+    session.record_tracking_run(mark_run_completed(candidate))
+
+    assert session.effective_points(track_id) == effective_before
+    assert session.project.derived == derived_before
+
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    # 卡片呈现候选采用结论；状态头标明 Preview 且分析 chip 不因候选变化
+    assert "Preview: version 1 (not adopted)" in window.workflowHeader.trajectoryLabel.text()
+    analysis_chip = window.workflowHeader.analysisChipLabel.text()
+    assert "charts" in analysis_chip  # 只描述当前输入，不被候选覆盖
