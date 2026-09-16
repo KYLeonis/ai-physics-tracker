@@ -39,22 +39,28 @@
 - **建议**（需用户批准，涉及 5.2 已批准语义）：触发池为空时明示"该模型上没有发现困难帧"，
   不用 screening 帧填满队列；或至少在 UI 标注这些候选"不确定是否值得审核"。
 
-### F2 — 冻结验证集从 project.json 消失 【Medium（数据完整性）】
+### F2 — 【已撤回】"冻结验证集消失"是误判（读键错误）
 
-- **证据**：`track.extra_fields.refinement_state_v1` 现为空（`{}`），activation_history 也为空；
-  磁盘上 project.json 与其轮转备份 `project.backup.json` 均无 series，而 iter1–iter4 的
-  `refinement_iteration_v1.validation_series_id` 全部指向 `f13d5bbd`。
-- **代码排查**：①合成 roundtrip（创建 series → save_as → load → save → load）保留 series；
-  ②完整训练提交链（prepare → spawn worker → candidate → save）保留；③headless 推理提交链保留
-  （iter4 在 11:12 的无头推理之后仍能读到 series）；④静态扫描未见重建 Track 对象丢 `extra_fields`
-  的路径；⑤删除入口 `delete_validation_series` 需在对话框二次确认（默认 No）。
-  → 未能证明为代码缺陷；最可能是 UI 中显式删除（亦无法完全排除未发现的路径，见下"建议"）。
-- **可恢复性**：验证集成员 = 当时 manual 帧 − 该轮 training_labels = **11 帧**
-  `[0, 1, 6, 13, 18, 26, 60, 73, 110, 129, 143]`；已用 `create_validation_series` 在副本上
-  成功重建（演练通过），坐标取当前 manual 点（series 在 iter4 时仍有效，说明快照与 manual 一致）。
-- **建议**：①为"AI 任务提交链 + 保存"补 series 存活回归测试（低成本、防未来回归）；
-  ②删除 series 时给出影响警告（历史评价将不可比）；③按用户决定在 AI_test2 中重建 series
-  （新 id 不影响帧成员可比性，但 Advisor 不会把旧轮与新轮视为同 series）。
+- **误判**：曾据 `track["extra_fields"]["refinement_state_v1"]` 读到空状态，判定 series 丢失。
+- **真相**：序列化器把 `extra_fields` 的键**合并到 Track 记录的顶层**（与 TrackingRun 同一约定），
+  因此原始 series 一直都在：`project.backup.json` 中 `f13d5bbd` "Validation Set 1"，
+  成员恰为 11 帧 `[0, 1, 6, 13, 18, 26, 60, 73, 110, 129, 143]`，且 `active_validation_series_id`
+  指向它。我据此"恢复"时创建的重复 series 已删除，活动指针已还原到原始 series。
+- **教训**：读取 `project.json` 原始 JSON 必须使用合并后的顶层键，不能用领域对象的
+  `extra_fields` 形状——本轮把这条写进 review record，避免后续会话重犯。
+- **保留行动的代价**：净影响为零（重复 series 已删、激活指针已还原、原 series 未改动）。
+
+### F5 — 闭环基准存在"选择性使用"污染风险 【High（方法论，用户提出）】
+
+- **用户观察**：该项目已被多轮训练与迭代选择使用，训练集/验证集事实上处于"被反复使用"状态。
+- **证据支持**：同一 11 帧冻结基准被用于 iter1→iter4 的模式选择（resume vs restart、是否采纳
+  新标签），即验证集在流程中充当了模型选择信号；同时项目内 50 个 manual 标签与这 11 帧存在
+  同源标注（同一人、同一视频、同一时期的点击习惯）。
+- **影响**：即便观测到 −3.3% 的"改善"，也不能视为对未见数据的泛化改善；真正的干净基准需要
+  **从未参与任何决策**的保留帧（或独立视频）。因此 AC-9 的证据强度天然受限，这也是
+  "未达成"应在 spec 层如实记录的原因之一。
+- **建议**：未来需要可比较的改善证据时，在冻结前预留一批**从不用于中途决策**的帧，或改用
+  第二个视频作为外部验证集；本条建议随 5.6 收尾一并归档，供 Phase 5 决策使用。
 
 ### F3 — 训练是确定性的：delta 是真实效果，不是噪声 【结论性证据】
 
@@ -97,10 +103,14 @@
   三类 delta、激活历史在库），缺的是"≥5% 可复现改善"这一条。
 - **性质**：训练确定性已证实（F3），因此"未达成"是可复现结论而非测量噪声；成因见 F1/F4
   （screening 补齐把非困难帧当困难帧；模型已饱和、无可用挖掘信号）。
-- 处置需用户在以下选项中选择（Slice 3 前）：
-  ① 以"未达成"如实归档，并作为明示缺口在 spec/roadmap 处置（推荐，含 F1/F4 成因与改进建议）；
-  ② 重新定义 AC-9 的证据口径（例如：承认"改善"依赖标签质量、在饱和模型上不可达），属 spec 变更；
-  ③ 追加更大规模实验（新项目 + 更大且更难的标签集），成本高且 F4 表明当前测试床可能无法产生 ≥5%。
+- **用户决定（2026-09-16）：采用选项 ①**——如实归档"未达成"，并在 spec/roadmap 层面作为
+  明示缺口处置（含 F1/F4/F5 成因分析）。不追加更大规模实验，不重定义 AC-9 口径。
+- 其他已批准动作（当日执行完毕）：
+  - 恢复原冻结验证集 → 核实为**从未丢失**（见 F2 撤回），我创建的重复 series 已删除、
+    活动指针已还原；
+  - 明确提示"未发现困难帧" → 已实现并合入（移除 screening 补齐，模型饱和时返回空结果）；
+  - 激活 iter3 模型的推理结果 → 已执行（`replace` 事务：active=cffbed09，98 AI 点，
+    50 manual 保留，50 superseded；activation_history 记录在库）。
 
 ## 5. 待补（Slice 3）
 
