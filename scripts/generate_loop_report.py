@@ -187,9 +187,11 @@ def main(argv: list[str] | None = None) -> int:
             f"coverage={_coverage(run)} activated={'是' if _is_activated(data, run) else '否'}"
         )
 
+    # 注意：project.json 中 Track/TrackingRun 的 extra_fields 键被合并到记录顶层，
+    # 读取原始 JSON 时必须用顶层键（用嵌套 extra_fields 会恒读为空）
     lines += ["", "## 激活历史", ""]
     for track in data["tracks"]:
-        state = (track.get("extra_fields") or {}).get("refinement_state_v1") or {}
+        state = track.get("refinement_state_v1") or {}
         for record in state.get("activation_history", []):
             lines.append(
                 f"- {record['timestamp'][:19]} {track['name']}: {record['action']} "
@@ -206,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _is_activated(data: dict, infer_run: dict) -> bool:
     for track in data["tracks"]:
-        state = (track.get("extra_fields") or {}).get("refinement_state_v1") or {}
+        state = track.get("refinement_state_v1") or {}
         if state.get("active_infer_run_id") == infer_run["run_id"]:
             return True
     return False

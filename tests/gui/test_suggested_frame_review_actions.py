@@ -978,3 +978,41 @@ def test_seek_frame_cancels_active_correct_mode(test_window: MainWindow, tmp_pat
     assert window.trackingActions.panel.reviewCorrectButton.text() == "Correct (C)"
 
 
+
+
+def test_empty_mining_result_reports_no_difficult_frames(test_window: MainWindow, tmp_path: Path):
+    """模型饱和（空候选）时明示"未发现困难帧"，且不产生空审核批次的脏状态。
+
+    5.6 语义变更（用户批准）：screening 补齐已移除，触发池为空即如实返回空结果。
+    """
+    from uuid import uuid4 as _uuid4
+
+    from ai_physics_tracker.application.difficult_frame_job import DifficultFrameResult
+
+    window = test_window
+    panel = window.trackingActions.panel
+    valid_run = _setup_infer_run_with_prediction(window, tmp_path)
+
+    window.reviewActions.onRunSelected(valid_run.run_id)
+    window.reviewActions._active_run_id = valid_run.run_id
+    window.reviewActions._running_track_id = window.selectedTrackId
+    window.reviewActions._request_id = _uuid4()
+
+    empty_result = DifficultFrameResult(
+        request_id=_uuid4(),
+        run_id=valid_run.run_id,
+        candidates=(),
+        actual_n=0,
+        diversity_status="not_needed",
+        params_snapshot={},
+    )
+    window.reviewActions._finish_success(empty_result)
+    QTest.qWait(50)
+
+    text = panel.mineStatusLabel.text()
+    assert "No difficult frames found" in text
+    assert "Failed" not in text
+    assert not window.reviewActions.busy
+    # 空批次已写入会话但无候选：控制器不崩、无“当前候选”
+    assert window.reviewActions._controller is not None
+    assert window.reviewActions._controller.current_frame_index is None

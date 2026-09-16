@@ -112,6 +112,45 @@
   - 激活 iter3 模型的推理结果 → 已执行（`replace` 事务：active=cffbed09，98 AI 点，
     50 manual 保留，50 superseded；activation_history 记录在库）。
 
-## 5. 待补（Slice 3）
+## 5. Slice 3 — 独立审查（**自查**，2026-09-16）
+
+- **执行方式披露**：按用户指示（"不使用 subagent，你完成这些工作"），本轮的独立审查由主 agent 自查完成；
+  两次 subagent 尝试均因 GLM-5.3-Flash 配额上限启动失败（5 小时限额，12:59 重置）。
+  自查采用只读探针 + 端到端脚本验证，方法与前几轮一致，但**可信度低于独立第三方审查**，如实记录。
+
+### 已修复（自查发现）
+
+| # | Severity | 问题 | 修复 |
+| --- | --- | --- | --- |
+| S1 | **Blocker** | `training_job.py:196` 读取 `ReviewBatchSummary.is_complete`（该字段不存在）→ 只要轨道存在**活动 infer run**，下次训练准备即在 worker 内 AttributeError。此前因用户从未激活过结果而不可达；5.6 激活 `cffbed09` 后**下一次训练必崩** | 改为派生值 `pending_count == 0`；新增回归测试 `test_prepare_training_with_active_infer_run_records_review_summary`（`0d639e1`） |
+| S2 | Medium | `scripts/generate_loop_report.py` 两处用嵌套 `track["extra_fields"]["refinement_state_v1"]` 读取原始 JSON（该键在 project.json 中是**顶层键**）→ 激活状态恒为"否"、激活历史为空 | 改用顶层键并加注释说明该序列化约定（`be28162` 后续提交） |
+
+### 探针验证通过（无问题）
+
+- **空候选端到端安全**：`mine_difficult_frames` 饱和时返回 `pool_size=0`（`screening_fill_count=0`）；
+  `ActiveReviewBatch(candidates=())` 合法；`set_active_review_batch` / `get_review_summary` /
+  保存重开均正常（`ReviewBatchSummary(total_candidates=0, ...)`）。
+- **GUI 空结果路径**：新增测试 `test_empty_mining_result_reports_no_difficult_frames`：
+  明示 "No difficult frames found"，无 `Failed` 前缀、不 busy、控制器 `current_frame_index is None` 且不崩溃。
+- **B 改动一致性**：`prepare_training` 的全部调用点都传 `working_dir`；`tracking_job` 的 worker 路径
+  使用 `data/engines/<run_id>`，与新契约一致。
+- **真实项目数据动作**：激活（`replace`，98 AI / 50 manual 保留 / 50 superseded）与验证集状态
+  已在磁盘核对；我误建的重复 series 已删除、活动指针还原为原始 `f13d5bbd`（"Validation Set 1"）。
+- **归档工具**：修正后正确显示 `cffbed09 activated=是` 与激活历史（`replace 6b625037 → cffbed09`）。
+
+### 交给用户的 HR（合并前）
+
+1. 应用内触发一次挖掘（当前模型已激活，模型饱和）→ 确认提示为 "No difficult frames found…"，
+   队列不再出现凑数候选。
+2. 确认 [交互体验记录](../notes/interaction-experience.md) 的改进方向与范围界定（呈现层重构），
+   作为后续 Subphase 的输入。
+3. 确认合并 `feat/p5.6-loop-acceptance` 并关闭 Issue #22（AC-9 以明示缺口归档）。
+
+## 6. 待补（收尾）
+
+- AC-1–AC-11 核对表已完成（见 [phase-5.6-plan.md](../status/phase-5.6-plan.md) §Slice 3）。
+- 文档同步、`--no-ff` 合并、push、关闭 Issue #22（待用户 HR 确认）。
+- Phase 5 收官声明与 Phase 6 入口（含交互重构 Subphase 的立项建议）。
+
 
 - AC-1–AC-11 总验收核对表；独立 review（多 subagent）；Human Review；文档同步/合并/push/关 Issue。

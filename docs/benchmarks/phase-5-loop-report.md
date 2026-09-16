@@ -58,8 +58,9 @@
 - `0daad555` model_train=`9d310620` coverage=1.0 activated=否
 - `cee507bc` model_train=`e976e5dc` coverage=1.0 activated=否
 - `19c2223c` model_train=`e976e5dc` coverage=1.0 activated=否
-- `cffbed09` model_train=`18d1f638` coverage=1.0 activated=否
+- `cffbed09` model_train=`18d1f638` coverage=1.0 activated=是
 - `aa1ade22` model_train=`b80fbd68` coverage=1.0 activated=否
 
 ## 激活历史
 
+- 2026-09-16T04:32:54 Track 1: replace 6b625037 → cffbed09 (98 pts)
