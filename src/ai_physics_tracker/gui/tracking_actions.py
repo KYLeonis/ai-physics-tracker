@@ -19,7 +19,13 @@ from ai_physics_tracker.application.tracking_job import (
     prepare_frame_selection_request, run_frame_selection_worker,
     read_frame_selection_result, FrameSelectionRunner, FrameSelectionJobRequest,
 )
-from ai_physics_tracker.application.refinement_history import extract_refinement_state
+from ai_physics_tracker.application.refinement_history import (
+    VALIDATION_COMPARISON_CLEAN,
+    VALIDATION_COMPARISON_UNKNOWN,
+    extract_refinement_iteration,
+    extract_refinement_state,
+    validation_training_exposure,
+)
 from ai_physics_tracker.application.training_advisor import (
     OOM_MARKERS, AdvisorInput, RoundMetrics, recommend_training_action)
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
@@ -264,20 +270,39 @@ class TrackingActions(QObject):
                 1 for p in manual_points if p.modified_at > latest_train.completed_at)
 
         recent_rounds: list[RoundMetrics] = []
+        # P6R-02：各轮按自身完整 Resume ancestry 计算比较资格；series 已删除或
+        # 无 series 的轮次按 unknown（不可独立比较）处理。
+        series_by_id = {
+            s.series_id: s
+            for s in session.get_refinement_state(track_id).validation_series
+        }
         for train_run in completed_train:
             evaluation = train_run.extra_fields.get("evaluation")
-            iteration = train_run.extra_fields.get("refinement_iteration_v1")
-            if not isinstance(evaluation, dict) or not isinstance(iteration, dict):
+            iteration = extract_refinement_iteration(train_run)
+            if not isinstance(evaluation, dict) or iteration is None:
                 continue
             metrics_pair = _evaluation_rmse(evaluation)
             if metrics_pair is None:
                 continue
             train_rmse, val_rmse, metric_name, unit = metrics_pair
+            series = (
+                series_by_id.get(iteration.validation_series_id)
+                if iteration.validation_series_id is not None else None
+            )
+            if series is not None:
+                qualification = validation_training_exposure(
+                    runs, train_run.run_id, series.frame_indices).qualification
+            else:
+                qualification = VALIDATION_COMPARISON_UNKNOWN
             recent_rounds.append(RoundMetrics(
                 training_run_id=str(train_run.run_id),
-                validation_series_id=iteration.get("validation_series_id"),
+                validation_series_id=(
+                    str(iteration.validation_series_id)
+                    if iteration.validation_series_id is not None else None
+                ),
                 train_rmse=train_rmse,
                 validation_rmse=val_rmse,
+                comparison_qualification=qualification,
                 metric_name=metric_name,
                 metric_unit=unit,
             ))
@@ -299,10 +324,22 @@ class TrackingActions(QObject):
                 if rev_sum.total_reviewed > 0:
                     correction_yield = rev_sum.corrected_count / rev_sum.total_reviewed
 
-        has_compatible_source = any(
-            r.model_snapshot and (session.project_root / r.model_snapshot).is_file()
-            for r in completed_train
-        ) if session.project_root is not None else False
+        active_series = session.get_refinement_state(track_id).active_series
+
+        def _resumable(train_run) -> bool:
+            # P6R-02：与 prepare_tracking_request 的 Resume 门同一资格口径——
+            # 不把会被入口拒绝的源推荐给用户
+            if not train_run.model_snapshot or session.project_root is None:
+                return False
+            if not (session.project_root / train_run.model_snapshot).is_file():
+                return False
+            if active_series is None:
+                return True
+            return validation_training_exposure(
+                runs, train_run.run_id, active_series.frame_indices
+            ).qualification == VALIDATION_COMPARISON_CLEAN
+
+        has_compatible_source = any(_resumable(r) for r in completed_train)
 
         uncovered = False
         track = next((t for t in session.tracks if t.track_id == track_id), None)

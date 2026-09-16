@@ -211,6 +211,91 @@ class PredictionSummary:
             raise ValueError(f"coverage must be in [0, 1], got {self.coverage}")
 
 
+# --- Resume lineage × 固定验证集暴露（P6R-02）---
+
+# 资格三态：clean = 祖先链完整且与验证帧无交集；contaminated = 祖先已训练过
+# 验证帧；unknown = 链上存在无训练成员记录的 run（5.4 前 legacy）、缺失 run 或
+# 环路。unknown 不得默认按 clean 处理——"没有记录"不等于"没有训练过"。
+VALIDATION_COMPARISON_CLEAN = "clean"
+VALIDATION_COMPARISON_CONTAMINATED = "contaminated"
+VALIDATION_COMPARISON_UNKNOWN = "unknown"
+VALIDATION_COMPARISON_QUALIFICATIONS = frozenset({
+    VALIDATION_COMPARISON_CLEAN,
+    VALIDATION_COMPARISON_CONTAMINATED,
+    VALIDATION_COMPARISON_UNKNOWN,
+})
+
+
+@dataclass(frozen=True)
+class ValidationExposure:
+    """一条 Resume ancestry 对某固定验证集的训练暴露结论。
+
+    qualification 为整体三态；exposed_frames/exposed_ancestors 仅在
+    contaminated 时非空（按链上出现顺序），reasons 仅在 unknown 时非空。
+    """
+
+    qualification: str
+    exposed_frames: tuple[int, ...] = ()
+    exposed_ancestors: tuple[UUID, ...] = ()
+    reasons: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.qualification not in VALIDATION_COMPARISON_QUALIFICATIONS:
+            raise ValueError(
+                f"qualification must be one of {sorted(VALIDATION_COMPARISON_QUALIFICATIONS)}, "
+                f"got {self.qualification!r}")
+
+
+def validation_training_exposure(
+    runs: Iterable[TrackingRun],
+    root_run_id: UUID,
+    validation_frames: Iterable[int],
+) -> ValidationExposure:
+    """计算 root run 的完整 Resume ancestry 训练成员与验证帧的交集资格。
+
+    沿 refinement_iteration_v1.resume_from_training_run_id 逐代累加各 run 自己
+    的 training_labels（restart 代的链自然终止）。模型权重经 resume 继承，
+    因此任何一代训练过的帧都算作 root 模型的历史暴露。
+    """
+    registry = {run.run_id: run for run in runs}
+    validation_set = frozenset(validation_frames)
+    exposed_frames: set[int] = set()
+    exposed_ancestors: list[UUID] = []
+    reasons: list[str] = []
+    seen: set[UUID] = set()
+    current: UUID | None = root_run_id
+    while current is not None:
+        if current in seen:
+            reasons.append(f"resume lineage contains a cycle at run {current}")
+            break
+        seen.add(current)
+        run = registry.get(current)
+        if run is None:
+            reasons.append(f"resume ancestor run {current} is not registered in the project")
+            break
+        iteration = extract_refinement_iteration(run)
+        if iteration is None:
+            reasons.append(
+                f"training run {current} has no recorded training membership "
+                "(legacy run created before Phase 5.4)")
+            break
+        hit = {snap.frame_index for snap in iteration.training_labels} & validation_set
+        if hit:
+            exposed_frames |= hit
+            exposed_ancestors.append(current)
+        current = iteration.resume_from_training_run_id
+    if exposed_frames:
+        return ValidationExposure(
+            qualification=VALIDATION_COMPARISON_CONTAMINATED,
+            exposed_frames=tuple(sorted(exposed_frames)),
+            exposed_ancestors=tuple(exposed_ancestors),
+        )
+    if reasons:
+        return ValidationExposure(
+            qualification=VALIDATION_COMPARISON_UNKNOWN, reasons=tuple(reasons))
+    return ValidationExposure(qualification=VALIDATION_COMPARISON_CLEAN)
+
+
 # --- 验证集一致性校验 ---
 
 
