@@ -297,9 +297,10 @@ def delete_track(project: Project, track_id: UUID) -> Project:
     """将确认删除的 Track 级联到观测、派生数据与引擎运行记录。
 
     TrackingRun 以 track 为主体（§7.6），run 不能脱离其 track 存活；
-    保留会在下一次 replace 的聚合校验中被拒绝。删除后经 Undo 恢复
-    track/观测/派生时，run 记录不随之复活（run 注册表是审计日志，
-    不进入撤销快照）。
+    保留会在下一次 replace 的聚合校验中被拒绝。撤销恢复 track/观测/派生时，
+    该 track 的 run 由会话历史快照一并恢复（P6R-01；Phase 5.4 起 Track 的
+    refinement state 含 active run pointer，"恢复 track 不恢复 run"必然产生
+    悬空引用）。
     """
 
     if not any(track.track_id == track_id for track in project.tracks):
