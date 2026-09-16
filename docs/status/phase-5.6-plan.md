@@ -2,7 +2,9 @@
 
 - Issue：待计划确认后创建
 - 分支：`feat/p5.6-loop-acceptance`
-- 日期 / 状态：2026-09-05 · 📝 Draft，等待用户确认
+- Issue：[#22](https://github.com/KYLeonis/ai-physics-tracker/issues/22)
+- 分支：`feat/p5.6-loop-acceptance`
+- 日期 / 状态：2026-09-16 · 🚧 Slices 0–3 执行完毕；AC-9 以明示缺口归档；待 HR/合并
 
 ## Goal
 
@@ -162,10 +164,15 @@ F2 冻结 series 从 project.json 消失但可重建、F3 基准分辨率不足�
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：Slice 0/1 已提交（`ec4ae0c`/`3d9de31`/`f3f2743`）；Slice 2 执行完毕
-  待 AC-9 决策；Slice 3 待续
-- AC 勾选结果（含 AC-1–AC-11 核对表）：AC-9 未达成（见上）；其余待 Slice 3 核对
-- 偏离计划之处及原因：第三轮追加的 10 个挖掘候选均为 screening 补齐（模型无真实困难帧），
-  未带来新信息并使基准恶化——详见 review F1
-- 遗留问题：F1（screening 语义，需决策）、F2（series 丢失，可重建）、F3（基准分辨率）
-- 独立 review 结论：待 Slice 3
+- 完成日期 / 合并 commit：Slice 0 `ec4ae0c`、Slice 1 `3d9de31`/`f3f2743`、语义修正 `228e1ab`、
+  Blocker 修复 `0d639e1`、记录 `be28162`/`f527f66`；**合并 commit 待 HR 确认后补记**
+- AC 勾选结果：AC-1~AC-8、AC-10、AC-11 ✅；**AC-9 部分达成**（闭环与三类 delta 完成，
+  "≥5% 可复现改善"未达成，按用户决定 ① 作为明示缺口归档）——逐项证据见上表
+- 偏离计划之处及原因：①第三轮 10 个候选均为 screening 补齐（模型饱和、无真实困难帧），
+  其标注不产生新信息且可复现地损害基准 → **已按用户批准移除 screening 补齐**，饱和时明示
+  "未发现困难帧"；②原计划的"独立比较工具 + 用户可见报告"按用户要求改为**Advisor 内部输入 +
+  Agent 归档**（不增加用户理解负担）
+- 遗留问题（移交）：AC-9 改善证据缺失（成因 F1/F4/F5，建议以"未参与决策的保留帧/第二视频"重建基准）；
+  交互体验重构待立项（[docs/notes/interaction-experience.md](../notes/interaction-experience.md)）
+- 独立 review 结论：**自查**（用户指示不使用 subagent；两次 subagent 尝试因 Flash 配额失败）
+  发现并修复 2 项缺陷（含 1 项 Blocker），详见 [phase-5.6-review.md](../reviews/phase-5.6-review.md) §5

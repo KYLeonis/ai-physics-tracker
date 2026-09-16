@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:    Phase 5 — AI-assisted Annotation & Refinement 🔄
-Last Delivered:   Phase 5.5 — Training Advisor & Retraining（Human Review 通过）
-Current Subphase: N/A（5.5 已完成，5.6 待开始）
+Last Delivered:   Phase 5.6 — Refinement Loop Integration & Acceptance（闭环执行完成；AC-9 明示缺口）
+Current Subphase: N/A（5.0–5.6 执行完毕，待 HR 确认收官）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -110,7 +110,7 @@ Phase 5 已确认 Human-in-the-loop 总计划。5.0 完成了统一任务管道�
 | Phase 2 | Video Analysis MVP | ✅ 已完成（2026-08-30，Windows 真机验收延后） |
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
-| Phase 5 | AI-assisted Annotation & Refinement | 🔄 5.0–5.5 已完成，5.6 待开始 |
+| Phase 5 | AI-assisted Annotation & Refinement | 🔄 5.0–5.6 执行完毕（AC-9 明示缺口），待收官 |
 | Phase 6 | Advanced Physics Analysis | ⬜ |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
