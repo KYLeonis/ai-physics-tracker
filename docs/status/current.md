@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-16（**Stabilization 复核补漏已实现，本地 739 passed；待本轮 CI / Human Review 后合并。Phase 5.7 设计仍待批准**）
+- 最后更新：2026-09-16（**Stabilization 复核补漏已实现，本地 739 passed；代码提交双平台 CI 已通过，待 Human Review 后合并。Phase 5.7 设计仍待批准**）
 
 ---
 
@@ -190,7 +190,7 @@
 验证集引用、Advisor 当前源资格三项遗漏，详见
 [原审查报告 §18–19](../reviews/pre-phase6-project-review.md)。用户已授权直接修复，
 分支 `fix/pre-phase6-review-followup` 已实现；本地 **739 passed**。
-本轮 UI Human Review 与分支 CI 尚待完成，不把先前“全部关闭”声明当作本轮验收。
+代码提交 `72d0216` 的 [CI 35114763488](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35114763488) 双平台已通过；本轮 UI Human Review 尚待完成，不把先前“全部关闭”声明当作本轮验收。
 Phase 5.7 交互架构设计仍等待用户批准，未开始其实现。
 
 ## Current Worktree Note
@@ -231,5 +231,5 @@ Phase 5.7 交互架构设计仍等待用户批准，未开始其实现。
 打开 `experiment/AI_test2`，检查历史 train `f8d5fe67` / `e976e5dc` 的详情明确显示
 `validation_comparison=unknown`、`Not independently comparable` 和 legacy 原因；
 `18d1f638` / `b80fbd68` 显示 clean，原 RMSE 保持不变。请用户确认提示可见且易懂。
-随后核实分支双平台 CI、按工作流合并。再回到 Phase 5.7 设计审批，勿自动启动 Phase 6。
+代码提交双平台 CI 已通过；真人确认后按工作流合并。再回到 Phase 5.7 设计审批，勿自动启动 Phase 6。
 既有 GUI teardown 文件排序挂起（stabilization R1 F1）仍按原决定在 5.7 刷新测试时处理。

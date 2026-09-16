@@ -485,6 +485,8 @@ Phase 5.7 测试刷新，配方已记录）、F2/F3（Fix Now，`405b91b`）。�
 - 定向 **64 passed**；全量 **739 passed in 64.31s**（基线 734；新增 5 项）。
 - 测试与真实项目探针均不执行大型 DLC 训练，不宣称重跑科学精度实验。
 - 本轮实施后进行了自查及上述行为验证，**不是另一轮 fresh-context 独立 review**。
-- 自动化层面三项遗漏已修复；合并前仍待分支 CI 与 GUI Human Review。
+- 自动化层面三项遗漏已修复；代码提交 `72d0216` 的
+  [CI 35114763488](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35114763488)
+  macOS / Windows Python 3.11 均通过。合并前仍待 GUI Human Review。
   原 P6R-02 的具体工程缺口已由生产展示及行为测试验证关闭，用户体验验收不以
   offscreen 探针替代；§18 的基线判断保留作历史。
