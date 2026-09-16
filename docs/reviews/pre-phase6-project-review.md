@@ -487,6 +487,17 @@ Phase 5.7 测试刷新，配方已记录）、F2/F3（Fix Now，`405b91b`）。�
 - 本轮实施后进行了自查及上述行为验证，**不是另一轮 fresh-context 独立 review**。
 - 自动化层面三项遗漏已修复；代码提交 `72d0216` 的
   [CI 35114763488](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35114763488)
-  macOS / Windows Python 3.11 均通过。合并前仍待 GUI Human Review。
+  macOS / Windows Python 3.11 均通过。后续文档提交 `6cc85d8` 的
+  [CI 35115266202](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35115266202) 亦双平台通过。
   原 P6R-02 的具体工程缺口已由生产展示及行为测试验证关闭，用户体验验收不以
   offscreen 探针替代；§18 的基线判断保留作历史。
+
+### 19.1 Human Review 与最终 Entry Gate
+
+用户确认历史资格提示“提示清楚可见”，并明确授权“合并”。本轮历史展示的
+Human Review 通过；Undo/引用保护与 Advisor 资格组合由上述自动化测试验证，
+不把这次反馈扩写为用户完成了所有历史 GUI 场景。
+
+P6R-02-R1、P6R-03-R1、P6R-05 均已关闭，本轮修复按 `--no-ff` 合并 main。
+**Phase 6 Entry Gate：READY。** 当前没有本审查确认的未关闭工程 blocker；
+既有延期与未验证范围保留，不据此自动开始 Phase 6 或批准 Phase 5.7 产品实现。

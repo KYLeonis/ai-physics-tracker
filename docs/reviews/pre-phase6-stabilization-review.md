@@ -144,5 +144,6 @@ Advisor 改善分支仍推荐当前不合法的 Resume（P6R-05）。证据和�
 用户随后授权直接修复；实现与自查证据见该报告 §19。本地全量 **739 passed**，
 分支 `fix/pre-phase6-review-followup`；代码提交 `72d0216` 的
 [CI 35114763488](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35114763488)
-双平台通过；待 Human Review 后合并。
+双平台通过；用户随后确认“提示清楚可见，合并”，历史资格展示 Human Review
+通过，三项补漏关闭并获准合并。最终 Entry Gate 为 READY（原审查报告 §19.1）。
 先前 R1/R2 的 CLOSED 只代表当轮审查结果，不覆盖此次后续发现。
