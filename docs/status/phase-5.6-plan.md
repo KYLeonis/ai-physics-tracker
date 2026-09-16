@@ -164,8 +164,8 @@ F2 冻结 series 从 project.json 消失但可重建、F3 基准分辨率不足�
 
 ## Result（收尾时填写）
 
-- 完成日期 / 合并 commit：Slice 0 `ec4ae0c`、Slice 1 `3d9de31`/`f3f2743`、语义修正 `228e1ab`、
-  Blocker 修复 `0d639e1`、记录 `be28162`/`f527f66`；**合并 commit 待 HR 确认后补记**
+- 完成日期 / 合并 commit：Slice 0–3 于 2026-09-16 完成（`ec4ae0c` / `3d9de31`+`f3f2743` /
+  `228e1ab` / `0d639e1`+`be28162`+`f15ac04`）；HR 通过后合并（commit 见 Review Record）
 - AC 勾选结果：AC-1~AC-8、AC-10、AC-11 ✅；**AC-9 部分达成**（闭环与三类 delta 完成，
   "≥5% 可复现改善"未达成，按用户决定 ① 作为明示缺口归档）——逐项证据见上表
 - 偏离计划之处及原因：①第三轮 10 个候选均为 screening 补齐（模型饱和、无真实困难帧），

@@ -112,6 +112,13 @@
   - 激活 iter3 模型的推理结果 → 已执行（`replace` 事务：active=cffbed09，98 AI 点，
     50 manual 保留，50 superseded；activation_history 记录在库）。
 
+## 4.1 Human Review（2026-09-16 · ✅ 用户通过）
+
+- ①挖掘（当前激活模型，饱和状态）→ 确认提示为 "No difficult frames found…"，队列不再出现凑数候选 ✅
+- ②交互改进方向与"呈现层重构"范围 → 用户决定**暂不讨论**，作为待办保留于
+  [docs/notes/interaction-experience.md](../notes/interaction-experience.md) ✅
+- ③合并 push 与关闭 Issue #22 → 已获确认 ✅
+
 ## 5. Slice 3 — 独立审查（**自查**，2026-09-16）
 
 - **执行方式披露**：按用户指示（"不使用 subagent，你完成这些工作"），本轮的独立审查由主 agent 自查完成；
