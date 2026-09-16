@@ -193,7 +193,10 @@ def prepare_training(
                 "accepted_count": rev_sum.accepted_count,
                 "skipped_count": rev_sum.skipped_count,
                 "corrected_count": rev_sum.corrected_count,
-                "is_complete": rev_sum.is_complete,
+                # ReviewBatchSummary 只有计数（无 is_complete 字段）；批次完成
+                # 即"无待审核候选"。此前引用不存在属性 → 只要存在活动 infer run
+                # 就会 AttributeError（2026-09-16 探针发现并修复）
+                "is_complete": rev_sum.pending_count == 0,
             }
 
     iter_info = RefinementIterationInfo(

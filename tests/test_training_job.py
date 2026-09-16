@@ -264,3 +264,53 @@ def test_different_validation_series_breaks_cross_iteration_comparison(tmp_path:
     assert iter_a.validation_series_id == series_a.series_id
     assert iter_b.validation_series_id == series_b.series_id
     assert iter_a.validation_series_id != iter_b.validation_series_id
+
+
+def test_prepare_training_with_active_infer_run_records_review_summary(tmp_path: Path) -> None:
+    """活动 infer run 存在时训练准备必须成功并记录审核摘要（回归：is_complete 属性）。
+
+    此前引用 ReviewBatchSummary.is_complete（不存在）→ 只要轨道有活动推理结果，
+    下次训练就在 worker 内 AttributeError；因用户从未激活过结果而长期未暴露。
+    """
+    from uuid import uuid4
+
+    from ai_physics_tracker.application.suggested_frame_review import ActiveReviewBatch
+    from ai_physics_tracker.domain.tracking_run import (
+        create_tracking_run as _create, mark_run_completed as _complete,
+    )
+
+    session, reader, _ = _setup_session_with_track(tmp_path, point_count=5)
+    track = session.tracks[0]
+    video = session.project.videos[0]
+    adapter = MockEngineAdapter()
+
+    infer_run = _complete(_create(video.video_id, track.track_id, "infer", engine="dlc"))
+    session.record_tracking_run(infer_run)
+    session.set_active_review_batch(
+        infer_run.run_id, ActiveReviewBatch(request_id=uuid4(), params_snapshot={}, candidates=()))
+    # 建立活动指针（激活路径需要产物，这里直接写 store 以聚焦回归点）
+    from dataclasses import replace as _replace
+    from ai_physics_tracker.application.refinement_history import (
+        RefinementState, attach_refinement_state,
+    )
+    state = session.get_refinement_state(track.track_id)
+    updated = attach_refinement_state(
+        track, RefinementState(active_infer_run_id=infer_run.run_id,
+                               validation_series=state.validation_series))
+    session._commit_store(
+        type(session._store)(
+            tuple(updated if t.track_id == track.track_id else t for t in session._store.tracks),
+            session._store.observations,
+        ),
+        session._project.derived,
+    )
+
+    run, _cfg = prepare_training(session, track.track_id, reader, adapter=adapter,
+                                 working_dir=tmp_path / "iter")
+    iteration = extract_refinement_iteration(run)
+    assert iteration is not None
+    assert iteration.source_infer_run_id == infer_run.run_id
+    summary = iteration.review_summary
+    assert summary is not None
+    assert summary["total_candidates"] == 0
+    assert summary["is_complete"] is True     # 无待审核候选 → 完成
