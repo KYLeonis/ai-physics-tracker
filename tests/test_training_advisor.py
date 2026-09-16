@@ -107,13 +107,13 @@ def test_new_labels_resume_or_restart() -> None:
 
 def test_improved_series_suggests_resume_with_tiered_epochs() -> None:
     improving = (_round("r1", 5.0, 4.0), _round("r2", 4.6, 3.9))  # val -8%
-    rec = recommend_training_action(AdvisorInput(recent_rounds=improving, completed_train_runs=2))
+    rec = recommend_training_action(AdvisorInput(recent_rounds=improving, completed_train_runs=2, has_compatible_source=True))
     assert rec.action == ACTION_RESUME
     assert rec.epochs == ADDITIONAL_EPOCHS_DEFAULT
 
     # train 与 validation 都仍改善 → 50 一档
     both = (_round("r1", 5.0, 4.0), _round("r2", 4.4, 3.2))
-    rec_both = recommend_training_action(AdvisorInput(recent_rounds=both, completed_train_runs=2))
+    rec_both = recommend_training_action(AdvisorInput(recent_rounds=both, completed_train_runs=2, has_compatible_source=True))
     assert rec_both.epochs == ADDITIONAL_EPOCHS_EXTENDED
 
 
@@ -228,7 +228,7 @@ def test_contaminated_lineage_never_counts_as_independent_comparison() -> None:
 def test_clean_pairs_still_compare_normally() -> None:
     clean_pair = (_round("r1", 5.0, 4.0), _round("r2", 4.6, 3.9))
     rec = recommend_training_action(AdvisorInput(recent_rounds=clean_pair,
-                                                 completed_train_runs=2))
+                                                 completed_train_runs=2, has_compatible_source=True))
     assert rec.action == ACTION_RESUME
     assert any("improved" in e for e in rec.evidence)
 
@@ -265,7 +265,7 @@ def test_threshold_boundaries_are_inclusive() -> None:
     """±5% 恰好等于按 improved/worsened 处理（plan"至少 5%"，review 4a/4b）。"""
     exactly_improved = (_round("r1", 5.0, 4.0), _round("r2", 4.75, 4.0))  # val -5.0%
     rec = recommend_training_action(AdvisorInput(recent_rounds=exactly_improved,
-                                                 completed_train_runs=2))
+                                                 completed_train_runs=2, has_compatible_source=True))
     assert rec.action == ACTION_RESUME
 
     exactly_worsened = (_round("r1", 4.0, 3.0), _round("r2", 4.2, 3.0))  # val +5.0%

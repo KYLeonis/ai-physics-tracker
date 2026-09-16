@@ -175,3 +175,39 @@ def test_equal_created_at_tie_breaks_to_most_recently_registered(tmp_path: Path)
         session2, track2.track_id, session2.tracking_runs(), has_active_task=False,
         requested_batch_size=8, requested_epochs=50)
     assert not recovered.last_train_failed
+
+
+def test_changed_series_and_selected_source_gate_improvement_advice(tmp_path: Path) -> None:
+    from ai_physics_tracker.application.training_advisor import ACTION_RESTART, ACTION_RESUME
+    from ai_physics_tracker.application.tracking_job import prepare_tracking_request
+    from ai_physics_tracker.infrastructure.engine_adapter import TrainingParams
+
+    session, track, proj_dir = _session_with_clustered_labels(tmp_path)
+    series = session.create_validation_series(track.track_id, "A", [2])
+    first = _completed_train(session, track, proj_dir, training_frames=[0, 1],
+                             series_id=series.series_id, val_rmse=5.0)
+    last = _completed_train(session, track, proj_dir, training_frames=[0, 1],
+                            series_id=series.series_id, val_rmse=4.0)
+
+    def advice(source=None):
+        return recommend_training_action(collect_advisor_input(
+            session, track.track_id, session.tracking_runs(), has_active_task=False,
+            requested_batch_size=8, requested_epochs=50, resume_source_run_id=source,
+        ))
+
+    assert advice(last.run_id).action == ACTION_RESUME
+    session.create_validation_series(track.track_id, "B", [1])
+    assert advice(last.run_id).action == ACTION_RESTART
+    # 保留老 A 的评价历史，但当前 B 下只让 first 模型有干净 lineage。
+    clean_info = RefinementIterationInfo(
+        iteration_index=0, validation_series_id=series.series_id,
+        training_labels=_labels([0]),
+    )
+    session.update_tracking_run(attach_refinement_iteration(first, clean_info))
+    assert advice(last.run_id).action == ACTION_RESTART  # 不能借用另一个模型的资格
+    assert advice(first.run_id).action == ACTION_RESUME
+    request = prepare_tracking_request(
+        session, track.track_id, TrainingParams(epochs=1), training_mode="resume",
+        resume_from_training_run_id=first.run_id,
+    )
+    assert request.resume_from_training_run_id == first.run_id

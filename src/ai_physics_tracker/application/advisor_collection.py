@@ -19,9 +19,9 @@ from uuid import UUID
 from ai_physics_tracker.application.project_session import ProjectSession
 from ai_physics_tracker.application.refinement_history import (
     VALIDATION_COMPARISON_CLEAN,
-    VALIDATION_COMPARISON_UNKNOWN,
     extract_refinement_iteration,
     validation_training_exposure,
+    validation_comparison_exposure,
 )
 from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.application.training_advisor import (
@@ -79,6 +79,7 @@ def collect_advisor_input(
     has_active_task: bool,
     requested_batch_size: int,
     requested_epochs: int,
+    resume_source_run_id: UUID | None = None,
 ) -> AdvisorInput:
     """从活动会话采集 Advisor 的全部输入事实（纯读取，不修改会话）。"""
     track = next((t for t in session.tracks if t.track_id == track_id), None)
@@ -116,7 +117,6 @@ def collect_advisor_input(
     # P6R-02：各轮按自身完整 Resume ancestry 计算比较资格；series 已删除或
     # 无 series 的轮次按 unknown（不可独立比较）处理。
     ref_state = session.get_refinement_state(track_id)
-    series_by_id = {s.series_id: s for s in ref_state.validation_series}
     recent_rounds: list[RoundMetrics] = []
     for train_run in completed_train:
         evaluation = train_run.extra_fields.get("evaluation")
@@ -127,15 +127,7 @@ def collect_advisor_input(
         if metrics_pair is None:
             continue
         train_rmse, val_rmse, metric_name, unit = metrics_pair
-        series = (
-            series_by_id.get(iteration.validation_series_id)
-            if iteration.validation_series_id is not None else None
-        )
-        if series is not None:
-            qualification = validation_training_exposure(
-                runs, train_run.run_id, series.frame_indices).qualification
-        else:
-            qualification = VALIDATION_COMPARISON_UNKNOWN
+        qualification = validation_comparison_exposure(runs, train_run, ref_state).qualification
         recent_rounds.append(RoundMetrics(
             training_run_id=str(train_run.run_id),
             validation_series_id=(
@@ -185,7 +177,10 @@ def collect_advisor_input(
             runs, train_run.run_id, active_series.frame_indices
         ).qualification == VALIDATION_COMPARISON_CLEAN
 
-    has_compatible_source = any(_resumable(r) for r in completed_train)
+    has_compatible_source = any(
+        _resumable(r) for r in completed_train
+        if resume_source_run_id is None or r.run_id == resume_source_run_id
+    )
 
     uncovered = False
     if timeline is not None and track is not None and manual_points:
