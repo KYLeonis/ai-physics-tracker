@@ -189,3 +189,96 @@ def test_generate_trajectory_binds_latest_completed_model(
 def _video_id(session, window):
     track = next(t for t in session.tracks if t.track_id == window.selectedTrackId)
     return track.video_id
+
+
+
+
+def _better_candidate_setup(qtbot, synthetic_video_path, tmp_path):
+    """active v1 + 更好候选 v2（固定检查比较 better）的窗口。"""
+    import dataclasses
+    from uuid import uuid4 as _uuid
+
+    from ai_physics_tracker.domain.tracking_run import (
+        create_tracking_run,
+        mark_run_completed,
+    )
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+    from tests.test_workflow_projection import (
+        _completed_train_with_eval as _train_with_eval,
+    )
+
+    window, session, track_id = _opened_window(qtbot, synthetic_video_path,
+                                               tmp_path, _FakeRunner(_FakeHandle()))
+    for frame in (3, 4):
+        session.mark_point(track_id, frame, 30.0 + frame, 40.0)
+    series = session.create_validation_series(track_id, "fixed", [4])
+    runs = session.tracking_runs()
+    train1 = _train_with_eval(session, session.tracks[0], runs,
+                              training_frames=[0, 1, 2],
+                              series_id=series.series_id, val_rmse=5.0)
+    train2 = _train_with_eval(session, session.tracks[0], runs + (train1,),
+                              training_frames=[0, 1, 3],
+                              series_id=series.series_id, val_rmse=4.0)
+
+    def _infer(source):
+        run = create_tracking_run(track_id.video_id if hasattr(track_id, "video_id")
+                                  else _video_id(session, window), track_id, "infer",
+                                  engine="dlc", engine_version="mock",
+                                  source_detail=f"test:{_uuid()}",
+                                  config={"training_run_id": str(source.run_id)})
+        return run
+
+    infer1 = _infer(train1)
+    folder = session.project_root / "data" / "engines" / str(infer1.run_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "observations.json").write_text("[]", encoding="utf-8")
+    session.record_tracking_run(mark_run_completed(infer1))
+    session.activate_infer_run(track_id, infer1.run_id)
+    infer2 = _infer(train2)
+    folder2 = session.project_root / "data" / "engines" / str(infer2.run_id)
+    folder2.mkdir(parents=True, exist_ok=True)
+    (folder2 / "observations.json").write_text("[]", encoding="utf-8")
+    session.record_tracking_run(mark_run_completed(infer2))
+    return window, session, track_id, infer1, infer2
+
+
+def test_adopt_card_replaces_after_confirmation_and_history_only_previews(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+) -> None:
+    from PySide6.QtWidgets import QMessageBox
+
+    window, session, track_id, infer1, infer2 = _better_candidate_setup(
+        qtbot, synthetic_video_path, tmp_path)
+    panel = window.trackingActions.panel
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+
+    # better 结论驱动主动作 = 采用；标题明示固定检查改善
+    assert panel.cardPrimaryButton.text() == "Adopt this trajectory"
+    assert "looks better" in panel.cardTitleLabel.text()
+
+    # conftest 把 question 桩化为 Discard：确认被拒 → 不采用
+    panel.cardPrimaryButton.click()
+    assert session.get_track_activation_status(track_id)[1] == infer1.run_id
+
+    # 确认 Yes → 走既有 replace 原子事务
+    monkeypatch.setattr(
+        QMessageBox, "question",
+        lambda *a, **k: QMessageBox.StandardButton.Yes)
+    panel.cardPrimaryButton.click()
+    assert session.get_track_activation_status(track_id)[1] == infer2.run_id
+
+    # 采用后：无候选，卡片进入“图表待更新”；状态头显示当前版本
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    assert window.trackingActions.panel.cardPrimaryButton.text() == "Update charts"
+    assert "Preview:" not in window.workflowHeader.trajectoryLabel.text()
+
+    # history 选择旧行为只预览：不改变 active
+    window.trackingActions.panel.resultsToggleButton.click()
+    history = window.trackingActions.panel.historyList
+    for i in range(history.count()):
+        if history.item(i).data(0x0100) == infer1.run_id:
+            history.setCurrentRow(i)
+            break
+    assert session.get_track_activation_status(track_id)[1] == infer2.run_id

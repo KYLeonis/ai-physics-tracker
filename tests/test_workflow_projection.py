@@ -28,6 +28,7 @@ from ai_physics_tracker.application.workflow_projection import (
     ACTION_RETRY_LEARNING,
     ACTION_START_LEARNING,
     ACTION_UPDATE_CHARTS,
+    ACTION_VIEW_ANALYSIS,
     ANALYSIS_LATEST,
     ANALYSIS_NEEDS_UPDATE,
     ANALYSIS_NOT_COMPUTABLE,
@@ -247,13 +248,44 @@ def test_card_first_candidate_offers_check_then_adopt() -> None:
     assert any(a.action_id == ACTION_ADOPT_TRAJECTORY for a in card.secondary)
 
 
-def test_card_replace_candidate_keeps_current_charts() -> None:
+def test_card_replace_candidate_without_comparison_defaults_to_incomparable() -> None:
     cand = CandidateFacts(run_id=uuid4(), version=2)
     state = _state(trajectory=TrajectoryFacts(
         manual_count=8, active_status="active", active_version=1, candidate=cand))
     card = select_task_card(state)
-    assert card.primary.action_id == ACTION_ADOPT_TRAJECTORY
+    # 无比较证据：不显示优劣，主动作是检查；采用保持显式次要入口
+    assert card.primary.action_id == ACTION_INSPECT_TRAJECTORY
+    assert any(a.action_id == ACTION_ADOPT_TRAJECTORY for a in card.secondary)
     assert any("Charts keep using" in line for line in card.explanation)
+
+
+def test_card_comparison_conclusions_drive_primary_action() -> None:
+    from ai_physics_tracker.application.workflow_projection import (
+        COMPARISON_BETTER,
+        COMPARISON_FLAT,
+        COMPARISON_WORSE,
+        ComparisonFacts,
+    )
+    cand = CandidateFacts(run_id=uuid4(), version=2)
+    base_traj = TrajectoryFacts(manual_count=8, active_status="active",
+                                active_version=1, candidate=cand)
+
+    better = _state(trajectory=base_traj, candidate_comparison=ComparisonFacts(
+        conclusion=COMPARISON_BETTER, detail="improved 8%", limitation="trend only"))
+    card = select_task_card(better)
+    assert card.primary.action_id == ACTION_ADOPT_TRAJECTORY
+    assert any(a.action_id == ACTION_VIEW_ANALYSIS for a in card.secondary)
+
+    for conclusion, expect_primary in (
+            (COMPARISON_FLAT, ACTION_VIEW_ANALYSIS),
+            (COMPARISON_WORSE, ACTION_VIEW_ANALYSIS)):
+        state = _state(trajectory=base_traj, candidate_comparison=ComparisonFacts(
+            conclusion=conclusion, detail="changed", limitation="trend only"))
+        card = select_task_card(state)
+        assert card.primary.action_id == expect_primary, conclusion
+        # 保留当前为默认建议，但显式采用仍在次要入口
+        assert any(a.action_id == ACTION_ADOPT_TRAJECTORY for a in card.secondary)
+        assert "keep the current trajectory" in card.title
 
 
 def test_card_learned_not_generated_prompts_generate() -> None:
@@ -452,3 +484,134 @@ def test_default_resume_source_requires_clean_qualification(tmp_path: Path) -> N
     session.set_active_validation_series(track.track_id, None)
     assert default_resume_source(session, track.track_id, runs) \
         == contaminated.run_id
+
+
+# ---------------------------------------------------------------------------
+# candidate_comparison：四种结论（真实 session）
+# ---------------------------------------------------------------------------
+
+
+def _completed_train_with_eval(session, track, runs_registry, *, training_frames,
+                               series_id, val_rmse, mode="restart", resume_from=None):
+    from ai_physics_tracker.application.refinement_history import (
+        RefinementIterationInfo,
+        ValidationLabelSnapshot,
+        attach_refinement_iteration,
+    )
+    from ai_physics_tracker.domain.types import utc_now
+    import dataclasses
+
+    run = create_tracking_run(track.video_id, track.track_id, "train",
+                              engine_version="mock")
+    snap_rel = f"data/engines/{run.run_id}/snap.pt"
+    snap = session.project_root / snap_rel
+    snap.parent.mkdir(parents=True, exist_ok=True)
+    snap.write_bytes(b"w")
+    run = mark_run_completed(run, model_snapshot=snap_rel)
+    labels = tuple(
+        ValidationLabelSnapshot(point_id=uuid4(), frame_index=f,
+                                pixel_x=1.0, pixel_y=1.0,
+                                modified_at=utc_now().isoformat())
+        for f in training_frames)
+    run = attach_refinement_iteration(run, RefinementIterationInfo(
+        iteration_index=len(runs_registry), validation_series_id=series_id,
+        training_mode=mode, resume_from_training_run_id=resume_from,
+        training_labels=labels))
+    run = dataclasses.replace(run, extra_fields={
+        **run.extra_fields,
+        "evaluation": {"metrics": {"train_rmse": 4.0, "test_rmse": val_rmse},
+                       "unit": "px"},
+    })
+    session.record_tracking_run(run)
+    return run
+
+
+def _completed_infer(session, track, source_train, *, observations=False):
+    import dataclasses
+
+    run = create_tracking_run(track.video_id, track.track_id, "infer",
+                              engine="dlc", engine_version="mock",
+                              config={"training_run_id": str(source_train.run_id)})
+    if observations:
+        _fake_observations(session, run)
+    run = mark_run_completed(run)
+    session.record_tracking_run(run)
+    return run
+
+
+def _comparison_session(tmp_path, *, second_val_rmse: float, tag: str = "a"):
+    session = ProjectSession.start(ProjectRepository(), name="Comparison")
+    session.save_as(tmp_path / f"proj-{tag}")
+    video_file = tmp_path / f"clip-{tag}.mp4"
+    video_file.write_bytes(b"dummy")
+    video, _ = session.register_external_video(video_file, _info(frame_count=10))
+    track = session.add_track(video.video_id)
+    for frame in range(8):
+        session.mark_point(track.track_id, frame, 1.0, 1.0)
+    series = session.create_validation_series(track.track_id, "fixed", [7])
+    runs = session.tracking_runs()
+    first = _completed_train_with_eval(session, track, runs,
+                                       training_frames=[0, 1, 2],
+                                       series_id=series.series_id, val_rmse=5.0)
+    second = _completed_train_with_eval(session, track, runs + (first,),
+                                        training_frames=[0, 1, 3],
+                                        series_id=series.series_id,
+                                        val_rmse=second_val_rmse)
+    older_infer = _completed_infer(session, track, first, observations=True)
+    candidate_infer = _completed_infer(session, track, second)
+    session.activate_infer_run(track.track_id, older_infer.run_id)
+    return session, track, first, second, older_infer, candidate_infer, series
+
+
+def test_candidate_comparison_better_flat_worse(tmp_path: Path) -> None:
+    from ai_physics_tracker.application.workflow_projection import (
+        COMPARISON_BETTER,
+        COMPARISON_FLAT,
+        COMPARISON_WORSE,
+        candidate_comparison,
+    )
+
+    for rmse, expected in ((4.0, COMPARISON_BETTER), (4.9, COMPARISON_FLAT),
+                           (6.0, COMPARISON_WORSE)):
+        session, track, *_rest = _comparison_session(
+            tmp_path, second_val_rmse=rmse, tag=expected)
+        facts = candidate_comparison(session, track.track_id,
+                                     session.tracking_runs())
+        assert facts is not None and facts.conclusion == expected, rmse
+        assert facts.limitation and "whole trajectory" in facts.limitation
+
+
+def test_candidate_comparison_incomparable_on_contaminated_lineage(tmp_path: Path) -> None:
+    from ai_physics_tracker.application.refinement_history import (
+        RefinementIterationInfo,
+        ValidationLabelSnapshot,
+        attach_refinement_iteration,
+    )
+    from ai_physics_tracker.application.workflow_projection import (
+        COMPARISON_INCOMPARABLE,
+        candidate_comparison,
+    )
+    from ai_physics_tracker.domain.types import utc_now
+
+    session, track, first, second, older, _cand, series = _comparison_session(
+        tmp_path, second_val_rmse=4.0)
+    # 把候选来源学习改成 resume 自一个训练过验证帧的祖先 → 资格污染
+    contaminated_ancestor = create_tracking_run(
+        track.video_id, track.track_id, "train", engine_version="mock")
+    labels = (ValidationLabelSnapshot(
+        point_id=uuid4(), frame_index=7, pixel_x=1.0, pixel_y=1.0,
+        modified_at=utc_now().isoformat()),)
+    contaminated_ancestor = attach_refinement_iteration(
+        contaminated_ancestor, RefinementIterationInfo(
+            iteration_index=99, training_labels=labels))
+    session.record_tracking_run(contaminated_ancestor)
+    session.update_tracking_run(attach_refinement_iteration(
+        second, RefinementIterationInfo(
+            iteration_index=1, validation_series_id=series.series_id,
+            training_mode="resume",
+            resume_from_training_run_id=contaminated_ancestor.run_id,
+            training_labels=tuple())))
+
+    facts = candidate_comparison(session, track.track_id, session.tracking_runs())
+    assert facts.conclusion == COMPARISON_INCOMPARABLE
+    assert "not qualified" in facts.detail.lower() or "saw validation" in facts.detail

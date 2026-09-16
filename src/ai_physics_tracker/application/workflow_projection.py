@@ -150,6 +150,7 @@ class WorkflowState:
     completed_infer_count: int = 0
     learned_not_generated: bool = False   # 最新完成训练晚于最新完成推理
     new_labels_since_last_train: int = 0
+    candidate_comparison: "ComparisonFacts | None" = None
 
 
 @dataclass(frozen=True)
@@ -373,6 +374,16 @@ def project_workflow_state(
                     1 for p in session.manual_points(track_id)
                     if p.modified_at > last.completed_at)
 
+    comparison = None
+    if track_id is not None and trajectory.candidate is not None:
+        try:
+            comparison = candidate_comparison(session, track_id, runs)
+        except Exception:  # 比较是辅助证据；失败不阻塞卡片
+            comparison = ComparisonFacts(
+                conclusion=COMPARISON_INCOMPARABLE,
+                detail="Comparison evidence could not be read.",
+                limitation="Cannot judge which version is more accurate.")
+
     return WorkflowState(
         execution=execution,
         trajectory=trajectory,
@@ -385,6 +396,7 @@ def project_workflow_state(
         completed_infer_count=completed_infer,
         learned_not_generated=learned_not_generated,
         new_labels_since_last_train=new_labels,
+        candidate_comparison=comparison,
     )
 
 
@@ -594,6 +606,7 @@ def _running_card(state: WorkflowState) -> TaskCard:
 def _candidate_decision_card(state: WorkflowState) -> TaskCard:
     traj = state.trajectory
     cand = traj.candidate
+    comparison = state.candidate_comparison
     evidence = [
         f"Candidate {cand.label}: {cand.reviewed_count} reviewed "
         f"({cand.corrected_count} corrected · {cand.skipped_count} skipped).",
@@ -602,26 +615,62 @@ def _candidate_decision_card(state: WorkflowState) -> TaskCard:
         evidence.append(
             f"Current adopted: {traj.active_label} + "
             f"{traj.manual_count} manual position(s).")
-    if traj.has_active_result:
+    if comparison is not None:
+        evidence.append(comparison.detail)
+        if comparison.limitation:
+            evidence.append(comparison.limitation)
+    if not traj.has_active_result:
         return TaskCard(
             mode=MODE_ADOPT,
-            title="Current: new trajectory ready",
+            title="Current: first AI trajectory ready",
             explanation=(
-                f"New trajectory {cand.label} is ready and not adopted yet.",
-                "Charts keep using the current adopted trajectory.",),
-            primary=ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt this trajectory"),
-            secondary=(ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis"),),
+                f"A first AI trajectory ({cand.label}) is ready and not used "
+                "for analysis yet.",
+                "Check its evidence, then adopt it explicitly.",),
+            primary=ActionSpec(ACTION_INSPECT_TRAJECTORY, "Check this trajectory"),
+            secondary=(ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt this trajectory"),),
             evidence=tuple(evidence),
+        )
+    conclusion = comparison.conclusion if comparison else COMPARISON_INCOMPARABLE
+    if conclusion == COMPARISON_BETTER:
+        title = "Current: new trajectory looks better on fixed-check frames"
+        explanation = (
+            comparison.detail if comparison else "New trajectory is ready.",
+            "Adopting replaces the current result; manual positions stay.",
+        )
+        primary = ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt this trajectory")
+        secondary = (ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis"),)
+    elif conclusion in (COMPARISON_FLAT, COMPARISON_WORSE):
+        head = ("No clear improvement" if conclusion == COMPARISON_FLAT
+                else "Fixed-check error increased")
+        title = f"Current: {head} — keep the current trajectory"
+        explanation = (
+            (comparison.detail if comparison else "No comparable evidence."),
+            "The current adopted result stays; the candidate remains in history.",
+        )
+        primary = ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis")
+        secondary = (
+            ActionSpec(ACTION_ADOPT_TRAJECTORY,
+                       "Adopt this trajectory anyway"),
+        )
+    else:  # incomparable
+        title = "Current: new trajectory ready — cannot compare"
+        explanation = (
+            (comparison.detail if comparison
+             else "There is no qualified fixed-check comparison."),
+            "Charts keep using the current adopted trajectory.",
+        )
+        primary = ActionSpec(ACTION_INSPECT_TRAJECTORY, "Check this trajectory")
+        secondary = (
+            ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt this trajectory"),
+            ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis"),
         )
     return TaskCard(
         mode=MODE_ADOPT,
-        title="Current: first AI trajectory ready",
-        explanation=(
-            f"A first AI trajectory ({cand.label}) is ready and not used for "
-            "analysis yet.",
-            "Check its evidence, then adopt it explicitly.",),
-        primary=ActionSpec(ACTION_INSPECT_TRAJECTORY, "Check this trajectory"),
-        secondary=(ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt this trajectory"),),
+        title=title,
+        explanation=explanation,
+        primary=primary,
+        secondary=secondary,
         evidence=tuple(evidence),
     )
 
@@ -735,3 +784,156 @@ def default_resume_source(
                 continue
         return run.run_id
     return None
+
+
+# ---------------------------------------------------------------------------
+# 候选 vs 当前采用结果的比较结论（设计 §12.1）
+# ---------------------------------------------------------------------------
+
+COMPARISON_BETTER = "better"
+COMPARISON_FLAT = "flat"
+COMPARISON_WORSE = "worse"
+COMPARISON_INCOMPARABLE = "incomparable"
+
+# 与 Advisor 一致的趋势档位（设计 §12.1-5：非显著性检验）
+RMSE_TREND_THRESHOLD = 0.05
+
+
+@dataclass(frozen=True)
+class ComparisonFacts:
+    """候选相对当前采用结果的固定检查比较结论。"""
+
+    conclusion: str                    # better | flat | worse | incomparable
+    detail: str                        # 人话结论 + 数字（含限制）
+    limitation: str | None = None      # 永远附带的边界说明
+
+
+def _infer_source_train_run(runs: Sequence[TrackingRun], infer_run: TrackingRun) -> TrackingRun | None:
+    source_id = infer_run.config.get("training_run_id")
+    if source_id is None:
+        return None
+    try:
+        from uuid import UUID as _UUID
+        source_uuid = _UUID(str(source_id))
+    except (ValueError, TypeError):
+        return None
+    return next((r for r in runs if r.run_id == source_uuid), None)
+
+
+def _train_evaluation(run: TrackingRun | None):
+    """取 train run 的 (train_rmse, val_rmse, metric, unit)；无评价返回 None。"""
+    if run is None:
+        return None
+    evaluation = run.extra_fields.get("evaluation")
+    if not isinstance(evaluation, dict):
+        return None
+    from ai_physics_tracker.application.advisor_collection import _evaluation_rmse
+    return _evaluation_rmse(evaluation)
+
+
+def candidate_comparison(
+    session: ProjectSession,
+    track_id: UUID,
+    runs: Sequence[TrackingRun],
+) -> ComparisonFacts | None:
+    """候选（其来源学习）vs 当前采用结果（其来源学习）的固定检查比较。
+
+    资格要求（设计 §12.1-3）：同一有效 series、同名同单位指标、两者比较
+    资格均 clean（P6R-02 lineage 暴露）；任一不满足 → incomparable，并说明
+    缺什么。结论只描述固定检查帧上的趋势，不声称整段轨迹精度。
+    """
+    from ai_physics_tracker.application.refinement_history import (
+        VALIDATION_COMPARISON_CLEAN,
+        extract_refinement_iteration,
+        validation_comparison_exposure,
+    )
+
+    facts = trajectory_facts(session, track_id, runs)
+    if facts.candidate is None:
+        return None
+    candidate_run = next(
+        (r for r in runs if r.run_id == facts.candidate.run_id), None)
+    if candidate_run is None:
+        return None
+    if not facts.has_active_result or facts.active_run_id is None:
+        return ComparisonFacts(
+            conclusion=COMPARISON_INCOMPARABLE,
+            detail="No adopted trajectory to compare with yet — this would be "
+                   "the first AI result.",
+            limitation="Adopting is allowed without comparison evidence.")
+
+    ref_state = session.get_refinement_state(track_id)
+    candidate_source = _infer_source_train_run(runs, candidate_run)
+    active_run = next((r for r in runs if r.run_id == facts.active_run_id), None)
+    active_source = _infer_source_train_run(runs, active_run) if active_run else None
+    if candidate_source is None or active_source is None:
+        return ComparisonFacts(
+            conclusion=COMPARISON_INCOMPARABLE,
+            detail="The two versions do not both record which learning run "
+                   "produced them.",
+            limitation="Cannot judge which version is more accurate.")
+
+    candidate_eval = _train_evaluation(candidate_source)
+    active_eval = _train_evaluation(active_source)
+    if candidate_eval is None or active_eval is None:
+        return ComparisonFacts(
+            conclusion=COMPARISON_INCOMPARABLE,
+            detail="A fixed-check evaluation is missing for at least one version.",
+            limitation="Cannot judge which version is more accurate.")
+
+    candidate_iter = extract_refinement_iteration(candidate_source)
+    active_iter = extract_refinement_iteration(active_source)
+    series_ids = [it.validation_series_id if it else None
+                  for it in (candidate_iter, active_iter)]
+    if series_ids[0] is None or series_ids[0] != series_ids[1]:
+        return ComparisonFacts(
+            conclusion=COMPARISON_INCOMPARABLE,
+            detail="The two versions were not checked against the same "
+                   "fixed-check frames.",
+            limitation="Same-series comparison only; cannot judge accuracy.")
+
+    for source in (candidate_source, active_source):
+        exposure = validation_comparison_exposure(runs, source, ref_state)
+        if exposure.qualification != VALIDATION_COMPARISON_CLEAN:
+            reason = ("training lineage saw validation frames "
+                      f"{list(exposure.exposed_frames)}" if exposure.exposed_frames
+                      else "; ".join(exposure.reasons))
+            return ComparisonFacts(
+                conclusion=COMPARISON_INCOMPARABLE,
+                detail=f"Comparison not qualified: {reason}.",
+                limitation="Historical RMSE values are unchanged; the numbers "
+                          "are not an independent holdout comparison.")
+
+    _c_train, c_val, metric, unit = candidate_eval
+    _a_train, a_val, metric2, unit2 = active_eval
+    if metric != metric2 or unit != unit2:
+        return ComparisonFacts(
+            conclusion=COMPARISON_INCOMPARABLE,
+            detail="The two evaluations use different metrics or units.",
+            limitation="Cannot judge which version is more accurate.")
+    if a_val <= 0:
+        return ComparisonFacts(
+            conclusion=COMPARISON_INCOMPARABLE,
+            detail=f"Baseline {metric} is {a_val}; no trend is computed.",
+            limitation="Raw values only; no automatic verdict.")
+
+    delta = (c_val - a_val) / a_val
+    limitation = ("This is a trend on the fixed-check frames, not the error of "
+                  "the whole trajectory.")
+    if delta <= -RMSE_TREND_THRESHOLD:
+        return ComparisonFacts(
+            conclusion=COMPARISON_BETTER,
+            detail=(f"Fixed-check {metric} improved {abs(delta):.1%} "
+                    f"({a_val:.4g} → {c_val:.4g} {unit})."),
+            limitation=limitation)
+    if delta >= RMSE_TREND_THRESHOLD:
+        return ComparisonFacts(
+            conclusion=COMPARISON_WORSE,
+            detail=(f"Fixed-check {metric} increased {delta:.1%} "
+                    f"({a_val:.4g} → {c_val:.4g} {unit})."),
+            limitation=limitation)
+    return ComparisonFacts(
+        conclusion=COMPARISON_FLAT,
+        detail=(f"Fixed-check {metric} changed {delta:+.1%} "
+                f"({a_val:.4g} → {c_val:.4g} {unit}); below the ±5% trend band."),
+        limitation=limitation)

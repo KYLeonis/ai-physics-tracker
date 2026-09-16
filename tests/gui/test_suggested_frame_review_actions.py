@@ -491,7 +491,9 @@ def test_accept_and_skip_gui_contract_ac3(test_window: MainWindow, tmp_path: Pat
     assert summary.pending_count == 0
     assert summary.accepted_count == 1
     assert summary.skipped_count == 1
-    assert "Review Complete" in panel.reviewProgressLabel.text()
+    # Phase 5.7：完成行给构成（skipped 明示 left undecided）
+    assert "Processed" in panel.reviewProgressLabel.text()
+    assert "left undecided" in panel.reviewProgressLabel.text()
 
 
 def test_correct_mode_toggle_and_esc_cancel_ac4(test_window: MainWindow, tmp_path: Path):

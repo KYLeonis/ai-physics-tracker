@@ -35,6 +35,20 @@ from ai_physics_tracker.application.tracking_types import (
 logger = logging.getLogger(__name__)
 
 _RUN_ID_ROLE = Qt.ItemDataRole.UserRole
+
+# 挖掘原因键 → 用户语言（设计 §6.5；“筛查命中”明示未经确认）
+_REASON_LABELS = {
+    "low_confidence": "low prediction confidence",
+    "jump_outlier": "abrupt position change",
+    "residual_outlier": "deviates from nearby motion trend",
+    "prior_correction_neighborhood": "near an earlier correction",
+    "screening": "screened in (not confirmed difficult)",
+}
+
+
+def _reason_text(reasons) -> str:
+    parts = [_REASON_LABELS.get(r, r) for r in reasons]
+    return ", ".join(parts) if parts else "none"
 _UNKNOWN_PROGRESS = (0, 0)
 _MAX_LOG_BLOCKS = 2000
 
@@ -1140,8 +1154,10 @@ class TaskPanel(QDockWidget):
         cor = summary.corrected_count
 
         if pen == 0 and tot > 0:
+            # 完成行给构成而非“全部正确”：skipped 保持“未判断”的边界（设计 §6.5）
             self.reviewProgressLabel.setText(
-                f"🎉 Review Complete: all {tot} reviewed ({acc} accepted · {skp} skipped · {cor} corrected)"
+                f"Processed {tot} frame(s): {acc} accepted · {cor} corrected · "
+                f"{skp} skipped (left undecided)"
             )
         else:
             self.reviewProgressLabel.setText(
@@ -1158,7 +1174,7 @@ class TaskPanel(QDockWidget):
                     f"({curr.prediction.pixel_x:.1f}, {curr.prediction.pixel_y:.1f}) "
                     f"conf={curr.prediction.confidence:.2f}"
                 )
-            reasons_str = ", ".join(curr.reasons) if curr.reasons else "none"
+            reasons_str = _reason_text(curr.reasons)
             guidance = "\n👉 Correct mode: click video to place point (Esc to cancel)" if controller.is_correcting else ""
             self.candidateDetailsLabel.setText(
                 f"Candidate {idx + 1}/{tot} (Frame {curr.frame_index}) · Status: {disp.upper()}\n"
