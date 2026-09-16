@@ -23,8 +23,7 @@ class ChartActions(QObject):
     def __init__(self, window: "MainWindow") -> None:
         super().__init__(window)
         self.window = window
-        self.panel = ChartPanel(window)
-        window.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.panel)
+        self.panel = ChartPanel(window)  # Phase 5.7：由 MainWindow 挂入分析工作区
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="kinematics")
         self._cancel = Event()
         self._future: Future[KinematicsResult] | None = None

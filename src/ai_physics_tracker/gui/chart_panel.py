@@ -9,7 +9,6 @@ from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
-    QDockWidget,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -187,8 +186,12 @@ class _PanelWheelForwarder(QObject):
         return False
 
 
-class ChartPanel(QDockWidget):
-    """五个图表与独立的 Track 勾选/计算设置；不复用标注列表的选择模式。"""
+class ChartPanel(QWidget):
+    """五个图表与独立的 Track 勾选/计算设置；不复用标注列表的选择模式。
+
+    Phase 5.7 起作为“分析与图表”工作区的主体（非 dock）；由 MainWindow
+    挂入分析页。
+    """
 
     selectionChanged = Signal()
     parametersChanged = Signal()
@@ -265,10 +268,9 @@ class ChartPanel(QDockWidget):
             self._help_bubble.hide()
 
     def __init__(self, parent: QWidget) -> None:
-        super().__init__("Kinematics charts", parent)
+        super().__init__(parent)
         self._help_bubble: QLabel | None = None
         self.setObjectName("kinematicsCharts")
-        self.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.trackChoices = QListWidget()
         self.trackChoices.setMaximumHeight(72)
         self.trackChoices.setMaximumWidth(240)
@@ -354,7 +356,9 @@ class ChartPanel(QDockWidget):
         scroll.setWidgetResizable(True)
         scroll.setWidget(content)
         self._scroll_area = scroll
-        self.setWidget(scroll)
+        panel_layout = QVBoxLayout(self)
+        panel_layout.setContentsMargins(0, 0, 0, 0)
+        panel_layout.addWidget(scroll)
         self.trackChoices.itemChanged.connect(lambda _item: self.selectionChanged.emit())
         self.positionSource.currentIndexChanged.connect(lambda _index: self.selectionChanged.emit())
         self.windowLength.valueChanged.connect(lambda _value: self.parametersChanged.emit())

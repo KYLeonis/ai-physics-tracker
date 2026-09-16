@@ -1,5 +1,6 @@
 """AI 训练/推理任务面板；只负责展示状态与发出用户操作信号。"""
 
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -31,18 +32,27 @@ from ai_physics_tracker.application.tracking_types import (
 )
 
 
+logger = logging.getLogger(__name__)
+
 _RUN_ID_ROLE = Qt.ItemDataRole.UserRole
 _UNKNOWN_PROGRESS = (0, 0)
 _MAX_LOG_BLOCKS = 2000
 
 
 class TaskPanel(QDockWidget):
-    """底部可停靠的 AI 任务面板。
+    """“获取轨迹”工作区的上下文任务卡面板（Phase 5.7）。
 
-    面板不启动任务、不读取日志文件，也不修改项目；主窗口通过信号
-    获取用户意图，并通过 ``setContext``、``setRuns`` 和 ``setActivity``
-    推送当前快照。
+    顶部为状态驱动的任务卡（标题/说明/主动作/次动作/依据）；原有三列
+    表单折叠为“调整本次设置”，历史与激活折叠为“结果与历史”。全部控件
+    对象与信号保留（既有测试与高级路径不变）；面板不启动任务、不读取
+    日志文件、不修改项目——主窗口通过信号获取用户意图。
+
+    任务卡内容来自 application/workflow_projection（Qt-free 决策），
+    面板只做展示与转发。
     """
+
+    primaryActionRequested = Signal(str)     # 任务卡主动作（C2 显式执行入口）
+    secondaryActionRequested = Signal(str)   # 次要动作（查看分析/采用等）
 
     trainRequested = Signal()
     inferRequested = Signal()
@@ -66,9 +76,12 @@ class TaskPanel(QDockWidget):
     manageValidationRequested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__("AI tasks", parent)
+        super().__init__("Acquire trajectory", parent)
         self.setObjectName("trackingTasks")
-        self.setAllowedAreas(Qt.DockWidgetArea.BottomDockWidgetArea)
+        self.setAllowedAreas(
+            Qt.DockWidgetArea.RightDockWidgetArea
+            | Qt.DockWidgetArea.LeftDockWidgetArea
+            | Qt.DockWidgetArea.BottomDockWidgetArea)
 
         self.contextLabel = QLabel("No video selected · No track selected")
         self.contextLabel.setWordWrap(True)
@@ -308,32 +321,104 @@ class TaskPanel(QDockWidget):
         self.clearActivationButton.clicked.connect(self.clearActivationRequested)
         self.manageValidationButton.clicked.connect(self.manageValidationRequested)
 
-        historyLayout = QVBoxLayout()
-        historyLayout.addWidget(QLabel("Task history & activation"))
-        historyLayout.addWidget(self.activeRunLabel)
-        historyLayout.addWidget(self.activeValidationLabel)
-        historyLayout.addLayout(activationActionRow)
-        historyLayout.addWidget(self.historyList)
-        historyLayout.addWidget(self.logText, 1)
+        # --- Phase 5.7：任务卡（内容来自 workflow_projection.select_task_card）---
+        self.cardTitleLabel = QLabel("Current: —")
+        card_title_font = self.cardTitleLabel.font()
+        card_title_font.setBold(True)
+        self.cardTitleLabel.setFont(card_title_font)
+        self.cardExplanationLabel = QLabel("")
+        self.cardExplanationLabel.setWordWrap(True)
+        self.cardPrimaryButton = QPushButton()
+        self.cardPrimaryButton.setMinimumHeight(34)
+        self.cardPrimaryButton.clicked.connect(
+            lambda: self.primaryActionRequested.emit(self._primary_action_id))
+        self.cardSecondaryButtonA = QPushButton()
+        self.cardSecondaryButtonB = QPushButton()
+        for button in (self.cardSecondaryButtonA, self.cardSecondaryButtonB):
+            button.clicked.connect(
+                lambda _checked=False, b=button: self.secondaryActionRequested.emit(
+                    b.property("actionId") or ""))
+            button.hide()
+        self.cardReasonLabel = QLabel("")
+        self.cardReasonLabel.setWordWrap(True)
+        self.cardReasonLabel.hide()
+        cardSecondaryRow = QHBoxLayout()
+        cardSecondaryRow.addWidget(self.cardSecondaryButtonA)
+        cardSecondaryRow.addWidget(self.cardSecondaryButtonB)
 
-        left = QVBoxLayout()
-        left.addWidget(suggestGroup)
-        left.addWidget(trainGroup)
-        left.addWidget(self.trainReasonLabel)
-        middle = QVBoxLayout()
-        middle.addWidget(inferGroup)
-        middle.addWidget(self.inferReasonLabel)
-        middle.addWidget(reviewGroup)
-        columns = QHBoxLayout()
-        columns.addLayout(left, 1)
-        columns.addLayout(middle, 1)
-        columns.addLayout(historyLayout, 2)
+        cardLayout = QVBoxLayout()
+        cardLayout.addWidget(self.cardTitleLabel)
+        cardLayout.addWidget(self.cardExplanationLabel)
+        cardLayout.addWidget(self.cardPrimaryButton)
+        cardLayout.addWidget(self.cardReasonLabel)
+        cardLayout.addLayout(cardSecondaryRow)
+        cardGroup = QGroupBox("Current step")
+        cardGroup.setLayout(cardLayout)
+
+        # 依据（默认收起）：非高级用户也能读的证据与本次设置摘要
+        self.evidenceToggleButton = QPushButton("▸ Evidence & this run's plan")
+        self.evidenceToggleButton.setCheckable(True)
+        self.evidenceToggleButton.clicked.connect(
+            lambda checked: self._toggleSection(self.evidenceToggleButton,
+                                                self.evidenceTextLabel, checked,
+                                                "Evidence & this run's plan"))
+        self.evidenceTextLabel = QLabel("")
+        self.evidenceTextLabel.setWordWrap(True)
+        self.evidenceTextLabel.hide()
+
+        # 高级设置（默认收起）：原三列表单 + 挖掘参数，全部控件保留
+        self.advancedToggleButton = QPushButton("▸ Adjust this run's settings")
+        self.advancedToggleButton.setCheckable(True)
+        self.advancedToggleButton.clicked.connect(
+            lambda checked: self._toggleSection(self.advancedToggleButton,
+                                                self.advancedContainer, checked,
+                                                "Adjust this run's settings"))
+        self.advancedContainer = QWidget()
+        advancedLayout = QVBoxLayout(self.advancedContainer)
+        advancedLayout.setContentsMargins(0, 0, 0, 0)
+        advancedLeft = QVBoxLayout()
+        advancedLeft.addWidget(suggestGroup)
+        advancedLeft.addWidget(trainGroup)
+        advancedLeft.addWidget(self.trainReasonLabel)
+        advancedMiddle = QVBoxLayout()
+        advancedMiddle.addWidget(inferGroup)
+        advancedMiddle.addWidget(self.inferReasonLabel)
+        advancedColumns = QHBoxLayout()
+        advancedColumns.addLayout(advancedLeft, 1)
+        advancedColumns.addLayout(advancedMiddle, 1)
+        advancedLayout.addLayout(advancedColumns)
+        self.advancedContainer.hide()
+
+        # 结果与历史（默认收起）：激活/验证/历史/日志
+        self.resultsToggleButton = QPushButton("▸ Results & history")
+        self.resultsToggleButton.setCheckable(True)
+        self.resultsToggleButton.clicked.connect(
+            lambda checked: self._toggleSection(self.resultsToggleButton,
+                                                self.resultsContainer, checked,
+                                                "Results & history"))
+        self.resultsContainer = QWidget()
+        resultsLayout = QVBoxLayout(self.resultsContainer)
+        resultsLayout.setContentsMargins(0, 0, 0, 0)
+        resultsLayout.addWidget(self.activeRunLabel)
+        resultsLayout.addWidget(self.activeValidationLabel)
+        resultsLayout.addLayout(activationActionRow)
+        resultsLayout.addWidget(self.historyList)
+        resultsLayout.addWidget(self.logText, 1)
+        self.resultsContainer.hide()
+
         self.detailsLabel = QLabel("Select a task to view its result details.")
         self.detailsLabel.setWordWrap(True)
         contentLayout = QVBoxLayout()
         contentLayout.addWidget(self.contextLabel)
-        contentLayout.addLayout(columns)
+        contentLayout.addWidget(cardGroup)
         contentLayout.addLayout(activityLayout)
+        contentLayout.addWidget(self.evidenceToggleButton)
+        contentLayout.addWidget(self.evidenceTextLabel)
+        contentLayout.addWidget(self.advancedToggleButton)
+        contentLayout.addWidget(self.advancedContainer)
+        contentLayout.addWidget(reviewGroup)
+        contentLayout.addWidget(self.resultsToggleButton)
+        contentLayout.addWidget(self.resultsContainer)
         contentLayout.addWidget(self.detailsLabel)
         contentLayout.addWidget(QLabel("Manual: circle · AI: hollow diamond · Existing points are kept"))
         content = QWidget()
@@ -342,6 +427,11 @@ class TaskPanel(QDockWidget):
         scroll.setWidgetResizable(True)
         scroll.setWidget(content)
         self.setWidget(scroll)
+        self._primary_action_id = ""
+
+        # 依据/结果部分需要 historyLayout 之外的激活控件；原 historyLayout
+        # 的构建保留在上方（其控件已移入 resultsContainer），此处不再单独布局。
+
 
         self.trainButton.clicked.connect(lambda: self.trainRequested.emit())
         self.inferButton.clicked.connect(lambda: self.inferRequested.emit())
@@ -410,6 +500,57 @@ class TaskPanel(QDockWidget):
             self.epochsSpinBox.setValue(rec.epochs)
         if rec.batch_size is not None:
             self.batchSizeSpinBox.setValue(rec.batch_size)
+
+    # --- Phase 5.7：任务卡展示（内容决策在 workflow_projection）---
+
+    def setTaskCard(self, card) -> None:
+        """用投影结果更新任务卡；card 为 None 时显示等待状态。"""
+        if card is None:
+            self.cardTitleLabel.setText("Current: —")
+            self.cardExplanationLabel.setText("")
+            self.cardPrimaryButton.hide()
+            self.cardReasonLabel.hide()
+            self.cardSecondaryButtonA.hide()
+            self.cardSecondaryButtonB.hide()
+            self.evidenceTextLabel.setText("")
+            self._primary_action_id = ""
+            return
+        self.cardTitleLabel.setText(card.title)
+        self.cardExplanationLabel.setText("\n".join(card.explanation))
+        primary = card.primary
+        if primary is None:
+            self.cardPrimaryButton.hide()
+            self.cardReasonLabel.hide()
+            self._primary_action_id = ""
+        else:
+            self._primary_action_id = primary.action_id
+            self.cardPrimaryButton.setText(primary.label)
+            self.cardPrimaryButton.setVisible(True)
+            self.cardPrimaryButton.setEnabled(primary.enabled)
+            if not primary.enabled and primary.reason:
+                self.cardReasonLabel.setText(primary.reason)
+                self.cardReasonLabel.show()
+            else:
+                self.cardReasonLabel.hide()
+        secondary_buttons = (self.cardSecondaryButtonA, self.cardSecondaryButtonB)
+        for button, spec in zip(secondary_buttons, card.secondary):
+            button.setText(spec.label)
+            button.setProperty("actionId", spec.action_id)
+            button.setEnabled(spec.enabled)
+            button.setToolTip(spec.reason or "")
+            button.show()
+        extra = card.secondary[2:]
+        for button in secondary_buttons[len(card.secondary):]:
+            button.hide()
+        if extra:
+            logger.warning("task card has more secondary actions than buttons: %s",
+                           [s.action_id for s in extra])
+        self.evidenceTextLabel.setText("\n".join(card.evidence) if card.evidence else "")
+
+    def _toggleSection(self, button: QPushButton, widget: QWidget,
+                       checked: bool, title: str) -> None:
+        widget.setVisible(checked)
+        button.setText(("▾ " if checked else "▸ ") + title)
 
     def trainingParameters(self) -> TrainingParams:
         """返回当前训练控件的不可变参数快照。"""

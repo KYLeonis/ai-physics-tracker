@@ -210,6 +210,9 @@ def test_time_and_xy_clicks_seek_source_frames_and_main_window_clamps_working_zo
     window.chartActions._render_key = None
     window.chartActions.refresh()
     qtbot.wait(20)
+    # Phase 5.7：图表位于“分析与图表”工作区；点击映射需要其布局几何
+    window.setWorkspace("analysis")
+    qtbot.wait(20)
 
     requested: list[int] = []
     monkeypatch.setattr(window, "_requestFrame", requested.append)
@@ -638,10 +641,11 @@ def test_chart_panel_wheel_scrolls_back_to_controls_when_clipped(
     scroll = panel._scroll_area
     bar = scroll.verticalScrollBar()
 
-    # 把面板压到内容被裁剪的高度，并把视图滚到底（顶部控制区不可见）
+    # Phase 5.7：panel 是分析工作区内的普通 widget（非 dock）。用 scroll
+    # 最大高度强制内容裁剪，并把视图滚到底（顶部控制区不可见）
     window.show()
-    panel.setFloating(True)
-    panel.resize(panel.width(), 260)
+    window.setWorkspace("analysis")
+    scroll.setMaximumHeight(140)
     qtbot.waitUntil(lambda: bar.minimum() != bar.maximum(), timeout=2000)
     bar.setValue(bar.maximum())
     assert bar.value() == bar.maximum()

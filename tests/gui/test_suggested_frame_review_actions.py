@@ -299,8 +299,12 @@ def test_frame_selection_cancellation_neutral_status_f4(test_window: MainWindow,
     qtbot.waitUntil(lambda: window.frameSelectionActions._handle is fake_handle, timeout=3000)
 
     assert window.frameSelectionActions.busy
-    assert panel.suggestCancelButton.isVisible()
+    # Phase 5.7：运行中的取消主入口是任务卡主动作（Cancel）；折叠表单内的
+    # 按钮保持“未显式隐藏”
+    assert not panel.suggestCancelButton.isHidden()
     assert panel.suggestCancelButton.isEnabled()
+    card = window.trackingActions.panel.cardPrimaryButton
+    assert card.text() == "Cancel"
 
     # 点击取消
     panel.suggestCancelButton.click()

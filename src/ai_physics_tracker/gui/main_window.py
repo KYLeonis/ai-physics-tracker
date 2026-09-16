@@ -28,6 +28,8 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QVBoxLayout,
     QWidget,
+    QSplitter,
+    QStackedWidget,
 )
 
 from ai_physics_tracker.application.playback import AsyncVideoSession, DecodeDelivery
@@ -46,6 +48,12 @@ from ai_physics_tracker.gui.timing_actions import TimingActions
 from ai_physics_tracker.gui.chart_actions import ChartActions
 from ai_physics_tracker.gui.suggested_frame_review_actions import DifficultFrameReviewActions
 from ai_physics_tracker.gui.tracking_actions import TrackingActions, FrameSelectionActions
+from ai_physics_tracker.gui.workflow_header import (
+    WORKSPACE_ACQUIRE,
+    WORKSPACE_ANALYSIS,
+    WORKSPACE_SETUP,
+    WorkflowHeader,
+)
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time, clamp_to_working_zone
 from ai_physics_tracker.gui.video_view import CalibrationView, MarkerView, VideoView
 
@@ -291,8 +299,41 @@ class MainWindow(QMainWindow):
         mainRow = QHBoxLayout()
         mainRow.addWidget(videoColumnWidget, 1)
         mainRow.addWidget(sideScroll)
+        self._videoPage = QWidget(self)
+        self._videoPage.setLayout(mainRow)
+
+        # Phase 5.7：三工作区。视频页承载 实验设置/获取轨迹；分析页以图表为主体、
+        # 视频作为参照窗（videoView 在进入/离开分析页时重挂父，解码管线不受影响）。
+        self._workspace = WORKSPACE_ACQUIRE
+        self._videoColumn = videoColumn
+        self._videoColumnWidget = videoColumnWidget
+        self._videoViewHomeIndex: int | None = None
+        self._analysisReferenceHost = QWidget(self)
+        reference_layout = QVBoxLayout(self._analysisReferenceHost)
+        reference_layout.setContentsMargins(0, 0, 0, 0)
+        self._analysisReferenceCaption = QLabel("Video reference", self)
+        self._analysisReferenceCaption.setWordWrap(True)
+        reference_layout.addWidget(self._analysisReferenceCaption)
+        self._analysisPage = QSplitter(Qt.Orientation.Horizontal, self)
+        self._analysisChartHost = QWidget(self)  # ChartPanel 挂入点（见 _installChartPanel）
+        self._analysisChartHost.setLayout(QVBoxLayout())
+        self._analysisPage.addWidget(self._analysisChartHost)
+        self._analysisPage.addWidget(self._analysisReferenceHost)
+        self._analysisPage.setStretchFactor(0, 3)
+        self._analysisPage.setStretchFactor(1, 1)
+
+        self.workflowHeader = WorkflowHeader(self)
+        self.workflowHeader.workspaceRequested.connect(self.setWorkspace)
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        outer.addWidget(self.workflowHeader)
+        self._workspaceStack = QStackedWidget(self)
+        self._workspaceStack.addWidget(self._videoPage)
+        self._workspaceStack.addWidget(self._analysisPage)
+        outer.addWidget(self._workspaceStack)
         central = QWidget(self)
-        central.setLayout(mainRow)
+        central.setLayout(outer)
         self.setCentralWidget(central)
 
         self.projectActions = ProjectActions(self)
@@ -326,9 +367,9 @@ class MainWindow(QMainWindow):
         self.reviewActions = DifficultFrameReviewActions(
             self, self.trackingActions.panel
         )
-        self.chartActions.panel.raise_()
+        self._installChartPanel(self.chartActions.panel)
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
-        viewMenu.addAction(self.chartActions.panel.toggleViewAction())
+        self.setWorkspace(WORKSPACE_ACQUIRE)
         viewMenu.addAction(zoomInAction)
         viewMenu.addAction(zoomOutAction)
         viewMenu.addSeparator()
@@ -468,6 +509,64 @@ class MainWindow(QMainWindow):
     @property
     def playbackRate(self) -> float:
         return self._playback_rate
+
+    # ------------------------------------------------------------------
+    # Phase 5.7 — 三个工作区（导航只改变视图，不执行任务）
+    # ------------------------------------------------------------------
+
+    @property
+    def currentWorkspace(self) -> str:
+        return self._workspace
+
+    def setWorkspace(self, workspace: str) -> None:
+        """切换工作区；不取消任务、不改变采用结果、不触发计算。"""
+        if workspace == self._workspace and self._workspaceStack.currentIndex() == (
+                1 if workspace == WORKSPACE_ANALYSIS else 0):
+            self.workflowHeader.setWorkspace(workspace)
+            return
+        if workspace == WORKSPACE_ANALYSIS:
+            self._enterAnalysis()
+        else:
+            if self._workspace == WORKSPACE_ANALYSIS:
+                self._leaveAnalysis()
+        self._workspace = workspace
+        if workspace == WORKSPACE_ANALYSIS:
+            self._workspaceStack.setCurrentWidget(self._analysisPage)
+        else:
+            self._workspaceStack.setCurrentWidget(self._videoPage)
+        tracking_panel = getattr(self, "trackingActions", None)
+        if tracking_panel is not None:
+            panel = tracking_panel.panel
+            if workspace == WORKSPACE_ACQUIRE:
+                panel.show()
+                panel.raise_()
+            else:
+                # 分析页以图表为主体；AI 状态经状态头任务条常驻（设计 §8.2）
+                panel.hide()
+        self.workflowHeader.setWorkspace(workspace)
+        self.analysisChanged.emit()
+
+    def _enterAnalysis(self) -> None:
+        """视频视图重挂为分析页参照窗；解码与 overlay 管线不变。"""
+        if self.videoView.parent() is self._analysisReferenceHost:
+            return
+        layout = self._videoColumn
+        self._videoViewHomeIndex = layout.indexOf(self.videoView)
+        self._analysisReferenceHost.layout().addWidget(self.videoView)
+
+    def _leaveAnalysis(self) -> None:
+        """视频视图回到获取轨迹/实验设置页原位置。"""
+        if self.videoView.parent() is self._analysisReferenceHost:
+            index = self._videoViewHomeIndex
+            if index is None or index > self._videoColumn.count():
+                index = self._videoColumn.count()
+            self._videoColumn.insertWidget(index, self.videoView)
+
+    def _installChartPanel(self, panel: QWidget) -> None:
+        """ChartPanel 由 dock 转为分析页主体（Phase 5.7）。"""
+        host_layout = self._analysisChartHost.layout()
+        host_layout.setContentsMargins(0, 0, 0, 0)
+        host_layout.addWidget(panel)
 
     def setPlaybackRate(self, rate: float) -> None:
         """设置播放倍速并即时生效；非正值忽略。"""

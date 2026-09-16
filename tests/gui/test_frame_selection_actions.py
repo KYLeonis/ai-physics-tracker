@@ -217,7 +217,8 @@ class TestTaskPanelSuggestControls:
     def test_suggest_status_label_shows_message(self, qtbot, window):
         panel = window.trackingActions.panel
         panel.setSuggestStatus("Test status message")
-        assert panel.suggestStatusLabel.isVisible()
+        # Phase 5.7：折叠区 ancestor 不影响“未显式隐藏”语义
+        assert not panel.suggestStatusLabel.isHidden()
         assert "Test status message" in panel.suggestStatusLabel.text()
 
     def test_suggest_status_label_hidden_on_empty(self, qtbot, window):
@@ -231,7 +232,9 @@ class TestTaskPanelSuggestControls:
         reason = "Save the project first — frame selection needs a saved project"
         panel.setSuggestEnabled(False, reason, hint=True)
         assert panel.suggestStatusLabel.text() == reason
-        assert panel.suggestStatusLabel.isVisible()
+        # Phase 5.7：表单位于“调整本次设置”折叠区；可见性语义改为“未显式隐藏”
+        # （ancestor 折叠不影响），主提示由任务卡（setup 卡的 Save 动作）承接
+        assert not panel.suggestStatusLabel.isHidden()
         # 恢复可用：提示被清除，且不吞掉此后的结果状态
         panel.setSuggestEnabled(True)
         assert not panel.suggestStatusLabel.isVisible()
@@ -240,7 +243,7 @@ class TestTaskPanelSuggestControls:
             actual_n=1, excluded_count=0, params_snapshot={},
         )
         panel.setSuggestResult(result)
-        assert panel.suggestStatusLabel.isVisible()
+        assert not panel.suggestStatusLabel.isHidden()
 
     def test_suggest_frames_not_creating_track_points_invariant(self, qtbot, opened_project):
         """严格不变式：建议帧结果展示后，session 中 manual 点数严格不变，绝不自动打标。"""

@@ -39,8 +39,8 @@ class TrackingActions(QObject):
         self.window = window
         self.backend = TrackingJobRunner(adapter, runner)
         self.panel = TaskPanel(window)
-        window.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.panel)
-        window.tabifyDockWidget(window.chartActions.panel, self.panel)
+        # Phase 5.7：“获取轨迹”工作区的上下文卡固定在右侧（设计 §8.1）
+        window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.panel)
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="tracking-result")
         self._request = None
         self._session = None
@@ -61,6 +61,8 @@ class TrackingActions(QObject):
         self._timer.setInterval(100)
         self._timer.timeout.connect(self._poll)
         self.panel.trainRequested.connect(self.train)
+        self.panel.primaryActionRequested.connect(self._onCardAction)
+        self.panel.secondaryActionRequested.connect(self._onCardAction)
         self.panel.inferRequested.connect(self.infer)
         self.panel.cancelRequested.connect(self.cancel)
         self.panel.runSelected.connect(self.showLog)
@@ -176,6 +178,7 @@ class TrackingActions(QObject):
         self.panel.setContext(video.display_name if video else "No video", track.name if track else "No track",
                               train_reason, infer_reason, self.pending,
                               project_busy=self.window.projectActions.busy)
+        self._refresh_workflow_ui(session, track_id, runs, video, track)
         if session and track_id:
             recommendation = self._advisor_recommendation(session, track_id, runs)
             if recommendation is None:
@@ -188,6 +191,130 @@ class TrackingActions(QObject):
         else:
             self.panel.setAdvisorSummary(None)
         self.window.projectActions.refresh()
+
+    # ------------------------------------------------------------------
+    # Phase 5.7 — 状态投影驱动的工作流 UI（决策在 workflow_projection）
+    # ------------------------------------------------------------------
+
+    def _execution_input(self):
+        from ai_physics_tracker.application.workflow_projection import (
+            EXEC_CANCELLING,
+            EXEC_FRAME_SELECTION,
+            EXEC_IDLE,
+            EXEC_INFERRING,
+            EXEC_MINING,
+            EXEC_TRAINING,
+            ExecutionInput,
+        )
+        if self.cancelling:
+            return ExecutionInput(kind=EXEC_CANCELLING, cancelling=True)
+        if self.pending:
+            kind = (EXEC_INFERRING if self._request.run.task_type == "infer"
+                    else EXEC_TRAINING)
+            return ExecutionInput(kind=kind)
+        if self.window.frameSelectionActions.busy:
+            return ExecutionInput(kind=EXEC_FRAME_SELECTION, frame_selection=True)
+        if getattr(self.window, "reviewActions", None) and self.window.reviewActions.busy:
+            return ExecutionInput(kind=EXEC_MINING, mining=True)
+        return ExecutionInput(kind=EXEC_IDLE)
+
+    def _workflow_state(self, session, track_id, runs):
+        from ai_physics_tracker.application.workflow_projection import (
+            project_workflow_state,
+        )
+        return project_workflow_state(session, track_id, runs, self._execution_input())
+
+    def _refresh_workflow_ui(self, session, track_id, runs, video, track) -> None:
+        """把投影结果推到任务卡与常驻状态头；决策失败不阻塞面板。"""
+        from ai_physics_tracker.application.workflow_projection import select_task_card
+
+        try:
+            if session is None:
+                self.panel.setTaskCard(None)
+                self.window.workflowHeader.setStatus(
+                    "No project", "Current trajectory: —", None)
+                return
+            state = self._workflow_state(session, track_id, runs)
+            self.panel.setTaskCard(select_task_card(state))
+            self._current_workflow_state = state
+            self._refresh_header(session, state, video, track)
+        except Exception as error:  # 投影是辅助信息，失败只降级显示
+            logger.warning("workflow projection failed: %s", error)
+            self.panel.setTaskCard(None)
+
+    def _refresh_header(self, session, state, video, track) -> None:
+        window = self.window
+        project_name = session.project.name
+        video_name = video.display_name if video is not None else "No video"
+        track_name = track.name if track is not None else "No track"
+        zone = "—"
+        if video is not None:
+            timeline = next(
+                (t for t in session.project.timelines
+                 if t.video_id == video.video_id), None)
+            if timeline is not None:
+                start_s = timeline.working_zone[0] / timeline.fps_nominal
+                end_s = timeline.working_zone[1] / timeline.fps_nominal
+                zone = f"{start_s:.1f}–{end_s:.1f} s"
+        saved = "saved" if not session.is_dirty else "unsaved changes"
+        context = (f"Project: {project_name} · Video: {video_name} · "
+                   f"Object: {track_name} · Range: {zone} · {saved}")
+
+        traj = state.trajectory
+        if traj.active_label:
+            trajectory_text = (f"Current trajectory: {traj.active_label} AI "
+                               f"+ {traj.manual_count} manual position(s)")
+        elif traj.manual_count:
+            trajectory_text = f"Current trajectory: manual only ({traj.manual_count} position(s))"
+        else:
+            trajectory_text = "Current trajectory: —"
+        if traj.candidate is not None:
+            trajectory_text += f"   ·   Preview: {traj.candidate.label} (not adopted)"
+        if state.execution.busy:
+            kind = state.execution.kind.replace("_", " ")
+            window.workflowHeader.setTaskStrip(
+                f"{track_name}: {kind} in progress; charts keep the current trajectory")
+        else:
+            window.workflowHeader.setTaskStrip("")
+        window.workflowHeader.setStatus(context, trajectory_text, state.analysis.state)
+
+    def _onCardAction(self, action_id: str) -> None:
+        """任务卡动作分发：全部走既有执行入口（与 Advanced 同一验证路径）。"""
+        window = self.window
+        session = window.analysisSession
+        if action_id == "view_analysis":
+            window.setWorkspace("analysis")
+            return
+        if action_id == "update_charts":
+            window.setWorkspace("analysis")
+            window.chartActions.recompute()
+            return
+        if action_id == "cancel_task":
+            if self.pending:
+                self.cancel()
+            elif window.frameSelectionActions.busy:
+                window.frameSelectionActions.cancel()
+            elif getattr(self.window, "reviewActions", None) and self.window.reviewActions.busy:
+                self.window.reviewActions.cancelMining()
+            return
+        if action_id == "pick_frames":
+            window.setWorkspace("acquire")
+            window.frameSelectionActions.requestSuggestion(10, "kmeans")
+            return
+        if action_id == "create_track":
+            window.addTrackButton.click()
+            return
+        if action_id == "save_project":
+            window.projectActions.save()
+            return
+        if action_id == "add_video":
+            window.projectActions.openVideo()
+            return
+        # 学习/生成/检查/采用/优化在 5.7 后续切片接线；先给可见反馈
+        if session is None:
+            return
+        window.statusBar().showMessage(
+            f"Action “{action_id}” is being wired up in this workspace redesign")
 
     def train(self) -> None:
         # 仅 Resume 模式携带 source；Restart 带选中项会被 prepare 拒绝（review Blocker 1）
