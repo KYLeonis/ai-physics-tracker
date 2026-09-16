@@ -1,6 +1,8 @@
 """应用层困难帧挖掘策略：纯函数、Qt-free，不持有会话或引擎对象（Phase 5.2）。
 
 输入为全帧原始预测（含低置信度与缺测，NaN 语义见 data-model.md §3.5）；
+仅在**有信号触发**时才产生候选：模型饱和（无低置信/跳变/残差/邻域触发）时返回空结果，
+由调用方明示"未发现困难帧"，不做分数补偿（2026-09-16 用户批准）。
 输出为带分量分数与触发原因的候选排名。pipeline 顺序固定为
 candidate pool → normalization + weighted rank → temporal de-duplication →
 (视觉多样性, 由 job 层复用 5.1 K-means) → Top N（spec R2.5）。
@@ -39,9 +41,9 @@ REASON_LOW_CONFIDENCE = "low_confidence"
 REASON_JUMP_OUTLIER = "jump_outlier"
 REASON_RESIDUAL_OUTLIER = "residual_outlier"
 REASON_PRIOR_NEIGHBORHOOD = "prior_correction_neighborhood"
-# 池不足 top_n 时的补齐来源：无触发原因，按连续筛查分数排名（产品语义：
-# 队列不空，用户总能拿到"相对最值得看"的帧；原因如实标注）
-REASON_SCREENING = "screening"
+# 2026-09-16 用户批准移除 screening 补齐：真实闭环证明，模型饱和时按筛查分数
+# 补满队列会把"并不困难"的帧当困难帧推给用户（其标注不产生新信息，且可复现地
+# 损害基准）。现在触发池为空即如实返回空结果，由调用方明示"未发现困难帧"。
 
 
 @dataclass(frozen=True)
@@ -212,7 +214,6 @@ def mine_difficult_frames(
 
     pool_positions: list[int] = []
     reasons_by_position: list[tuple[str, ...]] = []
-    fill_positions: list[int] = []
     for position in range(frame_count):
         frame = zone_frame(position)
         if frame in manual_frames:
@@ -221,28 +222,15 @@ def mine_difficult_frames(
         if reasons:
             pool_positions.append(position)
             reasons_by_position.append(reasons)
-        else:
-            fill_positions.append(position)
 
     # ceil 保证换算结果严格不低于请求的最小间隔（0.25 s @ 10 fps → 3 帧）；
     # round 的半偶舍入会得到 2 帧 = 0.20 s，违反"最小间隔"语义（review M2）
     min_gap_frames = max(1, ceil(params.min_gap_s * fps_nominal))
-    available = len(pool_positions) + len(fill_positions)
-    if available == 0:
+    if not pool_positions:
+        # 未触发任何困难信号：如实返回空结果（不再用筛查分数补满队列）
         return MiningOutcome((), 0, min_gap_frames, min_gap_frames, None, False,
                              _snapshot(params, 0, min_gap_frames, min_gap_frames, None, False,
                                        zone_start, zone_end, fps_nominal, 0))
-
-    if len(pool_positions) < params.top_n and fill_positions:
-        # 好模型可能没有任何触发：按连续筛查分数补齐至 top_n，原因如实标注
-        # screening；补齐帧与触发帧进入同一池、同一归一化与排名
-        screened = _screening_fill(raw, fill_positions, params)
-        deficit = min(params.top_n - len(pool_positions), len(fill_positions))
-        for position in sorted(screened[:deficit]):
-            pool_positions.append(position)
-            reasons_by_position.append((REASON_SCREENING,))
-    screening_count = sum(1 for reasons in reasons_by_position
-                          if reasons == (REASON_SCREENING,))
 
     components = _normalized_components(raw, pool_positions)
     weights = {
@@ -287,7 +275,7 @@ def mine_difficult_frames(
         gap_relaxed=relaxed,
         params_snapshot=_snapshot(params, len(pool_positions), min_gap_frames, gap,
                                   actual_min_gap, relaxed, zone_start, zone_end,
-                                  fps_nominal, screening_count),
+                                  fps_nominal, 0),
     )
 
 
@@ -409,27 +397,6 @@ def _residual_signals(
     raw[finite] = scores
     flags[finite] = anomalies
     return raw, flags
-
-
-def _screening_fill(
-    raw: dict[str, np.ndarray], fill_positions: list[int], params: MiningParams,
-) -> list[int]:
-    """按连续分量的加权分数对未触发帧排名（降序，帧号打破并列）。
-
-    归一化在未触发帧集合内做 percentile rank；仅用于挑选补齐顺序，
-    最终池内排名仍由统一的池内归一化决定。
-    """
-    weights = {
-        COMPONENT_UNCERTAINTY: params.weight_uncertainty,
-        COMPONENT_JUMP: params.weight_jump,
-        COMPONENT_RESIDUAL: params.weight_residual,
-        COMPONENT_PRIOR: params.weight_prior,
-    }
-    scores = np.zeros(len(fill_positions))
-    for name, weight in weights.items():
-        scores += weight * _percentile_ranks(raw[name][fill_positions])
-    return [position for position, _score in
-            sorted(zip(fill_positions, scores), key=lambda item: (-item[1], item[0]))]
 
 
 def _reasons_for(flags: dict[str, np.ndarray], position: int) -> tuple[str, ...]:

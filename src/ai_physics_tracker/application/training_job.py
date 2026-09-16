@@ -79,27 +79,26 @@ def prepare_training(
     actual_adapter = adapter or DLCAdapter()
     actual_params = params or TrainingParams()
 
-    track_prefix = str(track_id)[:8]
-    if working_dir is not None:
-        base_dir = working_dir
-    elif session.project_root is not None:
-        base_dir = session.project_root / "data" / "engines" / "dlc"
-    else:
-        raise ProjectSessionError("Save the project or supply a training working directory")
-
-    base_dir.mkdir(parents=True, exist_ok=True)
-    proj_name = f"dlc_{track_prefix}"
-    proj_dir = base_dir / proj_name
-
+    # 5.6 Slice 0（用户批复 B）：每次训练必须使用全新的 per-run DLC 项目目录。
+    # 目录复用会让 DLC 的 shuffle 自动编号与训练实际执行的 shuffle 错位，
+    # 在 validation series 变化时造成静默数据错配（ADR-0014 防泄漏承诺）。
+    if working_dir is None:
+        raise ProjectSessionError(
+            "Training requires a per-run working directory (data/engines/<run_id>)")
+    proj_dir = working_dir
     config_path = proj_dir / "config.yaml"
-    if not config_path.is_file():
-        config_path = actual_adapter.create_project(
-            project_name=proj_name,
-            experimenter="AIPhysicsTracker",
-            video_path=resolved_video_path,
-            working_dir=base_dir,
-            bodyparts=["target"],
-        )
+    if config_path.is_file():
+        raise ProjectSessionError(
+            f"Training working directory is not fresh: {proj_dir}; each training run "
+            "must use its own new DLC project directory")
+
+    config_path = actual_adapter.create_project(
+        project_name=proj_dir.name,
+        experimenter="AIPhysicsTracker",
+        video_path=resolved_video_path,
+        working_dir=proj_dir.parent,
+        bodyparts=["target"],
+    )
 
     exported_count = actual_adapter.export_annotations(
         track_points=manual_points,
@@ -194,7 +193,10 @@ def prepare_training(
                 "accepted_count": rev_sum.accepted_count,
                 "skipped_count": rev_sum.skipped_count,
                 "corrected_count": rev_sum.corrected_count,
-                "is_complete": rev_sum.is_complete,
+                # ReviewBatchSummary 只有计数（无 is_complete 字段）；批次完成
+                # 即"无待审核候选"。此前引用不存在属性 → 只要存在活动 infer run
+                # 就会 AttributeError（2026-09-16 探针发现并修复）
+                "is_complete": rev_sum.pending_count == 0,
             }
 
     iter_info = RefinementIterationInfo(

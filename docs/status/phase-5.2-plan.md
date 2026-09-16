@@ -69,6 +69,11 @@
 | visual diversity | 从时间去重后的高分 shortlist（最多 `4N`）中复用 K-means 选至多 N 帧；最终候选仍按总分排序 |
 | benchmark 指标 | `Precision@N = needs_review / actual_n`；`review_yield = needs_correction / actual_n` |
 
+> **2026-09-16 更新（用户批准，Phase 5.6 闭环证据驱动）**：下文的 **screening 补齐已被移除**。
+> 真实闭环证明：模型饱和时按筛查分数补满队列，会把"并不困难"的帧当困难帧推给用户——其标注
+> 不产生新信息，且可复现地损害冻结基准（val RMSE 3.19 → 4.71）。现语义：触发池为空即如实
+> 返回空结果，GUI 明示"未发现困难帧"。详见 [phase-5.6-review.md](../reviews/phase-5.6-review.md) F1/F4。
+
 **实现期语义细化（2026-09-02，真实数据验证后确定）**：好模型可能没有任何触发
 （AI_test2 真实 run：148 帧全部高于阈值、无 jump/residual 异常），触发式候选池为空会让
 审核队列死路。最终语义：触发池不足 `top_n` 时按连续加权筛查分数补齐，补齐帧原因如实

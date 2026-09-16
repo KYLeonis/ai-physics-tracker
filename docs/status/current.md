@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-05（**5.6 mini-plan 已起草，等待用户确认**）
+- 最后更新：2026-09-16（**5.6 Slices 0–3 执行完毕：闭环完成、AC-9 以明示缺口归档；待 HR 确认后合并**）
 
 ---
 
@@ -18,9 +18,24 @@
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
 | Subphase | 5.4 — Iteration History & Result Activation | ⚠️ 实现已合并、Human Review 通过；复核收口待办 |
 | Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
-| Subphase | 5.6 — Refinement Loop Integration & Acceptance | 📝 mini-plan 待确认 |
+| Subphase | 5.6 — Refinement Loop Integration & Acceptance | 🚧 Slices 0–3 完成；AC-9 明示缺口；待 HR/合并 |
 
 ## Recently Completed
+
+- **Phase 5.6 真实闭环执行与验收（2026-09-16）**：
+  - Slice 0：批复决策落地——A 核实为 Phase 4 已实现（无需改动）；B 强制 fresh per-run DLC 目录；
+    C 激活指纹放宽为 size-only。
+  - Slice 1：三类 delta 内化为 Advisor 输入（coverage 仅证据、激活引导指向未激活 run）+ 归档工具。
+  - Slice 2：AI_test2 真实闭环四轮（resume+10 / resume / restart / restart+10），同 series 11 帧冻结
+    基准 val RMSE = 3.30 / 4.80 / **3.19** / 4.71；**结论：AC-9 的 ≥5% 可复现改善未达成**（最佳 −3.3%），
+    按用户决定如实归档为明示缺口；闭环本身（流程/产物/可追溯/激活）完整完成。
+  - 根因：F1 screening 补齐把非困难帧推给用户（**已修正**：饱和即返回空并明示"未发现困难帧"）、
+    F3 训练确定性（同配置复跑 sha256 相同 → delta 是真实效果）、F4 模型饱和（148/148 帧置信 ≥0.915）、
+    F5 基准被反复用于模式选择存在污染风险（用户提出）。
+  - 自查（无 subagent，配额所致）：修复 Blocker `is_complete` 属性错误（激活结果后训练必崩）与归档工具
+    键错误；空候选端到端探针通过。全回归 **699 passed**。
+  - 交互体验：新增 [docs/notes/interaction-experience.md](../notes/interaction-experience.md)，记录用户报告的
+    交互混乱问题与改进草案（呈现层重构，待立项）。
 
 - **Phase 5.4 完成状态复核（2026-09-03）**：4 个 Slice、独立 review finding 与 Human Review
   均有完成记录；本地全回归 **652 passed**，`main @ 13f48c2` 与

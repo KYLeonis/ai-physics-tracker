@@ -62,6 +62,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 │   ├── status/current.md # 当前状态：阶段/任务/下一步（会话先读、收尾必更）
 │   ├── templates/       # subphase 计划与 review 模板
 │   ├── reviews/         # 独立 review 记录（每 subphase 一个 Review Record）
+│   ├── notes/           # 交互与体验记录、改进草案（非规范类观察）
 │   └── decisions/       # 架构决策记录（ADR）
 ├── src/                 # 源代码（Phase 1 起填充）
 ├── tests/               # 测试（Phase 1 起填充）

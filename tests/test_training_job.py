@@ -78,7 +78,8 @@ def test_prepare_training_insufficient_points(tmp_path: Path) -> None:
         prepare_training(session, track_id, reader, working_dir=tmp_path)
 
 
-def test_prepare_training_success_and_directory_reuse(tmp_path: Path) -> None:
+def test_prepare_training_requires_fresh_per_run_directory(tmp_path: Path) -> None:
+    """5.6 Slice 0（批复 B）：每次训练必须用全新 per-run 目录，复用被显式拒绝。"""
     session, reader, _ = _setup_session_with_track(tmp_path, point_count=4)
     track = session.tracks[0]
     adapter = MockEngineAdapter()
@@ -93,40 +94,45 @@ def test_prepare_training_success_and_directory_reuse(tmp_path: Path) -> None:
         working_dir=tmp_path,
     )
 
-    # 验证返回值与 session 中的 TrackingRun
     assert run.status == "pending"
     assert run.track_id == track.track_id
     assert run.config["epochs"] == 25
     assert cfg_path.is_file()
     assert len(session.tracking_runs(track.track_id)) == 1
 
-    # 验证相同 Track 二次调用复用相同目录
+    # 同目录二次 prepare：拒绝（防止 DLC shuffle 编号与实际训练划分错位）
+    with pytest.raises(Exception, match="not fresh"):
+        prepare_training(
+            session,
+            track.track_id,
+            reader,
+            params=params,
+            adapter=adapter,
+            working_dir=tmp_path,
+        )
+
+    # 每次训练使用各自的全新子目录：正常工作
     run2, cfg_path2 = prepare_training(
         session,
         track.track_id,
         reader,
         params=params,
         adapter=adapter,
-        working_dir=tmp_path,
+        working_dir=tmp_path / "run2",
     )
-    assert cfg_path2 == cfg_path
+    assert cfg_path2.is_file()
+    assert cfg_path2 != cfg_path
     assert len(session.tracking_runs(track.track_id)) == 2
 
-    # 验证不同 Track 使用不同目录
-    track2 = session.add_track(track.video_id, "Pivot")
-    for i in range(3):
-        session.mark_point(track2.track_id, frame_index=i * 5, pixel_x=50.0, pixel_y=50.0)
-
-    run3, cfg_path3 = prepare_training(
-        session,
-        track2.track_id,
-        reader,
-        params=params,
-        adapter=adapter,
-        working_dir=tmp_path,
-    )
-    assert cfg_path3 != cfg_path
-    assert cfg_path3.parent != cfg_path.parent
+    # 缺少 working_dir：显式拒绝（不再回退到共享目录）
+    with pytest.raises(Exception, match="per-run working directory"):
+        prepare_training(
+            session,
+            track.track_id,
+            reader,
+            params=params,
+            adapter=adapter,
+        )
 
 
 def test_prepare_training_with_active_validation_series_fixed_split(tmp_path: Path) -> None:
@@ -135,7 +141,8 @@ def test_prepare_training_with_active_validation_series_fixed_split(tmp_path: Pa
     adapter = MockEngineAdapter()
 
     # 1. Without active validation series: train/test indices should be None
-    run1, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    run1, _ = prepare_training(session, track.track_id, reader, adapter=adapter,
+                               working_dir=tmp_path / "iter0")
     iter_info1 = extract_refinement_iteration(run1)
     assert iter_info1 is not None
     assert iter_info1.iteration_index == 0
@@ -148,7 +155,8 @@ def test_prepare_training_with_active_validation_series_fixed_split(tmp_path: Pa
     assert val_series.frame_indices == (10, 30)
 
     # Prepare training with active validation series
-    run2, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    run2, _ = prepare_training(session, track.track_id, reader, adapter=adapter,
+                               working_dir=tmp_path / "iter1")
     iter_info2 = extract_refinement_iteration(run2)
     assert iter_info2 is not None
     assert iter_info2.validation_series_id == val_series.series_id
@@ -172,14 +180,16 @@ def test_prepare_training_rejects_invalid_or_all_consuming_validation_series(tmp
     # A: Validation series takes all points (0, 10, 20) -> no points left for training
     session.create_validation_series(track.track_id, "All Points Val", [0, 10, 20])
     with pytest.raises(ProjectSessionError, match="At least one manual point must be available"):
-        prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+        prepare_training(session, track.track_id, reader, adapter=adapter,
+                         working_dir=tmp_path / "case-a")
 
     # B: Validation series on frame 0, but user moves/modifies point 0
     session.create_validation_series(track.track_id, "Val Frame 0", [0])
     # Modify coordinates on frame 0
     session.mark_point(track.track_id, 0, 999.0, 999.0)
     with pytest.raises(ProjectSessionError, match="Active validation series 'Val Frame 0' is invalid"):
-        prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+        prepare_training(session, track.track_id, reader, adapter=adapter,
+                         working_dir=tmp_path / "case-b")
 
 
 
@@ -224,8 +234,10 @@ def test_two_training_runs_reuse_same_validation_series(tmp_path: Path) -> None:
     adapter = MockEngineAdapter()
     val_series = session.create_validation_series(track.track_id, "Fixed Val 1", [10, 30])
 
-    run_a, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
-    run_b, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    run_a, _ = prepare_training(session, track.track_id, reader, adapter=adapter,
+                                working_dir=tmp_path / "iter0")
+    run_b, _ = prepare_training(session, track.track_id, reader, adapter=adapter,
+                                working_dir=tmp_path / "iter1")
     iter_a = extract_refinement_iteration(run_a)
     iter_b = extract_refinement_iteration(run_b)
     assert iter_a.validation_series_id == val_series.series_id
@@ -241,12 +253,64 @@ def test_different_validation_series_breaks_cross_iteration_comparison(tmp_path:
     adapter = MockEngineAdapter()
 
     series_a = session.create_validation_series(track.track_id, "Val A", [10, 30])
-    run_a, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    run_a, _ = prepare_training(session, track.track_id, reader, adapter=adapter,
+                                working_dir=tmp_path / "iter0")
     series_b = session.create_validation_series(track.track_id, "Val B", [0, 20])
-    run_b, _ = prepare_training(session, track.track_id, reader, adapter=adapter, working_dir=tmp_path)
+    run_b, _ = prepare_training(session, track.track_id, reader, adapter=adapter,
+                                working_dir=tmp_path / "iter1")
 
     iter_a = extract_refinement_iteration(run_a)
     iter_b = extract_refinement_iteration(run_b)
     assert iter_a.validation_series_id == series_a.series_id
     assert iter_b.validation_series_id == series_b.series_id
     assert iter_a.validation_series_id != iter_b.validation_series_id
+
+
+def test_prepare_training_with_active_infer_run_records_review_summary(tmp_path: Path) -> None:
+    """活动 infer run 存在时训练准备必须成功并记录审核摘要（回归：is_complete 属性）。
+
+    此前引用 ReviewBatchSummary.is_complete（不存在）→ 只要轨道有活动推理结果，
+    下次训练就在 worker 内 AttributeError；因用户从未激活过结果而长期未暴露。
+    """
+    from uuid import uuid4
+
+    from ai_physics_tracker.application.suggested_frame_review import ActiveReviewBatch
+    from ai_physics_tracker.domain.tracking_run import (
+        create_tracking_run as _create, mark_run_completed as _complete,
+    )
+
+    session, reader, _ = _setup_session_with_track(tmp_path, point_count=5)
+    track = session.tracks[0]
+    video = session.project.videos[0]
+    adapter = MockEngineAdapter()
+
+    infer_run = _complete(_create(video.video_id, track.track_id, "infer", engine="dlc"))
+    session.record_tracking_run(infer_run)
+    session.set_active_review_batch(
+        infer_run.run_id, ActiveReviewBatch(request_id=uuid4(), params_snapshot={}, candidates=()))
+    # 建立活动指针（激活路径需要产物，这里直接写 store 以聚焦回归点）
+    from dataclasses import replace as _replace
+    from ai_physics_tracker.application.refinement_history import (
+        RefinementState, attach_refinement_state,
+    )
+    state = session.get_refinement_state(track.track_id)
+    updated = attach_refinement_state(
+        track, RefinementState(active_infer_run_id=infer_run.run_id,
+                               validation_series=state.validation_series))
+    session._commit_store(
+        type(session._store)(
+            tuple(updated if t.track_id == track.track_id else t for t in session._store.tracks),
+            session._store.observations,
+        ),
+        session._project.derived,
+    )
+
+    run, _cfg = prepare_training(session, track.track_id, reader, adapter=adapter,
+                                 working_dir=tmp_path / "iter")
+    iteration = extract_refinement_iteration(run)
+    assert iteration is not None
+    assert iteration.source_infer_run_id == infer_run.run_id
+    summary = iteration.review_summary
+    assert summary is not None
+    assert summary["total_candidates"] == 0
+    assert summary["is_complete"] is True     # 无待审核候选 → 完成

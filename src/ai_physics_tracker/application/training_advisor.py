@@ -70,6 +70,11 @@ class AdvisorInput:
     uncovered_zone_segments: bool = False      # working zone 四等分缺 training label
     requested_batch_size: int = 8              # 用户当前表单 batch size（OOM 减半基准）
     requested_epochs: int = 50                 # 用户当前表单 epochs（restart 语境）
+    # 覆盖率证据对（仅证据行，不进决策规则；None = 不可比/缺数据）
+    coverage_previous: float | None = None
+    coverage_latest: float | None = None
+    # 激活引导：最新 completed infer run id（improved 时建议激活；worsened 时建议保留）
+    latest_infer_run_id: str | None = None
 
     def __post_init__(self) -> None:
         if type(self.pending_candidates) is not int or self.pending_candidates < 0:
@@ -96,6 +101,12 @@ class AdvisorInput:
                     not isinstance(self.correction_yield, (int, float)) or \
                     not isfinite(self.correction_yield) or not 0 <= self.correction_yield <= 1:
                 raise ValueError("correction_yield must be in [0, 1]")
+        for label, value in (("coverage_previous", self.coverage_previous),
+                             ("coverage_latest", self.coverage_latest)):
+            if value is not None:
+                if isinstance(value, bool) or not isinstance(value, (int, float)) \
+                        or not isfinite(value) or not 0 <= value <= 1:
+                    raise ValueError(f"{label} must be in [0, 1]")
 
 
 @dataclass(frozen=True)
@@ -231,16 +242,18 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
         if val_delta <= -RMSE_TREND_THRESHOLD:
             both_improving = train_delta <= -RMSE_TREND_THRESHOLD
             epochs = ADDITIONAL_EPOCHS_EXTENDED if both_improving else ADDITIONAL_EPOCHS_DEFAULT
+            evidence = [
+                f"{series_note}: validation RMSE improved "
+                f"{abs(val_delta):.1%} ({prev.validation_rmse:.4g} → {last.validation_rmse:.4g})",
+                f"train RMSE {'improved' if train_delta < 0 else 'changed'} "
+                f"{abs(train_delta):.1%}",
+            ]
+            evidence.extend(_evidence_extras(inp))
             return AdvisorRecommendation(
                 action=ACTION_RESUME,
                 epochs=epochs,
                 training_mode=ACTION_RESUME,
-                evidence=(
-                    f"{series_note}: validation RMSE improved "
-                    f"{abs(val_delta):.1%} ({prev.validation_rmse:.4g} → {last.validation_rmse:.4g})",
-                    f"train RMSE {'improved' if train_delta < 0 else 'changed'} "
-                    f"{abs(train_delta):.1%}",
-                ),
+                evidence=tuple(evidence),
                 limits=(
                     "Epochs means additional epochs (fine-tune); at most one extension step, "
                     "never an automatic loop.",
@@ -257,6 +270,8 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
                     f"{GENERALIZATION_GAP_FACTOR}× train RMSE {last.train_rmse:.4g}"
                 )
             if inp.pending_candidates > 0:
+                reasons.append("keep the currently activated result; retrain only after "
+                               "the new labels are in")
                 return AdvisorRecommendation(
                     action=ACTION_LABEL_MORE,
                     label_count=_label_count(inp),
@@ -289,6 +304,7 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
                 f"{series_note}: validation RMSE plateau "
                 f"(delta {val_delta:.1%} within ±{RMSE_TREND_THRESHOLD:.0%})",
                 f"train RMSE {last.train_rmse:.4g}, validation RMSE {last.validation_rmse:.4g}",
+                *_evidence_extras(inp),
             ),
             limits=(
                 "Stop iterating: compare evaluations across the same series manually; "
@@ -323,6 +339,24 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
             "advisor cannot judge improvement.",
         ),
     )
+
+
+def _evidence_extras(inp: AdvisorInput) -> tuple[str, ...]:
+    """证据行补充：coverage 对（仅证据，不进规则）与激活引导（review/用户确认 2026-09-05）。"""
+    extras: list[str] = []
+    if (inp.coverage_previous is not None and inp.coverage_latest is not None
+            and inp.coverage_previous > 0):
+        cov_delta = inp.coverage_latest - inp.coverage_previous
+        extras.append(
+            f"prediction coverage {inp.coverage_previous:.1%} → {inp.coverage_latest:.1%} "
+            f"({cov_delta:+.1%}; informational only, not accuracy)"
+        )
+    if inp.latest_infer_run_id:
+        extras.append(
+            f"the latest inference run {inp.latest_infer_run_id[:8]} was produced by the "
+            "newer model — activate it explicitly if you accept its predictions"
+        )
+    return tuple(extras)
 
 
 def _same_series_comparison(
