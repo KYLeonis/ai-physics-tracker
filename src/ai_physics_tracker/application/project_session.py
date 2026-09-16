@@ -1166,6 +1166,7 @@ class ProjectSession:
             derived=derived,
             tracking_runs=updated_runs,
         )
+        self._check_validation_series_removal(candidate_project)
         return candidate_project, TrackStore(tracks, observations)
 
     def _current_data_snapshot(
@@ -1196,12 +1197,35 @@ class ProjectSession:
             index += 1
         return f"Track {index}"
 
+    def _check_validation_series_removal(self, candidate: Project) -> None:
+        """所有用户事务共同保护历史标签；在途 train 尚未回传 iteration 时保守保留。"""
+        current_tracks = {track.track_id: track for track in self._project.tracks}
+        for track in candidate.tracks:
+            previous = current_tracks.get(track.track_id)
+            if previous is None:
+                continue
+            retained = {s.series_id for s in extract_refinement_state(track).validation_series}
+            removed = {s.series_id for s in extract_refinement_state(previous).validation_series} - retained
+            if not removed:
+                continue
+            for run in candidate.tracking_runs:
+                if run.track_id != track.track_id or run.task_type != "train":
+                    continue
+                iteration = extract_refinement_iteration(run)
+                if (run.status in {"pending", "running"}
+                        or (iteration is not None and iteration.validation_series_id in removed)):
+                    raise ProjectSessionError(
+                        "Cannot remove validation series used by training history or an "
+                        "active training task; deactivate it instead so labels stay traceable"
+                    )
+
     def _commit_project(
         self,
         project: Project,
         store: TrackStore | None = None,
         scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None,
     ) -> None:
+        self._check_validation_series_removal(project)
         self._push_undo_snapshot(scoped_reviews)
         if store is not None:
             self._store = store
@@ -1655,21 +1679,6 @@ class ProjectSession:
         if target is None:
             raise ProjectSessionError(
                 f"Validation series '{series_id}' does not exist on track '{track.name}'"
-            )
-
-        # 5.4 前 legacy run 无 iteration 记录，不可能引用 series，不阻止删除
-        referencing_runs = [
-            run for run in self._project.tracking_runs
-            if run.track_id == track_id and run.task_type == "train"
-            and (info := extract_refinement_iteration(run)) is not None
-            and info.validation_series_id == series_id
-        ]
-        if referencing_runs:
-            raise ProjectSessionError(
-                f"Validation series '{target.name}' is referenced by "
-                f"{len(referencing_runs)} training run(s) on track '{track.name}'; "
-                "deactivate it instead of deleting so historical validation labels "
-                "stay traceable"
             )
 
         new_series_list = tuple(s for s in current_state.validation_series if s.series_id != series_id)

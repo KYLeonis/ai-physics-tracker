@@ -343,3 +343,161 @@ Phase 5.7 测试刷新，配方已记录）、F2/F3（Fix Now，`405b91b`）。�
 
 **§16 Entry Gate 状态更新：两项 blocker（P6R-01、P6R-02）已按各 finding 的
 关闭条件关闭并经独立复核（R1/R2），`READY AFTER BLOCKERS` 的 blocker 条件满足。**
+
+## 18. Stabilization 完成情况独立复核（2026-09-16）
+
+本节依据用户后续“检查另一个对话 Agent 的完成情况”请求追加。**§17 是实施方的
+关闭声明；本次复核发现其“全部关闭”结论过早，以本节复核结论为准。** 不改写
+原始发现，也未修改产品代码、正式测试、spec 或其他 tracked file。
+
+### 18.1 基线与结论
+
+- 当前 `main = c7d416459f45c6e2abf76a1cd5d3e1f1b542a03c`；复核 diff
+  `daad086..c7d4164`，重点核对 `7c160b0/c384cd8/1c3769d/405b91b/f17cf32`。
+- 阅读 stabilization plan、R1/R2 record，并重新检查实现与新增测试；记录中的
+  PASS/CLOSED 不作为独立正确性证明。本次未取得对应实施对话的完整消息，完成
+  情况判断以已合并代码、记录、CI 和实际 probe 为依据。
+- 本地 `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q`：
+  **734 passed in 69.50s**。
+- [当前 main CI 35112409088](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35112409088)：
+  macOS / Windows Python 3.11 均成功。旧 `ee22204` CI 的失败是新增 Advisor
+  测试的时间戳平局；后续 tie-break 修复及当前绿基线可核实，不将旧失败计为当前 blocker。
+- 三个临时 probe 均通过 stdin 执行，未写入正式测试；真实项目
+  `experiment/AI_test2` 仅加载读取，未保存修改。GUI 探针调用 production TaskPanel
+  的详情生成方法，属于自动化行为验证，**不等于 Human Review**。
+
+| 原 Finding | 本次独立判断 |
+| --- | --- |
+| P6R-01 | 原报告两条具体故障路径已修复；candidate 先校验再提交、恢复被删 Track 的 runs、无关 run 不回滚均有代码和回归依据。下面验证集引用遗漏不推翻这两条已修复路径。 |
+| P6R-02 | **部分关闭**：新 Resume 入口和 Advisor 数值比较已保守门控；历史结果展示仍未接入资格，见 P6R-02-R1。 |
+| P6R-03 | **部分关闭**：直接删除已保护，但 Undo 可绕过，见 P6R-03-R1。 |
+| P6R-04 | 原 timeline 错配及历史 OOM 常驻错误已修复，Windows 时间戳平局也已补齐；另有 Advisor 与入口资格衔接遗漏，见 P6R-05。 |
+
+### 18.2 P6R-02-R1 — 历史结果详情未显示验证比较资格
+
+- **Finding**：资格只进入 `AdvisorInput.recent_rounds`，未进入单个历史 run 的
+  展示。最近两轮 clean 时，Advisor 的正常结论也不能替早期污染轮次提供提示。
+- **Evidence**：`gui/task_panel.py:782–844` 的 `_iteration_detail_lines()`
+  仅展示 mode/source、training_labels、validation_labels/series 等；
+  `TrackingActions.refresh()` 将原始 runs 传给 `setRuns()`，没有按历史 run 传入资格。
+  对真实 `AI_test2` 运行 `collect_advisor_input()` 后：
+  `f8d5fe67=unknown (3.30)`、`e976e5dc=unknown (4.80)`、
+  `18d1f638=clean (3.19)`、`b80fbd68=clean (4.71)`。
+  `TaskPanel._runDetails(f8d5fe67)` 仍展示完整 evaluation、
+  `validation_labels=11` 和 series ID，**没有 unknown/不可独立比较提示**。
+  当前 Advisor 仅显示后两轮 `3.19 → 4.71` 恶化 47.6%，不提示早期两轮资格。
+- **Observed / Inferred**：**Observed** 上述生产 collector 与详情生成输出。
+  **Inferred** 用户查看旧轮次时仍可能把其 test RMSE 当作独立 holdout 证据。
+  原报告已通过 DLC 实际 split 确认前两轮祖先污染；当前 helper 因 legacy parent
+  缺少 iteration 而返回 unknown，是正确的保守处理，不能把它写成“程序已识别具体污染”。
+- **Impact**：原 P6R-02 要求的“Advisor/历史展示使用比较资格”只完成前半；
+  已知不具独立验证资格的历史数值仍无就地说明。新训练的入口保护并未失效。
+- **Realistic trigger**：打开现有 `AI_test2`，查看早期 Resume 训练的历史详情。
+- **Likelihood**：Medium。
+- **Severity**：High（既有科学结果解释仍可能误导；沿用原 blocker 的关闭范围）。
+- **Recommended Action**：把同一资格计算用于每个历史评价的可见详情，至少明确
+  clean / contaminated / unknown 与不可独立比较原因；保留原始 RMSE。增加
+  “较早 unknown/contaminated + 较新 clean 两轮”的历史详情行为测试，不要仅
+  验证 Advisor 不算 delta。真实旧项目的已知污染证据可引用本报告 §10 P6R-02，
+  不需要为改写原始数字或重跑实验引入迁移。
+- **Fix Cost**：Low。
+- **Decision**：Fix Before Phase 6。
+- **Phase 6 Blocker**：Yes（P6R-02 尚未满足既定关闭条件，不是新增架构重构要求）。
+
+### 18.3 P6R-03-R1 — Undo 绕过已引用 validation series 的删除守卫
+
+- **Finding**：`delete_validation_series()` 的引用保护只覆盖显式删除方法；
+  `_history_transition()` 恢复旧 Track 快照时保留存续 Track 的当前 run registry，
+  却未检查这些 runs 引用的 validation series 是否随旧快照消失。
+- **Evidence**：`application/project_session.py:1159–1169` 用历史 `tracks`
+  和当前 `updated_runs` 构造 Project；聚合校验未覆盖 extra_fields 中的 series 引用。
+  临时 probe：创建验证集 `[0]` → 登记引用该 series 的 completed train →
+  显式删除抛 `ProjectSessionError` → `undo()` 返回 True → series=None、runs=1 →
+  save/reopen 后仍是 series=None，而 run 的 `validation_series_id` 仍在。
+  探针复用了新增测试的临时会话/训练记录构造方式。
+- **Observed / Inferred**：**Observed** 上述绕过及保存重开结果。
+  **Inferred** 正常 GUI 的在途训练同样存在该组合：请求持有冻结 Project，
+  GUI Undo 不禁止撤销验证集创建，训练完成可再带回对旧 series 的引用。
+  此在途 GUI 组合未另跑完整训练；不要把 completed 合成探针描述为真实 DLC 复跑。
+- **Impact**：项目第一方 validation labels 快照仍可丢失，后续比较降为 unknown。
+  当前活动轨迹和已有 RMSE 不被改变，维持原 P6R-03 非 blocker 分级。
+- **Realistic trigger**：创建固定验证集后开始训练，在历史仍可撤销时撤销创建，
+  然后保存；不是恶意文件编辑或非法 UUID 注入。
+- **Likelihood**：Medium。
+- **Severity**：Medium。
+- **Recommended Action**：对历史 candidate 同样保护被 run 引用的 series，
+  采用原子拒绝或保留历史对象的窄修复；同时覆盖冻结请求/在途训练完成的引用来源。
+  补 Undo → save/reopen 行为测试，不只测直接 delete API。
+- **Fix Cost**：Low–Medium。
+- **Decision**：Fix During Phase 6（建议与本轮补漏一起处理）。
+- **Phase 6 Blocker**：No。
+
+### 18.4 P6R-05 — Advisor 改善分支忽略当前 Resume 资格
+
+- **Finding**：采集器已经计算 `has_compatible_source=False`，但 Advisor 的
+  “历史同 series 改善”分支直接返回 Resume。入口与建议使用了不同条件。
+- **Evidence**：`application/training_advisor.py:254–278`。
+  临时 production collector → recommendation → prepare 探针：验证集 A=`[2]`，
+  两轮 train frames=`[0,1]`、validation RMSE `5 → 4`；再创建并激活 B=`[1]`。
+  输出 `has_compatible_source=False`、`new_labels=0`，却推荐
+  `action='resume'`，理由是 A 上改善 20%；同一最新模型进入
+  `prepare_tracking_request()` 后正确报 `Resume blocked ... validation frame(s) [1]`。
+- **Observed / Inferred**：**Observed** 上述完整组合。旧 A 上改善数值本身正确，
+  错误在于把它转换成当前 B 下不可执行的训练动作。
+- **Impact**：用户照建议操作必然失败；执行守卫仍有效，不会形成新的验证泄漏。
+- **Realistic trigger**：已有改善历史后更换验证集，新验证帧曾被这些模型训练过。
+- **Likelihood**：Medium。
+- **Severity**：Medium。
+- **Recommended Action**：所有返回 Resume 的分支都检查当前资格；无兼容源时
+  建议 Restart 并解释历史评价与当前 series 的区别。有兼容源时还应确保建议与
+  实际选择的源一致。增加上述换 series 的组合行为测试。
+- **Fix Cost**：Low。
+- **Decision**：Fix During Phase 6（可在 Phase 5.7 Advisor 接线前一起补齐）。
+- **Phase 6 Blocker**：No。
+
+### 18.5 其他关闭证据与 Entry Gate
+
+- R1 F1 的 GUI teardown 排序挂起已有明确 Defer 及复现配方，属于已记录延期，
+  不是本次新发现；本次正常全量运行通过，不将其升级为基线不可信。
+- 原 §12 要求 GUI 拒绝路径按项目规则做 Human Review；当前 stabilization
+  record/plan 未见本轮对应真人反馈。**只能标为未核实**，不能用新增 offscreen
+  测试代替，也不能在未获得实施对话完整记录时断言用户没有验收。
+- 不要求重开 P6R-01/P6R-04 已验证的具体修复，不要求大规模拆分 Session 或迁移数据格式。
+
+**Phase 6 Entry Gate：READY AFTER BLOCKERS。**
+
+剩余 blocker 为 **P6R-02-R1：历史评价就地展示比较资格**。P6R-03-R1 与 P6R-05
+为已复现、范围有限的非 blocker 补漏。§17“全部关闭”的声明应在这些具体路径
+得到处理后再更新；734 个测试通过证明已有覆盖回归通过，不能证明上述未覆盖组合正确。
+
+
+## 19. 用户授权直接修复后的验证（2026-09-16）
+
+§18 复核后用户明确要求直接修复，故本轮修改范围扩展至相关代码/测试和状态记录。
+分支 `fix/pre-phase6-review-followup`；未改变 schema、ADR、Phase 6 范围或真实实验数字。
+
+| Finding | 实施与验证 |
+| --- | --- |
+| P6R-02-R1 | `validation_comparison_exposure()` 为 Advisor/历史详情共用入口；详情和 tooltip 展示每轮资格及 unknown/contaminated 的不可比较原因。新增混合历史 GUI 测试。只读加载真实 AI_test2，实测前两轮显示 unknown/legacy 原因、后两轮 clean，原始评价未改写。 |
+| P6R-03-R1 | 删除守卫移入共享事务检查，同时作用于 `_commit_project()` 与 `_history_transition()`，在改 Project/Store/历史栈之前拒绝删除被 train 引用的 series；pending/running 尚未带回 iteration 时保守禁止移除该 Track 的 series。新增三态拒绝原子性、冻结请求完成合入、停用及 save/reopen 测试。删除整个 Track 仍按现有级联及恢复政策处理。 |
+| P6R-05 | 改善分支在当前源不兼容时返回 Restart；GUI 将选中模型传给 collector，模型选择进入 refresh 的失效键。新增换 series + 不同源选择 + 合法 Resume 请求的组合测试。 |
+
+- 定向 **64 passed**；全量 **739 passed in 64.31s**（基线 734；新增 5 项）。
+- 测试与真实项目探针均不执行大型 DLC 训练，不宣称重跑科学精度实验。
+- 本轮实施后进行了自查及上述行为验证，**不是另一轮 fresh-context 独立 review**。
+- 自动化层面三项遗漏已修复；代码提交 `72d0216` 的
+  [CI 35114763488](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35114763488)
+  macOS / Windows Python 3.11 均通过。后续文档提交 `6cc85d8` 的
+  [CI 35115266202](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35115266202) 亦双平台通过。
+  原 P6R-02 的具体工程缺口已由生产展示及行为测试验证关闭，用户体验验收不以
+  offscreen 探针替代；§18 的基线判断保留作历史。
+
+### 19.1 Human Review 与最终 Entry Gate
+
+用户确认历史资格提示“提示清楚可见”，并明确授权“合并”。本轮历史展示的
+Human Review 通过；Undo/引用保护与 Advisor 资格组合由上述自动化测试验证，
+不把这次反馈扩写为用户完成了所有历史 GUI 场景。
+
+P6R-02-R1、P6R-03-R1、P6R-05 均已关闭，本轮修复按 `--no-ff` 合并 main。
+**Phase 6 Entry Gate：READY。** 当前没有本审查确认的未关闭工程 blocker；
+既有延期与未验证范围保留，不据此自动开始 Phase 6 或批准 Phase 5.7 产品实现。

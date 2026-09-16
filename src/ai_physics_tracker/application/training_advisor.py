@@ -266,6 +266,15 @@ def _core_recommendation(inp: AdvisorInput) -> AdvisorRecommendation:
                 f"{abs(train_delta):.1%}",
             ]
             evidence.extend(_evidence_extras(inp))
+            if not inp.has_compatible_source:
+                return AdvisorRecommendation(
+                    action=ACTION_RESTART,
+                    epochs=inp.requested_epochs,
+                    batch_size=inp.requested_batch_size,
+                    training_mode=ACTION_RESTART,
+                    evidence=tuple(evidence) + ("no compatible snapshot for the current validation series",),
+                    limits=("Historical improvement does not make Resume eligible under the current selection.",),
+                )
             return AdvisorRecommendation(
                 action=ACTION_RESUME,
                 epochs=epochs,

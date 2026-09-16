@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from ai_physics_tracker.application.difficult_frames import MiningParams
 from ai_physics_tracker.domain.tracking_run import TrackingRun
+from ai_physics_tracker.application.refinement_history import validation_comparison_exposure
 from ai_physics_tracker.application.tracking_types import (
     InferenceParams, TrainingParams, FrameSelectionResult,
 )
@@ -473,6 +474,7 @@ class TaskPanel(QDockWidget):
         if active_run_ids_by_track is not None:
             self._active_run_ids_by_track = active_run_ids_by_track
         self._current_track_id = track_id
+        self._runs_by_id = {run.run_id: run for run in runs}
         selected_model_id = self.selectedTrainingRunId()
         with QSignalBlocker(self.modelList):
             self.modelList.clear()
@@ -501,7 +503,6 @@ class TaskPanel(QDockWidget):
         if not self.modelList.count() and self.trainingMode() == "resume":
             self.setTrainingMode("restart")
         current_history = self._itemRunId(self.historyList.currentItem())
-        self._runs_by_id = {run.run_id: run for run in runs}
         with QSignalBlocker(self.historyList):
             self.historyList.clear()
             for run in runs:
@@ -782,6 +783,14 @@ class TaskPanel(QDockWidget):
     def _iteration_detail_lines(self, run: TrackingRun) -> list[str]:
         """训练迭代的完整可追溯展示（label 数、审核摘要、coverage、可比性）。"""
         lines: list[str] = []
+        if run.task_type == "train" and run.status == "completed":
+            state = self._ref_state if run.track_id == self._current_track_id else None
+            exposure = validation_comparison_exposure(self._runs_by_id.values(), run, state)
+            lines.append(f"validation_comparison={exposure.qualification}")
+            if exposure.qualification != "clean":
+                reason = (f"training lineage saw validation frames {list(exposure.exposed_frames)}"
+                          if exposure.exposed_frames else "; ".join(exposure.reasons))
+                lines.append(f"Not independently comparable: {reason}. Historical RMSE is unchanged.")
         iter_info = run.extra_fields.get("refinement_iteration_v1")
         if not isinstance(iter_info, dict) or iter_info.get("iteration_index") is None:
             return lines

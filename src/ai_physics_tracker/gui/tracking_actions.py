@@ -109,6 +109,7 @@ class TrackingActions(QObject):
         session = self.window.analysisSession
         video_id, track_id = self.window.activeVideoId, self.window.selectedTrackId
         key = (id(session.project) if session else None, video_id, track_id, self.pending,
+               self.panel.selectedTrainingRunId(),
                session.can_measure(video_id) if session and video_id else False,
                self.window.projectActions.busy,
                getattr(self.window, "frameSelectionActions", None) is not None
@@ -215,6 +216,7 @@ class TrackingActions(QObject):
                 r.status in {"pending", "running"} for r in runs),
             requested_batch_size=self.panel.batchSizeSpinBox.value(),
             requested_epochs=self.panel.epochsSpinBox.value(),
+            resume_source_run_id=self.panel.selectedTrainingRunId(),
         )
 
     def _interaction_blocked(self) -> bool:

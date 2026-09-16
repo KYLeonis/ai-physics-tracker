@@ -296,6 +296,22 @@ def validation_training_exposure(
     return ValidationExposure(qualification=VALIDATION_COMPARISON_CLEAN)
 
 
+def validation_comparison_exposure(
+    runs: Iterable[TrackingRun], run: TrackingRun, state: RefinementState | None,
+) -> ValidationExposure:
+    """历史展示和 Advisor 共用比较资格；缺少系列快照时不假定 clean。"""
+    iteration = extract_refinement_iteration(run)
+    series = (state.get_series(iteration.validation_series_id)
+              if state is not None and iteration is not None
+              and iteration.validation_series_id is not None else None)
+    if series is None:
+        return ValidationExposure(
+            qualification=VALIDATION_COMPARISON_UNKNOWN,
+            reasons=("fixed validation label snapshot is unavailable",),
+        )
+    return validation_training_exposure(runs, run.run_id, series.frame_indices)
+
+
 # --- 验证集一致性校验 ---
 
 

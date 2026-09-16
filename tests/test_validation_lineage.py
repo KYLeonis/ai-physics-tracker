@@ -358,3 +358,45 @@ def test_referenced_series_deletion_is_rejected_and_deactivation_preserves_trace
     unused = reopened.create_validation_series(track.track_id, "unused", [1])
     reopened.delete_validation_series(track.track_id, unused.series_id)
     assert reopened.get_refinement_state(track.track_id).get_series(unused.series_id) is None
+
+
+@pytest.mark.parametrize("status", ["pending", "running", "completed"])
+def test_history_cannot_remove_validation_labels_used_by_training(tmp_path: Path, status: str) -> None:
+    from ai_physics_tracker.application.refinement_history import extract_refinement_iteration
+    from ai_physics_tracker.domain.tracking_run import mark_run_running
+
+    session, track, proj_dir = _saved_session(tmp_path)
+    series = session.create_validation_series(track.track_id, "frozen", [0])
+    request = prepare_tracking_request(session, track.track_id, TrainingParams(epochs=1))
+    session.record_tracking_run(request.run)
+    # pending/running run 尚无 iteration；真正引用保存在 worker 的冻结请求中。
+    completed = attach_refinement_iteration(
+        mark_run_completed(request.run),
+        RefinementIterationInfo(
+            iteration_index=0, validation_series_id=series.series_id,
+            training_labels=_labels([1, 2, 3]),
+        ),
+    )
+    if status == "running":
+        session.update_tracking_run(mark_run_running(request.run))
+    elif status == "completed":
+        session.update_tracking_run(completed)
+    before = session.project
+    undo_before, redo_before = list(session._undo_stack), list(session._redo_stack)
+    for operation in (session.undo,
+                      lambda: session.delete_validation_series(track.track_id, series.series_id)):
+        with pytest.raises(ProjectSessionError, match="deactivate"):
+            operation()
+        assert session.project is before
+        assert session.tracks == before.tracks
+        assert session._undo_stack == undo_before
+        assert session._redo_stack == redo_before
+    # worker 完成仍能合入，其冻结验证标签在活动会话中仍可解析。
+    assert request.project.tracks == before.tracks
+    session.update_tracking_run(completed)
+    session.set_active_validation_series(track.track_id, None)
+    session.save()
+    reopened = ProjectSession.load(ProjectRepository(), proj_dir)
+    persisted = reopened.get_refinement_state(track.track_id).get_series(series.series_id)
+    assert persisted.label_snapshots == series.label_snapshots
+    assert extract_refinement_iteration(reopened.tracking_runs()[0]).validation_series_id == series.series_id

@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-16（**Pre-Phase 6 Stabilization 完成：P6R-01/02/04/03 全部关闭并经 R1/R2 独立复核；Phase 5.7 交互架构设计已完成，待用户批准**）
+- 最后更新：2026-09-16（**Stabilization 复核补漏已实现，本地 739 passed；双平台 CI 与 Human Review 已通过，获准合并 main。Phase 5.7 设计仍待批准**）
 
 ---
 
@@ -186,18 +186,18 @@
 
 ## Current Goal
 
-**Pre-Phase 6 Stabilization 已完成**：P6R-01/02（Phase 6 blocker）与 P6R-04/03 全部
-关闭并经独立复核（[R2 CLOSED](../reviews/pre-phase6-stabilization-review.md)）；
-Astra 的 `READY AFTER BLOCKERS` Entry Gate blocker 条件已满足。
-**Phase 5.7 交互架构设计已交付，等待用户批准**（见
-[phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)）。
-批准前不开始产品实现；Phase 6 仍待另行立项。
+**Stabilization 复核补漏已完成并获准合并 main**。历史资格展示、Undo 验证集引用、
+Advisor 当前源资格三项遗漏均已修复，详见
+[原审查报告 §18–19](../reviews/pre-phase6-project-review.md)。本地 **739 passed**；
+代码及后续文档提交的双平台 CI 均通过
+（[最新分支 CI 35115266202](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35115266202)）。
+用户确认“提示清楚可见，合并”，本轮 Human Review 通过；工程 Entry Gate 为 **READY**。
+Phase 5.7 交互架构设计仍等待用户批准，未开始其实现。
 
 ## Current Worktree Note
 
-`docs/design/phase-5.7-interaction-redesign.md` 初稿已随 stabilization 后续修复
-提交入库；本次设计收尾仅更新该报告与本状态文件，补齐最新工程基线与审批交接。
-没有产品代码改动；设计处于 Proposed，入库不代表实现批准。
+`fix/pre-phase6-review-followup` 按 `--no-ff` 合并 main；三项补漏、5 项新增回归和
+审查追记一并交付。无 schema/ADR/产品范围变更，无真实项目数据改写。
 
 ## Current Decisions / Deferred Checks
 
@@ -228,11 +228,6 @@ Astra 的 `READY AFTER BLOCKERS` Entry Gate blocker 条件已满足。
 
 ## Next Recommended Action
 
-**请用户审阅并批准 Phase 5.7 交互架构设计**：
-[phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)
-（重点 §5 普通／高级职责、§8 布局、§11 分析交接、§15/§17 决策边界）。
-批准后由 Sol / implementation Agent 制定 5.7 mini-plan，再进入实现；本轮设计不构成实现授权。
-复用已完成的 stabilization，不重复修复 P6R-01/02/03/04；GUI 测试 teardown 模态隐患
-（stabilization R1 F1，复现配方见
-[pre-phase6-stabilization-review.md](../reviews/pre-phase6-stabilization-review.md)）
-仍需在 5.7 测试刷新时处理。产品交互增量最终须经 Human Review。
+等待用户审阅并批准 [Phase 5.7 交互架构设计](../design/phase-5.7-interaction-redesign.md)。
+本轮 stabilization 已完成，不重复修复已关闭项，也不自动启动 Phase 6。
+既有 GUI teardown 文件排序挂起（stabilization R1 F1）仍按原决定在 5.7 刷新测试时处理。

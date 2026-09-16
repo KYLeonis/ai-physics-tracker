@@ -327,3 +327,43 @@ def test_run_details_expose_iteration_traceability(qtbot: QtBot) -> None:
     assert "resume_source" not in text
     assert "no fixed validation" in text
     assert "cross-iteration RMSE comparison unavailable" in text
+
+
+def test_old_unqualified_evaluations_remain_marked_beside_clean_rounds(qtbot: QtBot) -> None:
+    from ai_physics_tracker.application.refinement_history import (
+        RefinementState, RefinementIterationInfo, ValidationLabelSnapshot,
+        ValidationSeries, attach_refinement_iteration,
+    )
+    from ai_physics_tracker.domain.types import utc_now
+
+    panel = _panel(qtbot)
+    track_id, video_id = uuid4(), uuid4()
+    label = ValidationLabelSnapshot(uuid4(), 1, 2.0, 3.0, utc_now().isoformat())
+    series = ValidationSeries(uuid4(), "fixed", utc_now().isoformat(), (label,))
+    state = RefinementState(validation_series=(series,), active_validation_series_id=series.series_id)
+
+    def train(labels=(), parent=None):
+        run = mark_run_completed(create_tracking_run(video_id, track_id, "train"))
+        run = attach_refinement_iteration(run, RefinementIterationInfo(
+            iteration_index=0, validation_series_id=series.series_id,
+            training_labels=labels, training_mode="resume" if parent else "restart",
+            resume_from_training_run_id=parent,
+        ))
+        return replace(run, extra_fields={**run.extra_fields, "evaluation": {"status": "completed", "test": {"metrics": {"rmse": 3.3}}}})
+
+    polluted = train((label,))
+    unknown = train(parent=uuid4())
+    clean1, clean2 = train(), train()
+    panel.setRefinementInfo(active_status="none", active_run_id=None, ref_state=state,
+                            validation_valid=True, validation_reason=None)
+    panel.setRuns((polluted, unknown, clean1, clean2), track_id)
+    for index, qualification in enumerate(("contaminated", "unknown", "clean", "clean")):
+        tooltip = panel.historyList.item(index).toolTip()
+        assert f"validation_comparison={qualification}" in tooltip
+        assert ("Not independently comparable" in tooltip) == (index < 2)
+    panel.setRunDetails(polluted)
+    assert "training lineage saw validation frames [1]" in panel.detailsLabel.text()
+    assert "3.3" in panel.detailsLabel.text()
+    panel.setRunDetails(unknown)
+    assert "ancestor" in panel.detailsLabel.text()
+    assert "Not independently comparable" in panel.detailsLabel.text()
