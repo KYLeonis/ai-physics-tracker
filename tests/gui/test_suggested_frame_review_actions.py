@@ -306,8 +306,9 @@ def test_frame_selection_cancellation_neutral_status_f4(test_window: MainWindow,
     # 按钮保持“未显式隐藏”
     assert not panel.suggestCancelButton.isHidden()
     assert panel.suggestCancelButton.isEnabled()
+    # 卡片经 100ms 轮询刷新，等待切换到 Cancel（CI 时序）
     card = window.trackingActions.panel.cardPrimaryButton
-    assert card.text() == "Cancel"
+    qtbot.waitUntil(lambda: card.text() == "Cancel", timeout=3000)
 
     # 点击取消
     panel.suggestCancelButton.click()
