@@ -260,9 +260,12 @@ def test_save_reopen_and_resume_review_matrix(rel_window: MainWindow, qtbot):
     QTest.qWait(30)
     assert ctrl.summary.pending_count == 0
     assert ctrl.summary.skipped_count == 1
-    # Phase 5.7：完成行给构成（skipped 明示 left undecided）
-    assert "Processed" in panel.reviewProgressLabel.text()
-    assert "left undecided" in panel.reviewProgressLabel.text()
+    # Phase 5.7：完成行给构成（skipped 明示 left undecided）；
+    # 面板文本经轮询刷新，等待而非立即断言（CI 时序）
+    qtbot.waitUntil(
+        lambda: "Processed" in panel.reviewProgressLabel.text()
+        and "left undecided" in panel.reviewProgressLabel.text(),
+        timeout=3000)
 
 
 def test_interleaved_undo_redo_matrix(rel_window: MainWindow, qtbot):
