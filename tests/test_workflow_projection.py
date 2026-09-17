@@ -245,11 +245,24 @@ def test_card_priority_running_beats_everything() -> None:
 
 def test_card_priority_candidate_review_beats_generate_and_learn() -> None:
     cand = CandidateFacts(run_id=uuid4(), version=2, pending_review=3)
-    state = _state(trajectory=TrajectoryFacts(manual_count=8, candidate=cand))
+    state = _state(
+        execution=ExecutionInput(
+            review_index=1,
+            review_total=4,
+            review_frame_index=17,
+            review_can_previous=True,
+            review_can_next=True,
+        ),
+        trajectory=TrajectoryFacts(manual_count=8, candidate=cand),
+    )
     card = select_task_card(state)
     assert card.mode == "reviewing"
     assert "3 suggested frame(s)" in card.explanation[0]
-    assert card.primary.action_id == "review_correct"
+    assert "suggested frame 2 of 4" in card.title
+    assert "video frame 17" in card.title
+    assert card.primary.action_id == "review_accept"
+    assert any(action.action_id == "review_previous" for action in card.secondary)
+    assert any(action.action_id == "review_next" for action in card.secondary)
     assert any(action.action_id == ACTION_FINISH_CHECKING
                for action in card.secondary)
 

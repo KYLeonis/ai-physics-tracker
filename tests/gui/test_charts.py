@@ -490,7 +490,7 @@ def _calibrate_for_chart(window: MainWindow, monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(CalibrationDialog, "exec", accept)
     window.drawScaleButton.click()
     window.videoView.scaleLineDrawn.emit(QPointF(10, 10), QPointF(50, 10))
-    window.setOriginButton.click()
+    # 标尺完成后现在会自动进入坐标系步骤。
     window.videoView.originClicked.emit(QPointF(10, 40))
     window.rotationSpinBox.setValue(90.0)
 
@@ -509,6 +509,7 @@ def test_calibration_annotation_recompute_save_and_reopen_full_project(
     window.projectActions.openProject()
     qtbot.waitUntil(lambda: not window.projectActions.busy and not window.timingActions.pending, timeout=5000)
     _calibrate_for_chart(window, monkeypatch)
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
     window.addTrackButton.click()
     for frame_index in range(1, 5):
         window.frameSpinBox.setValue(frame_index)

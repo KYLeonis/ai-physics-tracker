@@ -65,6 +65,8 @@ ACTION_RETRY_LEARNING = "retry_learning"
 ACTION_REVIEW_ACCEPT = "review_accept"
 ACTION_REVIEW_CORRECT = "review_correct"
 ACTION_REVIEW_SKIP = "review_skip"
+ACTION_REVIEW_PREVIOUS = "review_previous"
+ACTION_REVIEW_NEXT = "review_next"
 ACTION_FINISH_CHECKING = "finish_checking"
 ACTION_CANCEL_PLACEMENT = "cancel_placement"
 ACTION_SET_SCALE = "set_scale"
@@ -90,6 +92,11 @@ class ExecutionInput:
     cancelling: bool = False
     correcting: bool = False
     paused_review_run_id: UUID | None = None
+    review_index: int | None = None
+    review_total: int = 0
+    review_frame_index: int | None = None
+    review_can_previous: bool = False
+    review_can_next: bool = False
 
     @property
     def busy(self) -> bool:
@@ -541,19 +548,40 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             )
         return TaskCard(
             mode=MODE_REVIEWING,
-            title=(f"Current: checking {cand.label} (not adopted) · "
-                   f"{cand.reviewed_count} of "
-                   f"{cand.reviewed_count + cand.pending_review} frames"),
+            title=(
+                f"Current: checking {cand.label} (not adopted) · suggested frame "
+                f"{state.execution.review_index + 1} of {state.execution.review_total} · "
+                f"video frame {state.execution.review_frame_index}"
+                if state.execution.review_index is not None
+                and state.execution.review_frame_index is not None
+                else f"Current: checking {cand.label} (not adopted) · "
+                     f"{cand.reviewed_count} of "
+                     f"{cand.reviewed_count + cand.pending_review} frames"
+            ),
             explanation=(
                 f"{cand.pending_review} suggested frame(s) remain. Check marks wrong "
                 "positions before adoption; adopting later makes this the trajectory "
                 "used by charts.",
                 "Accept = position is fine · Correct = place the manual position · "
                 "Skip = leave undecided."),
-            primary=ActionSpec(ACTION_REVIEW_CORRECT, "Correct position"),
+            primary=ActionSpec(ACTION_REVIEW_ACCEPT, "Accept position & next"),
             secondary=(
-                ActionSpec(ACTION_REVIEW_ACCEPT, "Accept position"),
-                ActionSpec(ACTION_REVIEW_SKIP, "Skip this frame"),
+                ActionSpec(ACTION_REVIEW_CORRECT, "Correct position"),
+                ActionSpec(ACTION_REVIEW_SKIP, "Skip this frame & next"),
+                ActionSpec(
+                    ACTION_REVIEW_PREVIOUS,
+                    "Previous suggested frame",
+                    enabled=state.execution.review_can_previous,
+                    reason="This is the first suggested frame."
+                    if not state.execution.review_can_previous else None,
+                ),
+                ActionSpec(
+                    ACTION_REVIEW_NEXT,
+                    "Next suggested frame",
+                    enabled=state.execution.review_can_next,
+                    reason="This is the last suggested frame."
+                    if not state.execution.review_can_next else None,
+                ),
                 ActionSpec(ACTION_FINISH_CHECKING, "Finish checking"),
             ),
             evidence=(
@@ -781,7 +809,7 @@ def _scale_actions(state: WorkflowState) -> tuple[ActionSpec, ...]:
     """未标定时给出直接入口；标定仍保持可选、可后置。"""
     if NO_SCALE_LIMITATION not in state.analysis.limitations:
         return ()
-    return (ActionSpec(ACTION_SET_SCALE, "Set scale & units"),)
+    return (ActionSpec(ACTION_SET_SCALE, "Set scale & coordinate system"),)
 
 
 def _learning_evidence(state: WorkflowState) -> tuple[str, ...]:

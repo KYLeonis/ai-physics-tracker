@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from math import isfinite
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 from uuid import UUID
@@ -32,8 +33,18 @@ if TYPE_CHECKING:
     from ai_physics_tracker.gui.main_window import MainWindow
 
 
-def _read_candidate_preview(path: Path, track_id: UUID, source_detail: str):
-    """后台读取未采用轨迹；返回值只供 VideoView 展示。"""
+def _read_raw_candidate_preview(adapter, path: Path, frame_count: int):
+    """后台读取全帧原始预测；低置信度点也必须可见、可修正。"""
+    return tuple(
+        point for point in adapter.read_raw_predictions(
+            path, frame_count=frame_count)
+        if isfinite(point.pixel_x) and isfinite(point.pixel_y)
+        and isfinite(point.confidence)
+    )
+
+
+def _read_legacy_candidate_preview(path: Path, track_id: UUID, source_detail: str):
+    """兼容没有原始预测引用的旧项目。"""
     from ai_physics_tracker.application.inference_job import read_observation_exchange
 
     return tuple(
@@ -227,28 +238,40 @@ class TrackingActions(QObject):
         review = getattr(self.window, "reviewActions", None)
         correcting = bool(review and review.is_correcting)
         paused_run_id = review.paused_run_id if review is not None else None
+        controller = review.controller if review is not None else None
+        review_facts = {}
+        if controller is not None and controller.current_candidate is not None:
+            review_facts = {
+                "review_index": controller.current_index,
+                "review_total": controller.count,
+                "review_frame_index": controller.current_frame_index,
+                "review_can_previous": controller.can_navigate_previous,
+                "review_can_next": controller.can_navigate_next,
+            }
         if self.cancelling:
             return ExecutionInput(
                 kind=EXEC_CANCELLING, cancelling=True,
-                correcting=correcting, paused_review_run_id=paused_run_id)
+                correcting=correcting, paused_review_run_id=paused_run_id,
+                **review_facts)
         if self.pending:
             kind = (EXEC_INFERRING if self._request.run.task_type == "infer"
                     else EXEC_TRAINING)
             return ExecutionInput(
                 kind=kind, correcting=correcting,
-                paused_review_run_id=paused_run_id)
+                paused_review_run_id=paused_run_id, **review_facts)
         frame_selection = getattr(self.window, "frameSelectionActions", None)
         if frame_selection is not None and frame_selection.busy:
             return ExecutionInput(
                 kind=EXEC_FRAME_SELECTION, frame_selection=True,
-                correcting=correcting, paused_review_run_id=paused_run_id)
+                correcting=correcting, paused_review_run_id=paused_run_id,
+                **review_facts)
         if getattr(self.window, "reviewActions", None) and self.window.reviewActions.busy:
             return ExecutionInput(
                 kind=EXEC_MINING, mining=True, correcting=correcting,
-                paused_review_run_id=paused_run_id)
+                paused_review_run_id=paused_run_id, **review_facts)
         return ExecutionInput(
             kind=EXEC_IDLE, correcting=correcting,
-            paused_review_run_id=paused_run_id)
+            paused_review_run_id=paused_run_id, **review_facts)
 
     def _workflow_state(self, session, track_id, runs):
         from ai_physics_tracker.application.workflow_projection import (
@@ -268,6 +291,13 @@ class TrackingActions(QObject):
                 self._clear_candidate_preview()
                 return
             state = self._workflow_state(session, track_id, runs)
+            candidate = state.trajectory.candidate
+            review = getattr(self.window, "reviewActions", None)
+            if (candidate is not None and candidate.has_review_batch
+                    and review is not None
+                    and review.ensureReviewRun(candidate.run_id)):
+                # 审核器可从持久化批次恢复；重新投影以带上当前序号与帧号。
+                state = self._workflow_state(session, track_id, runs)
             card = select_task_card(state)
             if state.failed_run_id is not None:
                 failed_run = next(
@@ -283,20 +313,26 @@ class TrackingActions(QObject):
             self.panel.setTaskCard(card)
             self._current_workflow_state = state
             self._refresh_header(session, state, video, track)
-            self._sync_candidate_preview(session, runs, state, track)
+            self._sync_candidate_preview(session, runs, state, track, video)
         except Exception as error:  # 投影是辅助信息，失败只降级显示
             logger.warning("workflow projection failed: %s", error)
             self.panel.setTaskCard(None)
 
-    def _sync_candidate_preview(self, session, runs, state, track) -> None:
+    def _sync_candidate_preview(self, session, runs, state, track, video) -> None:
         candidate = state.trajectory.candidate
-        if candidate is None or track is None or session.project_root is None:
+        if (candidate is None or track is None or video is None
+                or session.project_root is None):
             self._clear_candidate_preview()
             return
         run = next((item for item in runs if item.run_id == candidate.run_id), None)
-        ref = run.extra_fields.get("observations_path") if run is not None else None
+        prediction_ref = run.extra_fields.get("prediction_path") if run is not None else None
+        raw_preview = isinstance(prediction_ref, str)
+        ref = prediction_ref if raw_preview else (
+            run.extra_fields.get("observations_path") if run is not None else None)
         if run is None or not isinstance(ref, str):
             self._clear_candidate_preview()
+            self.window.videoView.set_preview_markers(
+                [], f"Preview: {candidate.label} · not adopted · positions unavailable")
             return
         root = session.project_root.resolve()
         path = (root / ref).resolve()
@@ -305,8 +341,11 @@ class TrackingActions(QObject):
             stat = path.stat()
         except (OSError, ValueError):
             self._clear_candidate_preview()
+            self.window.videoView.set_preview_markers(
+                [], f"Preview: {candidate.label} · not adopted · prediction file unavailable")
             return
-        file_info = run.extra_fields.get("observations_file_info")
+        file_info = run.extra_fields.get(
+            "prediction_file_info" if raw_preview else "observations_file_info")
         if isinstance(file_info, list) and file_info:
             recorded_size = file_info[0]
             if type(recorded_size) is not int or recorded_size != stat.st_size:
@@ -314,17 +353,32 @@ class TrackingActions(QObject):
                     "candidate preview artifact size no longer matches run %s",
                     run.run_id)
                 self._clear_candidate_preview()
+                self.window.videoView.set_preview_markers(
+                    [], f"Preview: {candidate.label} · not adopted · prediction file changed")
                 return
-        key = (id(session), candidate.run_id, ref, stat.st_size, stat.st_mtime_ns)
+        threshold = run.config.get("min_confidence", 0.0)
+        if isinstance(threshold, bool) or not isinstance(threshold, (int, float)):
+            threshold = 0.0
+        threshold = float(threshold)
+        if not isfinite(threshold) or not 0.0 <= threshold <= 1.0:
+            threshold = 0.0
+        key = (id(session), candidate.run_id, ref, stat.st_size, stat.st_mtime_ns,
+               raw_preview, threshold)
         self._preview_expected_key = key
         if key == self._preview_loaded_key:
             return
         if self._preview_future is not None and self._preview_future[0] == key:
             return
         self.window.videoView.set_preview_markers([], "")
-        future = self._executor.submit(
-            _read_candidate_preview, path, track.track_id, run.source_detail)
-        self._preview_future = (key, candidate.label, future)
+        if raw_preview:
+            future = self._executor.submit(
+                _read_raw_candidate_preview, self.adapter, path,
+                video.frame_count)
+        else:
+            future = self._executor.submit(
+                _read_legacy_candidate_preview, path, track.track_id,
+                run.source_detail)
+        self._preview_future = (key, candidate.label, threshold, raw_preview, future)
 
     def _clear_candidate_preview(self) -> None:
         self._preview_expected_key = None
@@ -333,9 +387,9 @@ class TrackingActions(QObject):
 
     def _poll_candidate_preview(self) -> None:
         pending = self._preview_future
-        if pending is None or not pending[2].done():
+        if pending is None or not pending[4].done():
             return
-        key, label, future = pending
+        key, label, threshold, raw_preview, future = pending
         self._preview_future = None
         if key != self._preview_expected_key:
             return
@@ -343,16 +397,29 @@ class TrackingActions(QObject):
             points = future.result()
         except Exception as error:
             logger.warning("candidate preview unavailable: %s", error)
-            self._clear_candidate_preview()
+            self.window.videoView.set_preview_markers(
+                [], f"Preview: {label} · not adopted · positions unavailable")
+            self._preview_loaded_key = key
             return
         from ai_physics_tracker.gui.video_view import MarkerView
 
         markers = [
-            MarkerView(point.pixel_x, point.pixel_y, "#ffb000",
+            MarkerView(point.pixel_x, point.pixel_y,
+                       "#ff6b6b" if raw_preview and point.confidence < threshold
+                       else "#ffb000",
                        source="preview", frame_index=point.frame_index)
             for point in points
         ]
-        suffix = "" if markers else " · no eligible positions"
+        low_count = sum(
+            1 for point in points
+            if raw_preview and point.confidence < threshold)
+        if not markers:
+            suffix = " · no finite AI positions"
+        elif low_count:
+            suffix = (f" · {len(markers)} AI positions · {low_count} below "
+                      "confidence threshold (red)")
+        else:
+            suffix = f" · {len(markers)} AI positions"
         self.window.videoView.set_preview_markers(
             markers, f"Preview: {label} · not adopted{suffix}")
         self._preview_loaded_key = key
@@ -603,9 +670,7 @@ class TrackingActions(QObject):
             window.projectActions.openVideo()
             return
         if action_id == "set_scale":
-            window.setWorkspace("setup")
-            if window.drawScaleButton.isEnabled():
-                window.drawScaleButton.click()
+            window.beginCalibrationFlow("acquire")
             return
         track_id = window.selectedTrackId
         if session is None or track_id is None:
@@ -635,6 +700,12 @@ class TrackingActions(QObject):
             return
         if action_id == "review_skip":
             window.reviewActions.skipCurrent()
+            return
+        if action_id == "review_previous":
+            window.reviewActions.previousCandidate()
+            return
+        if action_id == "review_next":
+            window.reviewActions.nextCandidate()
             return
         if action_id == "finish_checking":
             window.reviewActions.finishChecking()

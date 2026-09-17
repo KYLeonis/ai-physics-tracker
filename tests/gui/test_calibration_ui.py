@@ -115,8 +115,7 @@ def test_set_origin_updates_active_calibration(
     session = window._annotation_session
     assert session is not None
 
-    # 进入设置原点模式
-    window.setOriginButton.click()
+    # 保存标尺后自动进入坐标系步骤，不需要用户再寻找入口
     assert window.videoView.is_calibration_mode() == "origin"
 
     # 点击 (20.0, 30.0) 作为原点
@@ -130,6 +129,36 @@ def test_set_origin_updates_active_calibration(
     assert abs(active.origin_px[1] - 30.0) <= 1.0
     assert not window.setOriginButton.isChecked()
     assert window.videoView.is_calibration_mode() is None
+    assert "Calibration complete" in window.calibrationGuideLabel.text()
+    assert window.calibrationGuideButton.isVisible()
+
+
+def test_calibration_flow_restores_acquire_workspace_and_track(
+    qtbot: QtBot, synthetic_video_path: Path, monkeypatch
+) -> None:
+    window = _opened_window(qtbot, synthetic_video_path)
+    window.addTrackButton.click()
+    track_id = window.selectedTrackId
+    assert track_id is not None
+    monkeypatch.setattr(CalibrationDialog, "exec", lambda self: 1)
+
+    window.beginCalibrationFlow("acquire")
+    assert window.currentWorkspace == "setup"
+    assert "step 1 of 2" in window.calibrationGuideLabel.text()
+    assert window.videoView.is_calibration_mode() == "scale"
+
+    window._onScaleLineDrawn(QPointF(10.0, 10.0), QPointF(50.0, 10.0))
+    assert "step 2 of 2" in window.calibrationGuideLabel.text()
+    assert window.videoView.is_calibration_mode() == "origin"
+
+    window._onOriginClicked(QPointF(20.0, 30.0))
+    assert "Calibration complete" in window.calibrationGuideLabel.text()
+    window.calibrationGuideButton.click()
+
+    assert window.currentWorkspace == "acquire"
+    assert window.selectedTrackId == track_id
+    assert window.videoView.is_annotation_mode()
+    assert not window.calibrationGuideLabel.isVisible()
 
 
 def test_rotation_spinbox_updates_calibration(

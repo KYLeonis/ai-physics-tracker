@@ -141,3 +141,16 @@
 - 验证：`compileall` 通过；全量 **797 passed**。
 - 状态：实现方验证通过，等待 Human Review Round 2；通过前 Final Verdict 仍只代表
   独立代码 review 关闭，不代表 Phase 5.7 验收关闭。
+
+### HR1 补充实测修复
+
+- 完整候选预览改读原始预测，低置信度位置保留为红色标记；候选/采用/图表隔离不变。
+- 审核任务卡显示建议序号、总数和视频帧号，提供 Previous / Next；持久化批次不再依赖
+  history 选择，并在重开后恢复到首个 pending 帧。
+- 标定形成“标尺 → 原点/坐标轴 → 返回 Acquire trajectory”的连续引导；仅有标尺的旧状态
+  明示默认原点并要求用户检查坐标系。
+- 隐藏问题：原始预测读取保持 EngineAdapter 分层；移除标尺与原点之间的异步保存竞态，
+  完整坐标系设置后再 autosave。
+- 验证：相关交互回归 **87 passed**；`compileall`、layer boundary 与全量
+  **799 passed**。
+- 状态：等待用户执行更新后的 Human Review Round 2，不关闭 Phase 5.7。

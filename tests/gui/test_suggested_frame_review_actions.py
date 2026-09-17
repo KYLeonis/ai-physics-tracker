@@ -1068,3 +1068,35 @@ def test_empty_mining_result_reports_no_difficult_frames(test_window: MainWindow
     # 空批次已写入会话但无候选：控制器不崩、无“当前候选”
     assert window.reviewActions._controller is not None
     assert window.reviewActions._controller.current_frame_index is None
+
+
+def test_persisted_review_restores_current_frame_without_history_selection(
+    test_window: MainWindow, tmp_path: Path
+) -> None:
+    """普通任务卡直接恢复持久化批次，且显示建议序号与视频帧号。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    run = _setup_infer_run_with_prediction(window, tmp_path)
+    first = ReviewCandidate(
+        0, ReviewPredictionSnapshot(10.0, 20.0, 0.4), {}, {}, (), 0.5)
+    second = ReviewCandidate(
+        1, ReviewPredictionSnapshot(12.0, 22.0, 0.3), {}, {}, (), 0.6)
+    session.set_active_review_batch(
+        run.run_id, ActiveReviewBatch(uuid4(), {}, (first, second)))
+    session.accept_suggested_frame(run.run_id, first.frame_index)
+
+    window.reviewActions._controller = None
+    window.reviewActions._active_run_id = None
+    window.reviewActions.onRunSelected(None)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+
+    controller = window.reviewActions.controller
+    assert controller is not None
+    assert controller.current_frame_index == second.frame_index
+    assert "suggested frame 2 of 2" in window.trackingActions.panel.cardTitleLabel.text()
+    assert "video frame 1" in window.trackingActions.panel.cardTitleLabel.text()
+    assert window.trackingActions.panel.cardPrimaryButton.text() == "Accept position & next"
+    assert window.trackingActions.panel.cardSecondaryButtonC.isEnabled()
+    assert not window.trackingActions.panel.cardSecondaryButtonD.isEnabled()

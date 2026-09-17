@@ -352,8 +352,11 @@ class TaskPanel(QDockWidget):
         self.cardSecondaryButtonA = QPushButton()
         self.cardSecondaryButtonB = QPushButton()
         self.cardSecondaryButtonC = QPushButton()
+        self.cardSecondaryButtonD = QPushButton()
+        self.cardSecondaryButtonE = QPushButton()
         for button in (self.cardSecondaryButtonA, self.cardSecondaryButtonB,
-                       self.cardSecondaryButtonC):
+                       self.cardSecondaryButtonC, self.cardSecondaryButtonD,
+                       self.cardSecondaryButtonE):
             button.clicked.connect(
                 lambda _checked=False, b=button: self.secondaryActionRequested.emit(
                     b.property("actionId") or ""))
@@ -365,6 +368,8 @@ class TaskPanel(QDockWidget):
         cardSecondaryRow.addWidget(self.cardSecondaryButtonA)
         cardSecondaryRow.addWidget(self.cardSecondaryButtonB)
         cardSecondaryRow.addWidget(self.cardSecondaryButtonC)
+        cardSecondaryRow.addWidget(self.cardSecondaryButtonD)
+        cardSecondaryRow.addWidget(self.cardSecondaryButtonE)
 
         cardLayout = QVBoxLayout()
         cardLayout.addWidget(self.cardTitleLabel)
@@ -544,6 +549,8 @@ class TaskPanel(QDockWidget):
             self.cardSecondaryButtonA.hide()
             self.cardSecondaryButtonB.hide()
             self.cardSecondaryButtonC.hide()
+            self.cardSecondaryButtonD.hide()
+            self.cardSecondaryButtonE.hide()
             self.evidenceTextLabel.setText("")
             self._primary_action_id = ""
             return
@@ -565,7 +572,8 @@ class TaskPanel(QDockWidget):
             else:
                 self.cardReasonLabel.hide()
         secondary_buttons = (self.cardSecondaryButtonA, self.cardSecondaryButtonB,
-                             self.cardSecondaryButtonC)
+                             self.cardSecondaryButtonC, self.cardSecondaryButtonD,
+                             self.cardSecondaryButtonE)
         for button, spec in zip(secondary_buttons, card.secondary):
             button.setText(spec.label)
             button.setProperty("actionId", spec.action_id)

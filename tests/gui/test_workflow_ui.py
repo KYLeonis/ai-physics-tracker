@@ -347,12 +347,35 @@ def test_candidate_preview_does_not_pollute_charts(
     derived_before = session.project.derived
 
     # 新候选（未激活）登记：completed infer run
-    candidate = create_tracking_run(_video_id(session, window), track_id, "infer",
-                                    engine="dlc", engine_version="mock")
+    candidate = create_tracking_run(
+        _video_id(session, window), track_id, "infer",
+        engine="dlc", engine_version="mock",
+        config={"min_confidence": 0.6},
+    )
     _fake_observations(session, candidate)
+    run_dir = session.project_root / "data" / "engines" / str(candidate.run_id)
+    prediction_path = run_dir / "predictions.csv"
+    video = session.project.videos[0]
+    rows = [
+        "scorer,MockDLC,MockDLC,MockDLC",
+        "bodyparts,target,target,target",
+        "coords,x,y,likelihood",
+    ]
+    rows.extend(
+        f"{frame_index},{20.0 + frame_index},{30.0 + frame_index},"
+        f"{0.2 if frame_index < 2 else 0.9}"
+        for frame_index in range(video.frame_count)
+    )
+    prediction_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    prediction_stat = prediction_path.stat()
     candidate = replace(candidate, extra_fields={
         "observations_path": (
-            f"data/engines/{candidate.run_id}/observations.json")})
+            f"data/engines/{candidate.run_id}/observations.json"),
+        "prediction_path": (
+            f"data/engines/{candidate.run_id}/predictions.csv"),
+        "prediction_file_info": [
+            prediction_stat.st_size, prediction_stat.st_mtime_ns],
+    })
     session.record_tracking_run(mark_run_completed(candidate))
 
     assert session.effective_points(track_id) == effective_before
@@ -361,11 +384,14 @@ def test_candidate_preview_does_not_pollute_charts(
     window.trackingActions._context_key = None
     window.trackingActions.refresh()
     qtbot.waitUntil(
-        lambda: len(window.videoView.preview_marker_views()) == 6,
+        lambda: len(window.videoView.preview_marker_views()) == video.frame_count,
         timeout=3000)
     # 卡片呈现候选采用结论；状态头标明 Preview 且分析 chip 不因候选变化
     assert "Preview: version 1 (not adopted)" in window.workflowHeader.trajectoryLabel.text()
     assert window.videoView._preview_legend.isVisible()
+    assert "below confidence threshold" in window.videoView._preview_legend.text()
+    assert sum(marker.color == "#ff6b6b"
+               for marker in window.videoView.preview_marker_views()) == 2
     analysis_chip = window.workflowHeader.analysisChipLabel.text()
     assert "charts" in analysis_chip  # 只描述当前输入，不被候选覆盖
 

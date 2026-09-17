@@ -135,7 +135,8 @@ Correct 有可见取消。
 1. 投影 `AnalysisFacts.limitations` 增加
    "no scale set — positions and charts are in pixels"（无活动标定时），
    状态头 limitations 行即刻可见（该行 5.7 已实现）；
-2. "Start learning" 就绪卡与候选采用卡的次要动作增加 **"Set scale & units"**
+2. "Start learning" 就绪卡与候选采用卡的次要动作增加
+   **"Set scale & coordinate system"**
    （路由到既有 drawScale 标定模式并切到 Experiment setup 工作区，不新建能力）；
 3. 采用卡 evidence 在无标定时提示 "positions are in pixels until a scale is set"。
 
@@ -235,9 +236,35 @@ Cancel placement；无标定时显示像素限制并提供尺度入口；Generat
 2. Accept/Skip 原先误计入“每 10 个新标注自动保存”；现在只在批次完成时保存；
 3. 即时 autosave 原先会清空 undo/redo，破坏 Correct 后撤销；现在自动保存只更新
    磁盘基线并保留撤销历史，显式保存仍维持原清栈契约；
-4. 预览加载校验项目内路径与已记录文件大小，项目/候选切换后的迟到结果被丢弃；
-   无可显示点时图例明确显示 `no eligible positions`，不呈现空白假象。
+4. 预览加载校验项目内路径与已记录文件大小，项目/候选切换后的迟到结果被丢弃。
+   初版对过滤后空结果显示 `no eligible positions`；补充实测进一步发现数据源选择仍有
+   问题，已在下节改为完整原始预测。
 
 验证：`compileall` 通过；全量 `797 passed`。候选预览仍是纯视图状态，不进入
 session、effective trajectory、charts 或 dirty 判定；domain/persistence lineage、
 manual provenance、active/candidate 隔离均未改变。
+
+## 补充实测反馈处置（2026-09-17）
+
+用户在 HR1 修复版继续实测后发现，候选预览虽然存在，但它读取的是已经按置信度
+过滤的 `observations.json`；因此最需要人工检查的低置信度帧仍然没有 AI 标记，界面
+甚至会显示 `no eligible positions`。同时，顶部任务卡只知道“有待审批次”，底部审核器
+却依赖高级历史列表的临时选择，重开或刷新后可能出现顶部显示正在检查、底部显示
+`No active review batch` 的状态分裂。标定也仍是三个彼此独立的控件，没有形成连续任务。
+
+本轮按同一用户任务链修复：
+
+1. 未采用候选改为通过 EngineAdapter 读取完整原始预测；所有有限坐标均显示，低于
+   本次 confidence threshold 的位置用红色空心菱形标出。它们仍只属于预览层，不进入
+   effective trajectory 或 Charts。
+2. 持久化审核批次可直接恢复普通模式审核器，不再依赖 Results & history 的选择；恢复
+   时定位到第一个尚未处理的建议帧。任务卡常驻显示“建议帧 i / N + 视频帧号”，并把
+   Previous / Next 提升到卡片；Accept / Skip 文案明确会自动前进。
+3. 标定改为连续引导：绘制标尺 → 自动进入原点/坐标轴 → 显示完成结论 → 一键返回
+   Acquire trajectory 并恢复原 Track。旧项目若只有标尺、没有显式原点，也会显示
+   `Choose origin / axes`，不再把默认左下角原点伪装成已经完成的坐标系选择。
+
+额外修复两个隐藏问题：原始预测读取走既有 EngineAdapter，保持 GUI 不依赖
+infrastructure 的分层约束；取消“标尺后先异步保存再进原点”，避免保存窗口吞掉下一步
+点击，改为坐标系完成后一次性 autosave。`compileall` 与分层检查通过；全量
+`799 passed`。

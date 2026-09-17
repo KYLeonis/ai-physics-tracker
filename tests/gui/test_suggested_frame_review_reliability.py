@@ -239,8 +239,9 @@ def test_save_reopen_and_resume_review_matrix(rel_window: MainWindow, qtbot):
     assert ctrl.summary.corrected_count == 1
     assert ctrl.summary.pending_count == 1
     assert ctrl.current_candidate is not None
-    assert ctrl.current_candidate.frame_index == 1
-    assert ctrl.current_disposition == "accepted"
+    # 重开后直接定位到首个尚未处理的建议帧，而非回到已接受的帧 1。
+    assert ctrl.current_candidate.frame_index == 3
+    assert ctrl.current_disposition == "pending"
 
     # 校验人工修正点在重开后坐标与属性完全恢复（AC-5）
     track_id = run.track_id
