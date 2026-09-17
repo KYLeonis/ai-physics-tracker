@@ -130,3 +130,14 @@
   O3（局部导入风格）不阻塞。
 - **Final Verdict：CLOSED**（2026-09-17，按 R2 豁免条款由实现方补验收口；
   Human Review gate 另行发起，通过前 Phase 5.7 不关闭）。
+
+## Human Review Round 1 Follow-up（2026-09-17）
+
+- 用户实测记录：[`docs/notes/phase-5.7-hr1-analysis.md`](../notes/phase-5.7-hr1-analysis.md)。
+- 处置：7 项交互 finding 全部修复；候选预览保持 ADR-0014 隔离，检查/采用语义、
+  结束检查、标定入口、lineage 判据、关键事务 autosave 与自适应布局均已接线。
+- 隐藏问题：恢复既有审核批次、防止 Accept/Skip 污染标注 autosave 计数、预览产物
+  边界校验，以及 autosave 保留 scoped undo/redo 历史。
+- 验证：`compileall` 通过；全量 **797 passed**。
+- 状态：实现方验证通过，等待 Human Review Round 2；通过前 Final Verdict 仍只代表
+  独立代码 review 关闭，不代表 Phase 5.7 验收关闭。

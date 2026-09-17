@@ -247,16 +247,22 @@ class MainWindow(QMainWindow):
         self._playTimer = QTimer(self)
         self._playTimer.timeout.connect(self._playTick)
 
-        controls = QHBoxLayout()
-        controls.addWidget(self.playButton)
-        controls.addWidget(self.previousButton)
-        controls.addWidget(self.nextButton)
-        controls.addSpacing(16)
-        controls.addWidget(self.frameSpinBox)
-        controls.addStretch(1)
-        controls.addWidget(self.frameLabel)
-        controls.addWidget(self.timeLabel)
-        controls.addWidget(self.zoomLabel)
+        transportControls = QHBoxLayout()
+        transportControls.addWidget(self.playButton)
+        transportControls.addWidget(self.previousButton)
+        transportControls.addWidget(self.nextButton)
+        transportControls.addSpacing(8)
+        transportControls.addWidget(self.frameSpinBox)
+        transportControls.addStretch(1)
+        readoutControls = QHBoxLayout()
+        readoutControls.addWidget(self.frameLabel)
+        readoutControls.addWidget(self.timeLabel)
+        readoutControls.addStretch(1)
+        readoutControls.addWidget(self.zoomLabel)
+        controls = QVBoxLayout()
+        controls.setSpacing(2)
+        controls.addLayout(transportControls)
+        controls.addLayout(readoutControls)
 
         trackButtons = QHBoxLayout()
         trackButtons.addWidget(self.addTrackButton)
@@ -1356,7 +1362,6 @@ class MainWindow(QMainWindow):
             if handled:
                 self._refreshMarkers()
                 self._refreshHistoryButtons()
-                self._register_mark_for_autosave()
             return
         try:
             self._annotation_session.mark_point(

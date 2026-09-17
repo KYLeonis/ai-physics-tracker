@@ -445,13 +445,22 @@ def _inside_point(window: MainWindow, pixel_x: float, pixel_y: float) -> QPoint:
     return window.videoView.mapFromScene(QPointF(pixel_x, pixel_y))
 
 
-def test_accept_and_skip_gui_contract_ac3(test_window: MainWindow, tmp_path: Path):
+def test_accept_and_skip_gui_contract_ac3(
+    test_window: MainWindow, tmp_path: Path, monkeypatch
+):
     """AC-3: Accept 只记录 accepted，Skip 只记录 skipped；二者均不修改 TrackPoint。"""
     window = test_window
     session = window.analysisSession
     assert session is not None
     valid_run = _setup_infer_run_with_prediction(window, tmp_path)
     panel = window.trackingActions.panel
+    autosaves = []
+    monkeypatch.setattr(
+        window.projectActions, "autosave",
+        lambda reason, after=None: autosaves.append(reason))
+    monkeypatch.setattr(
+        window, "_register_mark_for_autosave",
+        lambda: pytest.fail("review disposition is not a new manual annotation"))
 
     req_id = uuid4()
     c1 = ReviewCandidate(
@@ -495,6 +504,7 @@ def test_accept_and_skip_gui_contract_ac3(test_window: MainWindow, tmp_path: Pat
     assert summary.pending_count == 0
     assert summary.accepted_count == 1
     assert summary.skipped_count == 1
+    assert autosaves == ["difficult-frame review completed"]
     # Phase 5.7：完成行给构成（skipped 明示 left undecided）
     assert "Processed" in panel.reviewProgressLabel.text()
     assert "left undecided" in panel.reviewProgressLabel.text()
@@ -537,6 +547,35 @@ def test_correct_mode_toggle_and_esc_cancel_ac4(test_window: MainWindow, tmp_pat
     assert panel.reviewCorrectButton.text() == "Correct (C)"
     assert not session.is_dirty
     assert 1 not in session.get_suggested_frame_review(valid_run.run_id).reviewed_frames
+
+
+def test_finish_checking_preserves_and_resumes_existing_batch(
+    test_window: MainWindow, tmp_path: Path
+) -> None:
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    run = _setup_infer_run_with_prediction(window, tmp_path)
+    candidate = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.4),
+        components={}, raw_components={}, reasons=(), total_score=0.5)
+    session.set_active_review_batch(run.run_id, ActiveReviewBatch(
+        request_id=uuid4(), params_snapshot={}, candidates=(candidate,)))
+    window.reviewActions.onRunSelected(run.run_id)
+
+    window.reviewActions.finishChecking()
+
+    assert window.reviewActions.controller is None
+    assert window.reviewActions.paused_run_id == run.run_id
+    saved = session.get_suggested_frame_review(run.run_id)
+    assert saved is not None and saved.active_batch is not None
+    assert len(saved.active_batch.candidates) == 1
+
+    window.reviewActions.requestMining(run.run_id)
+    assert window.reviewActions.controller is not None
+    assert window.reviewActions.paused_run_id is None
+    assert window.reviewActions.controller.current_frame_index == 1
 
 
 def test_correct_mode_video_click_atomic_submission_ac4(test_window: MainWindow, tmp_path: Path, qtbot):
@@ -699,7 +738,8 @@ def test_save_and_reopen_restores_review_state_ac5(test_window: MainWindow, tmp_
     window._onAnnotationClicked(click_pos)
     QTest.qWait(20)
 
-    # 保存
+    # Correct 会立即自动保存；等待它完成后再验证显式保存/重开。
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=3000)
     session.save()
     proj_root = session.project_root
 

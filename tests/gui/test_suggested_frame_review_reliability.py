@@ -297,7 +297,9 @@ def test_interleaved_undo_redo_matrix(rel_window: MainWindow, qtbot):
     panel.reviewCorrectButton.click()
     click_pos = _inside_point(window, 22.0, 32.0)
     window._onAnnotationClicked(click_pos)
-    qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
+    qtbot.waitUntil(
+        lambda: not window._has_pending_request and not window.projectActions.busy,
+        timeout=3000)
 
     summary = session.get_review_summary(run.run_id)
     assert summary.accepted_count == 1
@@ -482,7 +484,9 @@ def test_candidate_with_preexisting_manual_point(rel_window: MainWindow, qtbot):
     qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 1, timeout=3000)
     click_pos = _inside_point(window, 30.0, 40.0)
     window._onAnnotationClicked(click_pos)
-    qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
+    qtbot.waitUntil(
+        lambda: not window._has_pending_request and not window.projectActions.busy,
+        timeout=3000)
 
     # 新 manual 点覆盖旧 manual 点
     pt = session.effective_point(track_id, 1)

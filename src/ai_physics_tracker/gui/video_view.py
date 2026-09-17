@@ -31,9 +31,9 @@ from PySide6.QtWidgets import (
     QGraphicsSimpleTextItem,
     QGraphicsPixmapItem,
     QGraphicsScene,
-    QGraphicsSimpleTextItem,
     QGraphicsTextItem,
     QGraphicsView,
+    QLabel,
     QWidget,
 )
 
@@ -91,6 +91,12 @@ class VideoView(QGraphicsView):
         self._marker_items: list[QGraphicsItem] = []
         self._marker_views: list[MarkerView] = []
         self._marker_indices_by_frame: dict[int, tuple[int, ...]] = {}
+        self._preview_marker_items: list[QGraphicsItem] = []
+        self._preview_marker_views: list[MarkerView] = []
+        self._preview_indices_by_frame: dict[int, tuple[int, ...]] = {}
+        self._candidate_preview_views: list[MarkerView] = []
+        self._review_prediction: MarkerView | None = None
+        self._review_prediction_item: QGraphicsItem | None = None
         self._current_frame: int | None = None
         self._calibration_items: list[QGraphicsItem] = []
         self._calibration_view: CalibrationView | None = None
@@ -113,6 +119,13 @@ class VideoView(QGraphicsView):
         # NativeGesture 路径到 viewport 即止，不向上传播，不可依赖）
         self.grabGesture(Qt.GestureType.PinchGesture)
         self.setStyleSheet("background-color: #181818; border: none;")
+        self._preview_legend = QLabel(self.viewport())
+        self._preview_legend.setStyleSheet(
+            "background: rgba(24, 24, 24, 210); color: #ffb000; "
+            "border: 1px solid #ffb000; border-radius: 3px; padding: 4px 7px;"
+        )
+        self._preview_legend.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._preview_legend.hide()
         self.setPlaceholder("Open a video to begin")
 
     def setFrame(self, frame: DecodedFrame) -> None:
@@ -139,6 +152,8 @@ class VideoView(QGraphicsView):
             self._pixmap_item.setPixmap(pixmap)
         self._removePlaceholder()
         self._scene.setSceneRect(QRectF(0.0, 0.0, width_px, height_px))
+        # 帧交付可能重建 pixmap item；重新施加当前交互光标。
+        self._update_cursors()
         if self._fit_pending:
             self.zoomFit()
 
@@ -326,6 +341,10 @@ class VideoView(QGraphicsView):
             self._pixmap_item.setCursor(shape)
         for item in self._marker_items:
             item.setCursor(shape)
+        for item in self._preview_marker_items:
+            item.setCursor(shape)
+        if self._review_prediction_item is not None:
+            self._review_prediction_item.setCursor(shape)
         for item in self._calibration_items:
             item.setCursor(shape)
 
@@ -401,6 +420,82 @@ class VideoView(QGraphicsView):
             marker = replace(marker, is_current_frame=current)
             self._marker_views[index] = marker
             self._update_marker_item(self._marker_items[index], marker)
+        preview_affected = set(self._preview_indices_by_frame.get(frame_index, ()))
+        if previous_frame is not None:
+            preview_affected.update(
+                self._preview_indices_by_frame.get(previous_frame, ()))
+        for index in preview_affected:
+            marker = self._preview_marker_views[index]
+            current = marker.frame_index == frame_index
+            if marker.is_current_frame == current:
+                continue
+            marker = replace(marker, is_current_frame=current)
+            self._preview_marker_views[index] = marker
+            self._update_marker_item(self._preview_marker_items[index], marker)
+        if self._review_prediction is not None and self._review_prediction_item is not None:
+            current = self._review_prediction.frame_index == frame_index
+            if self._review_prediction.is_current_frame != current:
+                self._review_prediction = replace(
+                    self._review_prediction, is_current_frame=current)
+                self._update_marker_item(
+                    self._review_prediction_item, self._review_prediction)
+
+    def set_preview_markers(self, markers: list[MarkerView], label: str = "") -> None:
+        """显示未采用候选的只读预览；不写入会话或有效轨迹。"""
+        self._candidate_preview_views = list(markers)
+        self._preview_legend.setText(f"◇ {label}" if label else "")
+        self._preview_legend.setVisible(bool(label))
+        self._position_preview_legend()
+        self._rebuild_preview_markers()
+
+    def set_review_prediction(self, marker: MarkerView | None) -> None:
+        """在困难帧检查时补显示该帧的原始预测位置。"""
+        self._review_prediction = marker
+        self._rebuild_review_prediction_item()
+
+    def preview_marker_views(self) -> list[MarkerView]:
+        return list(self._candidate_preview_views)
+
+    def _rebuild_preview_markers(self) -> None:
+        for item in self._preview_marker_items:
+            self._scene.removeItem(item)
+        self._preview_marker_items = []
+        self._preview_marker_views = []
+        for marker in self._candidate_preview_views:
+            current = self._marker_is_current(marker)
+            view = replace(marker, is_current_frame=current)
+            item = self._create_marker_item(view)
+            item.setZValue(12.0)
+            self._update_marker_item(item, view)
+            self._preview_marker_items.append(item)
+            self._preview_marker_views.append(view)
+        indexed: dict[int, list[int]] = {}
+        for index, marker in enumerate(self._preview_marker_views):
+            if marker.frame_index is not None:
+                indexed.setdefault(marker.frame_index, []).append(index)
+        self._preview_indices_by_frame = {
+            frame_index: tuple(indices) for frame_index, indices in indexed.items()
+        }
+        self._rebuild_review_prediction_item()
+        self._update_cursors()
+
+    def _rebuild_review_prediction_item(self) -> None:
+        if self._review_prediction_item is not None:
+            self._scene.removeItem(self._review_prediction_item)
+            self._review_prediction_item = None
+        marker = self._review_prediction
+        if marker is None:
+            return
+        key = self._marker_style_key(marker)
+        if any(self._marker_style_key(candidate) == key
+               for candidate in self._candidate_preview_views):
+            return
+        marker = replace(marker, is_current_frame=self._marker_is_current(marker))
+        self._review_prediction = marker
+        item = self._create_marker_item(marker)
+        item.setZValue(13.0)
+        self._update_marker_item(item, marker)
+        self._review_prediction_item = item
 
     def marker_count(self) -> int:
         return len(self._marker_items)
@@ -470,7 +565,7 @@ class VideoView(QGraphicsView):
         item.setPen(pen)
         # 当前帧实心、历史帧空心（manual 圆与 AI 菱形一致；HR 反馈：多帧场景
         # 仅加粗边框不够醒目）
-        if marker.is_current_frame:
+        if marker.is_current_frame and marker.source != "preview":
             item.setBrush(color)
         else:
             item.setBrush(Qt.BrushStyle.NoBrush)
@@ -741,8 +836,14 @@ class VideoView(QGraphicsView):
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
+        self._position_preview_legend()
         if self._fit_pending:
             self.zoomFit()
+
+    def _position_preview_legend(self) -> None:
+        self._preview_legend.adjustSize()
+        self._preview_legend.move(
+            max(8, self.viewport().width() - self._preview_legend.width() - 10), 10)
 
     def _zoomBy(self, factor: float) -> None:
         self._fit_pending = False

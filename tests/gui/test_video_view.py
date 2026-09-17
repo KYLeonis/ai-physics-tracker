@@ -220,6 +220,33 @@ def test_non_current_markers_are_hollow(qtbot: QtBot) -> None:
     assert ai.brush().style() == Qt.BrushStyle.NoBrush
 
 
+def test_candidate_preview_is_separate_hollow_layer_with_legend(qtbot: QtBot) -> None:
+    view = _shown_view(qtbot)
+    marker = MarkerView(
+        20.0, 25.0, "#ffb000", source="preview", frame_index=0)
+
+    view.set_preview_markers([marker], "Preview: version 2 · not adopted")
+    view.set_current_frame(0)
+
+    assert view.marker_count() == 0
+    assert view.preview_marker_views() == [marker]
+    assert len(view._preview_marker_items) == 1
+    assert view._preview_marker_items[0].brush().style() == Qt.BrushStyle.NoBrush
+    assert view._preview_legend.isVisible()
+    assert "not adopted" in view._preview_legend.text()
+
+
+def test_frame_delivery_keeps_crosshair_in_annotation_mode(qtbot: QtBot) -> None:
+    view = _shown_view(qtbot)
+    view.set_annotation_mode(True)
+
+    view.setFrame(_frame(1))
+
+    assert view.is_annotation_mode()
+    assert view._pixmap_item is not None
+    assert view._pixmap_item.cursor().shape() == Qt.CursorShape.CrossCursor
+
+
 def test_manual_markers_carry_frame_number_labels(qtbot: QtBot) -> None:
     """手动标注圆圈带帧号子标签（回溯定位），AI 菱形不带（用户实测反馈）。"""
     from PySide6.QtWidgets import QGraphicsSimpleTextItem

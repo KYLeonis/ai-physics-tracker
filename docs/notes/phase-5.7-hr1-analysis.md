@@ -1,7 +1,7 @@
 # Phase 5.7 Human Review — Round 1 Findings 分析与修复方案
 
 - 日期：2026-09-17；来源：用户实测反馈（7 条）。
-- 状态：**待用户确认后执行**。本文档只做根因分析与方案，不改代码。
+- 状态：**已实施并通过自动化验证；待 Human Review Round 2**。
 - 对应实现：`main @ 62205e3`（feat/p5.7-interaction-redesign 已合并）。
 - 处置原则：全部为交互层修复，**不改 domain/persistence 契约**（ADR-0013/0014/0015/0016
   全部保持）；修复后重跑自动化并再次发起 Human Review。
@@ -186,9 +186,9 @@ Generate trajectory。语义精确等于"最新模型尚未应用"，对时间�
 3. `_confirm_fixed_check_set` KEEP 冻结检查帧之后；
 4. 每次 Correct 提交之后（修正点少而重要）。
 
-边界：保存清空应用内 Undo 是既有契约（ADR-0013），不因新增触发点改变；
-autosave 失败静默跳过（既有实现），失败可见性维持现状（保存失败在显式保存时
-独立显现）。
+边界：显式保存继续作为清空 Undo 的安全边界；实施时发现若 autosave 也沿用该行为，
+每次 Correct 都会悄悄破坏既有撤销语义，因此 autosave 改为只更新磁盘基线并保留
+scoped undo/redo。持久化格式和显式保存契约不变。
 
 ### 验收
 
@@ -218,3 +218,26 @@ Human Review**（重点复测上述 7 条原场景）。
 - 不强制标定（保持可选后置，只加提示与入口）；
 - 不改 Undo/保存契约（F7 只加触发点）；
 - 不重做视觉样式。
+
+---
+
+## 实施结果（2026-09-17）
+
+HR1 的 7 项 finding 已在分支 `fix/p5.7-hr1-followup` 落地：右侧面板按窗口空间
+分配约 300–400px、控制栏拆行且高级设置改为单列；候选轨迹增加独立橙色空心预览层与图例；
+Correct 光标跨帧保持；检查卡直接提供 Accept/Correct/Skip、Finish checking 和
+Cancel placement；无标定时显示像素限制并提供尺度入口；Generate 判据改为
+`training_run_id` lineage；采用、审核完成、检查帧冻结和每次 Correct 均触发静默保存。
+
+实现中额外发现并修复 4 个同链隐藏问题：
+
+1. 已有审核批次重新进入时原先会再次挖掘并覆盖进度；现在恢复原批次；
+2. Accept/Skip 原先误计入“每 10 个新标注自动保存”；现在只在批次完成时保存；
+3. 即时 autosave 原先会清空 undo/redo，破坏 Correct 后撤销；现在自动保存只更新
+   磁盘基线并保留撤销历史，显式保存仍维持原清栈契约；
+4. 预览加载校验项目内路径与已记录文件大小，项目/候选切换后的迟到结果被丢弃；
+   无可显示点时图例明确显示 `no eligible positions`，不呈现空白假象。
+
+验证：`compileall` 通过；全量 `797 passed`。候选预览仍是纯视图状态，不进入
+session、effective trajectory、charts 或 dirty 判定；domain/persistence lineage、
+manual provenance、active/candidate 隔离均未改变。

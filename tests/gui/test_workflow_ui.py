@@ -1,6 +1,6 @@
 """Phase 5.7 — 工作区切换、常驻状态头与任务卡的 GUI 冒烟（offscreen）。
 
-重点测状态与语义（卡片内容、工作区可见性、导航不改数据），不测像素布局。
+重点测状态与语义，并覆盖小窗口下关键动作可达性；不做视觉像素比对。
 """
 
 from pathlib import Path
@@ -52,6 +52,28 @@ def test_three_workspaces_switch_without_touching_data(
     window.setWorkspace("acquire")
     assert window.trackingActions.panel.isVisible()
 
+
+def test_acquire_panel_fits_1024_by_640_without_horizontal_clipping(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+
+    window, _session, _track_id = _opened_window(
+        qtbot, synthetic_video_path, tmp_path, _FakeRunner(_FakeHandle()))
+    window.resize(1024, 640)
+    window.show()
+    qtbot.wait(30)
+    panel = window.trackingActions.panel
+    scroll = panel.widget()
+
+    assert 280 <= panel.width() <= 430
+    assert scroll.horizontalScrollBar().maximum() == 0
+    assert panel.cardPrimaryButton.isVisible()
+
+    panel.advancedToggleButton.click()
+    qtbot.wait(20)
+    assert scroll.horizontalScrollBar().maximum() == 0
+    assert scroll.verticalScrollBar().maximum() > 0
 
 def test_header_shows_context_and_card_follows_projection(
     qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path
@@ -144,6 +166,7 @@ def test_start_learning_card_confirms_fixed_check_then_trains(
     assert tuple(state.active_series.frame_indices) == tuple(captured["frames"])
 
     # C2：系统计划写入表单（restart/50/8）并启动（同一执行入口）
+    qtbot.waitUntil(lambda: window.trackingActions.runner.calls == 1, timeout=3000)
     assert window.trackingActions.runner.calls == 1
     assert panel.trainingMode() == "restart"
     assert panel.epochsSpinBox.value() == 50
@@ -254,7 +277,7 @@ def test_adopt_card_replaces_after_confirmation_and_history_only_previews(
     window.trackingActions.refresh()
 
     # better 结论驱动主动作 = 采用；标题明示固定检查改善
-    assert panel.cardPrimaryButton.text() == "Adopt this trajectory"
+    assert panel.cardPrimaryButton.text() == "Adopt for analysis"
     assert "looks better" in panel.cardTitleLabel.text()
 
     # conftest 把 question 桩化为 Discard：确认被拒 → 不采用
@@ -306,11 +329,13 @@ def test_candidate_preview_does_not_pollute_charts(
     qtbot, synthetic_video_path, tmp_path
 ) -> None:
     """候选只登记 run，不进入 effective 投影与图表输入（ADR-0014 隔离）。"""
+    from dataclasses import replace
     from ai_physics_tracker.domain.tracking_run import (
         create_tracking_run,
         mark_run_completed,
     )
     from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+    from tests.test_workflow_projection import _fake_observations
 
     window, session, track_id = _opened_window(qtbot, synthetic_video_path,
                                                tmp_path, _FakeRunner(_FakeHandle()))
@@ -324,6 +349,10 @@ def test_candidate_preview_does_not_pollute_charts(
     # 新候选（未激活）登记：completed infer run
     candidate = create_tracking_run(_video_id(session, window), track_id, "infer",
                                     engine="dlc", engine_version="mock")
+    _fake_observations(session, candidate)
+    candidate = replace(candidate, extra_fields={
+        "observations_path": (
+            f"data/engines/{candidate.run_id}/observations.json")})
     session.record_tracking_run(mark_run_completed(candidate))
 
     assert session.effective_points(track_id) == effective_before
@@ -331,8 +360,12 @@ def test_candidate_preview_does_not_pollute_charts(
 
     window.trackingActions._context_key = None
     window.trackingActions.refresh()
+    qtbot.waitUntil(
+        lambda: len(window.videoView.preview_marker_views()) == 6,
+        timeout=3000)
     # 卡片呈现候选采用结论；状态头标明 Preview 且分析 chip 不因候选变化
     assert "Preview: version 1 (not adopted)" in window.workflowHeader.trajectoryLabel.text()
+    assert window.videoView._preview_legend.isVisible()
     analysis_chip = window.workflowHeader.analysisChipLabel.text()
     assert "charts" in analysis_chip  # 只描述当前输入，不被候选覆盖
 

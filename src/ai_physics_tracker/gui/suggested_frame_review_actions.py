@@ -32,6 +32,7 @@ from ai_physics_tracker.application.suggested_frame_review import (
     ReviewQueueController,
 )
 from ai_physics_tracker.application.tracking_types import TaskProgress, TaskResult
+from ai_physics_tracker.gui.video_view import MarkerView
 
 if TYPE_CHECKING:
     from ai_physics_tracker.gui.main_window import MainWindow
@@ -64,6 +65,7 @@ class DifficultFrameReviewActions(QObject):
         self._result_future: Future[DifficultFrameResult] | None = None
 
         self._controller: ReviewQueueController | None = None
+        self._paused_run_id: UUID | None = None
         self._running_track_id: UUID | None = None
         self._closed = False
 
@@ -115,6 +117,10 @@ class DifficultFrameReviewActions(QObject):
     def selected_run_id(self) -> UUID | None:
         return self._selected_run_id
 
+    @property
+    def paused_run_id(self) -> UUID | None:
+        return self._paused_run_id
+
     def onRunSelected(self, run_id: UUID | None) -> None:
         """用户在 Task history 中选择一个 run 时触发。"""
         self._selected_run_id = run_id
@@ -135,7 +141,8 @@ class DifficultFrameReviewActions(QObject):
             and run.track_id == selected_track
         ):
             state = session.get_suggested_frame_review(run.run_id)
-            if state is not None and state.active_batch is not None:
+            if (state is not None and state.active_batch is not None
+                    and self._paused_run_id != run.run_id):
                 self._controller = ReviewQueueController(session, run.run_id)
                 self._active_run_id = run.run_id
                 self._sync_panel_with_controller()
@@ -219,6 +226,24 @@ class DifficultFrameReviewActions(QObject):
         if session is None or target_run_id is None:
             return
 
+        # 已有审核批次时恢复它，避免“再次检查”悄悄重挖并覆盖进度。
+        saved = session.get_suggested_frame_review(target_run_id)
+        if saved is not None and saved.active_batch is not None:
+            self._selected_run_id = target_run_id
+            self._active_run_id = target_run_id
+            self._paused_run_id = None
+            self._controller = ReviewQueueController(session, target_run_id)
+            self._sync_panel_with_controller()
+            if not saved.active_batch.candidates:
+                from ai_physics_tracker.application.user_messages import (
+                    no_difficult_frames,
+                )
+                self.panel.setMineStatus(no_difficult_frames().full_text())
+            if self._controller.current_frame_index is not None:
+                self.jumpToFrame(self._controller.current_frame_index)
+            self._refresh_mining_enabled()
+            return
+
         mining_params = params or MiningParams(
             top_n=self.panel.mineTopNSpinBox.value(),
             min_gap_s=self.panel.mineMinGapSpinBox.value(),
@@ -237,6 +262,7 @@ class DifficultFrameReviewActions(QObject):
         self._job_request = job_request
         self._running_track_id = job_request.mining_request.track_id
         self._active_run_id = target_run_id
+        self._paused_run_id = None
 
         self.panel.setMineStatus("Mining difficult frames…")
         self.panel.setMineBusy(True)
@@ -380,8 +406,37 @@ class DifficultFrameReviewActions(QObject):
         ctrl = self._controller
         if ctrl is None:
             self.panel.setReviewBatch(None, None)
+            self.window.videoView.set_review_prediction(None)
             return
         self.panel.setReviewBatch(ctrl, ctrl.summary)
+        candidate = ctrl.current_candidate
+        prediction = candidate.prediction if candidate is not None else None
+        self.window.videoView.set_review_prediction(
+            None if prediction is None else MarkerView(
+                prediction.pixel_x,
+                prediction.pixel_y,
+                "#ffb000",
+                source="preview",
+                frame_index=candidate.frame_index,
+            )
+        )
+
+    def finishChecking(self) -> None:
+        """退出审核 UI，同时保留未处置帧，供用户稍后继续。"""
+        if self._controller is None:
+            return
+        run_id = self._active_run_id
+        remaining = self._controller.summary.pending_count
+        self.cancelCorrectMode()
+        self._paused_run_id = run_id
+        self._controller = None
+        self._sync_panel_with_controller()
+        self.panel.setMineStatus(
+            f"Checking finished; {remaining} undecided frame(s) were kept for later."
+        )
+        if hasattr(self.window, "trackingActions"):
+            self.window.trackingActions._context_key = None
+            self.window.trackingActions.refresh()
 
     # --- 队列导航与处置操作 ---
 
@@ -422,7 +477,8 @@ class DifficultFrameReviewActions(QObject):
         self._sync_panel_with_controller()
         self.window._refreshHistoryButtons()
         self.window._refreshDeletePointButton()
-        self.window._register_mark_for_autosave()
+        if self._controller.summary.pending_count == 0:
+            self.window.projectActions.autosave("difficult-frame review completed")
 
     def skipCurrent(self) -> None:
         if self._controller is None or self._controller.current_candidate is None:
@@ -438,7 +494,8 @@ class DifficultFrameReviewActions(QObject):
         self._sync_panel_with_controller()
         self.window._refreshHistoryButtons()
         self.window._refreshDeletePointButton()
-        self.window._register_mark_for_autosave()
+        if self._controller.summary.pending_count == 0:
+            self.window.projectActions.autosave("difficult-frame review completed")
 
     @property
     def is_correcting(self) -> bool:
@@ -484,6 +541,7 @@ class DifficultFrameReviewActions(QObject):
         if ctrl.current_frame_index is not None:
             self.jumpToFrame(ctrl.current_frame_index)
         self._sync_panel_with_controller()
+        self.window.projectActions.autosave("manual trajectory correction")
         self.window.statusBar().showMessage(
             f"Frame {c.frame_index} corrected at ({pixel_x:.1f}, {pixel_y:.1f})"
         )
@@ -496,6 +554,7 @@ class DifficultFrameReviewActions(QObject):
         if self.is_correcting:
             self.cancelCorrectMode()
         current = self.window.selectedTrackId
+        self._paused_run_id = None
         if self.busy and current != self._running_track_id:
             self._cancel_active_task()
             self._reset()
@@ -510,8 +569,10 @@ class DifficultFrameReviewActions(QObject):
             self._reset()
         self.panel.setMineStatus("")
         self._controller = None
+        self._paused_run_id = None
         self._selected_run_id = None
         self.panel.setReviewBatch(None, None)
+        self.window.videoView.set_review_prediction(None)
         self._refresh_mining_enabled()
 
     def shutdown(self) -> None:
