@@ -205,12 +205,17 @@ def _active_pending_review(session: ProjectSession, track_id: UUID) -> int:
 def _completed_of(
     runs: Sequence[TrackingRun], track_id: UUID, task_type: str
 ) -> list[TrackingRun]:
-    """按完成顺序（created_at 稳定排序）返回某 track 的 completed run。"""
+    """按完成顺序返回某 track 的 completed run。
+
+    key 只用 created_at，依赖 sorted 的稳定性：相同时间戳（粗时钟平台可发生，
+    见 f17cf32）保持注册顺序——注册顺序即尝试顺序，"最新"因此确定性等价于
+    最后注册者，而不是随机 run_id 平局。
+    """
     return sorted(
         (r for r in runs
          if r.track_id == track_id and r.task_type == task_type
          and r.status == "completed"),
-        key=lambda r: (r.created_at, r.run_id),
+        key=lambda r: r.created_at,
     )
 
 
