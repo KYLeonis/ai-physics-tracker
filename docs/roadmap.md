@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近交付：**Phase 5.6 — 真实单摆闭环执行与验收（2026-09-16；四轮 DLC run、AC-1~11 核对、AC-9 以明示缺口归档）**
-- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.0–5.6 执行完毕，待 HR 确认后宣布收官并进入 Phase 6）**
+- 最近交付：**Phase 5.7 — Interaction Flow Redesign（2026-09-17；三工作区/任务卡/C1/C2 已实现，R1/R2 复核 CLOSED，待 Human Review）**
+- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.0–5.7 实现完毕，5.7 待 HR 后收官并进入 Phase 6）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -150,7 +150,8 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 | 5.3 ✅ | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复（Human Review 通过） |
 | 5.4 ✅ | Iteration History & Result Activation | Candidate 模式、Activate/Replace/Clear 原子事务、fixed validation series（复核缺口已随 5.5 Entry Gate 关闭） |
 | 5.5 ✅ | Training Advisor & Retraining | 确定性规则 Advisor、显式 restart/resume（DLC snapshot 贯通）、跨轮比较与 lineage 追溯（真实 DLC smoke + HR 通过） |
-| 5.6 🚧 | Refinement Loop Integration & Acceptance | 真实闭环完成并归档三类 delta；AC-9 改善证据未达成（明示缺口，成因已分析） |
+| 5.6 ✅ | Refinement Loop Integration & Acceptance | 真实闭环完成并归档三类 delta；AC-9 改善证据未达成（明示缺口，成因已分析） |
+| 5.7 🔄 | Interaction Flow Redesign | 三工作区 + 状态驱动任务卡 + C1/C2（ADR-0016）；实现与复核完成，待 Human Review |
 
 **验收标准**
 - [x] F3 关闭：旧 coordinator lifecycle 已移除，训练/推理只维护统一 runner/actions/task handle 路径
