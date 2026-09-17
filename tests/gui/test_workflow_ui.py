@@ -335,3 +335,57 @@ def test_candidate_preview_does_not_pollute_charts(
     assert "Preview: version 1 (not adopted)" in window.workflowHeader.trajectoryLabel.text()
     analysis_chip = window.workflowHeader.analysisChipLabel.text()
     assert "charts" in analysis_chip  # 只描述当前输入，不被候选覆盖
+
+
+def test_inspect_binds_candidate_not_oldest_run(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+) -> None:
+    """R1 F1：检查对象 = 当前候选，不是注册序最旧的 completed infer run。"""
+    window, session, track_id, infer1, infer2 = _better_candidate_setup(
+        qtbot, synthetic_video_path, tmp_path)
+    captured = {}
+    monkeypatch.setattr(
+        window.reviewActions, "requestMining",
+        lambda run_id, params=None: captured.setdefault("run_id", run_id))
+
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    # 当前卡为 better→Adopt；次动作/inspect 路由直接调用
+    window.trackingActions._onCardAction("inspect_trajectory")
+    assert captured["run_id"] == infer2.run_id
+
+
+def test_invalid_series_rebuild_flow_via_card(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+) -> None:
+    """R1 F2：集合失效 → 卡片给重建主动作；确认后停用旧集并 freeze 新预选。"""
+    from ai_physics_tracker.gui.fixed_check_dialog import (
+        RESULT_KEEP,
+        FixedCheckConfirmDialog,
+    )
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+
+    window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
+                                               _FakeRunner(_FakeHandle()))
+    for frame in (3, 4):
+        session.mark_point(track_id, frame, 30.0 + frame, 40.0)
+    series = session.create_validation_series(track_id, "old", [4])
+    session.mark_point(track_id, 4, 99.0, 99.0)  # 使集合失效
+    assert not session.validate_active_validation_series(track_id)[0]
+
+    monkeypatch.setattr(
+        FixedCheckConfirmDialog, "exec",
+        lambda self: (setattr(self, "result_choice", RESULT_KEEP), True)[1])
+
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    panel = window.trackingActions.panel
+    assert panel.cardPrimaryButton.text() == "Review suggested check frames"
+    panel.cardPrimaryButton.click()
+
+    state = session.get_refinement_state(track_id)
+    assert state.active_series is not None
+    assert state.active_series.series_id != series.series_id  # 旧集被替换（停用+新建）
+    assert session.validate_active_validation_series(track_id)[0]
+    # P6R-03：被引用旧集不可删除，仅停用——仍保留在 series 列表中
+    assert state.get_series(series.series_id) is not None

@@ -63,6 +63,9 @@ class WorkflowHeader(QWidget):
         self.trajectoryLabel.setWordWrap(True)
         self.analysisChipLabel = QLabel(ANALYSIS_CHIP_TEXT[None])
         self.analysisChipLabel.setWordWrap(True)
+        self.limitationsLabel = QLabel("")
+        self.limitationsLabel.setWordWrap(True)
+        self.limitationsLabel.hide()
         self.taskStripLabel = QLabel("")
         self.taskStripLabel.setWordWrap(True)
         self.taskStripLabel.hide()
@@ -76,6 +79,7 @@ class WorkflowHeader(QWidget):
         status_row.addWidget(self.trajectoryLabel, 1)
         status_row.addWidget(self.analysisChipLabel)
         status_column.addLayout(status_row)
+        status_column.addWidget(self.limitationsLabel)
         status_column.addWidget(self.taskStripLabel)
 
         divider = QFrame()
@@ -109,6 +113,15 @@ class WorkflowHeader(QWidget):
         self.contextLabel.setText(context)
         self.trajectoryLabel.setText(trajectory)
         self.setAnalysisChip(analysis_state)
+
+    def setLimitations(self, limitations: tuple[str, ...] | list[str]) -> None:
+        """§11.1 第 2 行：可部分分析时并列限制数量与范围。"""
+        if limitations:
+            self.limitationsLabel.setText(
+                "Limits: " + "; ".join(str(item) for item in limitations))
+            self.limitationsLabel.show()
+        else:
+            self.limitationsLabel.hide()
 
     def setTaskStrip(self, text: str) -> None:
         """分析工作区内 AI 后台任务的常驻提示（设计 §8.2）；空串隐藏。"""

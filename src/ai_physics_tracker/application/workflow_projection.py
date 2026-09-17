@@ -8,6 +8,10 @@
 
 GUI 侧的瞬时事实（哪个任务在跑、取消中）由调用方作为显式输入传入；
 本模块不接触 Qt、不修改会话、不读文件。
+
+已知最小实现边界：普通模式只投影**最新**一条未采用候选；更早候选上的
+未审批次对普通卡不可见（设计 §9 的多候选恢复留待有真实需求时扩展，
+高级用户经 Results & history 可达全部 run）。
 """
 
 from dataclasses import dataclass
@@ -49,6 +53,7 @@ ACTION_SAVE_PROJECT = "save_project"
 ACTION_PICK_FRAMES = "pick_frames"            # 挑选代表画面（显式启动选帧）
 ACTION_LABEL_FRAME = "label_frame"            # 跳到待标/待审画面
 ACTION_START_LEARNING = "start_learning"      # 开始学习（C2 显式执行推荐计划）
+ACTION_CONFIRM_CHECK_FRAMES = "confirm_check_frames"  # 查看/重建固定检查帧（§10 失效行）
 ACTION_GENERATE_TRAJECTORY = "generate_trajectory"
 ACTION_INSPECT_TRAJECTORY = "inspect_trajectory"
 ACTION_ADOPT_TRAJECTORY = "adopt_trajectory"
@@ -145,6 +150,7 @@ class WorkflowState:
     prerequisites: tuple[str, ...] = ()   # 阻塞 AI 流程的缺失前置
     fixed_check_frames: int = 0           # 当前活动检查帧数（0 = 无活动集合）
     fixed_check_valid: bool = False
+    fixed_check_invalid: bool = False     # 存在活动集合但已失效（需重建）
     failed_run_id: UUID | None = None     # 最近一次相关训练失败（恢复卡用）
     completed_train_count: int = 0
     completed_infer_count: int = 0
@@ -391,6 +397,7 @@ def project_workflow_state(
         prerequisites=tuple(prerequisites),
         fixed_check_frames=fixed_frames,
         fixed_check_valid=fixed_valid,
+        fixed_check_invalid=fixed_frames > 0 and not fixed_valid,
         failed_run_id=failed_run_id,
         completed_train_count=completed_train,
         completed_infer_count=completed_infer,
@@ -533,6 +540,23 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             ),
             evidence=("Manual positions are the only ground truth; suggestions "
                       "create no labels.",),
+        )
+    # 设计 §10“集合已失效”：主动作 = 查看并确认建议检查帧，先重建再学习
+    if state.fixed_check_invalid and traj.manual_count >= 4:
+        return TaskCard(
+            mode=MODE_LEARN_READY,
+            title="Current: fixed-check frames need rebuilding",
+            explanation=(
+                "The fixed-check frames no longer match the current manual "
+                "positions, so fair comparison across runs is not possible.",
+                "Review the suggested set; learning continues after the "
+                "check frames are rebuilt.",),
+            primary=ActionSpec(
+                ACTION_CONFIRM_CHECK_FRAMES, "Review suggested check frames"),
+            evidence=(
+                "Fixed-check labels are compared with the same ruler across "
+                "runs; a changed label ends direct comparison for old runs.",
+            ),
         )
     if state.completed_train_count == 0:
         return TaskCard(
@@ -684,10 +708,16 @@ def _learning_evidence(state: WorkflowState) -> tuple[str, ...]:
             f"{state.fixed_check_frames} held out as fixed-check frames.",
             "Fixed-check frames are compared with the same ruler across runs.",
         )
+    if n >= 4:
+        return (
+            f"{n} manual example(s) will be used for learning.",
+            "Before learning starts you can confirm a suggested set of "
+            "fixed-check frames for fair comparison.",
+        )
     return (
         f"{n} manual example(s) will be used for learning.",
-        "Before learning starts you can confirm a suggested set of fixed-check "
-        "frames for fair comparison.",
+        "With fewer than 4 labels no fixed-check set is suggested; learning "
+        "cannot be compared reliably across runs.",
     )
 
 
@@ -911,10 +941,13 @@ def candidate_comparison(
             conclusion=COMPARISON_INCOMPARABLE,
             detail="The two evaluations use different metrics or units.",
             limitation="Cannot judge which version is more accurate.")
-    if a_val <= 0:
+    from math import isfinite
+
+    if not (isfinite(a_val) and isfinite(c_val)) or a_val <= 0:
         return ComparisonFacts(
             conclusion=COMPARISON_INCOMPARABLE,
-            detail=f"Baseline {metric} is {a_val}; no trend is computed.",
+            detail=f"Baseline {metric} is {a_val}, candidate is {c_val}; "
+                   "no trend is computed.",
             limitation="Raw values only; no automatic verdict.")
 
     delta = (c_val - a_val) / a_val

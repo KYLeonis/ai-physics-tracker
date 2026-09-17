@@ -212,7 +212,8 @@ class TrackingActions(QObject):
             kind = (EXEC_INFERRING if self._request.run.task_type == "infer"
                     else EXEC_TRAINING)
             return ExecutionInput(kind=kind)
-        if self.window.frameSelectionActions.busy:
+        frame_selection = getattr(self.window, "frameSelectionActions", None)
+        if frame_selection is not None and frame_selection.busy:
             return ExecutionInput(kind=EXEC_FRAME_SELECTION, frame_selection=True)
         if getattr(self.window, "reviewActions", None) and self.window.reviewActions.busy:
             return ExecutionInput(kind=EXEC_MINING, mining=True)
@@ -235,7 +236,19 @@ class TrackingActions(QObject):
                     "No project", "Current trajectory: —", None)
                 return
             state = self._workflow_state(session, track_id, runs)
-            self.panel.setTaskCard(select_task_card(state))
+            card = select_task_card(state)
+            if state.failed_run_id is not None:
+                failed_run = next(
+                    (r for r in runs if r.run_id == state.failed_run_id), None)
+                if failed_run is not None and "interrupted" in (
+                        failed_run.error_message or "").lower():
+                    from ai_physics_tracker.application.user_messages import (
+                        interrupted_on_reopen,
+                    )
+                    ux = interrupted_on_reopen()
+                    from dataclasses import replace as _replace
+                    card = _replace(card, explanation=ux.body)
+            self.panel.setTaskCard(card)
             self._current_workflow_state = state
             self._refresh_header(session, state, video, track)
         except Exception as error:  # 投影是辅助信息，失败只降级显示
@@ -277,22 +290,9 @@ class TrackingActions(QObject):
         else:
             window.workflowHeader.setTaskStrip("")
         window.workflowHeader.setStatus(context, trajectory_text, state.analysis.state)
+        window.workflowHeader.setLimitations(state.analysis.limitations)
 
     # --- C2：系统计划 → 显式执行（与 Advanced 同一入口与校验）---
-
-    def _advisor_recommendation(self, session, track_id, runs):
-        from ai_physics_tracker.application.advisor_collection import (
-            collect_advisor_input,
-        )
-        from ai_physics_tracker.application.training_advisor import (
-            recommend_training_action,
-        )
-        return recommend_training_action(collect_advisor_input(
-            session, track_id, runs,
-            has_active_task=False,
-            requested_batch_size=self.panel.batchSizeSpinBox.value(),
-            requested_epochs=self.panel.epochsSpinBox.value(),
-        ))
 
     def _learning_plan(self, session, track_id, runs):
         from ai_physics_tracker.application.workflow_projection import (
@@ -313,42 +313,47 @@ class TrackingActions(QObject):
             default_batch=self.panel.batchSizeSpinBox.value(),
         )
 
-    def _start_learning_with_system_plan(self, session, track_id, runs) -> None:
-        """C1+C2：必要时确认预选检查帧，然后把系统计划写入表单并启动。"""
+    def _confirm_fixed_check_set(self, session, track_id) -> None:
+        """C1：无有效检查集时预选并请用户确认；KEEP 时停用失效旧集并 freeze。
+
+        P6R-03：被 train run 引用的旧集不删除，只停用（保留历史标签溯源）。
+        """
+        from ai_physics_tracker.application.workflow_projection import (
+            preselect_fixed_check_frames,
+        )
         from ai_physics_tracker.gui.fixed_check_dialog import (
             RESULT_CHOOSE,
             RESULT_KEEP,
             FixedCheckConfirmDialog,
         )
-        from ai_physics_tracker.application.workflow_projection import (
-            preselect_fixed_check_frames,
-        )
 
         ref_state = session.get_refinement_state(track_id)
         active_series = ref_state.active_series
-        needs_check_set = (
-            active_series is None
-            or not session.validate_active_validation_series(track_id)[0])
-        if needs_check_set:
-            manual_frames = tuple(
-                p.frame_index for p in session.manual_points(track_id))
-            preselect = preselect_fixed_check_frames(manual_frames)
-            if preselect and not active_series:
-                dialog = FixedCheckConfirmDialog(
-                    preselect, len(manual_frames), self.window)
-                dialog.frameJumpRequested.connect(self.window.jumpToFrame)
-                dialog.exec()
-                if dialog.result_choice == RESULT_KEEP:
-                    session.create_validation_series(
-                        track_id, "Fixed check frames", preselect)
-                    self.window.statusBar().showMessage(
-                        f"Kept {len(preselect)} fixed-check frame(s)")
-                elif dialog.result_choice == RESULT_CHOOSE:
-                    from ai_physics_tracker.gui.validation_dialog import (
-                        ManageValidationDialog,
-                    )
-                    ManageValidationDialog(session, track_id, self.window).exec()
-                # skip：沿用无 fixed validation 的能力，不建立虚假基准
+        series_valid = session.validate_active_validation_series(track_id)[0]
+        if active_series is not None and series_valid:
+            return  # 已有有效集合，直接复用
+        manual_frames = tuple(p.frame_index for p in session.manual_points(track_id))
+        preselect = preselect_fixed_check_frames(manual_frames)
+        if not preselect:
+            return  # 标签不足（<4）：不建检查集，学习走无比较路径
+        dialog = FixedCheckConfirmDialog(preselect, len(manual_frames), self.window)
+        dialog.frameJumpRequested.connect(self.window.jumpToFrame)
+        dialog.exec()
+        if dialog.result_choice == RESULT_KEEP:
+            if active_series is not None:
+                session.set_active_validation_series(track_id, None)
+            session.create_validation_series(track_id, "Fixed check frames", preselect)
+            self.window.statusBar().showMessage(
+                f"Kept {len(preselect)} fixed-check frame(s)")
+        elif dialog.result_choice == RESULT_CHOOSE:
+            from ai_physics_tracker.gui.validation_dialog import ManageValidationDialog
+
+            ManageValidationDialog(session, track_id, self.window).exec()
+        # skip：沿用无 fixed validation 的能力，不建立虚假基准
+
+    def _start_learning_with_system_plan(self, session, track_id, runs) -> None:
+        """C1+C2：必要时确认预选检查帧，然后把系统计划写入表单并启动。"""
+        self._confirm_fixed_check_set(session, track_id)
 
         plan = self._learning_plan(session, track_id, session.tracking_runs())
         self.panel.setTrainingMode(plan.training_mode)
@@ -401,27 +406,45 @@ class TrackingActions(QObject):
                 return
 
     def _adopt_candidate(self, session, track_id, facts) -> None:
-        """[采用此轨迹]：影响预览 + 既有原子事务（activate/replace）。"""
+        """[采用此轨迹]：单次影响确认 + 既有原子事务（R1 F4：不再叠加
+        history 入口的第二层 run-ID 确认；该确认保留给 history 路径）。"""
         candidate_run_id = facts.candidate.run_id
         manual_count = facts.manual_count
         newline = "\n"
-        if facts.has_active_result:
-            message = (
-                f"Adopt {facts.candidate.label} for this object?{newline}{newline}"
-                f"This replaces the currently adopted {facts.active_label} AI "
-                f"result.{newline}{manual_count} manual position(s) stay and keep "
-                f"priority.{newline}Charts will need an update afterwards.")
-            if not self._confirm_adopt(message):
-                return
-            self.replaceRun(candidate_run_id)
-        else:
-            message = (
-                f"Adopt {facts.candidate.label} for this object?{newline}{newline}"
-                f"{manual_count} manual position(s) stay and keep priority."
-                f"{newline}Charts will need an update afterwards.")
-            if not self._confirm_adopt(message):
-                return
-            self.activateRun(candidate_run_id)
+        try:
+            if facts.has_active_result:
+                message = (
+                    f"Adopt {facts.candidate.label} for this object?{newline}{newline}"
+                    f"This replaces the currently adopted {facts.active_label} AI "
+                    f"result.{newline}{manual_count} manual point(s) stay and keep "
+                    f"priority.{newline}Charts will need an update afterwards.")
+                if not self._confirm_adopt(message):
+                    return
+                record = session.replace_active_infer_run(track_id, candidate_run_id)
+                self.window.statusBar().showMessage(
+                    f"Adopted {facts.candidate.label}: {record.point_count} active "
+                    f"points, {record.superseded_count} superseded by manual")
+            else:
+                message = (
+                    f"Adopt {facts.candidate.label} for this object?{newline}{newline}"
+                    f"{manual_count} manual point(s) stay and keep priority."
+                    f"{newline}Charts will need an update afterwards.")
+                if not self._confirm_adopt(message):
+                    return
+                record = session.activate_infer_run(track_id, candidate_run_id)
+                self.window.statusBar().showMessage(
+                    f"Adopted {facts.candidate.label}: {record.point_count} active "
+                    f"points, {record.superseded_count} superseded by manual")
+        except Exception as error:
+            from ai_physics_tracker.application.user_messages import activation_failure
+
+            self.panel.appendLog(activation_failure(str(error)).full_text())
+            self.panel.setActivity("Adoption failed — current trajectory unchanged")
+            return
+        self.window._refreshMarkers()
+        self.window._refreshHistoryButtons()
+        self._context_key = None
+        self.refresh()
 
     def _confirm_adopt(self, message: str) -> bool:
         from PySide6.QtWidgets import QMessageBox
@@ -471,6 +494,12 @@ class TrackingActions(QObject):
             return
         runs = session.tracking_runs()
 
+        if action_id == "confirm_check_frames":
+            window.setWorkspace("acquire")
+            self._confirm_fixed_check_set(session, track_id)
+            self._context_key = None
+            self.refresh()
+            return
         if action_id in ("start_learning", "retry_learning", "continue_optimizing"):
             window.setWorkspace("acquire")
             self._start_learning_with_system_plan(session, track_id, runs)
@@ -481,12 +510,21 @@ class TrackingActions(QObject):
             return
         if action_id == "inspect_trajectory":
             window.setWorkspace("acquire")
-            candidate = next(
-                (r for r in runs if r.track_id == track_id
-                 and r.task_type == "infer" and r.status == "completed"),
-                None)
-            if candidate is not None:
-                self.window.reviewActions.requestMining(candidate.run_id)
+            from ai_physics_tracker.application.workflow_projection import (
+                trajectory_facts,
+            )
+            facts = trajectory_facts(session, track_id, runs)
+            # 检查对象 = 当前候选（设计 §6.5“检查对象只有一个”），
+            # 绝不能落到注册序最旧的 completed infer run（R1 F1）
+            if facts.candidate is not None:
+                self.window.reviewActions.requestMining(facts.candidate.run_id)
+            else:
+                latest_infer = next(
+                    (r for r in reversed(runs)
+                     if r.track_id == track_id and r.task_type == "infer"
+                     and r.status == "completed"), None)
+                if latest_infer is not None:
+                    self.window.reviewActions.requestMining(latest_infer.run_id)
             return
         if action_id == "adopt_trajectory":
             from ai_physics_tracker.application.workflow_projection import (
@@ -569,7 +607,7 @@ class TrackingActions(QObject):
             self.window._refreshMarkers()
             self.window._refreshHistoryButtons()
         except Exception as error:
-            QMessageBox.critical(self.window, "Activation Failed", str(error))
+            QMessageBox.critical(self.window, "Activation Failed", user_messages.activation_failure(str(error)).full_text())
         self._context_key = None
         self.refresh()
 
@@ -619,7 +657,7 @@ class TrackingActions(QObject):
             self.window._refreshMarkers()
             self.window._refreshHistoryButtons()
         except Exception as error:
-            QMessageBox.critical(self.window, "Replacement Failed", str(error))
+            QMessageBox.critical(self.window, "Replacement Failed", user_messages.activation_failure(str(error)).full_text())
         self._context_key = None
         self.refresh()
 
@@ -655,7 +693,7 @@ class TrackingActions(QObject):
             self.window._refreshMarkers()
             self.window._refreshHistoryButtons()
         except Exception as error:
-            QMessageBox.critical(self.window, "Clear Failed", str(error))
+            QMessageBox.critical(self.window, "Clear Failed", user_messages.activation_failure(str(error)).full_text())
         self._context_key = None
         self.refresh()
 
@@ -839,6 +877,7 @@ class TrackingActions(QObject):
         if self.cancelling:
             return
         self._cancelling = True
+        self._context_key = None  # 卡片立即切到“正在停止”（R1 F7b）
         self.panel.setActivity("Cancelling")
         if self._handle is None:
             start = self._start_future
@@ -890,6 +929,17 @@ class TrackingActions(QObject):
             self.window.analysisChanged.emit()
             if message == "Completed":
                 self.window.statusBar().showMessage("AI task completed. Recompute charts to use updated observations.")
+        if message == "Completed" and self.window.analysisSession is session \
+                and finished is not None and finished.task_type == "train":
+            evaluation = finished.extra_fields.get("evaluation")
+            if isinstance(evaluation, dict) and evaluation.get("status") == "unavailable":
+                from ai_physics_tracker.application.user_messages import (
+                    evaluation_unavailable,
+                )
+                ux = evaluation_unavailable()
+                self.panel.setActivity(ux.title)
+                for line in (*ux.body, f"Next: {ux.next_hint}"):
+                    self.panel.appendLog(line)
         if message == "Completed" and self.window.analysisSession is session:
             # 训练/推理结果已提交：落盘一次，防止未手存丢失（用户实测需求）
             self.window.projectActions.autosave("AI task completed")

@@ -615,3 +615,41 @@ def test_candidate_comparison_incomparable_on_contaminated_lineage(tmp_path: Pat
     facts = candidate_comparison(session, track.track_id, session.tracking_runs())
     assert facts.conclusion == COMPARISON_INCOMPARABLE
     assert "not qualified" in facts.detail.lower() or "saw validation" in facts.detail
+
+
+def test_invalid_fixed_check_set_drives_rebuild_card(tmp_path: Path) -> None:
+    """R1 F2：集合失效 → 主动作 = 查看并确认建议检查帧。"""
+    from ai_physics_tracker.application.workflow_projection import (
+        select_task_card,
+        project_workflow_state,
+    )
+
+    session, track, _video = _session_with_track(tmp_path, zone_frames=10)
+    for frame in range(6):
+        session.mark_point(track.track_id, frame, 1.0, 1.0)
+    series = session.create_validation_series(track.track_id, "fixed", [5])
+    # 使集合失效：改动检查帧上的 manual 点
+    session.mark_point(track.track_id, 5, 99.0, 99.0)
+    assert not session.validate_active_validation_series(track.track_id)[0]
+
+    state = project_workflow_state(session, track.track_id, session.tracking_runs())
+    card = select_task_card(state)
+    assert card.mode == "learn_ready"
+    assert card.primary.action_id == "confirm_check_frames"
+    assert "rebuilding" in card.title
+
+
+def test_candidate_comparison_non_finite_metrics_are_incomparable(
+    tmp_path: Path,
+) -> None:
+    """R1 F3：NaN/inf 指标不得产出 flat 伪结论。"""
+    from ai_physics_tracker.application.workflow_projection import (
+        COMPARISON_INCOMPARABLE,
+        candidate_comparison,
+    )
+
+    session, track, first, second, older, _cand, series = _comparison_session(
+        tmp_path, second_val_rmse=float("nan"), tag="nan")
+    facts = candidate_comparison(session, track.track_id, session.tracking_runs())
+    assert facts.conclusion == COMPARISON_INCOMPARABLE
+    assert "nan" in facts.detail

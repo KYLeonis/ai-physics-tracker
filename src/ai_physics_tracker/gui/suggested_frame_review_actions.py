@@ -248,7 +248,7 @@ class DifficultFrameReviewActions(QObject):
         if not self.busy:
             return
         self._cancel_active_task()
-        self._finish_cancelled("Mining cancelled")
+        self._finish_cancelled()
 
     def _cancel_active_task(self) -> None:
         handle = self._handle
@@ -287,7 +287,7 @@ class DifficultFrameReviewActions(QObject):
             elif isinstance(message, TaskResult):
                 payload = message.payload or {}
                 if payload.get("status") == "cancelled":
-                    self._finish_cancelled("Mining cancelled")
+                    self._finish_cancelled()
                     return
                 elif not message.success:
                     self._finish_error(message.error or "Mining failed")
@@ -350,7 +350,7 @@ class DifficultFrameReviewActions(QObject):
         self._reset()
         self._refresh_mining_enabled()
 
-    def _finish_cancelled(self, message: str = "Mining cancelled") -> None:
+    def _finish_cancelled(self) -> None:
         from ai_physics_tracker.application.user_messages import task_cancelled
 
         self._timer.stop()
