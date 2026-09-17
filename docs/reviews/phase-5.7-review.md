@@ -15,7 +15,7 @@
   [phase-5.7 设计](../design/phase-5.7-interaction-redesign.md)（§5/§9–§13/§16）、
   [phase-5.7-plan](../status/phase-5.7-plan.md)、ADR-0013/0014/0015/0016、
   [stabilization review](pre-phase6-stabilization-review.md)（F1 记录）。
-- 轮次：R1 2026-09-17（首轮）· R2 待定
+- 轮次：R1 2026-09-17（NEEDS-FIX：F1/F2 Blocker + F3–F7）· R2 2026-09-17（NEEDS-FIX：仅 N1）· 补验后 CLOSED
 
 ## Checklist
 
@@ -80,8 +80,8 @@
 
 - **Decision**：Fix Now ——WorkflowHeader 新增 limitations 行，由
   `_refresh_header` 接 `state.analysis.limitations`（§11.1 并列限制数量/范围）。
-- **Verification**：`test_analysis_source_bar_and_chip_reflect_projection` 扩展路径；
-  全量 788。
+- **Verification**：`test_header_shows_analysis_limitations`（R2 指出初版验证
+  声明不实后补的真实渲染断言：缺测 2/5 帧可见）；全量 790。
 - **Status**：Closed
 
 ### F6 — 三条 §13 文案未接线（Suggestion）
@@ -102,7 +102,31 @@
 - **Decision**：Fix Now（全部）；**Status**：Closed
 
 
+### N1 — activateRun/replaceRun/clearActivation 失败路径 NameError（R2 发现，修复提交引入）
+
+- **Evidence**：三处 except 块调用 `user_messages.activation_failure` 但模块级导入
+  未生效（导入守卫被方法内局部导入的子串误判命中）；运行时复现 NameError，
+  用户失去任何失败反馈。
+- **Decision**：Fix Now ——无条件模块级导入 + 清理冗余局部导入；新增
+  `test_activation_failure_dialog_uses_three_question_copy` 走真实失败路径断言
+  三问文案。
+- **Verification**：全量 **790 passed** + compileall OK；F1 三个配方由 R2 复跑通过。
+- **Status**：Closed
+
 ## Review Log
 
 - R1（2026-09-17）：dispatch fresh independent reviewer（只读），focus =
   设计关闭条件 + 是否引入 state/persistence/GUI 回归 + F1 根治有效性。
+  Verdict **NEEDS-FIX**（F1/F2 Blocker；F3–F7 Suggestions）。全量 784、F1 配方
+  27/55/117 由 reviewer 真实运行确认。
+- Findings 处置（提交 7112be0）：F1–F7 全部 Fix Now。
+- R2（2026-09-17）：fresh re-reviewer 只验处置与修复 diff。结论：F1/F2/F3–F7
+  修复成立；发现 **N1**（修复提交引入的 NameError）与 O1–O3 次要项；全量
+  788/配方 27/55/117 复跑一致。Verdict **NEEDS-FIX（仅 N1）**，并明示 N1 修复
+  且全量重跑通过后可由实现方补验 CLOSED、无需 R3。
+- 补验（实现方）：N1 修复（模块级导入 + 冗余清理 + 失败路径回归测试）、
+  O2 更正（F5 Verification 补真实渲染断言）。全量 **790 passed**、compileall OK。
+  O1（SKIP 后经 Advanced 启动会在 prepare 得到明确报错）记录为可接受行为；
+  O3（局部导入风格）不阻塞。
+- **Final Verdict：CLOSED**（2026-09-17，按 R2 豁免条款由实现方补验收口；
+  Human Review gate 另行发起，通过前 Phase 5.7 不关闭）。

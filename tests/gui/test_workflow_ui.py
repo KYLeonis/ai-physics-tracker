@@ -389,3 +389,45 @@ def test_invalid_series_rebuild_flow_via_card(
     assert session.validate_active_validation_series(track_id)[0]
     # P6R-03：被引用旧集不可删除，仅停用——仍保留在 series 列表中
     assert state.get_series(series.series_id) is not None
+
+
+def test_activation_failure_dialog_uses_three_question_copy(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+) -> None:
+    """R2 N1：激活失败路径不再 NameError，对话框带三问文案。"""
+    from PySide6.QtWidgets import QMessageBox
+
+    window, session, track_id, infer1, _infer2 = _better_candidate_setup(
+        qtbot, synthetic_video_path, tmp_path)
+    captured = {}
+    monkeypatch.setattr(
+        QMessageBox, "critical",
+        lambda parent, title, text, *a, **k: captured.update(
+            title=title, text=text) or QMessageBox.StandardButton.Ok)
+    # 确认问题桩为 Yes（conftest 默认 Discard 会提前退出）
+    monkeypatch.setattr(
+        QMessageBox, "question",
+        lambda *a, **k: QMessageBox.StandardButton.Yes)
+
+    # 已激活的 run 再走 activate → session 抛错 → critical 路径
+    window.trackingActions.activateRun(infer1.run_id)
+    assert captured["title"] == "Activation Failed"
+    assert "No new trajectory was adopted" in captured["text"]
+    assert "Next:" in captured["text"]
+
+
+def test_header_shows_analysis_limitations(
+    qtbot, synthetic_video_path, tmp_path
+) -> None:
+    """R2 O2：limitations 行真实渲染（缺测数量可见）。"""
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+
+    window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
+                                               _FakeRunner(_FakeHandle()))
+    # 视频共 5 帧，fixture 只标了 0/1/2 → 2 帧缺测
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    limitations = window.workflowHeader.limitationsLabel
+    assert limitations.isVisible() or not limitations.isHidden()
+    assert "2 of 5 frames" in limitations.text()
+    assert "no effective observation" in limitations.text()

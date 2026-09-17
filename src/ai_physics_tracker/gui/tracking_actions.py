@@ -20,6 +20,7 @@ from ai_physics_tracker.application.tracking_job import (
     read_frame_selection_result, FrameSelectionRunner, FrameSelectionJobRequest,
 )
 from ai_physics_tracker.application.advisor_collection import collect_advisor_input
+from ai_physics_tracker.application import user_messages
 from ai_physics_tracker.application.refinement_history import extract_refinement_state
 from ai_physics_tracker.application.training_advisor import AdvisorInput, recommend_training_action
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
@@ -436,9 +437,8 @@ class TrackingActions(QObject):
                     f"Adopted {facts.candidate.label}: {record.point_count} active "
                     f"points, {record.superseded_count} superseded by manual")
         except Exception as error:
-            from ai_physics_tracker.application.user_messages import activation_failure
-
-            self.panel.appendLog(activation_failure(str(error)).full_text())
+            self.panel.appendLog(
+                user_messages.activation_failure(str(error)).full_text())
             self.panel.setActivity("Adoption failed — current trajectory unchanged")
             return
         self.window._refreshMarkers()
@@ -850,7 +850,6 @@ class TrackingActions(QObject):
         self.panel.appendLog(error)
         # Phase 5.7 §13：失败结论回答三问；原始错误进日志，卡片给恢复出口。
         # ux 标题作为 activity 文案，后续 _finish(f"Failed: …") 调用点替换为该标题。
-        from ai_physics_tracker.application import user_messages
         if self._request.run.task_type == "train":
             self._ux_failure = user_messages.training_failure(
                 error, unsaved_changes=self._session.is_dirty)
@@ -903,7 +902,6 @@ class TrackingActions(QObject):
         run = next((r for r in self._session.tracking_runs() if r.run_id == self._request.run.run_id), None)
         if run and run.status in {"pending", "running"}:
             self._session.update_tracking_run(mark_run_cancelled(run))
-        from ai_physics_tracker.application import user_messages
         if self._failure_error:
             ux = getattr(self, "_ux_failure", None) or user_messages.inference_failure(
                 self._failure_error)
