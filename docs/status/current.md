@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-16（**Stabilization 复核补漏已实现，本地 739 passed；双平台 CI 与 Human Review 已通过，获准合并 main。Phase 5.7 设计仍待批准**）
+- 最后更新：2026-09-17（**Phase 5.7 交互重构实现与复核完成（R1/R2 CLOSED，全量 790），已合并 main 待双平台 CI；下一步 Human Review——通过前 5.7 不关闭**）
 
 ---
 
@@ -11,17 +11,37 @@
 
 | Level | Name | Status |
 | --- | --- | --- |
-| Current | Phase 5.7 — Interaction Architecture Design | 📝 设计已完成，待用户批准；未开始产品实现 |
-| Phase | Phase 5 — AI-assisted Annotation & Refinement | ✅ 已收官 (5.0–5.6 全部完成) |
+| Current | Phase 5.7 — Interaction Flow Redesign | 🔄 实现与复核完成（2026-09-17），**待 Human Review** |
+| Phase | Phase 5 — AI-assisted Annotation & Refinement | 🔄 5.0–5.6 完成；5.7 待 HR 后收官 |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
-| Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03, AC-10 / review / HR / push 闭环) |
+| Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03) |
 | Subphase | 5.3 — Suggested Frame Review & Correction | ✅ 已完成 (2026-09-03, Human Review 通过) |
-| Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, HR 通过；复核收口随 stabilization 完成) |
+| Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, HR 通过；复核收口完成) |
 | Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
-| Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 以明示缺口归档) |
+| Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 明示缺口归档) |
+| Subphase | 5.7 — Interaction Flow Redesign | 🔄 实现+R1/R2 CLOSED；待 HR |
 
 ## Recently Completed
+
+- **Phase 5.7 — Interaction Flow Redesign（2026-09-17，分支 `feat/p5.7-interaction-redesign`）**：
+  - 交付（详见 [phase-5.7-plan](phase-5.7-plan.md) 与 [phase-5.7 review](../reviews/phase-5.7-review.md)）：
+    **三个工作区**（实验设置/获取轨迹/分析与图表；MainWindow 工作区栈 + ChartPanel 转分析页主体 +
+    视频参照窗重挂父）；**常驻状态头**（项目/视频/目标/范围/保存 + 当前轨迹 vs 预览候选 +
+    分析四态 chip + 限制行）；**状态驱动任务卡**（Qt-free
+    `application/workflow_projection.py` 投影执行/轨迹/分析三维修量，卡片按 §9 优先级选择主动作；
+    原三列表单折叠为"调整本次设置"，历史折叠为"结果与历史"，全部控件/信号兼容）；
+    **C1** 固定检查帧预选确认（ADR-0016，确定性规则 + 用户确认才 freeze，失效集重建卡）；
+    **C2** 推荐计划显式执行（写表单走既有 train()/infer()，Advisor Apply 语义不变）；
+    **候选比较结论**（better/flat/worse/incomparable，P6R-02 资格门控，±5% 档位，永附边界）；
+    **[采用此轨迹]**（单次影响确认 + 既有原子事务，history 只 preview）；**分析交接**（来源条 +
+    采用与更新两步）；**失败 UX**（`user_messages` 三问文案接线 12 类结论）。
+  - 质量：新增/更新测试后全量 **790 passed**；stabilization R1 F1（GUI teardown 模态挂起）
+    以会话级模态桩**根治**（三个记录配方 27/55/117 通过）；Independent Review R1（NEEDS-FIX：
+    F1 检查绑定/F2 失效集死循环两个 Blocker + 5 Suggestions）→ 全部修复 → R2（仅 N1 导入缺失）
+    → 补验 **CLOSED**（按 R2 豁免条款）；ADR-0016 记录 C1/C2。
+  - **未关闭**：Human Review 待用户实测（清单见本文件 Next Recommended Action）；
+    通过前不宣布 5.7/Phase 5 收官，不开始 Phase 6。
 
 - **Phase 5.7 交互架构设计（2026-09-16，仅研究与设计）**：完成
   [phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)。建议以
@@ -186,13 +206,13 @@
 
 ## Current Goal
 
-**Stabilization 复核补漏已完成并获准合并 main**。历史资格展示、Undo 验证集引用、
-Advisor 当前源资格三项遗漏均已修复，详见
-[原审查报告 §18–19](../reviews/pre-phase6-project-review.md)。本地 **739 passed**；
-代码及后续文档提交的双平台 CI 均通过
-（[最新分支 CI 35115266202](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35115266202)）。
-用户确认“提示清楚可见，合并”，本轮 Human Review 通过；工程 Entry Gate 为 **READY**。
-Phase 5.7 交互架构设计仍等待用户批准，未开始其实现。
+**Phase 5.7 Human Review gate**：实现、复核（R1/R2 CLOSED）与文档同步已完成；
+等待用户按清单实测。HR 通过后：宣布 5.7 与 Phase 5 收官、roadmap/README 终态
+同步、进入 Phase 6 立项。HR 发现的关键误解按 blocking interaction finding 处理。
+
+## Current Worktree Note
+
+`feat/p5.7-interaction-redesign` 已合并 main 并推送；工作区干净（除本文件）。
 
 ## Current Worktree Note
 
@@ -228,6 +248,18 @@ Phase 5.7 交互架构设计仍等待用户批准，未开始其实现。
 
 ## Next Recommended Action
 
-等待用户审阅并批准 [Phase 5.7 交互架构设计](../design/phase-5.7-interaction-redesign.md)。
-本轮 stabilization 已完成，不重复修复已关闭项，也不自动启动 Phase 6。
-既有 GUI teardown 文件排序挂起（stabilization R1 F1）仍按原决定在 5.7 刷新测试时处理。
+**用户执行 Phase 5.7 Human Review**（通过前 5.7 不关闭）：
+
+1. 启动：仓库根目录 `.venv/bin/python -m ai_physics_tracker`
+2. 用一段**单摆视频**从零完成：标注 → （确认检查帧）→ 开始学习 → 生成轨迹 →
+   检查候选 → 按建议继续或停止 → 采用可用轨迹 → 更新并查看 Physics Charts
+3. 覆盖：保存重开；一次 no difficult frames；一个未改善候选的处理；修改已采用
+   轨迹后的 chart stale/recompute；一次取消或失败恢复
+4. 五个停点自问：我现在在哪？下一步是什么？现在能否分析？（标注中/学习中/
+   生成后/检查后/图表过期）
+5. 关键验收（误解即 blocking finding）：全程未选 run/snapshot/restart-resume；
+   始终知道图表用的是哪条轨迹；不把 candidate 当 active；不把 Accept 当训练
+   标签；不把 Skip 当"预测正确"；no-difficult-frames/未改善时知道可以正常停止；
+   需要时能找到参数、历史与 lineage。
+
+反馈"通过"→ 收尾收官；指出问题 → 修复后重跑自动化再发起 HR。

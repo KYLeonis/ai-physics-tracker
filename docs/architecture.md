@@ -114,6 +114,16 @@ accept/skip/correct 事务 + Scoped Undo/Redo + `DifficultFrameReviewActions`）
 `application/training_advisor.py` 确定性规则引擎、DLC `train_network(snapshot_path=...)`
 resume 管线、lineage 随 train run 追溯；Advisor 建议为界面状态，不持久化）。
 
+### 3.x Phase 5.7 交互投影层（application/workflow_projection.py）
+
+主交互自 5.7 起由"三个工作区（实验设置/获取轨迹/分析与图表）+ 状态驱动任务卡"
+组织：`workflow_projection` 以纯函数把 Project/TrackingRun/review/active/
+DerivedData 事实投影为执行/轨迹/分析三维修量与任务卡（含 C1 检查帧预选与
+C2 推荐执行计划，ADR-0016）；GUI（WorkflowHeader/TaskPanel 卡片区）只做展示
+与转发，不持久化第二套 workflow 状态。ChartPanel 由 dock 转为分析工作区主体，
+MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
+`application/user_messages.py` 构造（三问结构）。
+
 ## 4. 运动学计算与可视化（Phase 3/6 起细化）
 
 - 输入：标定后的物理坐标序列 x(t), y(t)；或无标定时的像素坐标

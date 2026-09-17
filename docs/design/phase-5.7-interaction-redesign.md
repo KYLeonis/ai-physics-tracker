@@ -1,7 +1,9 @@
 # Phase 5.7 — Interaction Architecture Redesign
 
-> 状态：**Proposed / 待用户批准；不是实施授权，也不是已接受 ADR。**
-> 日期：2026-09-16；角色：Product Interaction Architecture Reviewer。
+> 状态：**Accepted（2026-09-17 用户批准总体方向，含 C1/C2）；Phase 5.7 已实现，见
+> [phase-5.7-plan](../status/phase-5.7-plan.md) 与 [phase-5.7 review](../reviews/phase-5.7-review.md)。
+> C1/C2 交互政策记录于 ADR-0016。**
+> 日期：2026-09-16（设计）；角色：Product Interaction Architecture Reviewer。
 > 初始研究基线：`main @ daad086`；收尾增量核对：`main @ d606bb4`（已合并 Pre-Phase 6 Stabilization 及 latest-train tie-break 修复）。本轮为仓库静态研究与产品设计，未运行新 GUI Human Review、DLC 实验或产品测试。
 > 交付对象：后续 Sol / implementation Agent。只设计信息架构、交互、推荐职责与验收；不修改产品代码、数据格式、数值算法或既有验收结果。
 

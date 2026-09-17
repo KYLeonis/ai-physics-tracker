@@ -36,15 +36,24 @@ def test_main_chart_and_ai_panels_allow_window_resizing(qtbot: QtBot) -> None:
     assert not window.isFullScreen()
     assert not window.isMaximized()
 
-    for panel in (window.chartActions.panel, window.trackingActions.panel):
-        assert isinstance(panel.widget(), QScrollArea)
-        assert panel.features() & QDockWidget.DockWidgetFeature.DockWidgetFloatable
-        panel.setFloating(True)
-        panel.resize(640, 480)
-        assert panel.isFloating()
-        assert panel.size().width() == 640
-        assert panel.size().height() == 480
-        panel.setFloating(False)
+    # Phase 5.7：AI 任务面板仍是 dock（可浮动）；图表面板成为“分析与图表”
+    # 工作区的主体 widget（非 dock），随工作区切换呈现
+    tracking_panel = window.trackingActions.panel
+    assert isinstance(tracking_panel.widget(), QScrollArea)
+    assert tracking_panel.features() & QDockWidget.DockWidgetFeature.DockWidgetFloatable
+    tracking_panel.setFloating(True)
+    tracking_panel.resize(640, 480)
+    assert tracking_panel.isFloating()
+    assert tracking_panel.size().width() == 640
+    assert tracking_panel.size().height() == 480
+    tracking_panel.setFloating(False)
+
+    chart_panel = window.chartActions.panel
+    assert not isinstance(chart_panel, QDockWidget)
+    window.setWorkspace("analysis")
+    assert chart_panel.isVisible()
+    window.setWorkspace("acquire")
+    assert window.currentWorkspace == "acquire"
 
     expanded_width = compact_width + 200
     window.resize(expanded_width, 760)

@@ -210,6 +210,9 @@ def test_time_and_xy_clicks_seek_source_frames_and_main_window_clamps_working_zo
     window.chartActions._render_key = None
     window.chartActions.refresh()
     qtbot.wait(20)
+    # Phase 5.7：图表位于“分析与图表”工作区；点击映射需要其布局几何
+    window.setWorkspace("analysis")
+    qtbot.wait(20)
 
     requested: list[int] = []
     monkeypatch.setattr(window, "_requestFrame", requested.append)
@@ -323,7 +326,9 @@ def test_cancelled_slow_job_returns_without_committing_results(
         assert gate.finished.is_set()
         assert window.analysisSession is not None
         assert window.analysisSession.project.derived == ()
-        assert "no results committed" in window.chartActions.panel.jobLabel.text()
+        cancelled_text = window.chartActions.panel.jobLabel.text()
+        assert "Charts were not updated: calculation cancelled" in cancelled_text
+        assert "unchanged" in cancelled_text
     finally:
         gate.release.set()
         qtbot.waitUntil(gate.finished.is_set, timeout=5000)
@@ -434,7 +439,10 @@ def test_input_mutation_discards_late_result_but_keeps_new_raw_point(
         qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
         assert session.manual_points(track.track_id)[-1] == changed
         assert session.project.derived == ()
-        assert "not committed" in window.chartActions.panel.jobLabel.text()
+        # Phase 5.7 §13：未提交结论的三问文案（保留“结果被丢弃”语义）
+        job_text = window.chartActions.panel.jobLabel.text()
+        assert "Charts were not updated" in job_text
+        assert "unchanged" in job_text
     finally:
         gate.release.set()
         qtbot.waitUntil(gate.finished.is_set, timeout=5000)
@@ -638,10 +646,11 @@ def test_chart_panel_wheel_scrolls_back_to_controls_when_clipped(
     scroll = panel._scroll_area
     bar = scroll.verticalScrollBar()
 
-    # 把面板压到内容被裁剪的高度，并把视图滚到底（顶部控制区不可见）
+    # Phase 5.7：panel 是分析工作区内的普通 widget（非 dock）。用 scroll
+    # 最大高度强制内容裁剪，并把视图滚到底（顶部控制区不可见）
     window.show()
-    panel.setFloating(True)
-    panel.resize(panel.width(), 260)
+    window.setWorkspace("analysis")
+    scroll.setMaximumHeight(140)
     qtbot.waitUntil(lambda: bar.minimum() != bar.maximum(), timeout=2000)
     bar.setValue(bar.maximum())
     assert bar.value() == bar.maximum()

@@ -20,6 +20,7 @@ from ai_physics_tracker.application.tracking_job import (
     read_frame_selection_result, FrameSelectionRunner, FrameSelectionJobRequest,
 )
 from ai_physics_tracker.application.advisor_collection import collect_advisor_input
+from ai_physics_tracker.application import user_messages
 from ai_physics_tracker.application.refinement_history import extract_refinement_state
 from ai_physics_tracker.application.training_advisor import AdvisorInput, recommend_training_action
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
@@ -39,8 +40,8 @@ class TrackingActions(QObject):
         self.window = window
         self.backend = TrackingJobRunner(adapter, runner)
         self.panel = TaskPanel(window)
-        window.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.panel)
-        window.tabifyDockWidget(window.chartActions.panel, self.panel)
+        # Phase 5.7：“获取轨迹”工作区的上下文卡固定在右侧（设计 §8.1）
+        window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.panel)
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="tracking-result")
         self._request = None
         self._session = None
@@ -61,6 +62,8 @@ class TrackingActions(QObject):
         self._timer.setInterval(100)
         self._timer.timeout.connect(self._poll)
         self.panel.trainRequested.connect(self.train)
+        self.panel.primaryActionRequested.connect(self._onCardAction)
+        self.panel.secondaryActionRequested.connect(self._onCardAction)
         self.panel.inferRequested.connect(self.infer)
         self.panel.cancelRequested.connect(self.cancel)
         self.panel.runSelected.connect(self.showLog)
@@ -176,6 +179,7 @@ class TrackingActions(QObject):
         self.panel.setContext(video.display_name if video else "No video", track.name if track else "No track",
                               train_reason, infer_reason, self.pending,
                               project_busy=self.window.projectActions.busy)
+        self._refresh_workflow_ui(session, track_id, runs, video, track)
         if session and track_id:
             recommendation = self._advisor_recommendation(session, track_id, runs)
             if recommendation is None:
@@ -188,6 +192,352 @@ class TrackingActions(QObject):
         else:
             self.panel.setAdvisorSummary(None)
         self.window.projectActions.refresh()
+
+    # ------------------------------------------------------------------
+    # Phase 5.7 — 状态投影驱动的工作流 UI（决策在 workflow_projection）
+    # ------------------------------------------------------------------
+
+    def _execution_input(self):
+        from ai_physics_tracker.application.workflow_projection import (
+            EXEC_CANCELLING,
+            EXEC_FRAME_SELECTION,
+            EXEC_IDLE,
+            EXEC_INFERRING,
+            EXEC_MINING,
+            EXEC_TRAINING,
+            ExecutionInput,
+        )
+        if self.cancelling:
+            return ExecutionInput(kind=EXEC_CANCELLING, cancelling=True)
+        if self.pending:
+            kind = (EXEC_INFERRING if self._request.run.task_type == "infer"
+                    else EXEC_TRAINING)
+            return ExecutionInput(kind=kind)
+        frame_selection = getattr(self.window, "frameSelectionActions", None)
+        if frame_selection is not None and frame_selection.busy:
+            return ExecutionInput(kind=EXEC_FRAME_SELECTION, frame_selection=True)
+        if getattr(self.window, "reviewActions", None) and self.window.reviewActions.busy:
+            return ExecutionInput(kind=EXEC_MINING, mining=True)
+        return ExecutionInput(kind=EXEC_IDLE)
+
+    def _workflow_state(self, session, track_id, runs):
+        from ai_physics_tracker.application.workflow_projection import (
+            project_workflow_state,
+        )
+        return project_workflow_state(session, track_id, runs, self._execution_input())
+
+    def _refresh_workflow_ui(self, session, track_id, runs, video, track) -> None:
+        """把投影结果推到任务卡与常驻状态头；决策失败不阻塞面板。"""
+        from ai_physics_tracker.application.workflow_projection import select_task_card
+
+        try:
+            if session is None:
+                self.panel.setTaskCard(None)
+                self.window.workflowHeader.setStatus(
+                    "No project", "Current trajectory: —", None)
+                return
+            state = self._workflow_state(session, track_id, runs)
+            card = select_task_card(state)
+            if state.failed_run_id is not None:
+                failed_run = next(
+                    (r for r in runs if r.run_id == state.failed_run_id), None)
+                if failed_run is not None and "interrupted" in (
+                        failed_run.error_message or "").lower():
+                    from ai_physics_tracker.application.user_messages import (
+                        interrupted_on_reopen,
+                    )
+                    ux = interrupted_on_reopen()
+                    from dataclasses import replace as _replace
+                    card = _replace(card, explanation=ux.body)
+            self.panel.setTaskCard(card)
+            self._current_workflow_state = state
+            self._refresh_header(session, state, video, track)
+        except Exception as error:  # 投影是辅助信息，失败只降级显示
+            logger.warning("workflow projection failed: %s", error)
+            self.panel.setTaskCard(None)
+
+    def _refresh_header(self, session, state, video, track) -> None:
+        window = self.window
+        project_name = session.project.name
+        video_name = video.display_name if video is not None else "No video"
+        track_name = track.name if track is not None else "No track"
+        zone = "—"
+        if video is not None:
+            timeline = next(
+                (t for t in session.project.timelines
+                 if t.video_id == video.video_id), None)
+            if timeline is not None:
+                start_s = timeline.working_zone[0] / timeline.fps_nominal
+                end_s = timeline.working_zone[1] / timeline.fps_nominal
+                zone = f"{start_s:.1f}–{end_s:.1f} s"
+        saved = "saved" if not session.is_dirty else "unsaved changes"
+        context = (f"Project: {project_name} · Video: {video_name} · "
+                   f"Object: {track_name} · Range: {zone} · {saved}")
+
+        traj = state.trajectory
+        if traj.active_label:
+            trajectory_text = (f"Current trajectory: {traj.active_label} AI "
+                               f"+ {traj.manual_count} manual position(s)")
+        elif traj.manual_count:
+            trajectory_text = f"Current trajectory: manual only ({traj.manual_count} position(s))"
+        else:
+            trajectory_text = "Current trajectory: —"
+        if traj.candidate is not None:
+            trajectory_text += f"   ·   Preview: {traj.candidate.label} (not adopted)"
+        if state.execution.busy:
+            kind = state.execution.kind.replace("_", " ")
+            window.workflowHeader.setTaskStrip(
+                f"{track_name}: {kind} in progress; charts keep the current trajectory")
+        else:
+            window.workflowHeader.setTaskStrip("")
+        window.workflowHeader.setStatus(context, trajectory_text, state.analysis.state)
+        window.workflowHeader.setLimitations(state.analysis.limitations)
+
+    # --- C2：系统计划 → 显式执行（与 Advanced 同一入口与校验）---
+
+    def _learning_plan(self, session, track_id, runs):
+        from ai_physics_tracker.application.workflow_projection import (
+            default_resume_source,
+            recommended_learning_plan,
+        )
+        completed = any(
+            r.track_id == track_id and r.task_type == "train"
+            and r.status == "completed" for r in runs)
+        resume_source = default_resume_source(session, track_id, runs)
+        recommendation = None
+        if completed:
+            recommendation = self._advisor_recommendation(session, track_id, runs)
+        return recommended_learning_plan(
+            recommendation, first_training=not completed,
+            resume_source_run_id=resume_source,
+            default_epochs=self.panel.epochsSpinBox.value(),
+            default_batch=self.panel.batchSizeSpinBox.value(),
+        )
+
+    def _confirm_fixed_check_set(self, session, track_id) -> None:
+        """C1：无有效检查集时预选并请用户确认；KEEP 时停用失效旧集并 freeze。
+
+        P6R-03：被 train run 引用的旧集不删除，只停用（保留历史标签溯源）。
+        """
+        from ai_physics_tracker.application.workflow_projection import (
+            preselect_fixed_check_frames,
+        )
+        from ai_physics_tracker.gui.fixed_check_dialog import (
+            RESULT_CHOOSE,
+            RESULT_KEEP,
+            FixedCheckConfirmDialog,
+        )
+
+        ref_state = session.get_refinement_state(track_id)
+        active_series = ref_state.active_series
+        series_valid = session.validate_active_validation_series(track_id)[0]
+        if active_series is not None and series_valid:
+            return  # 已有有效集合，直接复用
+        manual_frames = tuple(p.frame_index for p in session.manual_points(track_id))
+        preselect = preselect_fixed_check_frames(manual_frames)
+        if not preselect:
+            return  # 标签不足（<4）：不建检查集，学习走无比较路径
+        dialog = FixedCheckConfirmDialog(preselect, len(manual_frames), self.window)
+        dialog.frameJumpRequested.connect(self.window.jumpToFrame)
+        dialog.exec()
+        if dialog.result_choice == RESULT_KEEP:
+            if active_series is not None:
+                session.set_active_validation_series(track_id, None)
+            session.create_validation_series(track_id, "Fixed check frames", preselect)
+            self.window.statusBar().showMessage(
+                f"Kept {len(preselect)} fixed-check frame(s)")
+        elif dialog.result_choice == RESULT_CHOOSE:
+            from ai_physics_tracker.gui.validation_dialog import ManageValidationDialog
+
+            ManageValidationDialog(session, track_id, self.window).exec()
+        # skip：沿用无 fixed validation 的能力，不建立虚假基准
+
+    def _start_learning_with_system_plan(self, session, track_id, runs) -> None:
+        """C1+C2：必要时确认预选检查帧，然后把系统计划写入表单并启动。"""
+        self._confirm_fixed_check_set(session, track_id)
+
+        plan = self._learning_plan(session, track_id, session.tracking_runs())
+        self.panel.setTrainingMode(plan.training_mode)
+        self.panel.epochsSpinBox.setValue(plan.epochs)
+        self.panel.batchSizeSpinBox.setValue(plan.batch_size)
+        if plan.training_mode == "resume":
+            self.panel.setSelectedTrainingRun(plan.resume_from_run_id)
+        self._context_key = None
+        self.train()
+
+    def _generate_trajectory_with_latest_model(self, session, track_id, runs) -> None:
+        """生成轨迹绑定本目标最新完成的模型，不让用户在列表里挑（§12.1）。"""
+        latest_train = next(
+            (r for r in reversed(runs)
+             if r.track_id == track_id and r.task_type == "train"
+             and r.status == "completed" and r.model_snapshot),
+            None)
+        if latest_train is None:
+            self.panel.setActivity("Cannot generate: no completed learning run")
+            return
+        self.panel.setSelectedTrainingRun(latest_train.run_id)
+        self._context_key = None
+        self.infer()
+
+    def _jump_to_next_attention_frame(self, session, track_id) -> None:
+        """跳到下一个待标注/待审核画面（不创建任何数据）。"""
+        window = self.window
+        review = getattr(window, "reviewActions", None)
+        if review is not None and getattr(review, "busy", False):
+            return  # 审核队列自己负责导航
+        state = getattr(self, "_current_workflow_state", None)
+        if state is not None and state.trajectory.candidate is not None:
+            # 候选待审：打开审核队列（显式筛查入口）
+            candidate_run = state.trajectory.candidate.run_id
+            window.reviewActions.requestMining(candidate_run)
+            return
+        # 标注路径：跳到第一个无 manual 点的帧
+        manual_frames = {p.frame_index for p in session.manual_points(track_id)}
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        if track is None:
+            return
+        timeline = next(
+            (t for t in session.project.timelines if t.video_id == track.video_id),
+            None)
+        if timeline is None:
+            return
+        for frame in range(timeline.working_zone[0], timeline.working_zone[1] + 1):
+            if frame not in manual_frames:
+                window.jumpToFrame(frame)
+                return
+
+    def _adopt_candidate(self, session, track_id, facts) -> None:
+        """[采用此轨迹]：单次影响确认 + 既有原子事务（R1 F4：不再叠加
+        history 入口的第二层 run-ID 确认；该确认保留给 history 路径）。"""
+        candidate_run_id = facts.candidate.run_id
+        manual_count = facts.manual_count
+        newline = "\n"
+        try:
+            if facts.has_active_result:
+                message = (
+                    f"Adopt {facts.candidate.label} for this object?{newline}{newline}"
+                    f"This replaces the currently adopted {facts.active_label} AI "
+                    f"result.{newline}{manual_count} manual point(s) stay and keep "
+                    f"priority.{newline}Charts will need an update afterwards.")
+                if not self._confirm_adopt(message):
+                    return
+                record = session.replace_active_infer_run(track_id, candidate_run_id)
+                self.window.statusBar().showMessage(
+                    f"Adopted {facts.candidate.label}: {record.point_count} active "
+                    f"points, {record.superseded_count} superseded by manual")
+            else:
+                message = (
+                    f"Adopt {facts.candidate.label} for this object?{newline}{newline}"
+                    f"{manual_count} manual point(s) stay and keep priority."
+                    f"{newline}Charts will need an update afterwards.")
+                if not self._confirm_adopt(message):
+                    return
+                record = session.activate_infer_run(track_id, candidate_run_id)
+                self.window.statusBar().showMessage(
+                    f"Adopted {facts.candidate.label}: {record.point_count} active "
+                    f"points, {record.superseded_count} superseded by manual")
+        except Exception as error:
+            self.panel.appendLog(
+                user_messages.activation_failure(str(error)).full_text())
+            self.panel.setActivity("Adoption failed — current trajectory unchanged")
+            return
+        self.window._refreshMarkers()
+        self.window._refreshHistoryButtons()
+        self._context_key = None
+        self.refresh()
+
+    def _confirm_adopt(self, message: str) -> bool:
+        from PySide6.QtWidgets import QMessageBox
+
+        # 测试环境（offscreen conftest）将 question 桩化为 Discard；这里用
+        # Yes/No 对话框，测试经 monkeypatch 控制回答
+        reply = QMessageBox.question(
+            self.window, "Adopt trajectory", message,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes)
+        return reply == QMessageBox.StandardButton.Yes
+
+    def _onCardAction(self, action_id: str) -> None:
+        """任务卡动作分发：全部走既有执行入口（与 Advanced 同一验证路径）。"""
+        window = self.window
+        session = window.analysisSession
+        if action_id == "view_analysis":
+            window.setWorkspace("analysis")
+            return
+        if action_id == "update_charts":
+            window.setWorkspace("analysis")
+            window.chartActions.recompute()
+            return
+        if action_id == "cancel_task":
+            if self.pending:
+                self.cancel()
+            elif window.frameSelectionActions.busy:
+                window.frameSelectionActions.cancel()
+            elif getattr(self.window, "reviewActions", None) and self.window.reviewActions.busy:
+                self.window.reviewActions.cancelMining()
+            return
+        if action_id == "pick_frames":
+            window.setWorkspace("acquire")
+            window.frameSelectionActions.requestSuggestion(10, "kmeans")
+            return
+        if action_id == "create_track":
+            window.addTrackButton.click()
+            return
+        if action_id == "save_project":
+            window.projectActions.save()
+            return
+        if action_id == "add_video":
+            window.projectActions.openVideo()
+            return
+        track_id = window.selectedTrackId
+        if session is None or track_id is None:
+            return
+        runs = session.tracking_runs()
+
+        if action_id == "confirm_check_frames":
+            window.setWorkspace("acquire")
+            self._confirm_fixed_check_set(session, track_id)
+            self._context_key = None
+            self.refresh()
+            return
+        if action_id in ("start_learning", "retry_learning", "continue_optimizing"):
+            window.setWorkspace("acquire")
+            self._start_learning_with_system_plan(session, track_id, runs)
+            return
+        if action_id == "generate_trajectory":
+            window.setWorkspace("acquire")
+            self._generate_trajectory_with_latest_model(session, track_id, runs)
+            return
+        if action_id == "inspect_trajectory":
+            window.setWorkspace("acquire")
+            from ai_physics_tracker.application.workflow_projection import (
+                trajectory_facts,
+            )
+            facts = trajectory_facts(session, track_id, runs)
+            # 检查对象 = 当前候选（设计 §6.5“检查对象只有一个”），
+            # 绝不能落到注册序最旧的 completed infer run（R1 F1）
+            if facts.candidate is not None:
+                self.window.reviewActions.requestMining(facts.candidate.run_id)
+            else:
+                latest_infer = next(
+                    (r for r in reversed(runs)
+                     if r.track_id == track_id and r.task_type == "infer"
+                     and r.status == "completed"), None)
+                if latest_infer is not None:
+                    self.window.reviewActions.requestMining(latest_infer.run_id)
+            return
+        if action_id == "adopt_trajectory":
+            from ai_physics_tracker.application.workflow_projection import (
+                trajectory_facts,
+            )
+            facts = trajectory_facts(session, track_id, runs)
+            if facts.candidate is not None:
+                self._adopt_candidate(session, track_id, facts)
+            return
+        if action_id == "label_frame":
+            self._jump_to_next_attention_frame(session, track_id)
+            return
+        logger.warning("unhandled task-card action: %s", action_id)
 
     def train(self) -> None:
         # 仅 Resume 模式携带 source；Restart 带选中项会被 prepare 拒绝（review Blocker 1）
@@ -257,7 +607,7 @@ class TrackingActions(QObject):
             self.window._refreshMarkers()
             self.window._refreshHistoryButtons()
         except Exception as error:
-            QMessageBox.critical(self.window, "Activation Failed", str(error))
+            QMessageBox.critical(self.window, "Activation Failed", user_messages.activation_failure(str(error)).full_text())
         self._context_key = None
         self.refresh()
 
@@ -307,7 +657,7 @@ class TrackingActions(QObject):
             self.window._refreshMarkers()
             self.window._refreshHistoryButtons()
         except Exception as error:
-            QMessageBox.critical(self.window, "Replacement Failed", str(error))
+            QMessageBox.critical(self.window, "Replacement Failed", user_messages.activation_failure(str(error)).full_text())
         self._context_key = None
         self.refresh()
 
@@ -343,7 +693,7 @@ class TrackingActions(QObject):
             self.window._refreshMarkers()
             self.window._refreshHistoryButtons()
         except Exception as error:
-            QMessageBox.critical(self.window, "Clear Failed", str(error))
+            QMessageBox.critical(self.window, "Clear Failed", user_messages.activation_failure(str(error)).full_text())
         self._context_key = None
         self.refresh()
 
@@ -498,13 +848,23 @@ class TrackingActions(QObject):
         if run and run.status in {"pending", "running"}:
             self._session.update_tracking_run(mark_run_failed(run, error))
         self.panel.appendLog(error)
+        # Phase 5.7 §13：失败结论回答三问；原始错误进日志，卡片给恢复出口。
+        # ux 标题作为 activity 文案，后续 _finish(f"Failed: …") 调用点替换为该标题。
+        if self._request.run.task_type == "train":
+            self._ux_failure = user_messages.training_failure(
+                error, unsaved_changes=self._session.is_dirty)
+        else:
+            self._ux_failure = user_messages.inference_failure(error)
+        for line in (*self._ux_failure.body, f"Next: {self._ux_failure.next_hint}"):
+            self.panel.appendLog(line)
         if self._handle is not None and self._handle.is_alive():
             self._failure_error = error
             self._cancelling = True
             self.panel.setActivity("Stopping failed task")
             self._future = self._executor.submit(cancel_tracking_job, self._handle, self._request)
             return
-        self._finish(f"Failed: {error}")
+        self._finish(getattr(self, "_ux_failure", None) and self._ux_failure.title
+                     or f"Failed: {error}")
 
     def cancel(self, after: Callable | None = None) -> None:
         if not self.pending:
@@ -516,6 +876,7 @@ class TrackingActions(QObject):
         if self.cancelling:
             return
         self._cancelling = True
+        self._context_key = None  # 卡片立即切到“正在停止”（R1 F7b）
         self.panel.setActivity("Cancelling")
         if self._handle is None:
             start = self._start_future
@@ -541,7 +902,13 @@ class TrackingActions(QObject):
         run = next((r for r in self._session.tracking_runs() if r.run_id == self._request.run.run_id), None)
         if run and run.status in {"pending", "running"}:
             self._session.update_tracking_run(mark_run_cancelled(run))
-        self._finish(f"Failed: {self._failure_error}" if self._failure_error else "Cancelled")
+        if self._failure_error:
+            ux = getattr(self, "_ux_failure", None) or user_messages.inference_failure(
+                self._failure_error)
+            self._finish(ux.title)
+        else:
+            self._finish(user_messages.task_cancelled(
+                self._request.run.task_type).title)
 
     def _finish(self, message: str) -> None:
         session = self._session
@@ -560,6 +927,17 @@ class TrackingActions(QObject):
             self.window.analysisChanged.emit()
             if message == "Completed":
                 self.window.statusBar().showMessage("AI task completed. Recompute charts to use updated observations.")
+        if message == "Completed" and self.window.analysisSession is session \
+                and finished is not None and finished.task_type == "train":
+            evaluation = finished.extra_fields.get("evaluation")
+            if isinstance(evaluation, dict) and evaluation.get("status") == "unavailable":
+                from ai_physics_tracker.application.user_messages import (
+                    evaluation_unavailable,
+                )
+                ux = evaluation_unavailable()
+                self.panel.setActivity(ux.title)
+                for line in (*ux.body, f"Next: {ux.next_hint}"):
+                    self.panel.appendLog(line)
         if message == "Completed" and self.window.analysisSession is session:
             # 训练/推理结果已提交：落盘一次，防止未手存丢失（用户实测需求）
             self.window.projectActions.autosave("AI task completed")

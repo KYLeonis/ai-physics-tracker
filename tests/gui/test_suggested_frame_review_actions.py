@@ -281,7 +281,10 @@ def test_mining_cancellation_neutral_status_ac9(test_window: MainWindow, tmp_pat
 
     assert not window.reviewActions.busy
     assert fake_handle.cancelled
-    assert panel.mineStatusLabel.text() == "Mining cancelled"
+    # Phase 5.7 §13：取消是中性结论（三问文案），不出现 Failed 前缀
+    status = panel.mineStatusLabel.text()
+    assert status.startswith("Checking cancelled")
+    assert "intact" in status and not status.startswith("Failed")
     assert "Failed" not in panel.mineStatusLabel.text()
 
 
@@ -299,8 +302,12 @@ def test_frame_selection_cancellation_neutral_status_f4(test_window: MainWindow,
     qtbot.waitUntil(lambda: window.frameSelectionActions._handle is fake_handle, timeout=3000)
 
     assert window.frameSelectionActions.busy
-    assert panel.suggestCancelButton.isVisible()
+    # Phase 5.7：运行中的取消主入口是任务卡主动作（Cancel）；折叠表单内的
+    # 按钮保持“未显式隐藏”
+    assert not panel.suggestCancelButton.isHidden()
     assert panel.suggestCancelButton.isEnabled()
+    card = window.trackingActions.panel.cardPrimaryButton
+    assert card.text() == "Cancel"
 
     # 点击取消
     panel.suggestCancelButton.click()
@@ -487,7 +494,9 @@ def test_accept_and_skip_gui_contract_ac3(test_window: MainWindow, tmp_path: Pat
     assert summary.pending_count == 0
     assert summary.accepted_count == 1
     assert summary.skipped_count == 1
-    assert "Review Complete" in panel.reviewProgressLabel.text()
+    # Phase 5.7：完成行给构成（skipped 明示 left undecided）
+    assert "Processed" in panel.reviewProgressLabel.text()
+    assert "left undecided" in panel.reviewProgressLabel.text()
 
 
 def test_correct_mode_toggle_and_esc_cancel_ac4(test_window: MainWindow, tmp_path: Path):
@@ -1010,7 +1019,9 @@ def test_empty_mining_result_reports_no_difficult_frames(test_window: MainWindow
     QTest.qWait(50)
 
     text = panel.mineStatusLabel.text()
-    assert "No difficult frames found" in text
+    # Phase 5.7 §13：空结果有边界（不证明整段准确）与下一步
+    assert "No new frames to check" in text
+    assert "does not prove every position is accurate" in text
     assert "Failed" not in text
     assert not window.reviewActions.busy
     # 空批次已写入会话但无候选：控制器不崩、无“当前候选”
