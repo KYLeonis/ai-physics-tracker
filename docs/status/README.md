@@ -1,6 +1,6 @@
 # 状态与计划草案
 
-- `current.md`：当前阶段、阻塞和下一步的唯一入口；每个会话结束同步。
+- `current.md`：当前阶段、阻塞和下一步的唯一入口；每个会话结束同步。它是**运行时入口而非历史日志**：Active Constraints / Relevant Risks 只保留仍影响下一步的内容，历史细节归档于 roadmap / reviews / git（结构见 `docs/workflow.md` §12）。
 - `phase-<N>-plan.md`：整个 Phase 在实现前的总计划草案，承接 requirements/roadmap，定义
   Subphase 顺序、依赖、验收与决策门；用户确认后再为首个 Subphase 建分支和 Issue。
 - `phase-<N.M>-plan.md`：尚待用户确认的 Subphase mini-plan 草案，按
