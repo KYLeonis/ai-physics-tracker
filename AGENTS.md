@@ -136,7 +136,7 @@ Explore → 需要时 Plan（subphase mini-plan：Goal / Context Pack / Scope / 
 - 默认分支：`main`
 - 远程：`origin` → `KYLeonis/ai-physics-tracker`（GitHub，Public；2026-09-18 核实，早期为 Private）
 - 认证已配置完成（2026-08-27）：HTTPS 凭据存于 macOS 钥匙串（OAuth token，scope: repo/workflow），`git push` / `git pull` 可直接使用；如凭据失效，通过 GitHub OAuth 设备授权流程重新获取（在 GitHub → Settings → Applications 中可查看/撤销）。
-- 提交到 `main` 前在工作分支开发（`feat/p<phase>.<sub>-<topic>`，如 `feat/p1.1-data-model`；杂项用 `fix/<topic>` / `docs/<topic>`）；小规模文档同步可直接提交到 `main`。分支生命周期 = 一个 Subphase，收尾时 `--no-ff` 合并回 `main`（见 `docs/workflow.md` §10）。
+- 提交到 `main` 前在工作分支开发（`feat/p<phase>.<sub>-<topic>`，如 `feat/p1.1-data-model`；杂项用 `fix/<topic>` / `docs/<topic>`）；小规模文档同步可直接提交到 `main`。分支生命周期 = 一个 Subphase，收尾时 `--no-ff` 合并回 `main`（见 `docs/workflow.md` §10）；唯一例外是论文发布线 `publication/*`（长期分支，策略以 `publication/README.md` 为准）。
 - 改动按风险分两档流程（判定与细则见 `docs/workflow.md` §10.2，在 mini-plan 的 Review Gate 提前声明）：**Normal-risk**（局部 GUI、文案、小型内部重构、明确 bugfix、测试改进）走 branch → slices → verify → `--no-ff` merge；**High-risk**（schema/持久化、公共数据契约、坐标/时间语义、数值算法与科学计算、拟合/不确定度、Undo/Redo 事务、AI 结果激活、后台生命周期/并发、打包/迁移）预声明 Independent Review，并建议以 PR 作为完整 diff 的观察容器。PR 始终可选，不做强制审批。
 - main 分支保护：当前未启用（2026-09-18 核实）；建议最低配置为 prohibit force push / prohibit branch deletion，Release Mode（Phase 9）再评估 required CI / required PR。修改 GitHub settings 由用户人工执行，Agent 不代改。
 - **每个 Phase 的收尾提交完成后必须 push 到 origin**，保证远程始终反映最新项目状态。

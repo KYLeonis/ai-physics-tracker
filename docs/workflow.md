@@ -209,9 +209,11 @@ Implementation Agent
 | Review | `docs/reviews/phase-X.Y-review.md` | 触发独立 review 的 subphase 一个文件（§6.2）；Issue Result 只链接并总结 Verdict |
 | Subphase 集成 | merge `--no-ff` → `main` → push | PR 可选；High-risk 建议以 PR 作为完整 diff 容器（§10.2） |
 
-**明确不使用**：Project Board、Git Flow、长期存活的分支、强制 PR、CODEOWNERS、大量标签 / 状态管理。
+**明确不使用**：Project Board、Git Flow、长期存活的分支（唯一例外见下）、强制 PR、CODEOWNERS、大量标签 / 状态管理。
 
 原则：GitHub 帮我们保存历史和开发状态，而不是增加管理负担。单人项目中 `main` 即集成分支；分支的生命周期 = 一个 subphase。
+
+**论文发布线例外**：`publication/*`（当前 `publication/ejp-damped-pendulum`）是唯一许可的长期分支，用于论文复现基线、审稿修订与出版归档；其 scope、同步与发布策略以 `publication/README.md` 为 authoritative owner。通用缺陷修复仍按正常流程在 `main` 上完成并验证，再受控同步（cherry-pick / merge）到发布线；发布线永不反向驱动 `main` 的范围。
 
 ### 10.2 风险分级流程
 
@@ -293,6 +295,7 @@ branch → slices → verification → Independent Review → fixes → re-revie
 | 不可逆架构决策 | ADR（`docs/decisions/`） |
 | Review finding 生命周期 | Review Record（`docs/reviews/`） |
 | Slice 实现历史 | Git commits |
+| 论文发布线（`publication/*`）策略 | `publication/README.md` |
 | 自动验证 | CI / tests |
 | GUI 真实体验 | Human Review |
 
