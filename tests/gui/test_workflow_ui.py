@@ -63,9 +63,11 @@ def test_acquire_panel_fits_1024_by_640_without_horizontal_clipping(
         qtbot, synthetic_video_path, tmp_path, _FakeRunner(_FakeHandle()))
     window.resize(1024, 640)
     window.show()
-    qtbot.wait(30)
     panel = window.trackingActions.panel
     scroll = panel.widget()
+    # resizeDocks 由 showEvent 的 singleShot 调度；Windows CI 的 Qt event loop
+    # 可能超过固定 30 ms 才应用目标宽度，因此等待可观察布局事实。
+    qtbot.waitUntil(lambda: panel.width() >= 280, timeout=1000)
 
     assert 280 <= panel.width() <= 430
     assert scroll.horizontalScrollBar().maximum() == 0
