@@ -56,12 +56,21 @@ ACTION_START_LEARNING = "start_learning"      # 开始学习（C2 显式执行�
 ACTION_CONFIRM_CHECK_FRAMES = "confirm_check_frames"  # 查看/重建固定检查帧（§10 失效行）
 ACTION_GENERATE_TRAJECTORY = "generate_trajectory"
 ACTION_INSPECT_TRAJECTORY = "inspect_trajectory"
+ACTION_RECHECK_TRAJECTORY = "recheck_trajectory"
 ACTION_ADOPT_TRAJECTORY = "adopt_trajectory"
 ACTION_CONTINUE_OPTIMIZING = "continue_optimizing"
 ACTION_VIEW_ANALYSIS = "view_analysis"
 ACTION_UPDATE_CHARTS = "update_charts"
 ACTION_CANCEL_TASK = "cancel_task"
 ACTION_RETRY_LEARNING = "retry_learning"
+ACTION_REVIEW_ACCEPT = "review_accept"
+ACTION_REVIEW_CORRECT = "review_correct"
+ACTION_REVIEW_SKIP = "review_skip"
+ACTION_REVIEW_PREVIOUS = "review_previous"
+ACTION_REVIEW_NEXT = "review_next"
+ACTION_FINISH_CHECKING = "finish_checking"
+ACTION_CANCEL_PLACEMENT = "cancel_placement"
+ACTION_SET_SCALE = "set_scale"
 
 # --- 分析可用性四态（设计 §11.1）---
 
@@ -71,6 +80,7 @@ ANALYSIS_NEEDS_UPDATE = "needs_update"
 ANALYSIS_LATEST = "latest"
 
 _MIN_LABELS_FOR_TRAINING = 3
+NO_SCALE_LIMITATION = "no scale set — positions and charts are in pixels"
 
 
 @dataclass(frozen=True)
@@ -81,6 +91,13 @@ class ExecutionInput:
     frame_selection: bool = False
     mining: bool = False
     cancelling: bool = False
+    correcting: bool = False
+    paused_review_run_id: UUID | None = None
+    review_index: int | None = None
+    review_total: int = 0
+    review_frame_index: int | None = None
+    review_can_previous: bool = False
+    review_can_next: bool = False
 
     @property
     def busy(self) -> bool:
@@ -95,6 +112,7 @@ class CandidateFacts:
     version: int                          # 完成顺序的稳定版本号（第 N 版）
     pending_review: int = 0
     has_review_batch: bool = False
+    screening_completed: bool = False
     reviewed_count: int = 0
     corrected_count: int = 0
     skipped_count: int = 0
@@ -249,11 +267,16 @@ def trajectory_facts(
         latest = completed_infer[-1]
         if active_run_id is None or latest.run_id != active_run_id:
             summary = _review_summary(session, latest.run_id)
+            review_state = session.get_suggested_frame_review(latest.run_id)
             candidate = CandidateFacts(
                 run_id=latest.run_id,
                 version=len(completed_infer),
                 pending_review=summary.pending_count,
                 has_review_batch=summary.total_candidates > 0,
+                screening_completed=(
+                    review_state is not None
+                    and review_state.active_batch is not None
+                ),
                 reviewed_count=summary.total_reviewed,
                 corrected_count=summary.corrected_count,
                 skipped_count=summary.skipped_count,
@@ -285,22 +308,29 @@ def analysis_facts(session: ProjectSession, track_id: UUID | None) -> AnalysisFa
     if timeline is None:
         return AnalysisFacts(state=ANALYSIS_NOT_COMPUTABLE, reason="no timeline")
 
+    limitations: list[str] = []
+    if session.active_calibration(track.video_id) is None:
+        limitations.append(NO_SCALE_LIMITATION)
+
     points = session.effective_points(track_id)
     if not points:
         return AnalysisFacts(
             state=ANALYSIS_NOT_COMPUTABLE,
-            reason="no effective observations on this track")
+            reason="no effective observations on this track",
+            limitations=tuple(limitations))
 
     zone_start, zone_end = timeline.working_zone
     zone_frames = zone_end - zone_start + 1
     effective = len({p.frame_index for p in points})
-    limitations: list[str] = []
+    has_data_limitations = False
     if effective < zone_frames:
+        has_data_limitations = True
         limitations.append(
             f"{zone_frames - effective} of {zone_frames} frames in the working zone "
             "have no effective observation")
     pending = _active_pending_review(session, track_id)
     if pending:
+        has_data_limitations = True
         limitations.append(
             f"{pending} suggested frame(s) of the current result await review")
 
@@ -312,7 +342,7 @@ def analysis_facts(session: ProjectSession, track_id: UUID | None) -> AnalysisFa
     if not derived_valid:
         state = ANALYSIS_NEEDS_UPDATE
         reason = None if derived_present else "charts have not been computed yet"
-    elif limitations:
+    elif has_data_limitations:
         state, reason = ANALYSIS_PARTIAL, None
     else:
         state, reason = ANALYSIS_LATEST, None
@@ -363,9 +393,19 @@ def project_workflow_state(
         completed_infer = len(completed_infer_runs)
         if completed_train_runs:
             latest_train = completed_train_runs[-1]
-            latest_infer = completed_infer_runs[-1] if completed_infer_runs else None
-            learned_not_generated = latest_infer is None or (
-                latest_train.created_at > latest_infer.created_at)
+            matching_infer = any(
+                run.config.get("training_run_id") == str(latest_train.run_id)
+                for run in completed_infer_runs
+            )
+            # 早期项目可能没有记录 lineage；仅在所有 infer 都缺少该字段时
+            # 用创建顺序兼容。字段存在但不匹配时绝不猜测。
+            legacy_infer = (
+                completed_infer_runs
+                and all("training_run_id" not in run.config
+                        for run in completed_infer_runs)
+                and completed_infer_runs[-1].created_at > latest_train.created_at
+            )
+            learned_not_generated = not (matching_infer or legacy_infer)
 
         # 最近一次相关训练尝试失败且其后无成功 → 恢复卡
         relevant = [
@@ -490,21 +530,67 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             secondary=(
                 ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis",
                            enabled=traj.has_effective_input),
+                *_scale_actions(state),
             ),
         )
 
     # 4. 最新候选有待审核帧
-    if traj.candidate is not None and traj.candidate.pending_review > 0:
+    if (traj.candidate is not None and traj.candidate.pending_review > 0
+            and state.execution.paused_review_run_id != traj.candidate.run_id):
         cand = traj.candidate
+        if state.execution.correcting:
+            return TaskCard(
+                mode=MODE_REVIEWING,
+                title=f"Current: correcting {cand.label} (not adopted)",
+                explanation=(
+                    "Click the object in the video to save its manual position.",
+                    "Cancel placement leaves this frame unchanged.",),
+                primary=ActionSpec(ACTION_CANCEL_PLACEMENT, "Cancel placement (Esc)"),
+                secondary=(
+                    ActionSpec(ACTION_FINISH_CHECKING, "Finish checking"),
+                ),
+                evidence=(
+                    f"{cand.pending_review} frame(s) remain undecided in this batch.",
+                ),
+            )
         return TaskCard(
             mode=MODE_REVIEWING,
-            title="Current: review trajectory",
+            title=(
+                f"Current: checking {cand.label} (not adopted) · suggested frame "
+                f"{state.execution.review_index + 1} of {state.execution.review_total} · "
+                f"video frame {state.execution.review_frame_index}"
+                if state.execution.review_index is not None
+                and state.execution.review_frame_index is not None
+                else f"Current: checking {cand.label} (not adopted) · "
+                     f"{cand.reviewed_count} of "
+                     f"{cand.reviewed_count + cand.pending_review} frames"
+            ),
             explanation=(
-                f"{cand.pending_review} suggested frame(s) of the new trajectory "
-                f"({cand.label}, not adopted) still need your judgement.",
+                f"{cand.pending_review} suggested frame(s) remain. Check marks wrong "
+                "positions before adoption; adopting later makes this the trajectory "
+                "used by charts.",
                 "Accept = position is fine · Correct = place the manual position · "
                 "Skip = leave undecided."),
-            primary=ActionSpec(ACTION_LABEL_FRAME, "Review next frame"),
+            primary=ActionSpec(ACTION_REVIEW_ACCEPT, "Accept position & next"),
+            secondary=(
+                ActionSpec(ACTION_REVIEW_CORRECT, "Correct position"),
+                ActionSpec(ACTION_REVIEW_SKIP, "Skip this frame & next"),
+                ActionSpec(
+                    ACTION_REVIEW_PREVIOUS,
+                    "Previous suggested frame",
+                    enabled=state.execution.review_can_previous,
+                    reason="This is the first suggested frame."
+                    if not state.execution.review_can_previous else None,
+                ),
+                ActionSpec(
+                    ACTION_REVIEW_NEXT,
+                    "Next suggested frame",
+                    enabled=state.execution.review_can_next,
+                    reason="This is the last suggested frame."
+                    if not state.execution.review_can_next else None,
+                ),
+                ActionSpec(ACTION_FINISH_CHECKING, "Finish checking"),
+            ),
             evidence=(
                 f"Candidate {cand.label}: {cand.reviewed_count} reviewed "
                 f"({cand.accepted_count} accepted · {cand.corrected_count} corrected · "
@@ -571,6 +657,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 f"{traj.manual_count} manual example(s) ready. The system prepares "
                 "the plan (fixed-check frames, epochs, batch, device); you start it.",),
             primary=ActionSpec(ACTION_START_LEARNING, "Start learning"),
+            secondary=_scale_actions(state),
             evidence=_learning_evidence(state),
         )
 
@@ -597,6 +684,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 "The current trajectory can be analyzed; charts are not up to "
                 "date with it yet.",),
             primary=ActionSpec(ACTION_UPDATE_CHARTS, "Update charts"),
+            secondary=_scale_actions(state),
         )
     return TaskCard(
         mode=MODE_ANALYZE,
@@ -605,6 +693,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
         primary=ActionSpec(
             ACTION_VIEW_ANALYSIS, "View charts", enabled=traj.has_effective_input,
             reason=None if traj.has_effective_input else "no effective observations"),
+        secondary=_scale_actions(state),
     )
 
 
@@ -648,6 +737,36 @@ def _candidate_decision_card(state: WorkflowState) -> TaskCard:
         evidence.append(comparison.detail)
         if comparison.limitation:
             evidence.append(comparison.limitation)
+    scale_actions = _scale_actions(state)
+    pixel_evidence = (
+        ("Positions remain in pixels until a scale is set.",)
+        if scale_actions else ()
+    )
+    evidence.extend(pixel_evidence)
+    if cand.screening_completed and not cand.has_review_batch:
+        title = "Current: trajectory screening complete — no flagged frames"
+        explanation = (
+            "No frame clearly crossed the difficult-frame screening thresholds.",
+            "This does not prove every position is accurate; spot-check the visible "
+            "trajectory, then decide whether to adopt it for analysis.",
+        )
+        secondary = [
+            ActionSpec(ACTION_RECHECK_TRAJECTORY, "Run screening again"),
+        ]
+        if traj.has_active_result:
+            secondary.append(ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis"))
+        secondary.extend(scale_actions)
+        evidence.append(
+            "Screening completed successfully; it did not create an empty review task."
+        )
+        return TaskCard(
+            mode=MODE_ADOPT,
+            title=title,
+            explanation=explanation,
+            primary=ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt for analysis"),
+            secondary=tuple(secondary),
+            evidence=tuple(evidence),
+        )
     if not traj.has_active_result:
         return TaskCard(
             mode=MODE_ADOPT,
@@ -655,9 +774,15 @@ def _candidate_decision_card(state: WorkflowState) -> TaskCard:
             explanation=(
                 f"A first AI trajectory ({cand.label}) is ready and not used "
                 "for analysis yet.",
-                "Check its evidence, then adopt it explicitly.",),
-            primary=ActionSpec(ACTION_INSPECT_TRAJECTORY, "Check this trajectory"),
-            secondary=(ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt this trajectory"),),
+                "Check marks wrong positions; adopting makes it the trajectory "
+                "your charts use.",),
+            primary=ActionSpec(
+                ACTION_INSPECT_TRAJECTORY,
+                "Check this trajectory (mark wrong positions)"),
+            secondary=(
+                ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt for analysis"),
+                *scale_actions,
+            ),
             evidence=tuple(evidence),
         )
     conclusion = comparison.conclusion if comparison else COMPARISON_INCOMPARABLE
@@ -667,8 +792,11 @@ def _candidate_decision_card(state: WorkflowState) -> TaskCard:
             comparison.detail if comparison else "New trajectory is ready.",
             "Adopting replaces the current result; manual positions stay.",
         )
-        primary = ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt this trajectory")
-        secondary = (ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis"),)
+        primary = ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt for analysis")
+        secondary = (
+            ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis"),
+            *scale_actions,
+        )
     elif conclusion in (COMPARISON_FLAT, COMPARISON_WORSE):
         head = ("No clear improvement" if conclusion == COMPARISON_FLAT
                 else "Fixed-check error increased")
@@ -680,7 +808,8 @@ def _candidate_decision_card(state: WorkflowState) -> TaskCard:
         primary = ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis")
         secondary = (
             ActionSpec(ACTION_ADOPT_TRAJECTORY,
-                       "Adopt this trajectory anyway"),
+                       "Adopt for analysis anyway"),
+            *scale_actions,
         )
     else:  # incomparable
         title = "Current: new trajectory ready — cannot compare"
@@ -689,10 +818,13 @@ def _candidate_decision_card(state: WorkflowState) -> TaskCard:
              else "There is no qualified fixed-check comparison."),
             "Charts keep using the current adopted trajectory.",
         )
-        primary = ActionSpec(ACTION_INSPECT_TRAJECTORY, "Check this trajectory")
+        primary = ActionSpec(
+            ACTION_INSPECT_TRAJECTORY,
+            "Check this trajectory (mark wrong positions)")
         secondary = (
-            ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt this trajectory"),
+            ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt for analysis"),
             ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis"),
+            *scale_actions,
         )
     return TaskCard(
         mode=MODE_ADOPT,
@@ -702,6 +834,13 @@ def _candidate_decision_card(state: WorkflowState) -> TaskCard:
         secondary=secondary,
         evidence=tuple(evidence),
     )
+
+
+def _scale_actions(state: WorkflowState) -> tuple[ActionSpec, ...]:
+    """未标定时给出直接入口；标定仍保持可选、可后置。"""
+    if NO_SCALE_LIMITATION not in state.analysis.limitations:
+        return ()
+    return (ActionSpec(ACTION_SET_SCALE, "Set scale & coordinate system"),)
 
 
 def _learning_evidence(state: WorkflowState) -> tuple[str, ...]:

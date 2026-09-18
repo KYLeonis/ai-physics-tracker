@@ -1,10 +1,12 @@
 """Phase 5.7 — 工作区切换、常驻状态头与任务卡的 GUI 冒烟（offscreen）。
 
-重点测状态与语义（卡片内容、工作区可见性、导航不改数据），不测像素布局。
+重点测状态与语义，并覆盖小窗口下关键动作可达性；不做视觉像素比对。
 """
 
 from pathlib import Path
+from uuid import uuid4
 
+from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
@@ -52,6 +54,34 @@ def test_three_workspaces_switch_without_touching_data(
     window.setWorkspace("acquire")
     assert window.trackingActions.panel.isVisible()
 
+
+def test_acquire_panel_fits_1024_by_640_without_horizontal_clipping(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path
+) -> None:
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+
+    window, _session, _track_id = _opened_window(
+        qtbot, synthetic_video_path, tmp_path, _FakeRunner(_FakeHandle()))
+    window.resize(1024, 640)
+    window.show()
+    panel = window.trackingActions.panel
+    scroll = panel.widget()
+    # resizeDocks 由 showEvent 的 singleShot 调度；Windows CI 的 Qt event loop
+    # 可能超过固定 30 ms 才应用目标宽度，因此等待可观察布局事实。
+    qtbot.waitUntil(lambda: panel.width() >= 280, timeout=1000)
+
+    assert 280 <= panel.width() <= 430
+    assert scroll.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    assert not scroll.horizontalScrollBar().isVisible()
+    assert panel.cardPrimaryButton.isVisible()
+
+    panel.advancedToggleButton.click()
+    qtbot.wait(20)
+    # Qt may retain a few style-dependent logical pixels in scrollbar range even
+    # when the bar is intentionally disabled; the user-visible contract is that
+    # horizontal scrolling never appears and controls reflow inside the viewport.
+    assert not scroll.horizontalScrollBar().isVisible()
+    assert scroll.verticalScrollBar().maximum() > 0
 
 def test_header_shows_context_and_card_follows_projection(
     qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path
@@ -144,6 +174,7 @@ def test_start_learning_card_confirms_fixed_check_then_trains(
     assert tuple(state.active_series.frame_indices) == tuple(captured["frames"])
 
     # C2：系统计划写入表单（restart/50/8）并启动（同一执行入口）
+    qtbot.waitUntil(lambda: window.trackingActions.runner.calls == 1, timeout=3000)
     assert window.trackingActions.runner.calls == 1
     assert panel.trainingMode() == "restart"
     assert panel.epochsSpinBox.value() == 50
@@ -254,7 +285,7 @@ def test_adopt_card_replaces_after_confirmation_and_history_only_previews(
     window.trackingActions.refresh()
 
     # better 结论驱动主动作 = 采用；标题明示固定检查改善
-    assert panel.cardPrimaryButton.text() == "Adopt this trajectory"
+    assert panel.cardPrimaryButton.text() == "Adopt for analysis"
     assert "looks better" in panel.cardTitleLabel.text()
 
     # conftest 把 question 桩化为 Discard：确认被拒 → 不采用
@@ -306,11 +337,13 @@ def test_candidate_preview_does_not_pollute_charts(
     qtbot, synthetic_video_path, tmp_path
 ) -> None:
     """候选只登记 run，不进入 effective 投影与图表输入（ADR-0014 隔离）。"""
+    from dataclasses import replace
     from ai_physics_tracker.domain.tracking_run import (
         create_tracking_run,
         mark_run_completed,
     )
     from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+    from tests.test_workflow_projection import _fake_observations
 
     window, session, track_id = _opened_window(qtbot, synthetic_video_path,
                                                tmp_path, _FakeRunner(_FakeHandle()))
@@ -322,8 +355,35 @@ def test_candidate_preview_does_not_pollute_charts(
     derived_before = session.project.derived
 
     # 新候选（未激活）登记：completed infer run
-    candidate = create_tracking_run(_video_id(session, window), track_id, "infer",
-                                    engine="dlc", engine_version="mock")
+    candidate = create_tracking_run(
+        _video_id(session, window), track_id, "infer",
+        engine="dlc", engine_version="mock",
+        config={"min_confidence": 0.6},
+    )
+    _fake_observations(session, candidate)
+    run_dir = session.project_root / "data" / "engines" / str(candidate.run_id)
+    prediction_path = run_dir / "predictions.csv"
+    video = session.project.videos[0]
+    rows = [
+        "scorer,MockDLC,MockDLC,MockDLC",
+        "bodyparts,target,target,target",
+        "coords,x,y,likelihood",
+    ]
+    rows.extend(
+        f"{frame_index},{20.0 + frame_index},{30.0 + frame_index},"
+        f"{0.2 if frame_index < 2 else 0.9}"
+        for frame_index in range(video.frame_count)
+    )
+    prediction_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    prediction_stat = prediction_path.stat()
+    candidate = replace(candidate, extra_fields={
+        "observations_path": (
+            f"data/engines/{candidate.run_id}/observations.json"),
+        "prediction_path": (
+            f"data/engines/{candidate.run_id}/predictions.csv"),
+        "prediction_file_info": [
+            prediction_stat.st_size, prediction_stat.st_mtime_ns],
+    })
     session.record_tracking_run(mark_run_completed(candidate))
 
     assert session.effective_points(track_id) == effective_before
@@ -331,8 +391,15 @@ def test_candidate_preview_does_not_pollute_charts(
 
     window.trackingActions._context_key = None
     window.trackingActions.refresh()
+    qtbot.waitUntil(
+        lambda: len(window.videoView.preview_marker_views()) == video.frame_count,
+        timeout=3000)
     # 卡片呈现候选采用结论；状态头标明 Preview 且分析 chip 不因候选变化
     assert "Preview: version 1 (not adopted)" in window.workflowHeader.trajectoryLabel.text()
+    assert window.videoView._preview_legend.isVisible()
+    assert "below confidence threshold" in window.videoView._preview_legend.text()
+    assert sum(marker.color == "#ff6b6b"
+               for marker in window.videoView.preview_marker_views()) == 2
     analysis_chip = window.workflowHeader.analysisChipLabel.text()
     assert "charts" in analysis_chip  # 只描述当前输入，不被候选覆盖
 
@@ -353,6 +420,30 @@ def test_inspect_binds_candidate_not_oldest_run(
     # 当前卡为 better→Adopt；次动作/inspect 路由直接调用
     window.trackingActions._onCardAction("inspect_trajectory")
     assert captured["run_id"] == infer2.run_id
+
+
+def test_empty_screening_card_reruns_candidate_with_force(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+) -> None:
+    from ai_physics_tracker.application.suggested_frame_review import ActiveReviewBatch
+
+    window, session, _track_id, _infer1, infer2 = _better_candidate_setup(
+        qtbot, synthetic_video_path, tmp_path)
+    session.set_active_review_batch(infer2.run_id, ActiveReviewBatch(
+        request_id=uuid4(), params_snapshot={"top_n": 10}, candidates=()))
+    captured = {}
+
+    def _capture(run_id, params=None, *, force=False):
+        captured.update(run_id=run_id, params=params, force=force)
+
+    monkeypatch.setattr(window.reviewActions, "requestMining", _capture)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+
+    assert "screening complete" in window.trackingActions.panel.cardTitleLabel.text()
+    window.trackingActions._onCardAction("recheck_trajectory")
+    assert captured["run_id"] == infer2.run_id
+    assert captured["force"] is True
 
 
 def test_invalid_series_rebuild_flow_via_card(

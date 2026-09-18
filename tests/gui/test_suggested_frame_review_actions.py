@@ -255,7 +255,9 @@ def test_mining_button_enablement_ac1(test_window: MainWindow, tmp_path: Path):
     assert panel.mineButton.isEnabled()
 
 
-def test_mining_cancellation_neutral_status_ac9(test_window: MainWindow, tmp_path: Path):
+def test_mining_cancellation_neutral_status_ac9(
+    test_window: MainWindow, tmp_path: Path, qtbot
+):
     """AC-9 / F4: 挖掘可被用户取消，取消态不显示为 Failed。"""
     window = test_window
     panel = window.trackingActions.panel
@@ -280,7 +282,7 @@ def test_mining_cancellation_neutral_status_ac9(test_window: MainWindow, tmp_pat
     QTest.qWait(50)
 
     assert not window.reviewActions.busy
-    assert fake_handle.cancelled
+    qtbot.waitUntil(lambda: fake_handle.cancelled, timeout=1000)
     # Phase 5.7 §13：取消是中性结论（三问文案），不出现 Failed 前缀
     status = panel.mineStatusLabel.text()
     assert status.startswith("Checking cancelled")
@@ -382,6 +384,9 @@ def test_review_queue_navigation_and_seek_ac2(test_window: MainWindow, tmp_path:
     assert ctrl.count == 2
     assert "Review: 0/2 reviewed" in panel.reviewProgressLabel.text()
     assert "Frame 1" in panel.candidateDetailsLabel.text()
+    assert "Model confidence: 40%" in panel.candidateDetailsLabel.text()
+    assert "Why check: low prediction confidence" in panel.candidateDetailsLabel.text()
+    assert "Score" not in panel.candidateDetailsLabel.text()
     assert panel.reviewAcceptButton.isEnabled()
     assert panel.reviewSkipButton.isEnabled()
     assert panel.reviewNextButton.isEnabled()
@@ -390,6 +395,8 @@ def test_review_queue_navigation_and_seek_ac2(test_window: MainWindow, tmp_path:
     # 候选列表渲染
     assert panel.reviewCandidatesList.count() == 2
     assert "Frame 1" in panel.reviewCandidatesList.item(0).text()
+    assert "confidence 40%" in panel.reviewCandidatesList.item(0).text()
+    assert "score=" not in panel.reviewCandidatesList.item(0).text()
 
     # 双击候选列表第 2 项 -> 跳帧到帧 2
     item2 = panel.reviewCandidatesList.item(1)
@@ -445,13 +452,22 @@ def _inside_point(window: MainWindow, pixel_x: float, pixel_y: float) -> QPoint:
     return window.videoView.mapFromScene(QPointF(pixel_x, pixel_y))
 
 
-def test_accept_and_skip_gui_contract_ac3(test_window: MainWindow, tmp_path: Path):
+def test_accept_and_skip_gui_contract_ac3(
+    test_window: MainWindow, tmp_path: Path, monkeypatch
+):
     """AC-3: Accept 只记录 accepted，Skip 只记录 skipped；二者均不修改 TrackPoint。"""
     window = test_window
     session = window.analysisSession
     assert session is not None
     valid_run = _setup_infer_run_with_prediction(window, tmp_path)
     panel = window.trackingActions.panel
+    autosaves = []
+    monkeypatch.setattr(
+        window.projectActions, "autosave",
+        lambda reason, after=None: autosaves.append(reason))
+    monkeypatch.setattr(
+        window, "_register_mark_for_autosave",
+        lambda: pytest.fail("review disposition is not a new manual annotation"))
 
     req_id = uuid4()
     c1 = ReviewCandidate(
@@ -495,6 +511,7 @@ def test_accept_and_skip_gui_contract_ac3(test_window: MainWindow, tmp_path: Pat
     assert summary.pending_count == 0
     assert summary.accepted_count == 1
     assert summary.skipped_count == 1
+    assert autosaves == ["difficult-frame review completed"]
     # Phase 5.7：完成行给构成（skipped 明示 left undecided）
     assert "Processed" in panel.reviewProgressLabel.text()
     assert "left undecided" in panel.reviewProgressLabel.text()
@@ -537,6 +554,35 @@ def test_correct_mode_toggle_and_esc_cancel_ac4(test_window: MainWindow, tmp_pat
     assert panel.reviewCorrectButton.text() == "Correct (C)"
     assert not session.is_dirty
     assert 1 not in session.get_suggested_frame_review(valid_run.run_id).reviewed_frames
+
+
+def test_finish_checking_preserves_and_resumes_existing_batch(
+    test_window: MainWindow, tmp_path: Path
+) -> None:
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    run = _setup_infer_run_with_prediction(window, tmp_path)
+    candidate = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.4),
+        components={}, raw_components={}, reasons=(), total_score=0.5)
+    session.set_active_review_batch(run.run_id, ActiveReviewBatch(
+        request_id=uuid4(), params_snapshot={}, candidates=(candidate,)))
+    window.reviewActions.onRunSelected(run.run_id)
+
+    window.reviewActions.finishChecking()
+
+    assert window.reviewActions.controller is None
+    assert window.reviewActions.paused_run_id == run.run_id
+    saved = session.get_suggested_frame_review(run.run_id)
+    assert saved is not None and saved.active_batch is not None
+    assert len(saved.active_batch.candidates) == 1
+
+    window.reviewActions.requestMining(run.run_id)
+    assert window.reviewActions.controller is not None
+    assert window.reviewActions.paused_run_id is None
+    assert window.reviewActions.controller.current_frame_index == 1
 
 
 def test_correct_mode_video_click_atomic_submission_ac4(test_window: MainWindow, tmp_path: Path, qtbot):
@@ -699,7 +745,8 @@ def test_save_and_reopen_restores_review_state_ac5(test_window: MainWindow, tmp_
     window._onAnnotationClicked(click_pos)
     QTest.qWait(20)
 
-    # 保存
+    # Correct 会立即自动保存；等待它完成后再验证显式保存/重开。
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=3000)
     session.save()
     proj_root = session.project_root
 
@@ -1028,3 +1075,72 @@ def test_empty_mining_result_reports_no_difficult_frames(test_window: MainWindow
     # 空批次已写入会话但无候选：控制器不崩、无“当前候选”
     assert window.reviewActions._controller is not None
     assert window.reviewActions._controller.current_frame_index is None
+
+
+def test_single_mining_result_explains_requested_max_and_threshold(
+    test_window: MainWindow, tmp_path: Path
+) -> None:
+    from ai_physics_tracker.application.difficult_frame_job import DifficultFrameResult
+
+    window = test_window
+    panel = window.trackingActions.panel
+    run = _setup_infer_run_with_prediction(window, tmp_path)
+    candidate = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.81),
+        components={"residual": 0.0},
+        raw_components={"residual": 3.8},
+        reasons=("residual_outlier",),
+        total_score=0.0,
+    )
+    window.reviewActions._active_run_id = run.run_id
+    window.reviewActions._running_track_id = window.selectedTrackId
+    window.reviewActions._request_id = uuid4()
+
+    window.reviewActions._finish_success(DifficultFrameResult(
+        request_id=uuid4(),
+        run_id=run.run_id,
+        candidates=(candidate,),
+        actual_n=1,
+        diversity_status="not_needed",
+        params_snapshot={"top_n": 10},
+    ))
+
+    status = panel.mineStatusLabel.text()
+    assert "Found 1 frame" in status
+    assert "Requested up to 10" in status
+    assert "no other frame crossed" in status
+    assert "Model confidence: 81%" in panel.candidateDetailsLabel.text()
+    assert "Score" not in panel.candidateDetailsLabel.text()
+
+
+def test_persisted_review_restores_current_frame_without_history_selection(
+    test_window: MainWindow, tmp_path: Path
+) -> None:
+    """普通任务卡直接恢复持久化批次，且显示建议序号与视频帧号。"""
+    window = test_window
+    session = window.analysisSession
+    assert session is not None
+    run = _setup_infer_run_with_prediction(window, tmp_path)
+    first = ReviewCandidate(
+        0, ReviewPredictionSnapshot(10.0, 20.0, 0.4), {}, {}, (), 0.5)
+    second = ReviewCandidate(
+        1, ReviewPredictionSnapshot(12.0, 22.0, 0.3), {}, {}, (), 0.6)
+    session.set_active_review_batch(
+        run.run_id, ActiveReviewBatch(uuid4(), {}, (first, second)))
+    session.accept_suggested_frame(run.run_id, first.frame_index)
+
+    window.reviewActions._controller = None
+    window.reviewActions._active_run_id = None
+    window.reviewActions.onRunSelected(None)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+
+    controller = window.reviewActions.controller
+    assert controller is not None
+    assert controller.current_frame_index == second.frame_index
+    assert "suggested frame 2 of 2" in window.trackingActions.panel.cardTitleLabel.text()
+    assert "video frame 1" in window.trackingActions.panel.cardTitleLabel.text()
+    assert window.trackingActions.panel.cardPrimaryButton.text() == "Accept position & next"
+    assert window.trackingActions.panel.cardSecondaryButtonC.isEnabled()
+    assert not window.trackingActions.panel.cardSecondaryButtonD.isEnabled()

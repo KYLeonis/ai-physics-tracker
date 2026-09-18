@@ -4,7 +4,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtCore import QSignalBlocker, Qt, Signal
+from PySide6.QtCore import QSignalBlocker, QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -91,7 +91,9 @@ class TaskPanel(QDockWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__("Acquire trajectory", parent)
+        self._initial_width_applied = False
         self.setObjectName("trackingTasks")
+        self.setMinimumWidth(280)
         self.setAllowedAreas(
             Qt.DockWidgetArea.RightDockWidgetArea
             | Qt.DockWidgetArea.LeftDockWidgetArea
@@ -248,11 +250,12 @@ class TaskPanel(QDockWidget):
         self.deleteManualPointButton.setToolTip(
             "Delete active manual point on current track at current frame (Undoable before save; non-recoverable after save)"
         )
-        actionRow = QHBoxLayout()
-        actionRow.addWidget(self.reviewAcceptButton)
-        actionRow.addWidget(self.reviewSkipButton)
-        actionRow.addWidget(self.reviewCorrectButton)
-        actionRow.addWidget(self.deleteManualPointButton)
+        reviewDecisionRow = QHBoxLayout()
+        reviewDecisionRow.addWidget(self.reviewAcceptButton)
+        reviewDecisionRow.addWidget(self.reviewSkipButton)
+        reviewEditRow = QHBoxLayout()
+        reviewEditRow.addWidget(self.reviewCorrectButton)
+        reviewEditRow.addWidget(self.deleteManualPointButton)
 
         self.reviewCandidatesList = QListWidget()
         self.reviewCandidatesList.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
@@ -268,7 +271,8 @@ class TaskPanel(QDockWidget):
         reviewLayout.addWidget(self.reviewProgressLabel)
         reviewLayout.addWidget(self.candidateDetailsLabel)
         reviewLayout.addLayout(navRow)
-        reviewLayout.addLayout(actionRow)
+        reviewLayout.addLayout(reviewDecisionRow)
+        reviewLayout.addLayout(reviewEditRow)
         reviewLayout.addWidget(self.reviewCandidatesList)
 
         reviewGroup = QGroupBox("Difficult Frames Review")
@@ -348,7 +352,12 @@ class TaskPanel(QDockWidget):
             lambda: self.primaryActionRequested.emit(self._primary_action_id))
         self.cardSecondaryButtonA = QPushButton()
         self.cardSecondaryButtonB = QPushButton()
-        for button in (self.cardSecondaryButtonA, self.cardSecondaryButtonB):
+        self.cardSecondaryButtonC = QPushButton()
+        self.cardSecondaryButtonD = QPushButton()
+        self.cardSecondaryButtonE = QPushButton()
+        for button in (self.cardSecondaryButtonA, self.cardSecondaryButtonB,
+                       self.cardSecondaryButtonC, self.cardSecondaryButtonD,
+                       self.cardSecondaryButtonE):
             button.clicked.connect(
                 lambda _checked=False, b=button: self.secondaryActionRequested.emit(
                     b.property("actionId") or ""))
@@ -356,9 +365,12 @@ class TaskPanel(QDockWidget):
         self.cardReasonLabel = QLabel("")
         self.cardReasonLabel.setWordWrap(True)
         self.cardReasonLabel.hide()
-        cardSecondaryRow = QHBoxLayout()
+        cardSecondaryRow = QVBoxLayout()
         cardSecondaryRow.addWidget(self.cardSecondaryButtonA)
         cardSecondaryRow.addWidget(self.cardSecondaryButtonB)
+        cardSecondaryRow.addWidget(self.cardSecondaryButtonC)
+        cardSecondaryRow.addWidget(self.cardSecondaryButtonD)
+        cardSecondaryRow.addWidget(self.cardSecondaryButtonE)
 
         cardLayout = QVBoxLayout()
         cardLayout.addWidget(self.cardTitleLabel)
@@ -390,17 +402,12 @@ class TaskPanel(QDockWidget):
         self.advancedContainer = QWidget()
         advancedLayout = QVBoxLayout(self.advancedContainer)
         advancedLayout.setContentsMargins(0, 0, 0, 0)
-        advancedLeft = QVBoxLayout()
-        advancedLeft.addWidget(suggestGroup)
-        advancedLeft.addWidget(trainGroup)
-        advancedLeft.addWidget(self.trainReasonLabel)
-        advancedMiddle = QVBoxLayout()
-        advancedMiddle.addWidget(inferGroup)
-        advancedMiddle.addWidget(self.inferReasonLabel)
-        advancedColumns = QHBoxLayout()
-        advancedColumns.addLayout(advancedLeft, 1)
-        advancedColumns.addLayout(advancedMiddle, 1)
-        advancedLayout.addLayout(advancedColumns)
+        # 单列随 dock 宽度伸缩，避免小窗口中右半列被裁掉。
+        advancedLayout.addWidget(suggestGroup)
+        advancedLayout.addWidget(trainGroup)
+        advancedLayout.addWidget(self.trainReasonLabel)
+        advancedLayout.addWidget(inferGroup)
+        advancedLayout.addWidget(self.inferReasonLabel)
         self.advancedContainer.hide()
 
         # 结果与历史（默认收起）：激活/验证/历史/日志
@@ -434,11 +441,16 @@ class TaskPanel(QDockWidget):
         contentLayout.addWidget(self.resultsToggleButton)
         contentLayout.addWidget(self.resultsContainer)
         contentLayout.addWidget(self.detailsLabel)
-        contentLayout.addWidget(QLabel("Manual: circle · AI: hollow diamond · Existing points are kept"))
+        markerLegend = QLabel(
+            "Manual: circle · AI: hollow diamond · Existing points are kept")
+        markerLegend.setWordWrap(True)
+        contentLayout.addWidget(markerLegend)
         content = QWidget()
         content.setLayout(contentLayout)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setWidget(content)
         self.setWidget(scroll)
         self._primary_action_id = ""
@@ -464,6 +476,19 @@ class TaskPanel(QDockWidget):
         self.reviewCorrectButton.clicked.connect(lambda: self.reviewCorrectRequested.emit())
         self.deleteManualPointButton.clicked.connect(lambda: self.deleteManualPointRequested.emit())
         self.reviewCandidatesList.itemDoubleClicked.connect(self._onReviewCandidateDoubleClicked)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if self._initial_width_applied:
+            return
+        self._initial_width_applied = True
+        window = self.parentWidget()
+        if window is not None and hasattr(window, "resizeDocks"):
+            QTimer.singleShot(
+                0,
+                lambda: window.resizeDocks(
+                    [self], [400], Qt.Orientation.Horizontal),
+            )
 
     def trainingMode(self) -> str:
         """返回当前选择的训练模式："restart" 或 "resume"。"""
@@ -526,6 +551,9 @@ class TaskPanel(QDockWidget):
             self.cardReasonLabel.hide()
             self.cardSecondaryButtonA.hide()
             self.cardSecondaryButtonB.hide()
+            self.cardSecondaryButtonC.hide()
+            self.cardSecondaryButtonD.hide()
+            self.cardSecondaryButtonE.hide()
             self.evidenceTextLabel.setText("")
             self._primary_action_id = ""
             return
@@ -546,14 +574,16 @@ class TaskPanel(QDockWidget):
                 self.cardReasonLabel.show()
             else:
                 self.cardReasonLabel.hide()
-        secondary_buttons = (self.cardSecondaryButtonA, self.cardSecondaryButtonB)
+        secondary_buttons = (self.cardSecondaryButtonA, self.cardSecondaryButtonB,
+                             self.cardSecondaryButtonC, self.cardSecondaryButtonD,
+                             self.cardSecondaryButtonE)
         for button, spec in zip(secondary_buttons, card.secondary):
             button.setText(spec.label)
             button.setProperty("actionId", spec.action_id)
             button.setEnabled(spec.enabled)
             button.setToolTip(spec.reason or "")
             button.show()
-        extra = card.secondary[2:]
+        extra = card.secondary[len(secondary_buttons):]
         for button in secondary_buttons[len(card.secondary):]:
             button.hide()
         if extra:
@@ -1172,14 +1202,14 @@ class TaskPanel(QDockWidget):
             if curr.prediction is not None:
                 pred_str = (
                     f"({curr.prediction.pixel_x:.1f}, {curr.prediction.pixel_y:.1f}) "
-                    f"conf={curr.prediction.confidence:.2f}"
+                    f"· Model confidence: {curr.prediction.confidence:.0%}"
                 )
             reasons_str = _reason_text(curr.reasons)
             guidance = "\n👉 Correct mode: click video to place point (Esc to cancel)" if controller.is_correcting else ""
             self.candidateDetailsLabel.setText(
                 f"Candidate {idx + 1}/{tot} (Frame {curr.frame_index}) · Status: {disp.upper()}\n"
-                f"AI: {pred_str} · Score: {curr.total_score:.3f}\n"
-                f"Reasons: {reasons_str}{guidance}"
+                f"AI prediction: {pred_str}\n"
+                f"Why check: {reasons_str}{guidance}"
             )
             is_already_corrected = (disp == "corrected")
             self.reviewAcceptButton.setEnabled(not is_already_corrected)
@@ -1215,8 +1245,14 @@ class TaskPanel(QDockWidget):
         for i, c in enumerate(controller.candidates):
             rec = reviewed.get(c.frame_index)
             disp_tag = f"[{rec.disposition.upper()}]" if rec else "[PENDING]"
-            score_tag = f"score={c.total_score:.2f}"
-            item_text = f"{i + 1}. Frame {c.frame_index} {disp_tag} {score_tag}"
+            confidence_tag = (
+                "no prediction"
+                if c.prediction is None
+                else f"confidence {c.prediction.confidence:.0%}"
+            )
+            item_text = (
+                f"{i + 1}. Frame {c.frame_index} {disp_tag} · {confidence_tag}"
+            )
             item = QListWidgetItem(item_text)
             item.setData(Qt.ItemDataRole.UserRole, c.frame_index)
             self.reviewCandidatesList.addItem(item)

@@ -496,6 +496,18 @@ class ProjectSession:
         self._undo_stack = [saved._current_data_snapshot()] if changed else []
         self._redo_stack.clear()
 
+    def accept_autosaved_snapshot(self, saved: "ProjectSession") -> None:
+        """更新自动保存基线，同时保留当前会话的 undo/redo 历史。"""
+        if saved.project.project_id != self.project.project_id:
+            raise ProjectSessionError("Saved snapshot belongs to another project")
+        self._project_root = saved.project_root
+        self._saved_project = saved._saved_project
+        self._project = replace(
+            self._project,
+            modified_at=saved.project.modified_at,
+            ui_state=saved.project.ui_state,
+        )
+
     def apply_tracking_candidate(self, candidate: "TrackingCandidate") -> bool:
         """主线程只接收仍匹配当前快照的后台候选；过期时由调用方重新准备。"""
         if self._project is not candidate.base_project:
@@ -1966,5 +1978,4 @@ class ProjectSession:
         )
         self._commit_project(updated_project, candidate_store)
         return record
-
 

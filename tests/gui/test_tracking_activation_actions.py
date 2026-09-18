@@ -98,6 +98,7 @@ def test_activate_and_replace_with_confirmation_and_cancellation(
     # 2. Activate Run 1 with confirmation (User clicks Yes)
     monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes)
     actions.activateRun(run1.run_id)
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=3000)
     status, active_id, _ = session.get_track_activation_status(track_id)
     assert status == "active"
     assert active_id == run1.run_id
@@ -120,6 +121,7 @@ def test_activate_and_replace_with_confirmation_and_cancellation(
     # Replace confirmation (User clicks Yes)
     monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes)
     actions.replaceRun(run2.run_id)
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=3000)
     status2, active_id2, _ = session.get_track_activation_status(track_id)
     assert status2 == "active"
     assert active_id2 == run2.run_id

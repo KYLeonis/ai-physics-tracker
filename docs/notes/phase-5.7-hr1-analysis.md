@@ -1,7 +1,7 @@
 # Phase 5.7 Human Review — Round 1 Findings 分析与修复方案
 
 - 日期：2026-09-17；来源：用户实测反馈（7 条）。
-- 状态：**待用户确认后执行**。本文档只做根因分析与方案，不改代码。
+- 状态：**已实施并通过自动化验证；最终 Human Review 于 2026-09-18 通过**。
 - 对应实现：`main @ 62205e3`（feat/p5.7-interaction-redesign 已合并）。
 - 处置原则：全部为交互层修复，**不改 domain/persistence 契约**（ADR-0013/0014/0015/0016
   全部保持）；修复后重跑自动化并再次发起 Human Review。
@@ -135,7 +135,8 @@ Correct 有可见取消。
 1. 投影 `AnalysisFacts.limitations` 增加
    "no scale set — positions and charts are in pixels"（无活动标定时），
    状态头 limitations 行即刻可见（该行 5.7 已实现）；
-2. "Start learning" 就绪卡与候选采用卡的次要动作增加 **"Set scale & units"**
+2. "Start learning" 就绪卡与候选采用卡的次要动作增加
+   **"Set scale & coordinate system"**
    （路由到既有 drawScale 标定模式并切到 Experiment setup 工作区，不新建能力）；
 3. 采用卡 evidence 在无标定时提示 "positions are in pixels until a scale is set"。
 
@@ -186,9 +187,9 @@ Generate trajectory。语义精确等于"最新模型尚未应用"，对时间�
 3. `_confirm_fixed_check_set` KEEP 冻结检查帧之后；
 4. 每次 Correct 提交之后（修正点少而重要）。
 
-边界：保存清空应用内 Undo 是既有契约（ADR-0013），不因新增触发点改变；
-autosave 失败静默跳过（既有实现），失败可见性维持现状（保存失败在显式保存时
-独立显现）。
+边界：显式保存继续作为清空 Undo 的安全边界；实施时发现若 autosave 也沿用该行为，
+每次 Correct 都会悄悄破坏既有撤销语义，因此 autosave 改为只更新磁盘基线并保留
+scoped undo/redo。持久化格式和显式保存契约不变。
 
 ### 验收
 
@@ -218,3 +219,84 @@ Human Review**（重点复测上述 7 条原场景）。
 - 不强制标定（保持可选后置，只加提示与入口）；
 - 不改 Undo/保存契约（F7 只加触发点）；
 - 不重做视觉样式。
+
+---
+
+## 实施结果（2026-09-17）
+
+HR1 的 7 项 finding 已在分支 `fix/p5.7-hr1-followup` 落地：右侧面板按窗口空间
+分配约 300–400px、控制栏拆行且高级设置改为单列；候选轨迹增加独立橙色空心预览层与图例；
+Correct 光标跨帧保持；检查卡直接提供 Accept/Correct/Skip、Finish checking 和
+Cancel placement；无标定时显示像素限制并提供尺度入口；Generate 判据改为
+`training_run_id` lineage；采用、审核完成、检查帧冻结和每次 Correct 均触发静默保存。
+
+实现中额外发现并修复 4 个同链隐藏问题：
+
+1. 已有审核批次重新进入时原先会再次挖掘并覆盖进度；现在恢复原批次；
+2. Accept/Skip 原先误计入“每 10 个新标注自动保存”；现在只在批次完成时保存；
+3. 即时 autosave 原先会清空 undo/redo，破坏 Correct 后撤销；现在自动保存只更新
+   磁盘基线并保留撤销历史，显式保存仍维持原清栈契约；
+4. 预览加载校验项目内路径与已记录文件大小，项目/候选切换后的迟到结果被丢弃。
+   初版对过滤后空结果显示 `no eligible positions`；补充实测进一步发现数据源选择仍有
+   问题，已在下节改为完整原始预测。
+
+验证：`compileall` 通过；全量 `797 passed`。候选预览仍是纯视图状态，不进入
+session、effective trajectory、charts 或 dirty 判定；domain/persistence lineage、
+manual provenance、active/candidate 隔离均未改变。
+
+## 补充实测反馈处置（2026-09-17）
+
+用户在 HR1 修复版继续实测后发现，候选预览虽然存在，但它读取的是已经按置信度
+过滤的 `observations.json`；因此最需要人工检查的低置信度帧仍然没有 AI 标记，界面
+甚至会显示 `no eligible positions`。同时，顶部任务卡只知道“有待审批次”，底部审核器
+却依赖高级历史列表的临时选择，重开或刷新后可能出现顶部显示正在检查、底部显示
+`No active review batch` 的状态分裂。标定也仍是三个彼此独立的控件，没有形成连续任务。
+
+本轮按同一用户任务链修复：
+
+1. 未采用候选改为通过 EngineAdapter 读取完整原始预测；所有有限坐标均显示，低于
+   本次 confidence threshold 的位置用红色空心菱形标出。它们仍只属于预览层，不进入
+   effective trajectory 或 Charts。
+2. 持久化审核批次可直接恢复普通模式审核器，不再依赖 Results & history 的选择；恢复
+   时定位到第一个尚未处理的建议帧。任务卡常驻显示“建议帧 i / N + 视频帧号”，并把
+   Previous / Next 提升到卡片；Accept / Skip 文案明确会自动前进。
+3. 标定改为连续引导：绘制标尺 → 自动进入原点/坐标轴 → 显示完成结论 → 一键返回
+   Acquire trajectory 并恢复原 Track。旧项目若只有标尺、没有显式原点，也会显示
+   `Choose origin / axes`，不再把默认左下角原点伪装成已经完成的坐标系选择。
+
+额外修复两个隐藏问题：原始预测读取走既有 EngineAdapter，保持 GUI 不依赖
+infrastructure 的分层约束；取消“标尺后先异步保存再进原点”，避免保存窗口吞掉下一步
+点击，改为坐标系完成后一次性 autosave。`compileall` 与分层检查通过；全量
+`799 passed`。
+
+## 第二轮补充实测反馈处置（2026-09-18）
+
+用户确认上一轮三个问题通过后，又发现标定蓝色步骤提示裁字、首轮困难帧只出现一个
+`Score 0.000` 候选，以及 `Check this trajectory` 在空筛查状态下无响应。
+
+检查 `experiment/20260917test3/project.json` 及对应任务产物后，确认首轮筛查不是“置信度
+为 0”：唯一候选是 frame 36，prediction confidence 为 `0.810719`，入选原因是
+`residual_outlier`。`total_score=0.0` 来自单元素候选池的百分位归一化；该值适合内部排序，
+却不适合在普通模式中与 confidence 并列展示。随后一次筛查确实成功返回零候选，并保存了
+空 `ActiveReviewBatch`；恢复逻辑把它当成已有审核进度直接返回，因此顶部 `Check this
+trajectory` 没有启动新任务，也没有把下方结论提升到用户可见位置。
+
+本轮修复：
+
+1. 标定提示移除 stylesheet padding，改用 QLabel contents margins；显示后根据当前侧栏
+   宽度计算 height-for-width 并设置最小高度，避免高 DPI 和大字号裁字。
+2. 普通审核界面不再显示相对 `Score`，改为 `Model confidence` 与 `Why check`。若命中数
+   小于 Top N，明确说明 Top N 是上限，以及其余帧没有超过筛查标准。
+3. 工作流投影新增 `screening_completed` 事实，区分“未筛查”和“筛查成功但为空”。空结果
+   顶部显示明确结论，主动作是 Adopt，次动作 `Run screening again` 显式重新执行；非空
+   批次仍只恢复原进度，防止覆盖审核数据。
+4. 全量测试暴露既有异步取消用例的固定 50 ms 时序波动；测试改为等待取消事实，未修改
+   产品取消行为。
+
+没有修改困难帧筛查阈值或补齐策略；只返回一个候选是本次数据的真实算法结论。项目数据
+只读检查，没有改写。新增 5 项针对性回归；全量 `804 passed`，`compileall` 与分层测试通过。
+
+## 最终 Human Review（2026-09-18）
+
+用户确认本轮三个问题均无问题：标定提示不再裁字；困难帧信息不再混淆相对分数与
+confidence；空筛查结果与再次筛查动作均有明确反馈。Phase 5.7 Human Review gate 关闭。

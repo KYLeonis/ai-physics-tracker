@@ -239,8 +239,9 @@ def test_save_reopen_and_resume_review_matrix(rel_window: MainWindow, qtbot):
     assert ctrl.summary.corrected_count == 1
     assert ctrl.summary.pending_count == 1
     assert ctrl.current_candidate is not None
-    assert ctrl.current_candidate.frame_index == 1
-    assert ctrl.current_disposition == "accepted"
+    # 重开后直接定位到首个尚未处理的建议帧，而非回到已接受的帧 1。
+    assert ctrl.current_candidate.frame_index == 3
+    assert ctrl.current_disposition == "pending"
 
     # 校验人工修正点在重开后坐标与属性完全恢复（AC-5）
     track_id = run.track_id
@@ -297,7 +298,9 @@ def test_interleaved_undo_redo_matrix(rel_window: MainWindow, qtbot):
     panel.reviewCorrectButton.click()
     click_pos = _inside_point(window, 22.0, 32.0)
     window._onAnnotationClicked(click_pos)
-    qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
+    qtbot.waitUntil(
+        lambda: not window._has_pending_request and not window.projectActions.busy,
+        timeout=3000)
 
     summary = session.get_review_summary(run.run_id)
     assert summary.accepted_count == 1
@@ -482,7 +485,9 @@ def test_candidate_with_preexisting_manual_point(rel_window: MainWindow, qtbot):
     qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 1, timeout=3000)
     click_pos = _inside_point(window, 30.0, 40.0)
     window._onAnnotationClicked(click_pos)
-    qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
+    qtbot.waitUntil(
+        lambda: not window._has_pending_request and not window.projectActions.busy,
+        timeout=3000)
 
     # 新 manual 点覆盖旧 manual 点
     pt = session.effective_point(track_id, 1)

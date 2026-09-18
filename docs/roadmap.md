@@ -3,8 +3,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近交付：**Phase 5.7 — Interaction Flow Redesign（2026-09-17；三工作区/任务卡/C1/C2 已实现，R1/R2 复核 CLOSED，待 Human Review）**
-- 当前阶段：**Phase 5 — AI-assisted Annotation & Refinement（🔄；5.0–5.7 实现完毕，5.7 待 HR 后收官并进入 Phase 6）**
+- 最近交付：**Phase 5 — AI-assisted Annotation & Refinement（2026-09-18；5.0–5.7 全部完成，最终 Human Review 通过）**
+- 当前阶段：**阶段间停点（Phase 5 ✅；Phase 6 尚未开始，等待用户立项指令）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -125,7 +125,7 @@ Python 3.11 通过。经用户批准，Windows 真机/CUDA 验收延期到 Phase
 
 ---
 
-## Phase 5 — AI-assisted Annotation & Refinement 🔄
+## Phase 5 — AI-assisted Annotation & Refinement ✅
 
 **目标**：形成“AI 推荐高价值帧、用户提供正确标签、固定验证集比较迭代结果”的
 Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
@@ -139,6 +139,8 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 - 固定 validation series、refinement iteration history 与跨轮结果比较
 - 规则型 Training Advisor：补标数、先修/先训、resume/restart、additional epochs、batch size、snapshot
 - 统一任务生命周期，收敛旧 coordinator 双轨（Phase 4 Review F3）
+- 三工作区、常驻状态头与状态驱动任务卡；普通用户无需选择 run/snapshot/mode/series
+- 未采用候选预览、困难帧审核、显式采用与 Ready for Analysis / Charts 交接
 
 **Subphases**
 
@@ -146,12 +148,12 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 | --- | --- | --- |
 | 5.0 ✅ | Tracking Pipeline Consolidation | F3：统一 runner/actions/task handle 生命周期，旧 coordinator 已移除 |
 | 5.1 ✅ | Representative Frame Selection | DLC uniform/K-means 初始建议帧，自适应抽帧优化与 Human Review 通过 |
-| 5.2 ✅ | Difficult Frame Mining | 全帧原始预测读取、四信号可解释评分 + screening 补齐、时间去重/多样性、后台任务与真实基准（AC-10 达成） |
+| 5.2 ✅ | Difficult Frame Mining | 全帧原始预测读取、四信号可解释评分、时间去重/多样性、后台任务与真实基准；饱和时明确返回无候选（AC-10 达成） |
 | 5.3 ✅ | Suggested Frame Review & Correction | Accept/Correct/Skip、prediction provenance、恢复（Human Review 通过） |
 | 5.4 ✅ | Iteration History & Result Activation | Candidate 模式、Activate/Replace/Clear 原子事务、fixed validation series（复核缺口已随 5.5 Entry Gate 关闭） |
 | 5.5 ✅ | Training Advisor & Retraining | 确定性规则 Advisor、显式 restart/resume（DLC snapshot 贯通）、跨轮比较与 lineage 追溯（真实 DLC smoke + HR 通过） |
 | 5.6 ✅ | Refinement Loop Integration & Acceptance | 真实闭环完成并归档三类 delta；AC-9 改善证据未达成（明示缺口，成因已分析） |
-| 5.7 🔄 | Interaction Flow Redesign | 三工作区 + 状态驱动任务卡 + C1/C2（ADR-0016）；实现与复核完成，待 Human Review |
+| 5.7 ✅ | Interaction Flow Redesign | 三工作区 + 状态驱动任务卡 + C1/C2（ADR-0016）；R1/R2 CLOSED，HR1 findings 闭环，最终 Human Review 通过 |
 
 **验收标准**
 - [x] F3 关闭：旧 coordinator lifecycle 已移除，训练/推理只维护统一 runner/actions/task handle 路径
@@ -159,10 +161,17 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 - [x] 困难帧扫描消费指定 infer run 的全帧原始预测；连续低 confidence 片段不会垄断 Top N（✅ 5.2 完成）
 - [x] Accept 不产生 ground truth，Correct 保留 prediction provenance，Skip 不造坐标；保存重开一致（✅ 5.3 完成）
 - [x] 新 completed infer result 可显式激活/替换，且不丢 manual、旧 run 产物与历史；事务可撤销并使派生 stale（✅ 5.4 完成）
-- [ ] 至少两轮使用相同 fixed validation membership，RMSE 与 coverage/confidence 分开报告（5.4 复核待补证据/展示）
-- [ ] Training Advisor 覆盖补标、resume/restart、epochs、batch size 与 snapshot，且不会自动启动无限训练
-- [ ] 单摆基准完成一次完整 refinement 闭环，并记录 fixed-validation、coverage、remaining difficult frames 的变化
+- [x] 至少两轮使用相同 fixed validation membership，RMSE 与 coverage/confidence 分开报告（✅ 5.6：iter1–iter4 同一 series，报告分栏）
+- [x] Training Advisor 覆盖补标、resume/restart、epochs、batch size 与 snapshot，且不会自动启动无限训练（✅ 5.5）
+- [x] 单摆基准完成一次完整 refinement 闭环，并记录 fixed-validation、coverage、remaining difficult frames 的变化（✅ 5.6；改善幅度缺口见下）
 - [x] 冻结人工审计集上的 Precision@N/review yield 优于 lowest-confidence-only Top N 基线（✅ 5.2：0.800/0.300 vs 0.600/0.000）
+
+> **已批准的未达成目标（2026-09-16）**：Phase 5 requirements AC-9 还要求至少一次
+> 冻结基准上可复现的 refinement 改善；真实四轮实验最佳为 −3.3%，未达到 ≥5% 目标。
+> 用户批准按真实结果归档并停止扩大实验，不修改验收口径。闭环、三类 delta 与可追溯性
+> 已完成；改善证据留作以后使用独立保留帧或第二视频重新评估。详见
+> [Phase 5.6 review](reviews/phase-5.6-review.md) 与
+> [loop report](benchmarks/phase-5-loop-report.md)。
 
 **主要技术风险**
 - confidence 不等于定位误差，连续遮挡会淹没候选 → 多信号候选 + 去重/多样性 + 固定人工审计集。

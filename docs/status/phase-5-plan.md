@@ -1,7 +1,7 @@
 # PHASE_5_PLAN — AI-assisted Annotation & Refinement
 
-> 状态：**Accepted / 5.4 实现已合并但有复核收口项；5.5 mini-plan 草案待确认**
-> 日期：2026-09-03
+> 状态：**Closed / Phase 5 completed（5.0–5.7 全部完成；AC-9 改善目标明示归档）**
+> 日期：2026-09-03–2026-09-18
 > 范围：只规划 Phase 5；本轮不创建产品代码、不改 schema、不引入依赖。  
 > 需求入口：[phase5-requirements.md](../spec/phase5-requirements.md)
 
@@ -89,8 +89,7 @@
 
 ### 5.4 — Iteration History & Result Activation（F2）
 
-**状态**：⚠️ 2026-09-03 实现已合并、Human Review 通过；复核发现 2 项 AC 证据/展示缺口与
-ADR writer 形态偏差，列为 5.5 实现前 Entry Gate。GitHub Issue 未创建（流程遗漏）。见
+**状态**：✅ 2026-09-03 实现与 Human Review 完成；复核发现的 Entry Gate 已由 5.5 Slice 0 关闭。见
 [phase-5.4-plan.md](phase-5.4-plan.md)。
 
 **目标**：让不同推理结果可比较、可显式激活，并建立固定验证序列。
@@ -108,7 +107,7 @@ ADR writer 形态偏差，列为 5.5 实现前 Entry Gate。GitHub Issue 未创�
 
 ### 5.5 — Training Advisor & Retraining
 
-**状态**：📝 mini-plan 草案待用户确认，见 [phase-5.5-plan.md](phase-5.5-plan.md)。
+**状态**：✅ 2026-09-04 完成；Independent Review、真实 DLC smoke 与 Human Review 通过。见 [phase-5.5-plan.md](phase-5.5-plan.md)。
 
 **目标**：根据已有证据提出有限下一步，并复用 DLC 完成可控 resume/restart。
 
@@ -124,6 +123,8 @@ ADR writer 形态偏差，列为 5.5 实现前 Entry Gate。GitHub Issue 未创�
 **独立验收**：规则确定、有限、可解释；无验证数据不声称最佳；真实 DLC resume/restart smoke 通过。
 
 ### 5.6 — Refinement Loop Integration & Acceptance
+
+**状态**：✅ 2026-09-16 完成；真实闭环与三类 delta 已归档，AC-9 ≥5% 改善目标按用户决定明示保留为未达成。
 
 **目标**：把 5.1–5.5 串成一个可完成、可量化的单摆闭环。
 
@@ -165,13 +166,13 @@ ADR writer 形态偏差，列为 5.5 实现前 Entry Gate。GitHub Issue 未创�
 - Human Review：5.1、5.3、5.4、5.5、5.6 的交互交付前由用户亲测。
 - 每个 Subphase 运行 `QT_QPA_PLATFORM=offscreen python -m pytest`；Phase 收尾跑双平台 CI。
 
-## 6. 当前入口
+## 6. 收尾状态
 
-5.0–5.3 已完成；5.4 实现已合并并通过 Review/Human Review，但复核发现 2 项 AC 证据/展示缺口
-与 ADR writer 形态偏差，详见 [phase-5.4-plan.md](phase-5.4-plan.md)。5.5 mini-plan 已形成草案，
-其 Slice 0 先关闭这些债务，再进入 Advisor；等待用户确认规则阈值、resume/fine-tune 语义与
-持久化扩展。
+5.0–5.6 按本计划完成；后续新增的 5.7 Interaction Flow Redesign 也已于 2026-09-18
+通过最终 Human Review。Phase 5 已关闭，下一阶段为尚未立项的 Phase 6。
 
 ## Result
 
-Phase 5 总计划已接受；5.4 收口与 5.5 mini-plan 待确认。
+Phase 5 总计划已执行完成。AC-1–AC-8、AC-10、AC-11 达成；AC-9 的工作流闭环和三类
+delta 已完成，但 ≥5% 改善证据未达成，按 2026-09-16 用户决定如实归档。5.7 作为后续
+交互重构完成三工作区与状态驱动任务卡，并于 2026-09-18 通过最终 Human Review。

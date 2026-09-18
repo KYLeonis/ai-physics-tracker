@@ -7,6 +7,7 @@ import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import tempfile
+from threading import RLock
 from typing import cast
 
 from ai_physics_tracker.domain.project import Project, create_project
@@ -30,6 +31,12 @@ _MIGRATIONS: dict[int, Migration] = {}
 
 class ProjectRepository:
     """在本地文件系统上创建、加载、保存与迁移项目聚合。"""
+
+    def __init__(self) -> None:
+        # 同一窗口的手动保存与后台 autosave 共享 repository。Windows 不允许
+        # 两个 writer 同时打开固定的 project.json.tmp，因此在 repository
+        # 边界串行化完整提交（含 backup 轮转），也避免并发保存交错发布。
+        self._save_lock = RLock()
 
     def create(
         self, project_root: Path, name: str, description: str | None = None
@@ -78,19 +85,20 @@ class ProjectRepository:
     def save(self, project_root: Path, project: Project) -> Project:
         """原子保存 Project，并将上一个 manifest 轮转为一篇备份。"""
 
-        if not project_root.is_dir():
-            raise FileNotFoundError(f"project directory not found: {project_root}")
-        updated = replace(project, modified_at=utc_now())
-        _validate_resolved_video_locators(project_root, updated)
-        payload = project_to_payload(updated)
-        serialized = json.dumps(
-            payload,
-            ensure_ascii=False,
-            indent=2,
-            allow_nan=False,
-        ) + "\n"
-        _atomic_write_manifest(project_root, serialized)
-        return updated
+        with self._save_lock:
+            if not project_root.is_dir():
+                raise FileNotFoundError(f"project directory not found: {project_root}")
+            updated = replace(project, modified_at=utc_now())
+            _validate_resolved_video_locators(project_root, updated)
+            payload = project_to_payload(updated)
+            serialized = json.dumps(
+                payload,
+                ensure_ascii=False,
+                indent=2,
+                allow_nan=False,
+            ) + "\n"
+            _atomic_write_manifest(project_root, serialized)
+            return updated
 
     def save_as(
         self, source_root: Path, destination_root: Path, project: Project

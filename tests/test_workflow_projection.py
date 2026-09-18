@@ -24,6 +24,8 @@ from ai_physics_tracker.application.workflow_projection import (
     ACTION_CONTINUE_OPTIMIZING,
     ACTION_GENERATE_TRAJECTORY,
     ACTION_INSPECT_TRAJECTORY,
+    ACTION_RECHECK_TRAJECTORY,
+    ACTION_FINISH_CHECKING,
     ACTION_PICK_FRAMES,
     ACTION_RETRY_LEARNING,
     ACTION_START_LEARNING,
@@ -33,6 +35,7 @@ from ai_physics_tracker.application.workflow_projection import (
     ANALYSIS_NEEDS_UPDATE,
     ANALYSIS_NOT_COMPUTABLE,
     ANALYSIS_PARTIAL,
+    NO_SCALE_LIMITATION,
     CandidateFacts,
     ExecutionInput,
     TrajectoryFacts,
@@ -41,6 +44,7 @@ from ai_physics_tracker.application.workflow_projection import (
     preselect_fixed_check_frames,
     project_workflow_state,
     select_task_card,
+    trajectory_facts,
 )
 from ai_physics_tracker.domain.tracking_run import (
     TrackingRun,
@@ -67,9 +71,10 @@ def _session_with_track(tmp_path: Path, *, zone_frames: int = 20):
 
 
 def _run(session, track, task_type: str, *, status: str = "completed",
-         with_snapshot: bool = True, with_observations: bool = False) -> TrackingRun:
+         with_snapshot: bool = True, with_observations: bool = False,
+         config: dict | None = None) -> TrackingRun:
     run = create_tracking_run(track.video_id, track.track_id, task_type,
-                              engine_version="mock")
+                              engine_version="mock", config=config)
     if with_snapshot and task_type == "train":
         snap = f"data/engines/{run.run_id}/snap.pt"
         file = session.project_root / snap
@@ -160,7 +165,16 @@ def test_analysis_needs_update_then_partial_then_latest(tmp_path: Path) -> None:
 
     # 计算（四类派生 valid、无缺测、无待审）→ latest
     session.compute_kinematics(track.track_id)
-    assert analysis_facts(session, track.track_id).state == ANALYSIS_LATEST
+    latest = analysis_facts(session, track.track_id)
+    assert latest.state == ANALYSIS_LATEST
+    assert NO_SCALE_LIMITATION in latest.limitations
+
+    session.add_calibration(
+        track.video_id,
+        scale_end_1_px=(0.0, 0.0), scale_end_2_px=(10.0, 0.0),
+        known_length=1.0, unit="m")
+    assert NO_SCALE_LIMITATION not in analysis_facts(
+        session, track.track_id).limitations
 
     # 制造缺测（删除一段中唯一帧的覆盖：再标一条含缺测的轨迹不可行——
     # 用部分覆盖的第二个 track 验证 partial）
@@ -233,10 +247,39 @@ def test_card_priority_running_beats_everything() -> None:
 
 def test_card_priority_candidate_review_beats_generate_and_learn() -> None:
     cand = CandidateFacts(run_id=uuid4(), version=2, pending_review=3)
-    state = _state(trajectory=TrajectoryFacts(manual_count=8, candidate=cand))
+    state = _state(
+        execution=ExecutionInput(
+            review_index=1,
+            review_total=4,
+            review_frame_index=17,
+            review_can_previous=True,
+            review_can_next=True,
+        ),
+        trajectory=TrajectoryFacts(manual_count=8, candidate=cand),
+    )
     card = select_task_card(state)
     assert card.mode == "reviewing"
     assert "3 suggested frame(s)" in card.explanation[0]
+    assert "suggested frame 2 of 4" in card.title
+    assert "video frame 17" in card.title
+    assert card.primary.action_id == "review_accept"
+    assert any(action.action_id == "review_previous" for action in card.secondary)
+    assert any(action.action_id == "review_next" for action in card.secondary)
+    assert any(action.action_id == ACTION_FINISH_CHECKING
+               for action in card.secondary)
+
+
+def test_finished_checking_exits_review_without_discarding_pending_count() -> None:
+    run_id = uuid4()
+    cand = CandidateFacts(run_id=run_id, version=2, pending_review=3)
+    state = _state(
+        execution=ExecutionInput(paused_review_run_id=run_id),
+        trajectory=TrajectoryFacts(manual_count=8, candidate=cand))
+
+    card = select_task_card(state)
+
+    assert card.mode == "adopt"
+    assert card.primary.action_id == ACTION_INSPECT_TRAJECTORY
 
 
 def test_card_first_candidate_offers_check_then_adopt() -> None:
@@ -246,6 +289,37 @@ def test_card_first_candidate_offers_check_then_adopt() -> None:
     assert card.mode == "adopt"
     assert card.primary.action_id == ACTION_INSPECT_TRAJECTORY
     assert any(a.action_id == ACTION_ADOPT_TRAJECTORY for a in card.secondary)
+
+
+def test_empty_screening_is_a_conclusion_with_explicit_next_actions() -> None:
+    cand = CandidateFacts(
+        run_id=uuid4(), version=1, screening_completed=True)
+    state = _state(trajectory=TrajectoryFacts(manual_count=8, candidate=cand))
+
+    card = select_task_card(state)
+
+    assert "screening complete" in card.title
+    assert card.primary.action_id == ACTION_ADOPT_TRAJECTORY
+    assert any(a.action_id == ACTION_RECHECK_TRAJECTORY for a in card.secondary)
+    assert any("does not prove" in line for line in card.explanation)
+
+
+def test_trajectory_facts_distinguishes_no_screening_from_empty_screening(
+    tmp_path: Path,
+) -> None:
+    session, track, _video = _session_with_track(tmp_path)
+    run = _run(session, track, "infer")
+
+    before = trajectory_facts(session, track.track_id, session.tracking_runs())
+    assert before.candidate is not None
+    assert not before.candidate.screening_completed
+
+    session.set_active_review_batch(run.run_id, ActiveReviewBatch(
+        request_id=uuid4(), params_snapshot={"top_n": 10}, candidates=()))
+    after = trajectory_facts(session, track.track_id, session.tracking_runs())
+    assert after.candidate is not None
+    assert after.candidate.screening_completed
+    assert not after.candidate.has_review_batch
 
 
 def test_card_replace_candidate_without_comparison_defaults_to_incomparable() -> None:
@@ -360,12 +434,14 @@ def test_projection_from_real_session_lifecycle(tmp_path: Path) -> None:
     assert card.mode == "learn_ready"
 
     # 完成一次训练（无推理）→ generate_ready
-    _run(session, track, "train")
+    train_run = _run(session, track, "train")
     state = project_workflow_state(session, track.track_id, session.tracking_runs())
     assert select_task_card(state).mode == "generate_ready"
 
     # 完成推理 → 候选卡（首个，未采用）
-    infer_run = _run(session, track, "infer", with_observations=True)
+    infer_run = _run(
+        session, track, "infer", with_observations=True,
+        config={"training_run_id": str(train_run.run_id)})
     state = project_workflow_state(session, track.track_id, session.tracking_runs())
     assert select_task_card(state).mode == "adopt"
     assert state.trajectory.candidate is not None
@@ -378,6 +454,24 @@ def test_projection_from_real_session_lifecycle(tmp_path: Path) -> None:
     assert state.trajectory.active_version == 1
     assert state.analysis.state == ANALYSIS_NEEDS_UPDATE
     assert select_task_card(state).primary.action_id == ACTION_UPDATE_CHARTS
+
+
+def test_generate_prompt_uses_training_lineage_not_timestamps(tmp_path: Path) -> None:
+    session, track, _video = _session_with_track(tmp_path, zone_frames=8)
+    for frame in range(4):
+        session.mark_point(track.track_id, frame, 1.0, 1.0)
+    train1 = _run(session, track, "train")
+    _run(session, track, "infer",
+         config={"training_run_id": str(train1.run_id)})
+    train2 = _run(session, track, "train")
+
+    state = project_workflow_state(session, track.track_id, session.tracking_runs())
+    assert state.learned_not_generated is True
+
+    _run(session, track, "infer",
+         config={"training_run_id": str(train2.run_id)})
+    state = project_workflow_state(session, track.track_id, session.tracking_runs())
+    assert state.learned_not_generated is False
 
 
 def test_projection_marks_failed_training_for_recovery(tmp_path: Path) -> None:

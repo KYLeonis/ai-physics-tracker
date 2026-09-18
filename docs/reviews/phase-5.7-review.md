@@ -35,7 +35,8 @@
 **流程**
 
 - [x] Conventional Commits；ADR-0016 已记录 C1/C2
-- [ ] 全量 pytest + compileall + 双平台 CI（本地 788 passed + compileall OK；CI 待合并后）
+- [x] 全量 pytest + compileall + 双平台 CI（最终本地 804 passed；
+  [run 35319559409](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35319559409) 的 macOS/Windows jobs 均通过）
 
 ## Findings
 
@@ -130,3 +131,56 @@
   O3（局部导入风格）不阻塞。
 - **Final Verdict：CLOSED**（2026-09-17，按 R2 豁免条款由实现方补验收口；
   Human Review gate 另行发起，通过前 Phase 5.7 不关闭）。
+
+## Human Review Round 1 Follow-up（2026-09-17）
+
+- 用户实测记录：[`docs/notes/phase-5.7-hr1-analysis.md`](../notes/phase-5.7-hr1-analysis.md)。
+- 处置：7 项交互 finding 全部修复；候选预览保持 ADR-0014 隔离，检查/采用语义、
+  结束检查、标定入口、lineage 判据、关键事务 autosave 与自适应布局均已接线。
+- 隐藏问题：恢复既有审核批次、防止 Accept/Skip 污染标注 autosave 计数、预览产物
+  边界校验，以及 autosave 保留 scoped undo/redo 历史。
+- 验证：`compileall` 通过；全量 **797 passed**。
+- 状态：实现方验证通过，等待 Human Review Round 2；通过前 Final Verdict 仍只代表
+  独立代码 review 关闭，不代表 Phase 5.7 验收关闭。
+
+### HR1 补充实测修复
+
+- 完整候选预览改读原始预测，低置信度位置保留为红色标记；候选/采用/图表隔离不变。
+- 审核任务卡显示建议序号、总数和视频帧号，提供 Previous / Next；持久化批次不再依赖
+  history 选择，并在重开后恢复到首个 pending 帧。
+- 标定形成“标尺 → 原点/坐标轴 → 返回 Acquire trajectory”的连续引导；仅有标尺的旧状态
+  明示默认原点并要求用户检查坐标系。
+- 隐藏问题：原始预测读取保持 EngineAdapter 分层；移除标尺与原点之间的异步保存竞态，
+  完整坐标系设置后再 autosave。
+- 验证：相关交互回归 **87 passed**；`compileall`、layer boundary 与全量
+  **799 passed**。
+- 状态：等待用户执行更新后的 Human Review Round 2，不关闭 Phase 5.7。
+
+### HR1 第二轮补充实测修复（2026-09-18）
+
+- 用户确认上一轮三个场景通过后，继续发现：标定引导在大字号下裁字；首轮困难帧只返回
+  一个显示 `Score 0.000` 的候选；持久化空筛查结果下点击 `Check this trajectory` 无可见响应。
+- 真实项目与任务日志复核：首轮唯一候选是 frame 36，模型 confidence 为 0.810719，原因是
+  `residual_outlier`；`0.000` 是单元素候选池归一化后的相对排序分数，并非置信度。最新一次
+  筛查成功返回空候选，空 `ActiveReviewBatch` 被恢复逻辑直接返回，导致顶部动作看似失效。
+- 处置：普通审核界面只显示模型置信度与可读入选原因；少于请求上限时明确说明其余帧未超过
+  筛查标准。状态投影区分“从未筛查”和“筛查成功但为空”，空结果成为顶部工作流结论并提供
+  Adopt / Run screening again。再次筛查显式绕过空批次恢复，但仍不覆盖非空审核进度。
+  标定引导使用 contents margins、height-for-width 与当前宽度的最小高度，覆盖高 DPI 换行。
+- 隐藏问题：空筛查过去无法在普通状态模型中表达；异步取消测试使用固定 50 ms，偶发在
+  后台假句柄写入前断言，已改为条件等待。
+- 契约：没有修改困难帧阈值、候选排序、prediction/manual provenance、active/candidate
+  隔离、持久化 schema 或采用语义；真实项目只读检查，没有改写。
+- 验证：针对性 5 项通过；全量 **804 passed**；`compileall` 与 layer boundary 通过。
+- 状态：用户针对上述三个新场景复测通过。
+
+## Human Review Final Verdict（2026-09-18）
+
+- 用户结论：**通过**。标定提示完整显示；困难帧显示模型置信度与入选原因；空筛查结果
+  有明确工作流结论，`Run screening again` 可见且可执行。
+- 5.7 Acceptance Criteria 1–11 全部关闭；R1/R2 findings、HR1 findings 及两轮补充实测
+  findings 均已处置。
+- 收尾 CI 另外关闭两个隐藏可靠性问题：pytest-qt 窗口不再被两套 teardown 重复关闭；
+  同一 repository 的后台 autosave 与显式保存按完整原子提交串行，避免 Windows
+  `project.json.tmp` 文件锁竞态。
+- **Final Verdict：PASS / CLOSED**。Phase 5.7 可合并；Phase 5 随之收官。

@@ -274,3 +274,19 @@ def test_run_only_progression_during_save_keeps_no_ghost_undo_step(
     assert session.can_undo
     assert session.undo()
     assert len(session.manual_points(track.track_id)) == 1
+
+
+def test_autosave_baseline_preserves_scoped_undo_history(tmp_path: Path) -> None:
+    session, track, _proj_dir = _saved_session_with_track(tmp_path)
+    session.mark_point(track.track_id, 1, 3.0, 4.0)
+    autosaved = session.detached()
+    autosaved.save()
+
+    session.accept_autosaved_snapshot(autosaved)
+
+    assert not session.is_dirty
+    assert session.can_undo
+    assert session.undo()
+    assert session.effective_point(track.track_id, 1) is None
+    assert session.is_dirty
+    assert session.can_redo

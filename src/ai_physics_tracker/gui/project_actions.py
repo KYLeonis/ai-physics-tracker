@@ -174,7 +174,7 @@ class ProjectActions(QObject):
             return
         self._saveCandidate(None, after)
 
-    def autosave(self, reason: str) -> None:
+    def autosave(self, reason: str, after: Callable[[], None] | None = None) -> None:
         """静默自动保存（防丢锚点）：无进度对话框、不打断标注模式与播放。
 
         复用 busy 串行化与其他保存相同的快照/基线语义；仅当项目已有
@@ -185,6 +185,8 @@ class ProjectActions(QObject):
         if self.busy or session is None:
             return
         if session.project_root is None or not session.is_dirty:
+            if after is not None:
+                after()
             return
         candidate = session.detached()
         candidate.update_view_state(self.window.captureProjectView())
@@ -202,10 +204,12 @@ class ProjectActions(QObject):
         def accept(saved: ProjectSession) -> None:
             if self.window._annotation_session is not session:
                 return
-            session.accept_saved_snapshot(saved)
+            session.accept_autosaved_snapshot(saved)
             self.window._refreshHistoryButtons()
             self.window.statusBar().showMessage(f"Autosaved ({reason}): {saved.project_root}")
             self.refresh()
+            if after is not None:
+                after()
 
         self._completion = accept
         self._future = self.executor.submit(save_worker, self._cancel)

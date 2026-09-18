@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QSlider,
     QSpinBox,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
     QSplitter,
@@ -151,6 +152,9 @@ class MainWindow(QMainWindow):
         self._annotation_session: ProjectSession | None = None
         self._annotation_video_id: UUID | None = None
         self._selected_track_id: UUID | None = None
+        self._calibration_return_workspace: str | None = None
+        self._calibration_return_track_id: UUID | None = None
+        self._calibration_guide_action: str | None = None
 
         self.videoView = VideoView(self)
         self.videoSelector = QComboBox(self)
@@ -191,11 +195,23 @@ class MainWindow(QMainWindow):
         self.calibrationGroup = QGroupBox("Calibration", self)
         self.calibrationStatusLabel = QLabel("Status: Uncalibrated", self)
         self.calibrationStatusLabel.setWordWrap(True)
+        self.calibrationGuideLabel = QLabel("", self)
+        self.calibrationGuideLabel.setWordWrap(True)
+        self.calibrationGuideLabel.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.calibrationGuideLabel.setContentsMargins(8, 8, 8, 8)
+        self.calibrationGuideLabel.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        self.calibrationGuideLabel.setStyleSheet(
+            "background: #eaf3ff; border-radius: 4px;")
+        self.calibrationGuideLabel.hide()
+        self.calibrationGuideButton = QPushButton("", self)
+        self.calibrationGuideButton.hide()
         self.calibrationSelector = QComboBox(self)
         self.drawScaleButton = QPushButton("Draw scale", self)
         self.drawScaleButton.setCheckable(True)
         self.drawScaleButton.setEnabled(False)
-        self.setOriginButton = QPushButton("Set origin", self)
+        self.setOriginButton = QPushButton("Set origin / axes", self)
         self.setOriginButton.setCheckable(True)
         self.setOriginButton.setEnabled(False)
         self.deleteCalibrationButton = QPushButton("Delete calibration", self)
@@ -222,6 +238,8 @@ class MainWindow(QMainWindow):
         calEditButtons.addWidget(self.deleteInactiveCalibrationButton)
 
         calLayout = QVBoxLayout()
+        calLayout.addWidget(self.calibrationGuideLabel)
+        calLayout.addWidget(self.calibrationGuideButton)
         calLayout.addWidget(self.calibrationStatusLabel)
         calLayout.addWidget(self.calibrationSelector)
         calLayout.addLayout(calButtons)
@@ -247,16 +265,22 @@ class MainWindow(QMainWindow):
         self._playTimer = QTimer(self)
         self._playTimer.timeout.connect(self._playTick)
 
-        controls = QHBoxLayout()
-        controls.addWidget(self.playButton)
-        controls.addWidget(self.previousButton)
-        controls.addWidget(self.nextButton)
-        controls.addSpacing(16)
-        controls.addWidget(self.frameSpinBox)
-        controls.addStretch(1)
-        controls.addWidget(self.frameLabel)
-        controls.addWidget(self.timeLabel)
-        controls.addWidget(self.zoomLabel)
+        transportControls = QHBoxLayout()
+        transportControls.addWidget(self.playButton)
+        transportControls.addWidget(self.previousButton)
+        transportControls.addWidget(self.nextButton)
+        transportControls.addSpacing(8)
+        transportControls.addWidget(self.frameSpinBox)
+        transportControls.addStretch(1)
+        readoutControls = QHBoxLayout()
+        readoutControls.addWidget(self.frameLabel)
+        readoutControls.addWidget(self.timeLabel)
+        readoutControls.addStretch(1)
+        readoutControls.addWidget(self.zoomLabel)
+        controls = QVBoxLayout()
+        controls.setSpacing(2)
+        controls.addLayout(transportControls)
+        controls.addLayout(readoutControls)
 
         trackButtons = QHBoxLayout()
         trackButtons.addWidget(self.addTrackButton)
@@ -425,6 +449,7 @@ class MainWindow(QMainWindow):
         self.videoView.originClicked.connect(self._onOriginClicked)
         self.drawScaleButton.clicked.connect(self._toggleDrawScaleMode)
         self.setOriginButton.clicked.connect(self._toggleSetOriginMode)
+        self.calibrationGuideButton.clicked.connect(self._onCalibrationGuideAction)
         self.deleteCalibrationButton.clicked.connect(self._deleteActiveCalibration)
         self.editScaleButton.clicked.connect(self._editActiveScale)
         self.deleteInactiveCalibrationButton.clicked.connect(self._deleteInactiveCalibration)
@@ -1042,11 +1067,106 @@ class MainWindow(QMainWindow):
             self.videoView.set_calibration_mode(None)
         self.statusBar().showMessage("Browse mode")
 
+    def _setCalibrationGuide(
+        self, message: str, action: str | None = None,
+        action_label: str = "",
+    ) -> None:
+        self.calibrationGuideLabel.setText(message)
+        self.calibrationGuideLabel.show()
+        self.calibrationGuideLabel.updateGeometry()
+        QTimer.singleShot(0, self._fitCalibrationGuideHeight)
+        self._calibration_guide_action = action
+        self.calibrationGuideButton.setText(action_label)
+        self.calibrationGuideButton.setVisible(action is not None)
+
+    def _fitCalibrationGuideHeight(self) -> None:
+        """让换行提示按当前侧栏宽度占足高度，避免高 DPI 下裁字。"""
+        label = self.calibrationGuideLabel
+        if not label.isVisible():
+            return
+        label.setMinimumHeight(0)
+        required = label.heightForWidth(max(1, label.width()))
+        if required > 0:
+            label.setMinimumHeight(required)
+
+    def beginCalibrationFlow(self, return_workspace: str = WORKSPACE_ACQUIRE) -> None:
+        """启动连续标定引导，并记住完成后要恢复的工作位置。"""
+        if not self._measurement_allowed or self.projectActions.busy:
+            return
+        self._calibration_return_workspace = return_workspace
+        self._calibration_return_track_id = self._selected_track_id
+        self.setWorkspace(WORKSPACE_SETUP)
+        self._setCalibrationGuide(
+            "Calibration — step 1 of 2: draw along an object whose real length "
+            "you know, then enter that length.")
+        if self.drawScaleButton.isEnabled() and not self.drawScaleButton.isChecked():
+            self.drawScaleButton.click()
+
+    def _beginOriginStep(self) -> None:
+        if self._annotation_session is None or self._annotation_video_id is None:
+            return
+        self._setCalibrationGuide(
+            "Calibration — step 2 of 2: click the coordinate origin. The red +X "
+            "axis points right and the green +Y axis points up; adjust Rotation "
+            "afterward if your experiment uses different axes.")
+        if self.setOriginButton.isEnabled() and not self.setOriginButton.isChecked():
+            self.setOriginButton.click()
+
+    def _showCalibrationComplete(self) -> None:
+        self._setCalibrationGuide(
+            "Calibration complete: scale and coordinate origin are set. Check the "
+            "axis overlay, adjust Rotation if needed, then return to marking frames.",
+            "return",
+            "Return to Acquire trajectory",
+        )
+        self.statusBar().showMessage(
+            "Calibration complete — return to Acquire trajectory to continue marking")
+
+    def _onCalibrationGuideAction(self) -> None:
+        if self._calibration_guide_action == "retry_scale":
+            if self.drawScaleButton.isEnabled() and not self.drawScaleButton.isChecked():
+                self.drawScaleButton.click()
+            return
+        if self._calibration_guide_action == "retry_origin":
+            if self._calibration_return_workspace is None:
+                self._calibration_return_workspace = self.currentWorkspace
+                self._calibration_return_track_id = self._selected_track_id
+                self.setWorkspace(WORKSPACE_SETUP)
+            self._beginOriginStep()
+            return
+        if self._calibration_guide_action != "return":
+            return
+        workspace = self._calibration_return_workspace or WORKSPACE_ACQUIRE
+        track_id = self._calibration_return_track_id
+        self._calibration_return_workspace = None
+        self._calibration_return_track_id = None
+        self._calibration_guide_action = None
+        self.calibrationGuideLabel.hide()
+        self.calibrationGuideButton.hide()
+        self.setWorkspace(workspace)
+        if track_id is not None:
+            for row in range(self.trackList.count()):
+                item = self.trackList.item(row)
+                if item.data(Qt.ItemDataRole.UserRole) == track_id:
+                    self.trackList.clearSelection()
+                    item.setSelected(True)
+                    self.trackList.setCurrentItem(item)
+                    self._onTrackSelectionChanged()
+                    break
+        self.statusBar().showMessage(
+            "Calibration complete — continue marking representative frames")
+
     def _toggleDrawScaleMode(self, checked: bool) -> None:
         if checked:
             if not self._measurement_allowed or self.projectActions.busy:
                 self.drawScaleButton.setChecked(False)
                 return
+            if self._calibration_return_workspace is None:
+                self._calibration_return_workspace = self.currentWorkspace
+                self._calibration_return_track_id = self._selected_track_id
+                self._setCalibrationGuide(
+                    "Calibration — step 1 of 2: draw along an object whose real "
+                    "length you know, then enter that length.")
             self.setOriginButton.setChecked(False)
             self.trackList.clearSelection()
             self._selected_track_id = None
@@ -1064,6 +1184,12 @@ class MainWindow(QMainWindow):
             if not self._measurement_allowed or self.projectActions.busy:
                 self.setOriginButton.setChecked(False)
                 return
+            if self._calibration_return_workspace is None:
+                self._calibration_return_workspace = self.currentWorkspace
+                self._calibration_return_track_id = self._selected_track_id
+                self._setCalibrationGuide(
+                    "Calibration — step 2 of 2: click the coordinate origin. "
+                    "Check the red +X and green +Y axis directions afterward.")
             self.drawScaleButton.setChecked(False)
             self.trackList.clearSelection()
             self._selected_track_id = None
@@ -1091,6 +1217,11 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Scale line is too short; ignored")
             self.drawScaleButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
+            self._setCalibrationGuide(
+                "The scale line was too short. Draw the known length again.",
+                "retry_scale",
+                "Draw scale again",
+            )
             return
 
         default_name = self._annotation_session._next_calibration_name()
@@ -1099,6 +1230,7 @@ class MainWindow(QMainWindow):
             default_name=default_name,
             parent=self,
         )
+        calibration_created = False
         if dialog.exec() == QMessageBox.DialogCode.Accepted or dialog.result() == 1:
             known_len = dialog.known_length()
             unit = dialog.unit()
@@ -1112,6 +1244,7 @@ class MainWindow(QMainWindow):
                     unit=unit,
                     name=name,
                 )
+                calibration_created = True
                 self.statusBar().showMessage(f"Calibration '{name}' set ({known_len:g} {unit})")
             except (ProjectSessionError, ValueError) as error:
                 logger.error("add calibration failed", exc_info=True)
@@ -1121,6 +1254,14 @@ class MainWindow(QMainWindow):
         self.videoView.set_calibration_mode(None)
         self._refreshCalibrationUI()
         self._refreshHistoryButtons()
+        if calibration_created:
+            self._beginOriginStep()
+        else:
+            self._setCalibrationGuide(
+                "Scale was not saved. Draw the known length again when ready.",
+                "retry_scale",
+                "Draw scale again",
+            )
 
     def _onOriginClicked(self, pt: QPointF) -> None:
         if not self._measurement_allowed or self.projectActions.busy:
@@ -1137,11 +1278,18 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("No active calibration; please draw a scale line first")
             self.setOriginButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
+            self._setCalibrationGuide(
+                "A scale is required before choosing the coordinate origin.",
+                "retry_scale",
+                "Draw scale",
+            )
             return
 
+        origin_set = False
         try:
             updated = replace(active_cal, origin_px=(pt.x(), pt.y()))
             self._annotation_session.update_calibration(updated)
+            origin_set = True
             self.statusBar().showMessage(f"Origin set to ({pt.x():.1f}, {pt.y():.1f}) px")
         except (ProjectSessionError, ValueError) as error:
             logger.error("update origin failed", exc_info=True)
@@ -1151,6 +1299,15 @@ class MainWindow(QMainWindow):
         self.videoView.set_calibration_mode(None)
         self._refreshCalibrationUI()
         self._refreshHistoryButtons()
+        if origin_set:
+            self.projectActions.autosave(
+                "coordinate system set", after=self._showCalibrationComplete)
+        else:
+            self._setCalibrationGuide(
+                "The coordinate origin was not saved. Choose the origin again.",
+                "retry_origin",
+                "Choose origin again",
+            )
 
     def _onRotationChanged(self, deg: float) -> None:
         if self._annotation_session is None or self._annotation_video_id is None:
@@ -1234,6 +1391,11 @@ class MainWindow(QMainWindow):
         self._annotation_session.remove_calibration(active_cal.calibration_id)
         self._refreshCalibrationUI()
         self._refreshHistoryButtons()
+        self._setCalibrationGuide(
+            "Calibration was removed. Draw a scale to calibrate this video again.",
+            "retry_scale",
+            "Draw scale",
+        )
         self.statusBar().showMessage("Calibration deleted")
 
     def _onCalibrationSelected(self, _index: int) -> None:
@@ -1302,8 +1464,21 @@ class MainWindow(QMainWindow):
             with QSignalBlocker(self.rotationSpinBox):
                 self.rotationSpinBox.setValue(active_cal.rotation_deg)
             h = self._snapshot_height()
-            ox, oy = active_cal.origin_px if active_cal.origin_px is not None else (0.0, float(h))
-            self.originLabel.setText(f"Origin: ({ox:.1f}, {oy:.1f}) px")
+            if active_cal.origin_px is None:
+                ox, oy = 0.0, float(h)
+                self.originLabel.setText(
+                    f"Origin: default bottom-left ({ox:.1f}, {oy:.1f}) px")
+                if (not self.calibrationGuideLabel.isVisible()
+                        or self._calibration_guide_action == "return"):
+                    self._setCalibrationGuide(
+                        "Scale is set. Next, choose the coordinate origin and check "
+                        "the +X / +Y axis directions.",
+                        "retry_origin",
+                        "Choose origin / axes",
+                    )
+            else:
+                ox, oy = active_cal.origin_px
+                self.originLabel.setText(f"Origin: ({ox:.1f}, {oy:.1f}) px")
         else:
             self.calibrationStatusLabel.setText("Status: Uncalibrated")
             self.originLabel.setText("Origin: —")
@@ -1356,7 +1531,6 @@ class MainWindow(QMainWindow):
             if handled:
                 self._refreshMarkers()
                 self._refreshHistoryButtons()
-                self._register_mark_for_autosave()
             return
         try:
             self._annotation_session.mark_point(
@@ -1493,6 +1667,11 @@ class MainWindow(QMainWindow):
 
     def _resetPresentation(self) -> None:
         self.videoView.clearFrame()
+        self._calibration_return_workspace = None
+        self._calibration_return_track_id = None
+        self._calibration_guide_action = None
+        self.calibrationGuideLabel.hide()
+        self.calibrationGuideButton.hide()
         self._timeline = None
         self._frame_count = 0
         self._measurement_allowed = False

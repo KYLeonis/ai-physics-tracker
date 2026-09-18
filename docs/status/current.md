@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-17（**Phase 5.7 交互重构实现与复核完成（R1/R2 CLOSED，全量 790），已合并 main 待双平台 CI；下一步 Human Review——通过前 5.7 不关闭**）
+- 最后更新：2026-09-18（**Phase 5.7 Human Review 通过；Phase 5 已收官；下一步等待 Phase 6 立项指令**）
 
 ---
 
@@ -11,8 +11,8 @@
 
 | Level | Name | Status |
 | --- | --- | --- |
-| Current | Phase 5.7 — Interaction Flow Redesign | 🔄 实现与复核完成（2026-09-17），**待 Human Review** |
-| Phase | Phase 5 — AI-assisted Annotation & Refinement | 🔄 5.0–5.6 完成；5.7 待 HR 后收官 |
+| Current | 阶段间停点 | ⏸️ Phase 5 已完成；等待用户开始 Phase 6 |
+| Phase | Phase 5 — AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标按批准决定明示归档） |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03) |
@@ -20,9 +20,43 @@
 | Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, HR 通过；复核收口完成) |
 | Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
 | Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 明示缺口归档) |
-| Subphase | 5.7 — Interaction Flow Redesign | 🔄 实现+R1/R2 CLOSED；待 HR |
+| Subphase | 5.7 — Interaction Flow Redesign | ✅ 已完成（2026-09-18；R1/R2 CLOSED，Human Review 通过） |
 
 ## Recently Completed
+
+- **Phase 5.7 / Phase 5 收官（2026-09-18）**：用户完成最终针对性 Human Review，确认
+  标定提示完整显示、困难帧置信度/入选原因表达正确、空筛查结论与再次筛查动作均无问题。
+  5.7 的设计、实现、两轮独立代码复核、HR1 及两轮补充实测均已闭环；Phase 5 的
+  5.0–5.7 全部完成。最终本地验证 **804 passed**，macOS/Windows CI
+  [run 35319559409](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35319559409) 均通过；
+  同时关闭了 Qt 测试重复 teardown 与 autosave/显式保存争用固定临时文件两个隐藏竞态。
+  Phase 5.6 已批准的 AC-9 改善幅度缺口保持原样，不把 −3.3% plateau 改写为达标。
+
+- **Phase 5.7 HR1 第二轮补充实测修复（2026-09-18）**：标定引导改用真实内容边距并按
+  当前侧栏宽度计算换行高度，修复高 DPI/大字号裁字；困难帧普通界面移除易被误认成
+  置信度的相对 `Score`，改为模型置信度、入选原因以及“请求上限/实际命中”的明确结论。
+  状态投影新增“筛查已完成但无候选”，顶部任务卡直接给出无标记帧结论及 Adopt / Run
+  screening again，不再让持久化空批次吞掉 `Check this trajectory`。检查真实项目日志确认首轮
+  唯一候选为 frame 36、confidence 0.8107、命中 `residual_outlier`；界面中的 0.000 原为
+  单候选集合的相对排序分数。新增 5 项针对性回归并稳定异步取消测试；全量 **804 passed**，
+  `compileall` 与 layer boundary 通过。
+
+- **Phase 5.7 Human Review Round 1 修复（2026-09-17，分支
+  `fix/p5.7-hr1-followup`）**：完成右侧面板 300–400px 自适应、控制栏拆行与单列高级设置、未采用候选的
+  独立橙色预览层、Correct 光标跨帧保持、检查卡直接动作与 Finish checking、像素单位
+  限制和标定入口、train→infer lineage 判据、关键事务自动保存。同步修复已有审核批次
+  被重复挖掘覆盖、Accept/Skip 污染标注 autosave 计数、预览产物边界校验及 autosave
+  清空 undo/redo 的隐藏问题。`compileall` 通过；全量 **797 passed**。处置详情见
+  [HR1 分析](../notes/phase-5.7-hr1-analysis.md) 与
+  [Phase 5.7 Review Record](../reviews/phase-5.7-review.md)。
+
+- **Phase 5.7 HR1 补充实测修复（2026-09-17）**：Generate trajectory 后立即从
+  原始预测显示完整未采用 AI 轨迹，低置信度位置以红色保留供修正；审核任务卡显示
+  建议帧序号/总数/视频帧号并提供 Previous / Next，重开后从持久化批次首个 pending 帧
+  恢复；标定改为“标尺 → 原点/坐标轴 → 返回 Acquire trajectory”的连续引导，并恢复
+  原 Track。同步修复 history 临时选择造成的上下审核状态分裂、GUI 越层读取预测文件、
+  标尺与原点之间异步保存吞点击三个隐藏问题。相关回归 87 项、全量 **799 passed**，
+  `compileall` 与 layer boundary 通过；当时仍待 Human Review Round 2，现已通过。
 
 - **Phase 5.7 — Interaction Flow Redesign（2026-09-17，分支 `feat/p5.7-interaction-redesign`）**：
   - 交付（详见 [phase-5.7-plan](phase-5.7-plan.md) 与 [phase-5.7 review](../reviews/phase-5.7-review.md)）：
@@ -40,8 +74,8 @@
     以会话级模态桩**根治**（三个记录配方 27/55/117 通过）；Independent Review R1（NEEDS-FIX：
     F1 检查绑定/F2 失效集死循环两个 Blocker + 5 Suggestions）→ 全部修复 → R2（仅 N1 导入缺失）
     → 补验 **CLOSED**（按 R2 豁免条款）；ADR-0016 记录 C1/C2。
-  - **未关闭**：Human Review 待用户实测（清单见本文件 Next Recommended Action）；
-    通过前不宣布 5.7/Phase 5 收官，不开始 Phase 6。
+  - **当时未关闭**：该实现批次仍待 Human Review；HR1 与后续补充修复现已验收通过，
+    5.7/Phase 5 已于 2026-09-18 收官。
 
 - **Phase 5.7 交互架构设计（2026-09-16，仅研究与设计）**：完成
   [phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)。建议以
@@ -206,18 +240,13 @@
 
 ## Current Goal
 
-**Phase 5.7 Human Review gate**：实现、复核（R1/R2 CLOSED）与文档同步已完成；
-等待用户按清单实测。HR 通过后：宣布 5.7 与 Phase 5 收官、roadmap/README 终态
-同步、进入 Phase 6 立项。HR 发现的关键误解按 blocking interaction finding 处理。
+**阶段间停点**：Phase 5.7 与 Phase 5 已完成。按阶段收尾规则停止开发；Phase 6 尚未
+立项或开始实现，等待用户下一条指令。
 
 ## Current Worktree Note
 
-`feat/p5.7-interaction-redesign` 已合并 main 并推送；工作区干净（除本文件）。
-
-## Current Worktree Note
-
-`fix/pre-phase6-review-followup` 按 `--no-ff` 合并 main；三项补漏、5 项新增回归和
-审查追记一并交付。无 schema/ADR/产品范围变更，无真实项目数据改写。
+Phase 5.7 收尾分支 `fix/p5.7-hr1-followup` 已完成验证并合并回 `main`；工作区应保持
+clean。收尾没有 schema 变更、依赖变更或真实项目数据改写。
 
 ## Current Decisions / Deferred Checks
 
@@ -248,18 +277,7 @@
 
 ## Next Recommended Action
 
-**用户执行 Phase 5.7 Human Review**（通过前 5.7 不关闭）：
-
-1. 启动：仓库根目录 `.venv/bin/python -m ai_physics_tracker`
-2. 用一段**单摆视频**从零完成：标注 → （确认检查帧）→ 开始学习 → 生成轨迹 →
-   检查候选 → 按建议继续或停止 → 采用可用轨迹 → 更新并查看 Physics Charts
-3. 覆盖：保存重开；一次 no difficult frames；一个未改善候选的处理；修改已采用
-   轨迹后的 chart stale/recompute；一次取消或失败恢复
-4. 五个停点自问：我现在在哪？下一步是什么？现在能否分析？（标注中/学习中/
-   生成后/检查后/图表过期）
-5. 关键验收（误解即 blocking finding）：全程未选 run/snapshot/restart-resume；
-   始终知道图表用的是哪条轨迹；不把 candidate 当 active；不把 Accept 当训练
-   标签；不把 Skip 当"预测正确"；no-difficult-frames/未改善时知道可以正常停止；
-   需要时能找到参数、历史与 lineage。
-
-反馈"通过"→ 收尾收官；指出问题 → 修复后重跑自动化再发起 HR。
+**等待用户启动 Phase 6 — Advanced Physics Analysis 的立项/设计工作。** 下一次开发会话先
+阅读本文件、`docs/roadmap.md` 的 Phase 6、相关物理分析需求与现有 kinematics/charts
+架构，再确定 Phase 6 的 requirements、ADR 与 subphase mini-plan；不要从本次收尾会话
+直接开始 Phase 6 实现。
