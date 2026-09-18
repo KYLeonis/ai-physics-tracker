@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-18（**Phase 5.7 HR1 后续实测反馈已修复，全量 804；下一步针对性 Human Review——通过前 5.7 不关闭**）
+- 最后更新：2026-09-18（**Phase 5.7 Human Review 通过；Phase 5 已收官；下一步等待 Phase 6 立项指令**）
 
 ---
 
@@ -11,8 +11,8 @@
 
 | Level | Name | Status |
 | --- | --- | --- |
-| Current | Phase 5.7 — Interaction Flow Redesign | 🔄 HR1 + 两轮补充实测修复完成（2026-09-18），**待针对性 Human Review** |
-| Phase | Phase 5 — AI-assisted Annotation & Refinement | 🔄 5.0–5.6 完成；5.7 待 HR 后收官 |
+| Current | 阶段间停点 | ⏸️ Phase 5 已完成；等待用户开始 Phase 6 |
+| Phase | Phase 5 — AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标按批准决定明示归档） |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
 | Subphase | 5.2 — Difficult Frame Mining | ✅ 已完成 (2026-09-03) |
@@ -20,9 +20,17 @@
 | Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, HR 通过；复核收口完成) |
 | Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
 | Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 明示缺口归档) |
-| Subphase | 5.7 — Interaction Flow Redesign | 🔄 实现+R1/R2 CLOSED；HR1 后续实测修复完成，待 HR |
+| Subphase | 5.7 — Interaction Flow Redesign | ✅ 已完成（2026-09-18；R1/R2 CLOSED，Human Review 通过） |
 
 ## Recently Completed
+
+- **Phase 5.7 / Phase 5 收官（2026-09-18）**：用户完成最终针对性 Human Review，确认
+  标定提示完整显示、困难帧置信度/入选原因表达正确、空筛查结论与再次筛查动作均无问题。
+  5.7 的设计、实现、两轮独立代码复核、HR1 及两轮补充实测均已闭环；Phase 5 的
+  5.0–5.7 全部完成。最终本地验证 **804 passed**，macOS/Windows CI
+  [run 35319559409](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35319559409) 均通过；
+  同时关闭了 Qt 测试重复 teardown 与 autosave/显式保存争用固定临时文件两个隐藏竞态。
+  Phase 5.6 已批准的 AC-9 改善幅度缺口保持原样，不把 −3.3% plateau 改写为达标。
 
 - **Phase 5.7 HR1 第二轮补充实测修复（2026-09-18）**：标定引导改用真实内容边距并按
   当前侧栏宽度计算换行高度，修复高 DPI/大字号裁字；困难帧普通界面移除易被误认成
@@ -48,7 +56,7 @@
   恢复；标定改为“标尺 → 原点/坐标轴 → 返回 Acquire trajectory”的连续引导，并恢复
   原 Track。同步修复 history 临时选择造成的上下审核状态分裂、GUI 越层读取预测文件、
   标尺与原点之间异步保存吞点击三个隐藏问题。相关回归 87 项、全量 **799 passed**，
-  `compileall` 与 layer boundary 通过；仍待 Human Review Round 2。
+  `compileall` 与 layer boundary 通过；当时仍待 Human Review Round 2，现已通过。
 
 - **Phase 5.7 — Interaction Flow Redesign（2026-09-17，分支 `feat/p5.7-interaction-redesign`）**：
   - 交付（详见 [phase-5.7-plan](phase-5.7-plan.md) 与 [phase-5.7 review](../reviews/phase-5.7-review.md)）：
@@ -66,8 +74,8 @@
     以会话级模态桩**根治**（三个记录配方 27/55/117 通过）；Independent Review R1（NEEDS-FIX：
     F1 检查绑定/F2 失效集死循环两个 Blocker + 5 Suggestions）→ 全部修复 → R2（仅 N1 导入缺失）
     → 补验 **CLOSED**（按 R2 豁免条款）；ADR-0016 记录 C1/C2。
-  - **未关闭**：Human Review 待用户实测（清单见本文件 Next Recommended Action）；
-    通过前不宣布 5.7/Phase 5 收官，不开始 Phase 6。
+  - **当时未关闭**：该实现批次仍待 Human Review；HR1 与后续补充修复现已验收通过，
+    5.7/Phase 5 已于 2026-09-18 收官。
 
 - **Phase 5.7 交互架构设计（2026-09-16，仅研究与设计）**：完成
   [phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)。建议以
@@ -232,14 +240,13 @@
 
 ## Current Goal
 
-**Phase 5.7 Human Review gate**：实现、复核（R1/R2 CLOSED）与文档同步已完成；
-等待用户按清单实测。HR 通过后：宣布 5.7 与 Phase 5 收官、roadmap/README 终态
-同步、进入 Phase 6 立项。HR 发现的关键误解按 blocking interaction finding 处理。
+**阶段间停点**：Phase 5.7 与 Phase 5 已完成。按阶段收尾规则停止开发；Phase 6 尚未
+立项或开始实现，等待用户下一条指令。
 
 ## Current Worktree Note
 
-`fix/p5.7-hr1-followup` 包含 HR1 与两轮补充实测修复；自动化验证已通过，等待针对性
-Human Review。通过前不合并 main、不关闭 5.7；无 schema/ADR/真实项目数据改写。
+Phase 5.7 收尾分支 `fix/p5.7-hr1-followup` 已完成验证并合并回 `main`；工作区应保持
+clean。收尾没有 schema 变更、依赖变更或真实项目数据改写。
 
 ## Current Decisions / Deferred Checks
 
@@ -270,24 +277,7 @@ Human Review。通过前不合并 main、不关闭 5.7；无 schema/ADR/真实�
 
 ## Next Recommended Action
 
-**用户执行 Phase 5.7 针对性 Human Review**（通过前 5.7 不关闭）：
-
-1. 启动：仓库根目录 `.venv/bin/python -m ai_physics_tracker`
-2. 在约 1024×640 窗口确认右侧卡片可滚动、主动作可达，高级设置不横向裁切。
-3. 生成轨迹后确认视频立即出现完整 `Preview · not adopted`；低置信度位置为红色且可进入
-   Correct。检查卡顶部应显示“建议帧 i/N + 视频帧号”，Previous / Next 无需向下滚动即可使用；
-   Accept/Skip 自动前进。Finish checking 保留剩余帧，再次 Check 或重开项目后从首个 pending 帧续接。
-4. Correct 跳帧完成后鼠标在视频上立即保持十字；Cancel placement/Esc 不落点。
-5. 无标定时确认状态头/卡片说明单位为 pixels，`Set scale & coordinate system` 按
-   “画标尺 → 选原点/检查轴 → Return to Acquire trajectory”连续推进；返回后原 Track 恢复并可继续标记。
-6. 同一模型生成一次后不再重复提示 Generate；继续训练后才重新提示。
-7. 采用、完成审核、确认检查帧或 Correct 后直接退出并重开，数据已保存；Correct 后
-   Undo/Redo 仍可用。
-8. 候选预览不得改变当前图表；采用后 Preview 消失，更新 Charts 后来源显示新版本。
-9. 以较大系统字号进入标定，蓝色步骤提示应完整显示；缩窄窗口后也不能裁掉首尾文字。
-10. 困难帧只命中少量候选时，界面显示 `Model confidence` 与 `Why check`，并说明请求最多
-    多少帧、实际只有多少帧超过标准；不再显示普通用户容易误解的 `Score: 0.000`。
-11. 筛查没有候选时，顶部卡片立即显示 `trajectory screening complete — no flagged frames`，
-    主动作是 `Adopt for analysis`；`Run screening again` 会真正重新执行并给出进行中反馈。
-
-反馈"通过"→ 收尾收官；指出问题 → 修复后重跑自动化再发起 HR。
+**等待用户启动 Phase 6 — Advanced Physics Analysis 的立项/设计工作。** 下一次开发会话先
+阅读本文件、`docs/roadmap.md` 的 Phase 6、相关物理分析需求与现有 kinematics/charts
+架构，再确定 Phase 6 的 requirements、ADR 与 subphase mini-plan；不要从本次收尾会话
+直接开始 Phase 6 实现。

@@ -1,7 +1,7 @@
 # Phase 5.7 Human Review — Round 1 Findings 分析与修复方案
 
 - 日期：2026-09-17；来源：用户实测反馈（7 条）。
-- 状态：**已实施并通过自动化验证；待 Human Review Round 2**。
+- 状态：**已实施并通过自动化验证；最终 Human Review 于 2026-09-18 通过**。
 - 对应实现：`main @ 62205e3`（feat/p5.7-interaction-redesign 已合并）。
 - 处置原则：全部为交互层修复，**不改 domain/persistence 契约**（ADR-0013/0014/0015/0016
   全部保持）；修复后重跑自动化并再次发起 Human Review。
@@ -295,3 +295,8 @@ trajectory` 没有启动新任务，也没有把下方结论提升到用户可�
 
 没有修改困难帧筛查阈值或补齐策略；只返回一个候选是本次数据的真实算法结论。项目数据
 只读检查，没有改写。新增 5 项针对性回归；全量 `804 passed`，`compileall` 与分层测试通过。
+
+## 最终 Human Review（2026-09-18）
+
+用户确认本轮三个问题均无问题：标定提示不再裁字；困难帧信息不再混淆相对分数与
+confidence；空筛查结果与再次筛查动作均有明确反馈。Phase 5.7 Human Review gate 关闭。

@@ -1,6 +1,7 @@
 # Phase 5.7 — Interaction Flow Redesign Mini-Plan
 
-- 日期：2026-09-16/17。分支：`feat/p5.7-interaction-redesign`。
+- 日期 / 状态：2026-09-16–18 · ✅ 已完成（R1/R2 CLOSED；最终 Human Review 通过）。
+- 分支：`feat/p5.7-interaction-redesign` + `fix/p5.7-hr1-followup`。
 - 输入：[phase-5.7-interaction-redesign.md](../design/phase-5.7-interaction-redesign.md)（用户已批准方向，
   含 C1/C2）、[interaction-experience.md](../notes/interaction-experience.md)、AGENTS/CODE_STANDARD/workflow。
 - 基线：`main @ 81d97c9`（stabilization + followup 已合并，双平台 CI 绿）。
@@ -77,3 +78,15 @@ Phase 6 物理功能；persistence/domain schema 变更；第二套 workflow 持
 9. Undo/Redo、save/reopen、A/S/C 不抢输入、Correct 退出、小窗口可用（回归+新测）。
 10. 现有测试全绿（739 基线）；macOS/Windows CI 绿；Independent Review + re-review 通过。
 11. Human Review gate：用户实测清单通过前不关闭 5.7。
+
+## Result
+
+- 三工作区、常驻状态头、状态驱动任务卡、C1/C2、候选/采用/分析分离、失败 UX 与
+  Ready for Analysis 交接均已实现。
+- Independent Review R1/R2 findings 全部 CLOSED；HR1 与两轮补充实测发现的布局、预览、
+  审核导航、标定引导、困难帧表达和空筛查状态问题全部修复。
+- 最终验证：本地全量 **804 passed**，`compileall` 与 layer boundary 通过；
+  [CI run 35319559409](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35319559409)
+  的 macOS/Windows jobs 均通过。
+- Human Review：用户于 2026-09-18 确认最终三个针对性场景均无问题，AC-11 关闭。
+- 无 schema、新依赖或底层科研契约变更；Phase 5.6 AC-9 改善幅度缺口保持原记录。

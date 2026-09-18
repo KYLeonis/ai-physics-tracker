@@ -1,10 +1,8 @@
 # Subphase Plan — Phase 5.6 Refinement Loop Integration & Acceptance
 
-- Issue：待计划确认后创建
-- 分支：`feat/p5.6-loop-acceptance`
 - Issue：[#22](https://github.com/KYLeonis/ai-physics-tracker/issues/22)
 - 分支：`feat/p5.6-loop-acceptance`
-- 日期 / 状态：2026-09-16 · 🚧 Slices 0–3 执行完毕；AC-9 以明示缺口归档；待 HR/合并
+- 日期 / 状态：2026-09-16 · ✅ 已完成并合并；Human Review 通过；AC-9 改善目标以明示缺口归档
 
 ## Goal
 
@@ -173,6 +171,6 @@ F2 冻结 series 从 project.json 消失但可重建、F3 基准分辨率不足�
   "未发现困难帧"；②原计划的"独立比较工具 + 用户可见报告"按用户要求改为**Advisor 内部输入 +
   Agent 归档**（不增加用户理解负担）
 - 遗留问题（移交）：AC-9 改善证据缺失（成因 F1/F4/F5，建议以"未参与决策的保留帧/第二视频"重建基准）；
-  交互体验重构待立项（[docs/notes/interaction-experience.md](../notes/interaction-experience.md)）
+  交互体验重构已由 5.7 完成（[docs/notes/interaction-experience.md](../notes/interaction-experience.md)）
 - 独立 review 结论：**自查**（用户指示不使用 subagent；两次 subagent 尝试因 Flash 配额失败）
   发现并修复 2 项缺陷（含 1 项 Blocker），详见 [phase-5.6-review.md](../reviews/phase-5.6-review.md) §5

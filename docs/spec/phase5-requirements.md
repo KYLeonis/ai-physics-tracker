@@ -1,7 +1,7 @@
 # Phase 5 — AI-assisted Annotation & Refinement 需求规范
 
-> 状态：**Accepted（2026-09-01；R1–R7 已随 Subphase 5.1–5.5 实现，5.6 端到端验收待开始；
-> 实施证据以各 Subphase plan/review 与 current status 为准）**
+> 状态：**Implemented / Phase closed（2026-09-18；5.0–5.7 完成，最终 Human Review 通过；
+> AC-9 的 ≥5% 改善证据未达成并按用户批准明示归档）**
 > 本文定义产品边界、数据语义与验收口径；实施状态以各 Subphase plan 与 current status 为准。实施顺序见
 > [PHASE_5_PLAN](../status/phase-5-plan.md)。Phase 4 基线见
 > [Phase 4 requirements](phase4-requirements.md)、[ADR-0011](../decisions/0011-deeplabcut-integration-architecture.md)、

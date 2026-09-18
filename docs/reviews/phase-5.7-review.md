@@ -35,7 +35,8 @@
 **流程**
 
 - [x] Conventional Commits；ADR-0016 已记录 C1/C2
-- [ ] 全量 pytest + compileall + 双平台 CI（本地 788 passed + compileall OK；CI 待合并后）
+- [x] 全量 pytest + compileall + 双平台 CI（最终本地 804 passed；
+  [run 35319559409](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35319559409) 的 macOS/Windows jobs 均通过）
 
 ## Findings
 
@@ -171,4 +172,15 @@
 - 契约：没有修改困难帧阈值、候选排序、prediction/manual provenance、active/candidate
   隔离、持久化 schema 或采用语义；真实项目只读检查，没有改写。
 - 验证：针对性 5 项通过；全量 **804 passed**；`compileall` 与 layer boundary 通过。
-- 状态：等待用户针对上述三个新场景复测，不关闭 Phase 5.7。
+- 状态：用户针对上述三个新场景复测通过。
+
+## Human Review Final Verdict（2026-09-18）
+
+- 用户结论：**通过**。标定提示完整显示；困难帧显示模型置信度与入选原因；空筛查结果
+  有明确工作流结论，`Run screening again` 可见且可执行。
+- 5.7 Acceptance Criteria 1–11 全部关闭；R1/R2 findings、HR1 findings 及两轮补充实测
+  findings 均已处置。
+- 收尾 CI 另外关闭两个隐藏可靠性问题：pytest-qt 窗口不再被两套 teardown 重复关闭；
+  同一 repository 的后台 autosave 与显式保存按完整原子提交串行，避免 Windows
+  `project.json.tmp` 文件锁竞态。
+- **Final Verdict：PASS / CLOSED**。Phase 5.7 可合并；Phase 5 随之收官。
