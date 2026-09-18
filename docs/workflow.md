@@ -214,36 +214,7 @@ Implementation Agent
 
 **明确不使用**：Project Board、Git Flow、长期存活的分支（唯一例外见下）、强制 PR、CODEOWNERS、大量标签 / 状态管理。
 
-原则：GitHub 帮我们保存历史和开发状态，而不是增加管理负担。单人项目中 `main` 即**通用产品线**的集成分支；产品分支的生命周期 = 一个 subphase（论文发布线见下与 §10.4）。
-
-**论文发布线例外**：`publication/*`（当前 `publication/ejp-damped-pendulum`）是唯一许可的长期分支，用于论文复现基线、审稿修订与出版归档；其 scope、同步与发布策略以 `publication/README.md` 为 authoritative owner，运行时状态入口为 `publication/STATUS.md`。通用缺陷修复仍按正常流程在 `main` 上完成并验证，再按 §10.4 受控同步到发布线；发布线永不反向驱动 `main` 的范围。
-
-### 10.4 Dual-worktree 与 main → publication 同步
-
-项目有两个长期 worktree，各自绑定一条工作线：
-
-| Worktree | 分支 | 角色 | 运行时状态入口 |
-| --- | --- | --- | --- |
-| `ai-physics-tracker/` | `main` | 通用产品开发线（Phase → Subphase → Slice） | `docs/status/current.md` |
-| `ai-physics-tracker-ejp/` | `publication/ejp-damped-pendulum` | EJP 论文 / 复现线 | `publication/STATUS.md` |
-
-**开工门（必须执行）**：
-
-```bash
-pwd
-git branch --show-current
-git status
-```
-
-- 任务指派应写明 `Worktree / Expected branch / Role`；三者与实际不符时**停下询问用户，不在错误 worktree 中自行切分支继续工作**。
-- 两个 status 文件各管各的线，不互相覆盖、不机械同步（§6 的共享治理文档除外）。
-
-**同步规则（main → publication，单向）**：
-
-- 通用 bug 与核心算法修复**先在 `main` 修复并验证**（保持测试与 CI 覆盖），再同步到发布线。
-- 优先使用可追踪的 Git 操作（**cherry-pick**）；不默认 merge 整个 `main`，禁止用 Finder 手工复制源码作为同步方式。
-- 每次同步在 `publication/STATUS.md` 的 Relevant Source Commits 记录：**source commit**、**为什么论文需要**、**发布线上重新做了什么验证**。
-- 两个 worktree 各自保持 clean；同步在发布线 worktree 内进行，不把 `main` worktree 切到发布分支。
+原则：GitHub 帮我们保存历史和开发状态，而不是增加管理负担。单人项目中 `main` 即**通用产品线**的集成分支；产品分支的生命周期 = 一个 subphase（长期分支的唯一例外是论文发布线，见 §10.4）。
 
 ### 10.2 风险分级流程
 
@@ -270,6 +241,37 @@ branch → slices → verification → Independent Review → fixes → re-revie
 - 现阶段不引入：required approvals、required signed commits、blanket required PR、CODEOWNERS。
 - Release Mode（Phase 9 / release candidate）再重新评估 required CI + required PR。
 - 修改 GitHub repository settings 属用户人工操作，Agent 不代为变更。
+
+### 10.4 Dual-worktree 与 publication 发布线（长期分支的唯一例外）
+
+`publication/*`（当前 `publication/ejp-damped-pendulum`）是唯一许可的长期分支，用于论文复现基线、审稿修订与出版归档；其 scope、同步与发布策略以 `publication/README.md` 为 authoritative owner，运行时状态入口为 `publication/STATUS.md`。
+
+项目有两个长期 worktree，各自绑定一条工作线：
+
+| Worktree | 分支 | 角色 | 运行时状态入口 |
+| --- | --- | --- | --- |
+| `ai-physics-tracker/` | `main` | 通用产品开发线（Phase → Subphase → Slice） | `docs/status/current.md` |
+| `ai-physics-tracker-ejp/` | `publication/ejp-damped-pendulum` | EJP 论文 / 复现线 | `publication/STATUS.md` |
+
+**开工门（必须执行）**：
+
+```bash
+pwd
+git branch --show-current
+git status
+```
+
+- 任务指派应写明 `Worktree / Expected branch / Role`；三者与实际不符时**停下询问用户，不在错误 worktree 中自行切分支继续工作**。
+- 两个 status 文件各管各的线，不互相覆盖、不机械同步（共享治理文档除外，见下）。
+
+**同步规则（main → publication，单向）**：
+
+- 通用 bug 与核心算法修复**先在 `main` 修复并验证**（保持测试与 CI 覆盖），再同步到发布线。
+- 优先使用可追踪的 Git 操作（**cherry-pick**）；不默认 merge 整个 `main`，禁止用 Finder 手工复制源码作为同步方式。
+- 每次同步在 `publication/STATUS.md` 的 Relevant Source Commits 记录：**source commit**、**为什么论文需要**、**发布线上重新做了什么验证**。
+- 两个 worktree 各自保持 clean；同步在发布线 worktree 内进行，不把 `main` worktree 切到发布分支。
+
+**共享与分支专属文档**：共享治理规则（`AGENTS.md`、`docs/workflow.md`、`CODE_STANDARD.md`、通用 templates）随同步进入发布线；分支专属状态（main 的 `docs/status/current.md`，发布线的 `publication/README.md` + `publication/STATUS.md`）不机械同步。
 
 ## 11. Agent 交接协议
 
