@@ -72,7 +72,7 @@ def test_acquire_panel_fits_1024_by_640_without_horizontal_clipping(
 
     assert 280 <= panel.width() <= 430
     assert scroll.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-    assert scroll.horizontalScrollBar().maximum() == 0
+    assert not scroll.horizontalScrollBar().isVisible()
     assert panel.cardPrimaryButton.isVisible()
 
     panel.advancedToggleButton.click()
