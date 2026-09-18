@@ -37,22 +37,24 @@ def no_native_modals(qapp):
 
 
 @pytest.fixture(autouse=True)
-def discard_test_projects(monkeypatch, qtbot, qapp, request):
+def discard_test_projects(monkeypatch, qtbot):
     monkeypatch.setattr(QMessageBox, "question",
                         lambda *args: QMessageBox.StandardButton.Discard)
-    yield
-    # 先解除窗口的保存确认（teardown 早于 qtbot 关闭窗口），再同步完成
-    # MainWindow 的线程回收；脏数据对话框的业务分支另有独立断言。
-    for window in qapp.topLevelWidgets():
-        if hasattr(window, "projectActions"):
-            window.projectActions.close_allowed = True
-    for window in qapp.topLevelWidgets():
-        if hasattr(window, "projectActions"):
-            window.close()
+    original_add_widget = qtbot.addWidget
 
-    # pytest-qt 随后还会关闭它登记的同一批 QWidget。Windows Qt 对带后台
-    # decoder/executor 的 MainWindow 重复 native close 偶发 0xc0000374；既然
-    # 上面已完成一次完整 close lifecycle，就清空本测试项的登记，避免二次
-    # 关闭。这里只接触测试框架状态，不改变产品关闭语义。
-    if hasattr(request.node, "qt_widgets"):
-        request.node.qt_widgets = []
+    def add_widget(widget, *, before_close_func=None):
+        def prepare_close(registered_widget):
+            if hasattr(registered_widget, "projectActions"):
+                registered_widget.projectActions.close_allowed = True
+            if before_close_func is not None:
+                before_close_func(registered_widget)
+
+        original_add_widget(widget, before_close_func=prepare_close)
+
+    # 把保存确认解除动作挂到 pytest-qt 自己的唯一 close 调用上。这样既不会
+    # 因 fixture teardown 顺序过晚而弹出原生模态，也不会由两套 teardown
+    # 重复关闭带 decoder/executor 的 MainWindow（曾在 macOS/Windows CI
+    # 分别触发 SIGSEGV / 0xc0000374）。
+    monkeypatch.setattr(qtbot, "addWidget", add_widget)
+    monkeypatch.setattr(qtbot, "add_widget", add_widget)
+    yield
