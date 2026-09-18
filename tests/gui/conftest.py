@@ -37,15 +37,22 @@ def no_native_modals(qapp):
 
 
 @pytest.fixture(autouse=True)
-def discard_test_projects(monkeypatch, qtbot, qapp):
+def discard_test_projects(monkeypatch, qtbot, qapp, request):
     monkeypatch.setattr(QMessageBox, "question",
                         lambda *args: QMessageBox.StandardButton.Discard)
     yield
-    # 先解除窗口的保存确认（teardown 早于 qtbot 关闭窗口），再清理测试窗口；
-    # 脏数据对话框的业务分支另有独立断言。
+    # 先解除窗口的保存确认（teardown 早于 qtbot 关闭窗口），再同步完成
+    # MainWindow 的线程回收；脏数据对话框的业务分支另有独立断言。
     for window in qapp.topLevelWidgets():
         if hasattr(window, "projectActions"):
             window.projectActions.close_allowed = True
     for window in qapp.topLevelWidgets():
         if hasattr(window, "projectActions"):
             window.close()
+
+    # pytest-qt 随后还会关闭它登记的同一批 QWidget。Windows Qt 对带后台
+    # decoder/executor 的 MainWindow 重复 native close 偶发 0xc0000374；既然
+    # 上面已完成一次完整 close lifecycle，就清空本测试项的登记，避免二次
+    # 关闭。这里只接触测试框架状态，不改变产品关闭语义。
+    if hasattr(request.node, "qt_widgets"):
+        request.node.qt_widgets = []
