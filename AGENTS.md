@@ -74,6 +74,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 ## 5. 文档位置
 
 - **当前状态（不知道做什么先读这个）**：`docs/status/current.md` —— 由每个开发会话结束时更新
+- **论文发布线（publication worktree 内）**：`publication/README.md`（策略 / scope / 发布流程）、`publication/STATUS.md`（论文线当前状态入口）
 - **代码规范（写代码前必读）**：`CODE_STANDARD.md` —— 命名（含领域词汇表）、分层、类型、错误处理、数值代码、跨平台、测试风格
 - 开发循环细则（Phase/Subphase/Slice、review、GitHub、Agent 交接）：`docs/workflow.md`
 - 路线图：`docs/roadmap.md`
@@ -92,7 +93,8 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 
 **会话进入协议（Cold-start Protocol 2.0，细则见 `docs/workflow.md` §11.1）**：
 
-1. 顺序阅读：本文件 → `docs/status/current.md`（现在在哪 / 下一步 / Active Constraints）→ 当前 Phase requirements → Phase master plan → 当前 Subphase mini-plan（含 **Agent Context Pack** 与 **Review Gate**）→ Context Pack 引用的 ADR / finding → 检查仓库（`git status`、`git log --oneline -15`、未提交改动）。
+0. **确认 worktree**：`pwd`、`git branch --show-current`、`git status`，与本任务指派的 Worktree / Expected branch / Role 一致（dual-worktree 规则见 `docs/workflow.md` §10.4）；身处错误 worktree 时停下询问用户，不自行切分支继续工作。
+1. 顺序阅读：本文件 → 状态入口（main 线 `docs/status/current.md`；发布线 `publication/STATUS.md`）→ 当前 Phase requirements → Phase master plan → 当前 Subphase mini-plan（含 **Agent Context Pack** 与 **Review Gate**）→ Context Pack 引用的 ADR / finding → 检查仓库（`git status`、`git log --oneline -15`、未提交改动）。
 2. 涉及写代码的任务：动手前再读 `CODE_STANDARD.md` 并延续改动点附近代码的既有模式（规范与附近代码冲突时按 CODE_STANDARD.md §1 处理）。
 3. 不要求默认通读全部历史 Review Records / ADR——由 mini-plan 的 Context Pack 指向真正相关的材料；轻量任务（局部 bugfix、文案、文档小改）可裁剪为 current.md → 相关文件 → 仓库检查。
 4. 执行 status 文件中的 "Next Recommended Action"；若 status 与仓库实际状态矛盾，以仓库为准并先修正 status。
@@ -138,6 +140,7 @@ Explore → 需要时 Plan（subphase mini-plan：Goal / Context Pack / Scope / 
 - 认证已配置完成（2026-08-27）：HTTPS 凭据存于 macOS 钥匙串（OAuth token，scope: repo/workflow），`git push` / `git pull` 可直接使用；如凭据失效，通过 GitHub OAuth 设备授权流程重新获取（在 GitHub → Settings → Applications 中可查看/撤销）。
 - 提交到 `main` 前在工作分支开发（`feat/p<phase>.<sub>-<topic>`，如 `feat/p1.1-data-model`；杂项用 `fix/<topic>` / `docs/<topic>`）；小规模文档同步可直接提交到 `main`。分支生命周期 = 一个 Subphase，收尾时 `--no-ff` 合并回 `main`（见 `docs/workflow.md` §10）；唯一例外是论文发布线 `publication/*`（长期分支，策略以 `publication/README.md` 为准）。
 - 改动按风险分两档流程（判定与细则见 `docs/workflow.md` §10.2，在 mini-plan 的 Review Gate 提前声明）：**Normal-risk**（局部 GUI、文案、小型内部重构、明确 bugfix、测试改进）走 branch → slices → verify → `--no-ff` merge；**High-risk**（schema/持久化、公共数据契约、坐标/时间语义、数值算法与科学计算、拟合/不确定度、Undo/Redo 事务、AI 结果激活、后台生命周期/并发、打包/迁移）预声明 Independent Review，并建议以 PR 作为完整 diff 的观察容器。PR 始终可选，不做强制审批。
+- 项目有两个长期 worktree：`ai-physics-tracker/` → `main`（通用产品线），`ai-physics-tracker-ejp/` → `publication/ejp-damped-pendulum`（论文线）。main → publication 用 **cherry-pick** 受控同步（先在 main 修复验证），每次同步在 `publication/STATUS.md` 记录 source commit / 为什么论文需要 / 重新做了什么验证；不默认 merge 整个 main，不用文件复制充当同步。细则见 `docs/workflow.md` §10.4。
 - main 分支保护：当前未启用（2026-09-18 核实）；建议最低配置为 prohibit force push / prohibit branch deletion，Release Mode（Phase 9）再评估 required CI / required PR。修改 GitHub settings 由用户人工执行，Agent 不代改。
 - **每个 Phase 的收尾提交完成后必须 push 到 origin**，保证远程始终反映最新项目状态。
 - 提交信息使用 Conventional Commits（见第 9 节）。

@@ -64,6 +64,8 @@ mini-plan 中的固定区域，充当**相关历史的索引与导航入口**，
 
 维护规则：实现中发现新的相关 invariant / finding，随收尾回写本节与 `docs/status/current.md`；subphase 结束后 Context Pack 随 mini-plan 归档，不另行维护。
 
+**Publication task 变体**：发布线上的任务不使用 Subphase mini-plan，而用同样思想的轻量 **Publication Context**（可写在任务描述或 `publication/STATUS.md` 的 Current Work 内）：Relevant manuscript / scientific goal、Relevant source commits、Scientific invariants、Required evidence、Non-goals。同样保持短小，只指向真正相关的历史与文档，不要求阅读整个 Review Archive。
+
 ## 4. 一个 Slice 多大比较合理
 
 满足以下全部条件即为合适：
@@ -132,6 +134,7 @@ Normal-risk（不默认触发）：
 - Normal-risk 改动核心逻辑超过约 500 行、或 subphase 收尾包含关键设计决策时，仍考虑触发。
 - 普通 UI 排版、文案、小型 glue code 不自动升级为完整 Independent Review。
 - 拿不准时按触发处理，在 Review Gate 写一句理由；多一次 review 的成本低于漏检。
+- **Publication 线加严**：发布线上任何可能改变论文所依据的数值、图表或科学结论的改动（θ/ω/α、filtering/smoothing、period、fitting、statistics、figure-source transformations 等）默认属 high-risk scientific change，触发 Independent Review + 重新验证；纯文档修改不加重流程。
 
 **角色分工**：
 
@@ -211,9 +214,36 @@ Implementation Agent
 
 **明确不使用**：Project Board、Git Flow、长期存活的分支（唯一例外见下）、强制 PR、CODEOWNERS、大量标签 / 状态管理。
 
-原则：GitHub 帮我们保存历史和开发状态，而不是增加管理负担。单人项目中 `main` 即集成分支；分支的生命周期 = 一个 subphase。
+原则：GitHub 帮我们保存历史和开发状态，而不是增加管理负担。单人项目中 `main` 即**通用产品线**的集成分支；产品分支的生命周期 = 一个 subphase（论文发布线见下与 §10.4）。
 
-**论文发布线例外**：`publication/*`（当前 `publication/ejp-damped-pendulum`）是唯一许可的长期分支，用于论文复现基线、审稿修订与出版归档；其 scope、同步与发布策略以 `publication/README.md` 为 authoritative owner。通用缺陷修复仍按正常流程在 `main` 上完成并验证，再受控同步（cherry-pick / merge）到发布线；发布线永不反向驱动 `main` 的范围。
+**论文发布线例外**：`publication/*`（当前 `publication/ejp-damped-pendulum`）是唯一许可的长期分支，用于论文复现基线、审稿修订与出版归档；其 scope、同步与发布策略以 `publication/README.md` 为 authoritative owner，运行时状态入口为 `publication/STATUS.md`。通用缺陷修复仍按正常流程在 `main` 上完成并验证，再按 §10.4 受控同步到发布线；发布线永不反向驱动 `main` 的范围。
+
+### 10.4 Dual-worktree 与 main → publication 同步
+
+项目有两个长期 worktree，各自绑定一条工作线：
+
+| Worktree | 分支 | 角色 | 运行时状态入口 |
+| --- | --- | --- | --- |
+| `ai-physics-tracker/` | `main` | 通用产品开发线（Phase → Subphase → Slice） | `docs/status/current.md` |
+| `ai-physics-tracker-ejp/` | `publication/ejp-damped-pendulum` | EJP 论文 / 复现线 | `publication/STATUS.md` |
+
+**开工门（必须执行）**：
+
+```bash
+pwd
+git branch --show-current
+git status
+```
+
+- 任务指派应写明 `Worktree / Expected branch / Role`；三者与实际不符时**停下询问用户，不在错误 worktree 中自行切分支继续工作**。
+- 两个 status 文件各管各的线，不互相覆盖、不机械同步（§6 的共享治理文档除外）。
+
+**同步规则（main → publication，单向）**：
+
+- 通用 bug 与核心算法修复**先在 `main` 修复并验证**（保持测试与 CI 覆盖），再同步到发布线。
+- 优先使用可追踪的 Git 操作（**cherry-pick**）；不默认 merge 整个 `main`，禁止用 Finder 手工复制源码作为同步方式。
+- 每次同步在 `publication/STATUS.md` 的 Relevant Source Commits 记录：**source commit**、**为什么论文需要**、**发布线上重新做了什么验证**。
+- 两个 worktree 各自保持 clean；同步在发布线 worktree 内进行，不把 `main` worktree 切到发布分支。
 
 ### 10.2 风险分级流程
 
@@ -246,19 +276,23 @@ branch → slices → verification → Independent Review → fixes → re-revie
 ### 11.1 冷启动协议（Cold-start Protocol 2.0）
 
 ```text
+0. Confirm worktree                       ← pwd、git branch --show-current、git status
+                                            （与本任务的 Worktree / Expected branch / Role 一致，§10.4）
 1. Read AGENTS.md
 2. Read docs/status/current.md            ← 现在在哪、下一步、Active Constraints
+                                            （publication worktree 内改读 publication/STATUS.md）
 3. Read current Phase requirements        ← docs/spec/phaseN-requirements.md
 4. Read current Phase master plan         ← subphase 顺序与决策门
 5. Read current Subphase mini-plan        ← Goal / Context Pack / Scope / AC / Review Gate
 6. Read Context Pack 引用的材料           ← 只读被引用的 ADR / finding / spec 小节
 7. Inspect repository                     ← git status、git log --oneline -15、未提交改动
 8. Read CODE_STANDARD.md                  ← 写代码的任务，动手前
-9. Implement                              ← 执行 status 的 Next Recommended Action
+9. Implement                              ← 执行状态入口的 Next Action
 ```
 
 - **不要求默认阅读所有历史 Review Records / ADR**——由 mini-plan 的 Context Pack 指向真正相关的材料（§3.1）。
-- **轻量任务允许裁剪**：局部 bugfix、文案、文档小改走"current.md → 相关文件 → 仓库检查"即可；不因当前 Phase 是高风险科学开发就被迫走完整 review / PR 流程。
+- **轻量任务允许裁剪**：局部 bugfix、文案、文档小改走"状态入口 → 相关文件 → 仓库检查"即可；不因当前 Phase 是高风险科学开发就被迫走完整 review / PR 流程。
+- 身处**错误 worktree** 时停下询问用户，不自行切分支继续工作（§10.4）。
 - status / mini-plan / 仓库状态矛盾时：**repository reality wins** → 先修正过期文档 → 继续。
 
 ### 11.2 Agent 自主权边界
@@ -290,7 +324,7 @@ branch → slices → verification → Independent Review → fixes → re-revie
 | 长期产品路线 | `docs/roadmap.md` |
 | 当前阶段科学 / 产品需求 | Phase requirements（`docs/spec/phaseN-requirements.md`） |
 | Phase 内 Subphase 顺序 | Phase master plan（`docs/status/phase-N-plan.md`） |
-| 当前正在做什么 / 下一步 | `docs/status/current.md` |
+| 当前正在做什么 / 下一步 | `docs/status/current.md`（main 线）；`publication/STATUS.md`（发布线） |
 | Subphase scope / AC | mini-plan（Issue 或 `docs/status/phase-N.M-plan.md`） |
 | 不可逆架构决策 | ADR（`docs/decisions/`） |
 | Review finding 生命周期 | Review Record（`docs/reviews/`） |
