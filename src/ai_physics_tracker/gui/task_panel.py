@@ -93,6 +93,7 @@ class TaskPanel(QDockWidget):
         super().__init__("Acquire trajectory", parent)
         self._initial_width_applied = False
         self.setObjectName("trackingTasks")
+        self.setMinimumWidth(280)
         self.setAllowedAreas(
             Qt.DockWidgetArea.RightDockWidgetArea
             | Qt.DockWidgetArea.LeftDockWidgetArea
