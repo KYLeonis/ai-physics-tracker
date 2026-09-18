@@ -6,6 +6,7 @@
 from pathlib import Path
 from uuid import uuid4
 
+from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
@@ -70,6 +71,7 @@ def test_acquire_panel_fits_1024_by_640_without_horizontal_clipping(
     qtbot.waitUntil(lambda: panel.width() >= 280, timeout=1000)
 
     assert 280 <= panel.width() <= 430
+    assert scroll.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
     assert scroll.horizontalScrollBar().maximum() == 0
     assert panel.cardPrimaryButton.isVisible()
 

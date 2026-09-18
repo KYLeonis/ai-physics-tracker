@@ -448,6 +448,8 @@ class TaskPanel(QDockWidget):
         content.setLayout(contentLayout)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setWidget(content)
         self.setWidget(scroll)
         self._primary_action_id = ""
