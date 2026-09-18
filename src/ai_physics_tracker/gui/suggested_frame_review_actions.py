@@ -253,7 +253,13 @@ class DifficultFrameReviewActions(QObject):
 
         self.panel.setMineEnabled(True, "")
 
-    def requestMining(self, run_id: UUID | None = None, params: MiningParams | None = None) -> None:
+    def requestMining(
+        self,
+        run_id: UUID | None = None,
+        params: MiningParams | None = None,
+        *,
+        force: bool = False,
+    ) -> None:
         """用户点击挖掘困难帧时发起后台任务（Phase 5.2/5.3）。"""
         if (
             self.busy
@@ -270,7 +276,8 @@ class DifficultFrameReviewActions(QObject):
 
         # 已有审核批次时恢复它，避免“再次检查”悄悄重挖并覆盖进度。
         saved = session.get_suggested_frame_review(target_run_id)
-        if saved is not None and saved.active_batch is not None:
+        if (saved is not None and saved.active_batch is not None
+                and (saved.active_batch.candidates or not force)):
             self._selected_run_id = target_run_id
             self._active_run_id = target_run_id
             self._paused_run_id = None
@@ -284,6 +291,7 @@ class DifficultFrameReviewActions(QObject):
             if self._controller.current_frame_index is not None:
                 self.jumpToFrame(self._controller.current_frame_index)
             self._refresh_mining_enabled()
+            self._notify_workflow_changed()
             return
 
         mining_params = params or MiningParams(
@@ -306,7 +314,8 @@ class DifficultFrameReviewActions(QObject):
         self._active_run_id = target_run_id
         self._paused_run_id = None
 
-        self.panel.setMineStatus("Mining difficult frames…")
+        self.panel.setMineStatus(
+            "Screening trajectory for frames that need checking…")
         self.panel.setMineBusy(True)
         self._start_future = self._executor.submit(self._runner.start, job_request, request_id)
         self._timer.start()
@@ -409,7 +418,15 @@ class DifficultFrameReviewActions(QObject):
             self.panel.setMineStatus(no_difficult_frames(
                 excluded_count=getattr(result, "excluded_count", 0)).full_text())
         else:
-            self.panel.setMineStatus(f"Found {result.actual_n} difficult frame(s)")
+            requested = result.params_snapshot.get("top_n")
+            noun = "frame" if result.actual_n == 1 else "frames"
+            message = f"Found {result.actual_n} {noun} that clearly need checking."
+            if (isinstance(requested, int) and requested > result.actual_n):
+                message += (
+                    f" Requested up to {requested}; no other frame crossed the "
+                    "screening criteria."
+                )
+            self.panel.setMineStatus(message)
         self._sync_panel_with_controller()
 
         # 跳到首个候选帧

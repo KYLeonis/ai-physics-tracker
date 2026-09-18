@@ -56,6 +56,7 @@ ACTION_START_LEARNING = "start_learning"      # 开始学习（C2 显式执行�
 ACTION_CONFIRM_CHECK_FRAMES = "confirm_check_frames"  # 查看/重建固定检查帧（§10 失效行）
 ACTION_GENERATE_TRAJECTORY = "generate_trajectory"
 ACTION_INSPECT_TRAJECTORY = "inspect_trajectory"
+ACTION_RECHECK_TRAJECTORY = "recheck_trajectory"
 ACTION_ADOPT_TRAJECTORY = "adopt_trajectory"
 ACTION_CONTINUE_OPTIMIZING = "continue_optimizing"
 ACTION_VIEW_ANALYSIS = "view_analysis"
@@ -111,6 +112,7 @@ class CandidateFacts:
     version: int                          # 完成顺序的稳定版本号（第 N 版）
     pending_review: int = 0
     has_review_batch: bool = False
+    screening_completed: bool = False
     reviewed_count: int = 0
     corrected_count: int = 0
     skipped_count: int = 0
@@ -265,11 +267,16 @@ def trajectory_facts(
         latest = completed_infer[-1]
         if active_run_id is None or latest.run_id != active_run_id:
             summary = _review_summary(session, latest.run_id)
+            review_state = session.get_suggested_frame_review(latest.run_id)
             candidate = CandidateFacts(
                 run_id=latest.run_id,
                 version=len(completed_infer),
                 pending_review=summary.pending_count,
                 has_review_batch=summary.total_candidates > 0,
+                screening_completed=(
+                    review_state is not None
+                    and review_state.active_batch is not None
+                ),
                 reviewed_count=summary.total_reviewed,
                 corrected_count=summary.corrected_count,
                 skipped_count=summary.skipped_count,
@@ -736,6 +743,30 @@ def _candidate_decision_card(state: WorkflowState) -> TaskCard:
         if scale_actions else ()
     )
     evidence.extend(pixel_evidence)
+    if cand.screening_completed and not cand.has_review_batch:
+        title = "Current: trajectory screening complete — no flagged frames"
+        explanation = (
+            "No frame clearly crossed the difficult-frame screening thresholds.",
+            "This does not prove every position is accurate; spot-check the visible "
+            "trajectory, then decide whether to adopt it for analysis.",
+        )
+        secondary = [
+            ActionSpec(ACTION_RECHECK_TRAJECTORY, "Run screening again"),
+        ]
+        if traj.has_active_result:
+            secondary.append(ActionSpec(ACTION_VIEW_ANALYSIS, "View current analysis"))
+        secondary.extend(scale_actions)
+        evidence.append(
+            "Screening completed successfully; it did not create an empty review task."
+        )
+        return TaskCard(
+            mode=MODE_ADOPT,
+            title=title,
+            explanation=explanation,
+            primary=ActionSpec(ACTION_ADOPT_TRAJECTORY, "Adopt for analysis"),
+            secondary=tuple(secondary),
+            evidence=tuple(evidence),
+        )
     if not traj.has_active_result:
         return TaskCard(
             mode=MODE_ADOPT,

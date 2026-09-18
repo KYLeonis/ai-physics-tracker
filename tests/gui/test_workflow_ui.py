@@ -4,6 +4,7 @@
 """
 
 from pathlib import Path
+from uuid import uuid4
 
 from pytestqt.qtbot import QtBot
 
@@ -412,6 +413,30 @@ def test_inspect_binds_candidate_not_oldest_run(
     # 当前卡为 better→Adopt；次动作/inspect 路由直接调用
     window.trackingActions._onCardAction("inspect_trajectory")
     assert captured["run_id"] == infer2.run_id
+
+
+def test_empty_screening_card_reruns_candidate_with_force(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+) -> None:
+    from ai_physics_tracker.application.suggested_frame_review import ActiveReviewBatch
+
+    window, session, _track_id, _infer1, infer2 = _better_candidate_setup(
+        qtbot, synthetic_video_path, tmp_path)
+    session.set_active_review_batch(infer2.run_id, ActiveReviewBatch(
+        request_id=uuid4(), params_snapshot={"top_n": 10}, candidates=()))
+    captured = {}
+
+    def _capture(run_id, params=None, *, force=False):
+        captured.update(run_id=run_id, params=params, force=force)
+
+    monkeypatch.setattr(window.reviewActions, "requestMining", _capture)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+
+    assert "screening complete" in window.trackingActions.panel.cardTitleLabel.text()
+    window.trackingActions._onCardAction("recheck_trajectory")
+    assert captured["run_id"] == infer2.run_id
+    assert captured["force"] is True
 
 
 def test_invalid_series_rebuild_flow_via_card(

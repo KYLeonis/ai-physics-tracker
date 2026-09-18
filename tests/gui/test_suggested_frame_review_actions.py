@@ -255,7 +255,9 @@ def test_mining_button_enablement_ac1(test_window: MainWindow, tmp_path: Path):
     assert panel.mineButton.isEnabled()
 
 
-def test_mining_cancellation_neutral_status_ac9(test_window: MainWindow, tmp_path: Path):
+def test_mining_cancellation_neutral_status_ac9(
+    test_window: MainWindow, tmp_path: Path, qtbot
+):
     """AC-9 / F4: 挖掘可被用户取消，取消态不显示为 Failed。"""
     window = test_window
     panel = window.trackingActions.panel
@@ -280,7 +282,7 @@ def test_mining_cancellation_neutral_status_ac9(test_window: MainWindow, tmp_pat
     QTest.qWait(50)
 
     assert not window.reviewActions.busy
-    assert fake_handle.cancelled
+    qtbot.waitUntil(lambda: fake_handle.cancelled, timeout=1000)
     # Phase 5.7 §13：取消是中性结论（三问文案），不出现 Failed 前缀
     status = panel.mineStatusLabel.text()
     assert status.startswith("Checking cancelled")
@@ -382,6 +384,9 @@ def test_review_queue_navigation_and_seek_ac2(test_window: MainWindow, tmp_path:
     assert ctrl.count == 2
     assert "Review: 0/2 reviewed" in panel.reviewProgressLabel.text()
     assert "Frame 1" in panel.candidateDetailsLabel.text()
+    assert "Model confidence: 40%" in panel.candidateDetailsLabel.text()
+    assert "Why check: low prediction confidence" in panel.candidateDetailsLabel.text()
+    assert "Score" not in panel.candidateDetailsLabel.text()
     assert panel.reviewAcceptButton.isEnabled()
     assert panel.reviewSkipButton.isEnabled()
     assert panel.reviewNextButton.isEnabled()
@@ -390,6 +395,8 @@ def test_review_queue_navigation_and_seek_ac2(test_window: MainWindow, tmp_path:
     # 候选列表渲染
     assert panel.reviewCandidatesList.count() == 2
     assert "Frame 1" in panel.reviewCandidatesList.item(0).text()
+    assert "confidence 40%" in panel.reviewCandidatesList.item(0).text()
+    assert "score=" not in panel.reviewCandidatesList.item(0).text()
 
     # 双击候选列表第 2 项 -> 跳帧到帧 2
     item2 = panel.reviewCandidatesList.item(1)
@@ -1068,6 +1075,43 @@ def test_empty_mining_result_reports_no_difficult_frames(test_window: MainWindow
     # 空批次已写入会话但无候选：控制器不崩、无“当前候选”
     assert window.reviewActions._controller is not None
     assert window.reviewActions._controller.current_frame_index is None
+
+
+def test_single_mining_result_explains_requested_max_and_threshold(
+    test_window: MainWindow, tmp_path: Path
+) -> None:
+    from ai_physics_tracker.application.difficult_frame_job import DifficultFrameResult
+
+    window = test_window
+    panel = window.trackingActions.panel
+    run = _setup_infer_run_with_prediction(window, tmp_path)
+    candidate = ReviewCandidate(
+        frame_index=1,
+        prediction=ReviewPredictionSnapshot(12.0, 22.0, 0.81),
+        components={"residual": 0.0},
+        raw_components={"residual": 3.8},
+        reasons=("residual_outlier",),
+        total_score=0.0,
+    )
+    window.reviewActions._active_run_id = run.run_id
+    window.reviewActions._running_track_id = window.selectedTrackId
+    window.reviewActions._request_id = uuid4()
+
+    window.reviewActions._finish_success(DifficultFrameResult(
+        request_id=uuid4(),
+        run_id=run.run_id,
+        candidates=(candidate,),
+        actual_n=1,
+        diversity_status="not_needed",
+        params_snapshot={"top_n": 10},
+    ))
+
+    status = panel.mineStatusLabel.text()
+    assert "Found 1 frame" in status
+    assert "Requested up to 10" in status
+    assert "no other frame crossed" in status
+    assert "Model confidence: 81%" in panel.candidateDetailsLabel.text()
+    assert "Score" not in panel.candidateDetailsLabel.text()
 
 
 def test_persisted_review_restores_current_frame_without_history_selection(

@@ -293,7 +293,7 @@ class TrackingActions(QObject):
             state = self._workflow_state(session, track_id, runs)
             candidate = state.trajectory.candidate
             review = getattr(self.window, "reviewActions", None)
-            if (candidate is not None and candidate.has_review_batch
+            if (candidate is not None and candidate.pending_review > 0
                     and review is not None
                     and review.ensureReviewRun(candidate.run_id)):
                 # 审核器可从持久化批次恢复；重新投影以带上当前序号与帧号。
@@ -732,6 +732,16 @@ class TrackingActions(QObject):
                      and r.status == "completed"), None)
                 if latest_infer is not None:
                     self.window.reviewActions.requestMining(latest_infer.run_id)
+            return
+        if action_id == "recheck_trajectory":
+            window.setWorkspace("acquire")
+            from ai_physics_tracker.application.workflow_projection import (
+                trajectory_facts,
+            )
+            facts = trajectory_facts(session, track_id, runs)
+            if facts.candidate is not None:
+                self.window.reviewActions.requestMining(
+                    facts.candidate.run_id, force=True)
             return
         if action_id == "adopt_trajectory":
             from ai_physics_tracker.application.workflow_projection import (

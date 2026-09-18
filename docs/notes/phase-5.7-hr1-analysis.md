@@ -268,3 +268,30 @@ manual provenance、active/candidate 隔离均未改变。
 infrastructure 的分层约束；取消“标尺后先异步保存再进原点”，避免保存窗口吞掉下一步
 点击，改为坐标系完成后一次性 autosave。`compileall` 与分层检查通过；全量
 `799 passed`。
+
+## 第二轮补充实测反馈处置（2026-09-18）
+
+用户确认上一轮三个问题通过后，又发现标定蓝色步骤提示裁字、首轮困难帧只出现一个
+`Score 0.000` 候选，以及 `Check this trajectory` 在空筛查状态下无响应。
+
+检查 `experiment/20260917test3/project.json` 及对应任务产物后，确认首轮筛查不是“置信度
+为 0”：唯一候选是 frame 36，prediction confidence 为 `0.810719`，入选原因是
+`residual_outlier`。`total_score=0.0` 来自单元素候选池的百分位归一化；该值适合内部排序，
+却不适合在普通模式中与 confidence 并列展示。随后一次筛查确实成功返回零候选，并保存了
+空 `ActiveReviewBatch`；恢复逻辑把它当成已有审核进度直接返回，因此顶部 `Check this
+trajectory` 没有启动新任务，也没有把下方结论提升到用户可见位置。
+
+本轮修复：
+
+1. 标定提示移除 stylesheet padding，改用 QLabel contents margins；显示后根据当前侧栏
+   宽度计算 height-for-width 并设置最小高度，避免高 DPI 和大字号裁字。
+2. 普通审核界面不再显示相对 `Score`，改为 `Model confidence` 与 `Why check`。若命中数
+   小于 Top N，明确说明 Top N 是上限，以及其余帧没有超过筛查标准。
+3. 工作流投影新增 `screening_completed` 事实，区分“未筛查”和“筛查成功但为空”。空结果
+   顶部显示明确结论，主动作是 Adopt，次动作 `Run screening again` 显式重新执行；非空
+   批次仍只恢复原进度，防止覆盖审核数据。
+4. 全量测试暴露既有异步取消用例的固定 50 ms 时序波动；测试改为等待取消事实，未修改
+   产品取消行为。
+
+没有修改困难帧筛查阈值或补齐策略；只返回一个候选是本次数据的真实算法结论。项目数据
+只读检查，没有改写。新增 5 项针对性回归；全量 `804 passed`，`compileall` 与分层测试通过。

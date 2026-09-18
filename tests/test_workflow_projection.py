@@ -24,6 +24,7 @@ from ai_physics_tracker.application.workflow_projection import (
     ACTION_CONTINUE_OPTIMIZING,
     ACTION_GENERATE_TRAJECTORY,
     ACTION_INSPECT_TRAJECTORY,
+    ACTION_RECHECK_TRAJECTORY,
     ACTION_FINISH_CHECKING,
     ACTION_PICK_FRAMES,
     ACTION_RETRY_LEARNING,
@@ -43,6 +44,7 @@ from ai_physics_tracker.application.workflow_projection import (
     preselect_fixed_check_frames,
     project_workflow_state,
     select_task_card,
+    trajectory_facts,
 )
 from ai_physics_tracker.domain.tracking_run import (
     TrackingRun,
@@ -287,6 +289,37 @@ def test_card_first_candidate_offers_check_then_adopt() -> None:
     assert card.mode == "adopt"
     assert card.primary.action_id == ACTION_INSPECT_TRAJECTORY
     assert any(a.action_id == ACTION_ADOPT_TRAJECTORY for a in card.secondary)
+
+
+def test_empty_screening_is_a_conclusion_with_explicit_next_actions() -> None:
+    cand = CandidateFacts(
+        run_id=uuid4(), version=1, screening_completed=True)
+    state = _state(trajectory=TrajectoryFacts(manual_count=8, candidate=cand))
+
+    card = select_task_card(state)
+
+    assert "screening complete" in card.title
+    assert card.primary.action_id == ACTION_ADOPT_TRAJECTORY
+    assert any(a.action_id == ACTION_RECHECK_TRAJECTORY for a in card.secondary)
+    assert any("does not prove" in line for line in card.explanation)
+
+
+def test_trajectory_facts_distinguishes_no_screening_from_empty_screening(
+    tmp_path: Path,
+) -> None:
+    session, track, _video = _session_with_track(tmp_path)
+    run = _run(session, track, "infer")
+
+    before = trajectory_facts(session, track.track_id, session.tracking_runs())
+    assert before.candidate is not None
+    assert not before.candidate.screening_completed
+
+    session.set_active_review_batch(run.run_id, ActiveReviewBatch(
+        request_id=uuid4(), params_snapshot={"top_n": 10}, candidates=()))
+    after = trajectory_facts(session, track.track_id, session.tracking_runs())
+    assert after.candidate is not None
+    assert after.candidate.screening_completed
+    assert not after.candidate.has_review_batch
 
 
 def test_card_replace_candidate_without_comparison_defaults_to_incomparable() -> None:

@@ -1199,14 +1199,14 @@ class TaskPanel(QDockWidget):
             if curr.prediction is not None:
                 pred_str = (
                     f"({curr.prediction.pixel_x:.1f}, {curr.prediction.pixel_y:.1f}) "
-                    f"conf={curr.prediction.confidence:.2f}"
+                    f"· Model confidence: {curr.prediction.confidence:.0%}"
                 )
             reasons_str = _reason_text(curr.reasons)
             guidance = "\n👉 Correct mode: click video to place point (Esc to cancel)" if controller.is_correcting else ""
             self.candidateDetailsLabel.setText(
                 f"Candidate {idx + 1}/{tot} (Frame {curr.frame_index}) · Status: {disp.upper()}\n"
-                f"AI: {pred_str} · Score: {curr.total_score:.3f}\n"
-                f"Reasons: {reasons_str}{guidance}"
+                f"AI prediction: {pred_str}\n"
+                f"Why check: {reasons_str}{guidance}"
             )
             is_already_corrected = (disp == "corrected")
             self.reviewAcceptButton.setEnabled(not is_already_corrected)
@@ -1242,8 +1242,14 @@ class TaskPanel(QDockWidget):
         for i, c in enumerate(controller.candidates):
             rec = reviewed.get(c.frame_index)
             disp_tag = f"[{rec.disposition.upper()}]" if rec else "[PENDING]"
-            score_tag = f"score={c.total_score:.2f}"
-            item_text = f"{i + 1}. Frame {c.frame_index} {disp_tag} {score_tag}"
+            confidence_tag = (
+                "no prediction"
+                if c.prediction is None
+                else f"confidence {c.prediction.confidence:.0%}"
+            )
+            item_text = (
+                f"{i + 1}. Frame {c.frame_index} {disp_tag} · {confidence_tag}"
+            )
             item = QListWidgetItem(item_text)
             item.setData(Qt.ItemDataRole.UserRole, c.frame_index)
             self.reviewCandidatesList.addItem(item)

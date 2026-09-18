@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QSlider,
     QSpinBox,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
     QSplitter,
@@ -196,8 +197,13 @@ class MainWindow(QMainWindow):
         self.calibrationStatusLabel.setWordWrap(True)
         self.calibrationGuideLabel = QLabel("", self)
         self.calibrationGuideLabel.setWordWrap(True)
+        self.calibrationGuideLabel.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.calibrationGuideLabel.setContentsMargins(8, 8, 8, 8)
+        self.calibrationGuideLabel.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         self.calibrationGuideLabel.setStyleSheet(
-            "padding: 8px; background: #eaf3ff; border-radius: 4px;")
+            "background: #eaf3ff; border-radius: 4px;")
         self.calibrationGuideLabel.hide()
         self.calibrationGuideButton = QPushButton("", self)
         self.calibrationGuideButton.hide()
@@ -1067,9 +1073,21 @@ class MainWindow(QMainWindow):
     ) -> None:
         self.calibrationGuideLabel.setText(message)
         self.calibrationGuideLabel.show()
+        self.calibrationGuideLabel.updateGeometry()
+        QTimer.singleShot(0, self._fitCalibrationGuideHeight)
         self._calibration_guide_action = action
         self.calibrationGuideButton.setText(action_label)
         self.calibrationGuideButton.setVisible(action is not None)
+
+    def _fitCalibrationGuideHeight(self) -> None:
+        """让换行提示按当前侧栏宽度占足高度，避免高 DPI 下裁字。"""
+        label = self.calibrationGuideLabel
+        if not label.isVisible():
+            return
+        label.setMinimumHeight(0)
+        required = label.heightForWidth(max(1, label.width()))
+        if required > 0:
+            label.setMinimumHeight(required)
 
     def beginCalibrationFlow(self, return_workspace: str = WORKSPACE_ACQUIRE) -> None:
         """启动连续标定引导，并记住完成后要恢复的工作位置。"""

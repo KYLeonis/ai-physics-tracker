@@ -161,6 +161,28 @@ def test_calibration_flow_restores_acquire_workspace_and_track(
     assert not window.calibrationGuideLabel.isVisible()
 
 
+def test_calibration_guide_reserves_wrapped_text_height_at_large_font(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    window = _opened_window(qtbot, synthetic_video_path)
+    label = window.calibrationGuideLabel
+    label.setFixedWidth(190)
+    font = label.font()
+    font.setPointSize(20)
+    label.setFont(font)
+
+    window._setCalibrationGuide(
+        "Calibration — Step 1 of 2: draw along an object whose real length "
+        "you know, then enter that length.")
+    qtbot.waitUntil(
+        lambda: label.height() >= label.heightForWidth(label.width()),
+        timeout=1000,
+    )
+
+    assert label.heightForWidth(label.width()) > 0
+    assert label.height() >= label.heightForWidth(label.width())
+
+
 def test_rotation_spinbox_updates_calibration(
     qtbot: QtBot, synthetic_video_path: Path, monkeypatch
 ) -> None:

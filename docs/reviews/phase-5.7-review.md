@@ -154,3 +154,21 @@
 - 验证：相关交互回归 **87 passed**；`compileall`、layer boundary 与全量
   **799 passed**。
 - 状态：等待用户执行更新后的 Human Review Round 2，不关闭 Phase 5.7。
+
+### HR1 第二轮补充实测修复（2026-09-18）
+
+- 用户确认上一轮三个场景通过后，继续发现：标定引导在大字号下裁字；首轮困难帧只返回
+  一个显示 `Score 0.000` 的候选；持久化空筛查结果下点击 `Check this trajectory` 无可见响应。
+- 真实项目与任务日志复核：首轮唯一候选是 frame 36，模型 confidence 为 0.810719，原因是
+  `residual_outlier`；`0.000` 是单元素候选池归一化后的相对排序分数，并非置信度。最新一次
+  筛查成功返回空候选，空 `ActiveReviewBatch` 被恢复逻辑直接返回，导致顶部动作看似失效。
+- 处置：普通审核界面只显示模型置信度与可读入选原因；少于请求上限时明确说明其余帧未超过
+  筛查标准。状态投影区分“从未筛查”和“筛查成功但为空”，空结果成为顶部工作流结论并提供
+  Adopt / Run screening again。再次筛查显式绕过空批次恢复，但仍不覆盖非空审核进度。
+  标定引导使用 contents margins、height-for-width 与当前宽度的最小高度，覆盖高 DPI 换行。
+- 隐藏问题：空筛查过去无法在普通状态模型中表达；异步取消测试使用固定 50 ms，偶发在
+  后台假句柄写入前断言，已改为条件等待。
+- 契约：没有修改困难帧阈值、候选排序、prediction/manual provenance、active/candidate
+  隔离、持久化 schema 或采用语义；真实项目只读检查，没有改写。
+- 验证：针对性 5 项通过；全量 **804 passed**；`compileall` 与 layer boundary 通过。
+- 状态：等待用户针对上述三个新场景复测，不关闭 Phase 5.7。

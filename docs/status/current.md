@@ -3,7 +3,7 @@
 > 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
-- 最后更新：2026-09-17（**Phase 5.7 HR1 及补充实测反馈已修复，全量 799；下一步 Human Review Round 2——通过前 5.7 不关闭**）
+- 最后更新：2026-09-18（**Phase 5.7 HR1 后续实测反馈已修复，全量 804；下一步针对性 Human Review——通过前 5.7 不关闭**）
 
 ---
 
@@ -11,7 +11,7 @@
 
 | Level | Name | Status |
 | --- | --- | --- |
-| Current | Phase 5.7 — Interaction Flow Redesign | 🔄 HR1 + 补充实测修复完成（2026-09-17），**待 Human Review Round 2** |
+| Current | Phase 5.7 — Interaction Flow Redesign | 🔄 HR1 + 两轮补充实测修复完成（2026-09-18），**待针对性 Human Review** |
 | Phase | Phase 5 — AI-assisted Annotation & Refinement | 🔄 5.0–5.6 完成；5.7 待 HR 后收官 |
 | Subphase | 5.0 — Tracking Pipeline Consolidation | ✅ 已完成 (2026-09-02) |
 | Subphase | 5.1 — Representative Frame Selection | ✅ 已完成 (2026-09-02, Human Review 通过) |
@@ -20,9 +20,18 @@
 | Subphase | 5.4 — Iteration History & Result Activation | ✅ 已完成 (2026-09-03, HR 通过；复核收口完成) |
 | Subphase | 5.5 — Training Advisor & Retraining | ✅ 已完成 (2026-09-04, Human Review 通过) |
 | Subphase | 5.6 — Refinement Loop Integration & Acceptance | ✅ 已完成 (2026-09-16, HR 通过；AC-9 明示缺口归档) |
-| Subphase | 5.7 — Interaction Flow Redesign | 🔄 实现+R1/R2 CLOSED；HR1 + 补充实测修复完成，待 HR2 |
+| Subphase | 5.7 — Interaction Flow Redesign | 🔄 实现+R1/R2 CLOSED；HR1 后续实测修复完成，待 HR |
 
 ## Recently Completed
+
+- **Phase 5.7 HR1 第二轮补充实测修复（2026-09-18）**：标定引导改用真实内容边距并按
+  当前侧栏宽度计算换行高度，修复高 DPI/大字号裁字；困难帧普通界面移除易被误认成
+  置信度的相对 `Score`，改为模型置信度、入选原因以及“请求上限/实际命中”的明确结论。
+  状态投影新增“筛查已完成但无候选”，顶部任务卡直接给出无标记帧结论及 Adopt / Run
+  screening again，不再让持久化空批次吞掉 `Check this trajectory`。检查真实项目日志确认首轮
+  唯一候选为 frame 36、confidence 0.8107、命中 `residual_outlier`；界面中的 0.000 原为
+  单候选集合的相对排序分数。新增 5 项针对性回归并稳定异步取消测试；全量 **804 passed**，
+  `compileall` 与 layer boundary 通过。
 
 - **Phase 5.7 Human Review Round 1 修复（2026-09-17，分支
   `fix/p5.7-hr1-followup`）**：完成右侧面板 300–400px 自适应、控制栏拆行与单列高级设置、未采用候选的
@@ -229,8 +238,8 @@
 
 ## Current Worktree Note
 
-`fix/p5.7-hr1-followup` 包含 HR1 与补充实测修复；自动化验证已通过，等待 Human
-Review Round 2。通过前不合并 main、不关闭 5.7；无 schema/ADR/真实项目数据改写。
+`fix/p5.7-hr1-followup` 包含 HR1 与两轮补充实测修复；自动化验证已通过，等待针对性
+Human Review。通过前不合并 main、不关闭 5.7；无 schema/ADR/真实项目数据改写。
 
 ## Current Decisions / Deferred Checks
 
@@ -261,7 +270,7 @@ Review Round 2。通过前不合并 main、不关闭 5.7；无 schema/ADR/真实
 
 ## Next Recommended Action
 
-**用户执行 Phase 5.7 Human Review Round 2**（通过前 5.7 不关闭）：
+**用户执行 Phase 5.7 针对性 Human Review**（通过前 5.7 不关闭）：
 
 1. 启动：仓库根目录 `.venv/bin/python -m ai_physics_tracker`
 2. 在约 1024×640 窗口确认右侧卡片可滚动、主动作可达，高级设置不横向裁切。
@@ -275,5 +284,10 @@ Review Round 2。通过前不合并 main、不关闭 5.7；无 schema/ADR/真实
 7. 采用、完成审核、确认检查帧或 Correct 后直接退出并重开，数据已保存；Correct 后
    Undo/Redo 仍可用。
 8. 候选预览不得改变当前图表；采用后 Preview 消失，更新 Charts 后来源显示新版本。
+9. 以较大系统字号进入标定，蓝色步骤提示应完整显示；缩窄窗口后也不能裁掉首尾文字。
+10. 困难帧只命中少量候选时，界面显示 `Model confidence` 与 `Why check`，并说明请求最多
+    多少帧、实际只有多少帧超过标准；不再显示普通用户容易误解的 `Score: 0.000`。
+11. 筛查没有候选时，顶部卡片立即显示 `trajectory screening complete — no flagged frames`，
+    主动作是 `Adopt for analysis`；`Run screening again` 会真正重新执行并给出进行中反馈。
 
 反馈"通过"→ 收尾收官；指出问题 → 修复后重跑自动化再发起 HR。
