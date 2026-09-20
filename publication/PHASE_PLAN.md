@@ -87,6 +87,8 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P1 — Four-Landmark Pendulum Measurement
 
+完整实施计划见[P1 mini-plan](plans/p1-four-landmark-measurement.md)。该计划已完成，产品实现尚未开始。
+
 - **Goal**：学生用自己的视频得到可审查、可采用的四landmark轨迹。
 - **Scope**：experiment/calibration/release、同帧四点、multi-bodypart dataset/train/infer、教师模型导入、四轨review/QC/activation。
 - **Non-goals**：通用multi-object、跨视频标签池管理、任意skeleton、θ/ODE产品界面。

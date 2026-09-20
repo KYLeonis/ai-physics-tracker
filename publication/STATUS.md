@@ -2,8 +2,15 @@
 
 - 最后更新：2026-09-20。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0.2–P0.4完成，P0收尾；Independent Review PASS。Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run**。
-- P1–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+- 当前：**P1 — Four-Landmark Pendulum Measurement 已完成完整规划，implementation not started**。
+- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。P1–P6产品实现均未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+
+## P1 planning
+
+- [P1 complete mini-plan](plans/p1-four-landmark-measurement.md)：保留P1.1–P1.4边界，按schema/setup → complete-frame annotation/export → external worker/joint training/teacher import → joint inference/review/atomic activation实施。
+- 计划明确每个Subphase的Context Pack、scope、slice依赖、AC、自动化与真实DLC验证、增量Human Review、risk-based Independent Review及失败恢复。
+- 关键实现顺序：先v1/v2双格式与Save As事务，再共享4/4标注；AI阶段先收敛P0.3 external worker边界，再训练/导入/推理；最后才做四轨activation和P2 adopted-measurement handoff。
+- 本轮未修改`src/`、schema、GUI或runtime；合同与计划不代表功能已实现。
 
 ## P0.2–P0.4 deliverables / current gate
 
@@ -51,4 +58,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-P0已按用户批准的延期安排收尾，提交/集成并push后停止。下一轮经用户授权可进入P1.1：先写schema/experiment与四轨事务mini-plan，读P0.1科学profiles、P0.2数据合同、runtime boundary及review records。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。不要自动开始P1。
+P1规划提交/push后停止。下一轮经用户授权启动P1.1时，从`feat/p1.1-pendulum-setup`开始，先实现schema v1/v2双格式、Save As migration和experiment/session invariants；通过data/compatibility Independent Review后再接setup GUI。不要自动开始P1.1。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。
