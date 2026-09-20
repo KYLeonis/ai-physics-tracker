@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "id": "student-default-v1",
+  "version": "1.0.0",
+  "purpose": "New own-video experiment; inherited numerical values are an explicit product choice, not demonstrated universality",
+  "base_profile": "legacy-publication-v1",
+  "inherit_sections": [
+    "conventions",
+    "fit",
+    "sampling",
+    "integrator",
+    "optimiser",
+    "metrics"
+  ],
+  "override_rule": "replace named keys; absence inherits only within inherit_sections; all other sections below are complete policies",
+  "conventions": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1"
+    ],
+    "time_origin": "user_selected_release_frame",
+    "time_formula": "Timeline.timestamp(frame)-Timeline.timestamp(release)",
+    "additional_release_offset_frames": 0,
+    "nonuniform_time": "ODE allowed; SG only supported uniform contiguous segments",
+    "theta_range": "[-pi,pi]; branch crossing invalidates local derivative unless future explicit rotational profile",
+    "json_missing": "null_plus_reason; no NaN/Infinity literals",
+    "phi_unwrap": "separately within contiguous finite body-pair segments",
+    "theta_preview_guard": "finite nonzero tip-minus-fixed-pivot and nonzero finite vertical",
+    "timestamp_zero_allowed": true,
+    "pre_release_relative_time": "negative values allowed; only adjacent dt must be positive"
+  },
+  "ic": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1",
+      "initial"
+    ],
+    "mode": "fixed_pre_release_rest",
+    "preceding_frames": 5,
+    "theta0": "same historical circular median of exactly five consecutive valid frames release-5..release-1",
+    "omega0_rad_s": 0,
+    "requires_rest_confirmation": true,
+    "missing_or_nonrest": "needs_explicit_IC; no fit until theta0_rad and omega0_rad_s at t=0 provided in Advanced or release corrected",
+    "auto_motion_threshold": null,
+    "advanced": "explicit finite theta0_rad,omega0_rad_s; fixed for both M0/M1; no joint_IC_optimisation_in_v1",
+    "never_substitute_first_postrelease_sample": true,
+    "valid_mask": "student base QC over whole source video before applying postrelease/fit interval mask; all-four source validity, positive geometry, radius/body gates and not user excluded",
+    "consecutive": "source IDs exactly r-5,r-4,r-3,r-2,r-1; strictly increasing Timeline timestamps with every adjacent dt>0; timestamp zero and negative release-relative pre-release time are allowed; all five base-QC valid; no postrelease substitution"
+  },
+  "qc": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1",
+      "source-data_io"
+    ],
+    "requires_all_four_finite_coordinates": true,
+    "ai_likelihood": "each AI point must have finite likelihood in [0,1]; no hard cutoff",
+    "manual_point": "finite adopted manual coordinate; confidence stays null; source retained",
+    "radius_relative_tolerance": 0.1,
+    "body_relative_tolerance": 0.2,
+    "body_reference": "median of positive finite body separations in whole-video complete-four adopted frames not explicitly excluded; freeze numeric value in request",
+    "mask": "complete_four & point_source_valid & positive_geometry & radius_gate & body_gate & not_user_excluded",
+    "theta_preview": "finite tip+fixed calibration may display theta even if fit mask false; label QC excluded",
+    "pivot_displacement": "report in px only; no unverified drift cutoff; never dynamic pivot",
+    "manual_does_not_bypass_geometry": true,
+    "point_source_valid": "for each current adopted role: manual => finite x/y only, AI => finite x/y and finite likelihood in [0,1]; superseded point likelihood irrelevant"
+  },
+  "derivative": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1",
+      "metrics"
+    ],
+    "window_frames": 9,
+    "polyorder": 3,
+    "deriv": 1,
+    "delta": "segment_constant_dt",
+    "mode": "interp",
+    "presmoothing": false,
+    "contiguous": "consecutive source frame IDs, QC-valid theta, strictly increasing timestamps with every adjacent dt>0 (timestamp zero allowed), no angle branch jump >pi",
+    "uniform_dt_tolerance": "abs(dt-median_dt)<=1e-6*median_dt",
+    "minimum_segment_frames": 9,
+    "short_or_nonuniform": "omega unavailable with reason; no gradient fallback or resampling",
+    "gap": "never interpolate, bridge, compress time or differentiate across invalid samples",
+    "edge": "interp edge values retained with edge_window flag first/last four frames"
+  },
+  "weighting": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1",
+      "source-fitting"
+    ],
+    "ai": "weight=clip(tip_likelihood,0.05,1)",
+    "manual": "weight=1.0 for explicitly adopted manual tip; relative analysis convention, not confidence=1",
+    "residual_multiplier": "sqrt(weight)",
+    "missing_ai_likelihood": "exclude only currently adopted AI-sourced point with missing/nonfinite likelihood; never substitute 1; manual-sourced point ignores historical AI likelihood",
+    "mask_separate": true,
+    "manual_requires_ai_likelihood": false,
+    "source_selection": "current adopted point source wins per landmark; historical/superseded AI likelihood is metadata only when adopted point is manual"
+  },
+  "fit": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1",
+      "source-fitting"
+    ],
+    "minimum_valid": "max(50,ceil(0.5*N_interval))",
+    "minimum_valid_time_span": "3*Tref where Tref=2*pi/sqrt(g/L)",
+    "gate_interpretation": "computational eligibility, not proof of identifiable information or model adequacy",
+    "interval": "default release..last source frame; Advanced may choose inclusive end frame; integration always from t=0",
+    "qc_valid_at_release_required": false,
+    "initial_state_required": true,
+    "gaps": "integrate continuous ODE across gaps; residual only observed valid times; no per-segment restart",
+    "sampling_warning": "max adjacent source timestamp step >Tref/10 flags temporal resolution; not silently fabricated samples",
+    "comparison": "identical input digest, interval, fixed IC, mask, weights, sample IDs and loss; model/bounds-for-extra-parameter may differ; otherwise not comparable",
+    "rmse_improvement": "100*(RMSE_M0-RMSE_M1)/RMSE_M0; zero denominator => unavailable",
+    "selection": "same finite minimum-cost selection as legacy; nonconverged cannot be ranked as successful model evidence",
+    "N_interval": "end_frame-release_frame+1 for inclusive interval; counts every source frame, including missing/QC-excluded frames, not just adopted or sampled points",
+    "valid_time_span": "max(t_relative[fit_valid])-min(t_relative[fit_valid]); fit_valid=base_QC & inclusive interval; includes intervening gaps and is not contiguous-coverage proof"
+  },
+  "seeds": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1",
+      "source-fitting"
+    ],
+    "algorithm": "legacy q/alpha1 estimator on longest contiguous uniform valid segment; tie earliest; keep original relative time",
+    "q_early_window": "first 35 s measured from selected segment start; estimator receives segment-relative time only for seed calculation",
+    "no_qualifying_segment": "q=g/L and a1=min(0.02,0.25*upper)",
+    "short_segment": "legacy min20/min30 fallbacks",
+    "starts": "same deterministic M0/M1 start formula and clipping as legacy; record resolved arrays",
+    "M1_warm": "only converged finite M0 result",
+    "random": false
+  },
+  "diagnostics": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1"
+    ],
+    "references": [
+      "information-extrema-v1",
+      "phase-halfcycle-v1",
+      "tail-period-legacy-v1",
+      "energy-envelope-v1",
+      "identifiability-valley-v1"
+    ],
+    "new_video_gap_rule": "detect within contiguous valid segments; extrema pairing never crosses gaps; halfcycle/EDP unavailable for interrupted chosen interval rather than silently inheriting ordinal pairing",
+    "period": "linear interpolated same-direction crossing pairs with exactly one opposite crossing, within one contiguous segment; center whole selected interval mean of valid theta",
+    "phase_crossing_match": "within corresponding source-time segments, same direction and ordinal; if direction sequences/counts differ mark unmatched and omit final drift summary",
+    "tail": "last third of selected post-release time span: strict t>start+(end-start)*2/3; user may explicitly set start; record choice",
+    "tail_min_complete_periods": 10,
+    "tail_aggregation": "mean((2*pi/T_i)^2), not (2*pi/mean(T))^2",
+    "tail_insufficient": "unavailable; do not auto-extend or assume t>70s",
+    "tail_claim": "late-window consistency; no assertion of small-angle regime",
+    "energy": "e*=0.5*omega^2+q*(1-cos(theta)); q explicitly selected fitted omega2 or g/L proxy; separate labels; missing omega => missing energy",
+    "envelope_failure": "unavailable; never historical p0 fallback as a successful envelope",
+    "edp_skip": "explicit skip5; require >=8 remaining extrema; no skip bypass for short data",
+    "objective": "same resolved fit request, conditional starred-damping slice; no new optimisation",
+    "objective_IC": "use resolved fit IC directly; legacy diagnostic degree round-trip only in legacy reproduction"
+  },
+  "metrics": {
+    "origin": "new_student_policy",
+    "sources": [
+      "policy-student-v1",
+      "source-fitting"
+    ],
+    "late_equilibrium_warning": "median QC-valid finite theta in last min(5,duration) seconds of analysis interval; unavailable if no valid samples; abs(deg(median))>1 warning",
+    "early_late": "first/last max(1,n_valid//3) valid samples in selected interval; preserve timestamps",
+    "nonfinite_prediction": "fit failure; never silently shrink evaluation mask to finite prediction subset"
+  }
+}

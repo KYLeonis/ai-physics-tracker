@@ -6,6 +6,8 @@
 - 证据状态：**verified** = 本轮读到内容并核对所述字段/计数；**recorded** = 只有 provenance 记录；**unknown** = 本轮不能确认。verified 不等于已重跑复现。
 - 用户补充：数据已保存于 SQLite；本轮无需继续寻找原始视频、完整 DLC labels 或 checkpoint 实体。其可访问性不作为本轮规划阻塞项。
 
+> P0.1更新（2026-09-20）：下文保留原调查记录；D01–D06/U03/U04的当前处置以[scientific profiles](scientific-profiles.md)和[版本化source map](../evidence/source-map.json)为准。legacy/student/QC/gap/IC/tail政策已收敛；完整依赖lock和跨平台数值复跑仍未验证。
+
 ## 1. 本地资产根与调查边界
 
 | Alias | 本轮定位 |

@@ -7,6 +7,7 @@
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
 - [Scientific Asset Inventory](spec/scientific-asset-inventory.md)：论文方法/结果到源代码、配置、数据库表和输出的只读对应。
+- [Scientific profiles](spec/scientific-profiles.md)与[golden evidence](evidence/README.md)：P0.1固定的legacy/student契约、source map及只读验证入口。
 - [PHASE_PLAN](PHASE_PLAN.md)：P0–P6边界、Subphases、依赖、review gates与发行风险。
 
 ## Baseline
@@ -24,4 +25,4 @@
 
 不做通用multi-object identity、多相机/3D/任意实验插件、通用model library、论文修改/投稿metadata/Zenodo deposit或新的论文科学补充分析。完整non-goals见requirements。
 
-本轮仅规划，未实现P0–P6。后续每Phase通过科学/工程Independent Review及适用Human Review后收尾，并停止等待下一条指令。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
+P0.1已建立科学配置与证据契约；未实现P1–P6功能。后续每Phase通过科学/工程Independent Review及适用Human Review后收尾，并停止等待下一条指令。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
