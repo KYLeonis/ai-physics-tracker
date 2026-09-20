@@ -21,6 +21,9 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | 5.4 | [phase-5.4-review.md](phase-5.4-review.md) | 初始 17 项 findings 闭环；R2 三路复审（激活事务/泄漏防线/GUI）15 项轻量直修 + 5 项决策/大修记录（A 崩溃恢复死锁、B shuffle 编号、C 指纹策略待批准），658 测试全绿 | 2026-09-03 |
 | 5.5 | [phase-5.5-review.md](phase-5.5-review.md) | 修改后通过；R1 三路 20 条 findings 全部闭环（含 2 Blocker），693 测试 + 真实 DLC restart/resume smoke + Human Review 通过 | 2026-09-04 |
 | 5.6 | [phase-5.6-review.md](phase-5.6-review.md) | 自查（用户指示不用 subagent；2 次 subagent 因配额失败）：F1–F5 记录、2 项缺陷修复（含 1 Blocker）、AC-9 明示缺口；699 测试 | 2026-09-16 |
+| Publication P0.2 | [publication-p0.2-review.md](publication-p0.2-review.md) | PASS；数据合同findings闭环，schema2已批准 | 2026-09-20 |
+| Publication P0.3 | [publication-p0.3-review.md](publication-p0.3-review.md) | Mac/protocol scoped PASS；Windows not_run | 2026-09-20 |
+| Publication P0.4 | [publication-p0.4-review.md](publication-p0.4-review.md) | 合同PASS；用户已批准Windows延至P6前，P0关闭 | 2026-09-20 |
 | Publication P0.1 | [publication-p0.1-review.md](publication-p0.1-review.md) | PASS；F1–F4闭环，13 contract tests、15 frozen files/83 external sources，只验证证据与契约 | 2026-09-20 |
 | 5.7 | [phase-5.7-review.md](phase-5.7-review.md) | R1/R2 findings 全闭环；HR1 与两轮补充实测修复完成；804 测试 + 最终 Human Review 通过 | 2026-09-18 |
 

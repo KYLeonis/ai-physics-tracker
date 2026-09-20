@@ -111,7 +111,12 @@ def main():
         session, infer_request, handle, root / "inference.log"
     )
     assert any(0 < step < 10 for step in progress) and max(progress) == 10
-    assert completed.extra_fields["import_summary"]["inserted"] == 5
+    assert completed.extra_fields["import_summary"]["row_count"] == 10
+    # Phase 5 keeps inference as a candidate until explicit activation.
+    assert len(session.effective_points(track.track_id)) == 5
+    activation = session.activate_infer_run(track.track_id, completed.run_id)
+    assert activation.point_count == 5
+    assert activation.manual_preserved_count == 5
     assert len(session.effective_points(track.track_id)) == 10
     session.compute_kinematics(track.track_id)
     session.save()

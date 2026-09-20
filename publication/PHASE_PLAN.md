@@ -1,6 +1,6 @@
 # EJP Publication Platform — Master Phase Plan
 
-- 2026-09-19规划，2026-09-20文档收尾；状态：**P0.1科学契约与golden evidence完成，Independent Scientific Review PASS；P0.2–P6未启动**。
+- 2026-09-19规划，2026-09-20文档收尾；状态：**P0完成，独立合同审查PASS；Windows验证经用户明确批准延期，进入P6前必过；P1–P6未启动**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -11,7 +11,7 @@
 
 推荐继续采用P0–P6的七阶段边界，但P0包含**runtime执行边界早期spike**，P1包含teacher model最小导入，不把这两项拖到全功能完成后才发现不兼容。P5是整链教学/导出收口，不能成为补造全部前期数据契约的阶段。
 
-P0.1已由用户启动并建立[scientific profiles](spec/scientific-profiles.md)、[source map/golden evidence](evidence/README.md)和只读契约检查。独立审查已通过，停在P0.2之前；没有实现数值core、GUI或runtime。
+P0.1已由用户启动并建立[scientific profiles](spec/scientific-profiles.md)、[source map/golden evidence](evidence/README.md)和只读契约检查。P0.1独立审查已通过；P0.2数据合同与用户批准的[ADR-0017](../docs/decisions/0017-publication-project-contract.md)已收敛。P0.3仅完成可丢弃runtime探针及Mac证据，Windows保持not_run；没有实现数值core、GUI或正式runtime安装。
 
 ## 2. Scientific Asset Inventory summary
 
@@ -59,7 +59,7 @@ P0.1已由用户启动并建立[scientific profiles](spec/scientific-profiles.md
 
 保留`TrackPoint`原子事实与四个普通Track，添加pendulum角色关联；将**一次job/run的输入成员**从一个track扩为有序role映射。共同dataset/frame split、一次推理、按role回填、四轨原子采用、共同依赖签名是完整最小闭环。旧single-track run可被显式适配为一个成员，不能让旧读者默默误解四轨数据。
 
-`TrackingRun.track_id`、`DerivedInput.track_id`及图表二维约束都是真实耦合点。是否以版本化extension还是schema变更表达，由P0.2用旧项目round-trip/旧读者行为验证后定ADR；“extra_fields能存”不等于所有下游自动正确。无需引入对象身份关联、object detector、multi-animal或任意骨架框架。
+`TrackingRun.track_id`、`DerivedInput.track_id`及图表二维约束都是真实耦合点。P0.2已用旧reader实证并获得用户批准：schema2 + Save As迁移副本，见ADR-0017；“extra_fields能存”不等于所有下游自动正确。无需引入对象身份关联、object detector、multi-animal或任意骨架框架。
 
 ## 4. Phase / Subphase plan
 
@@ -79,9 +79,9 @@ P0.1已由用户启动并建立[scientific profiles](spec/scientific-profiles.md
 | Subphase | 交付边界 | 完成判据 |
 | --- | --- | --- |
 | P0.1 Evidence and resolved scientific profiles（✅完成；review PASS） | 固定DB/file source map、精确参数、分歧清单、最小golden测试资产引用；只作软件复现准备 | 每个default能指向版本化来源；D02/D05/D06/U03/U04有明确处理；unknown不填猜测值 |
-| P0.2 Experiment / run / derived contracts | 四role、release/calibration/L、teacher model、四轨原子事务、多输入stale、fit result与export契约 | 旧项目兼容策略和新字段validation明确；schema ADR proposal审定；Normal/Advanced请求同形 |
-| P0.3 Distribution feasibility spike | 最小冻结app→managed Python worker桥接、PyTorch/DLC安装/设备self-test、版本组合调查 | Win x64及Mac arm64记录实际启动/小train+infer/取消结果，CPU可用；没有现成机器则如实留下gate，不推迟到P6才发现 |
-| P0.4 Contracts close | 合并科学/数据/runtime结论，修订后续mini-plan输入 | Independent Review关闭blocking findings；用户关键科学选择记录；P0收尾后停止 |
+| P0.2 Experiment / run / derived contracts（合同完成） | 四role、release/calibration/L、teacher model、四轨原子事务、多输入stale、fit result与export契约 | 旧项目兼容策略和新字段validation明确；schema ADR proposal审定；Normal/Advanced请求同形 |
+| P0.3 Distribution feasibility spike（完成；Mac通过，Win经批准延期） | 最小冻结app→managed Python worker桥接、PyTorch/DLC安装/设备self-test、版本组合调查 | Win x64及Mac arm64记录实际启动/小train+infer/取消结果，CPU可用；没有现成机器则如实留下gate，不推迟到P6才发现 |
+| P0.4 Contracts close（完成；review PASS，延期决定已记录） | 合并科学/数据/runtime结论，修订后续mini-plan输入 | Independent Review关闭blocking findings；用户关键科学选择记录；P0收尾后停止 |
 
 P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有已验证结论成为正式依赖。
 
@@ -177,7 +177,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 - **Goal**：在普通用户电脑上实际安装并运行完整平台。
 - **Scope**：native build/installer/app/dmg、first-run setup/repair、硬件runtime matrix、版本锁定/下载、自检日志、干净机器验收、发行文档。
 - **Non-goals**：巨型offline bundle、所有OS/GPU版本、云runtime服务、Zenodo/投稿/科学补充材料。
-- **Dependencies**：P0.3已证明执行边界；P5整链通过；没有Windows真机就不能宣布双平台首发完成。
+- **Dependencies**：P0.3 Mac已证明执行边界；用户批准延期的Windows G1–G4必须在进入P6前补齐；P5整链通过；没有Windows真机就不能宣布双平台首发完成。
 - **Major decisions**：app与AI环境物理隔离；按tested matrix安装、不追latest；CPU可用是底线；MPS/CUDA各自真实train+infer验证；安装程序可恢复。
 - **AC**：Windows x64 installer与Mac arm64 app/dmg均在干净环境完成R01–R12；无Python预装前提；安装中断/断网/修复可恢复；日志可导出；已安装环境离线重开/推理；签名与分发依赖材料核对；包版本、runtime版本和项目来源明确。
 - **Review gates**：打包/runtime Independent Review；两平台真实安装Human Review+至少一位非开发学生完整发行版验收。
@@ -203,7 +203,7 @@ P0.3 runtime spike ──────┘                  └──── shared
 - **回归证据**：先synthetic可解析/可控测试，再选定frozen θ/golden结果。P3完整48行对照可作为慢集成验收，不要求每个commit重跑；参数非唯一时比较starred/forward/residual，按P0预设容差，禁止为了“通过”修改历史资产。
 - **数据策略**：SQLite/封存CSV只读作为开发证据；小型经授权fixture及其来源可独立准备，模型/原始视频/大型数据库不入Git。first release学生用自己的视频，不分发统一研究视频来规避训练要求。
 - **分支策略**：publication是本产品集成分支；后续subphase可用`codex/ejp-pN-M-topic`工作分支，完成后集成回publication，不能误合main。main修复按源commit/必要性/本线验证登记；不要求先在main实施publication-specific θ/ODE功能。
-- **Review策略**：每个涉及科学、公共接口、持久化、AI/runtime生命周期的subphase独立review；GUI增量按workflow§5.1等待用户亲测。每Phase收尾后停止，等待用户下一条指令；本轮结束不自动开始P0。
+- **Review策略**：每个涉及科学、公共接口、持久化、AI/runtime生命周期的subphase独立review；GUI增量按workflow§5.1等待用户亲测。每Phase收尾后停止，等待用户下一条指令；本轮结束不自动开始P1。
 - **main status**：`docs/status/current.md`保留main Phase5完成/Phase6未立项事实；本线后续动作只看publication/STATUS。旧ADR是背景，不自动批准publication偏离，必要时新增publication ADR而非改写Accepted原文。
 
 ## 6. Early ADR proposals（只提出主题，不创建空ADR）
@@ -248,3 +248,7 @@ P0.3 runtime spike ──────┘                  └──── shared
 ## 9. Completion boundary for this planning session
 
 交付requirements、可追溯inventory、phase/subphase计划与publication状态/入口同步；不新增产品代码、测试、依赖、数据库、构建脚本或GUI，不启动任何Publication Phase，不修改论文/原始科研数据，不做新拟合、训练或投稿事务。
+
+## P0 closure decision — 2026-09-20
+
+用户明确选择“明确延期 Windows 验证，作为 P6 前必须完成的门禁”。据此P0.2–P0.4可关闭；Windows结果继续not_run，不冒称双平台通过。P1–P5期间执行runtime evidence中的Windows原生探针；未取证不得进入P6。P0合同review无剩余blocking finding，当前停止，不自动开始P1。

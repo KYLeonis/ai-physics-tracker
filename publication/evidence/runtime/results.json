@@ -1,0 +1,332 @@
+{
+  "date": "2026-09-20",
+  "scope": "disposable frozen host / existing external runtime, not installer or four-role product",
+  "host_build": {
+    "tool": "PyInstaller 6.22.3",
+    "hooks": "2026.7",
+    "binary_path": "/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+    "binary_sha256": "7618c6a63838871797b3fc6b04fb179835e9a27fe8f4d3a0912f1be47ff156a0"
+  },
+  "source_sha256": {
+    "scripts/publication_runtime_spike/host.py": "16bb2f674fe6c2d2e8102686705777c6fa779c969e9c594eca8d3a913c406653",
+    "scripts/publication_runtime_spike/worker.py": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+    "scripts/smoke_test_dlc_infer.py": "f800091f3ef43a8bbd0b6de26cb40a7cbf6b56fc766df1f5a058eec58860d155"
+  },
+  "windows_x64": {
+    "status": "not_run",
+    "reason": "No accessible Windows host; user explicitly deferred verification on 2026-09-20; required before entering P6",
+    "user_decision": "明确延期 Windows 验证，作为 P6 前必须完成的门禁"
+  },
+  "clean_machine_install": {
+    "status": "not_run",
+    "phase": "P6"
+  },
+  "scenarios": [
+    {
+      "name": "hello 中文",
+      "request": {
+        "worker_sha256": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+        "protocol_version": 1,
+        "job_id": "b125476c-147d-4d19-bb65-e7c0ec90d376",
+        "operation": "hello",
+        "device": "cpu",
+        "repo": null
+      },
+      "result": {
+        "protocol_version": 1,
+        "job_id": "b125476c-147d-4d19-bb65-e7c0ec90d376",
+        "host_frozen": true,
+        "host_executable": "/private/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+        "operation": "hello",
+        "status": "success",
+        "exit_code": 0,
+        "worker": {
+          "request_digest": "28abc111aa73b78a0096baf711da75dcd9ae3c7cbceb7771565b626cd27cddcc",
+          "operation": "hello",
+          "outputs": [],
+          "protocol_version": 1,
+          "job_id": "b125476c-147d-4d19-bb65-e7c0ec90d376",
+          "status": "success",
+          "python": "3.12.13 (main, Mar  3 2026, 12:39:30) [Clang 21.0.0 (clang-2100.0.123.102)]",
+          "executable": "/Users/leonis/Documents/ai-physics-tracker/.venv/bin/python",
+          "platform": "macOS-27.0-arm64-arm-64bit",
+          "machine": "arm64",
+          "worker_frozen": false,
+          "message": "external worker ready"
+        },
+        "elapsed_s": 0.2381092089926824,
+        "log_path": "/private/tmp/ejp-p03-results/final-hello 中文/worker.log"
+      },
+      "retained_log": "transcripts/hello-unicode.txt",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "cpu",
+      "request": {
+        "worker_sha256": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+        "protocol_version": 1,
+        "job_id": "7d1467e6-7716-42bb-a0c8-41de1d9fcc9d",
+        "operation": "selftest",
+        "device": "cpu",
+        "repo": null
+      },
+      "result": {
+        "protocol_version": 1,
+        "job_id": "7d1467e6-7716-42bb-a0c8-41de1d9fcc9d",
+        "host_frozen": true,
+        "host_executable": "/private/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+        "operation": "selftest",
+        "status": "success",
+        "exit_code": 0,
+        "worker": {
+          "request_digest": "2af045acb9a6de4097d71f7839b914c1f50d9b755a24b3a8858853fb80e94274",
+          "operation": "selftest",
+          "outputs": [],
+          "protocol_version": 1,
+          "job_id": "7d1467e6-7716-42bb-a0c8-41de1d9fcc9d",
+          "status": "success",
+          "python": "3.12.13 (main, Mar  3 2026, 12:39:30) [Clang 21.0.0 (clang-2100.0.123.102)]",
+          "executable": "/Users/leonis/Documents/ai-physics-tracker/.venv/bin/python",
+          "platform": "macOS-27.0-arm64-arm-64bit",
+          "machine": "arm64",
+          "worker_frozen": false,
+          "versions": {
+            "torch": "2.13.0",
+            "torchvision": "0.28.0",
+            "deeplabcut": "3.0.1"
+          },
+          "hardware": {
+            "cuda": false,
+            "mps": true
+          },
+          "actual_device": "cpu",
+          "dlc_import": true,
+          "dlc_training_verified": false
+        },
+        "elapsed_s": 6.75121441698866,
+        "log_path": "/private/tmp/ejp-p03-results/final-cpu/worker.log"
+      },
+      "retained_log": "transcripts/cpu.txt",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "mps",
+      "request": {
+        "worker_sha256": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+        "protocol_version": 1,
+        "job_id": "3f3ade67-0a9c-4e7b-8b84-67ecd27ef9a6",
+        "operation": "selftest",
+        "device": "mps",
+        "repo": null
+      },
+      "result": {
+        "protocol_version": 1,
+        "job_id": "3f3ade67-0a9c-4e7b-8b84-67ecd27ef9a6",
+        "host_frozen": true,
+        "host_executable": "/private/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+        "operation": "selftest",
+        "status": "success",
+        "exit_code": 0,
+        "worker": {
+          "request_digest": "e5a6c80b5f13c6cc0ee5839cc48a41f337c92529ea1359165af557abda8a3bbd",
+          "operation": "selftest",
+          "outputs": [],
+          "protocol_version": 1,
+          "job_id": "3f3ade67-0a9c-4e7b-8b84-67ecd27ef9a6",
+          "status": "success",
+          "python": "3.12.13 (main, Mar  3 2026, 12:39:30) [Clang 21.0.0 (clang-2100.0.123.102)]",
+          "executable": "/Users/leonis/Documents/ai-physics-tracker/.venv/bin/python",
+          "platform": "macOS-27.0-arm64-arm-64bit",
+          "machine": "arm64",
+          "worker_frozen": false,
+          "versions": {
+            "torch": "2.13.0",
+            "torchvision": "0.28.0",
+            "deeplabcut": "3.0.1"
+          },
+          "hardware": {
+            "cuda": false,
+            "mps": true
+          },
+          "actual_device": "mps:0",
+          "dlc_import": true,
+          "dlc_training_verified": false
+        },
+        "elapsed_s": 7.213069167017238,
+        "log_path": "/private/tmp/ejp-p03-results/final-mps/worker.log"
+      },
+      "retained_log": "transcripts/mps.txt",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "coop",
+      "request": {
+        "worker_sha256": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+        "protocol_version": 1,
+        "job_id": "78ce543f-6881-4fed-a322-81fd4e6119fb",
+        "operation": "wait",
+        "device": "cpu",
+        "repo": null
+      },
+      "result": {
+        "protocol_version": 1,
+        "job_id": "78ce543f-6881-4fed-a322-81fd4e6119fb",
+        "host_frozen": true,
+        "host_executable": "/private/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+        "operation": "wait",
+        "status": "cancelled",
+        "cancel_reason": "requested",
+        "exit_code": 0,
+        "elapsed_s": 0.480100582994055,
+        "log_path": "/private/tmp/ejp-p03-results/final-coop/worker.log"
+      },
+      "retained_log": "transcripts/coop.txt",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "forced",
+      "request": {
+        "worker_sha256": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+        "protocol_version": 1,
+        "job_id": "316224c5-d7d4-41e0-ba4f-214a52b2567b",
+        "operation": "stubborn",
+        "device": "cpu",
+        "repo": null
+      },
+      "result": {
+        "protocol_version": 1,
+        "job_id": "316224c5-d7d4-41e0-ba4f-214a52b2567b",
+        "host_frozen": true,
+        "host_executable": "/private/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+        "operation": "stubborn",
+        "status": "cancelled",
+        "cancel_reason": "requested",
+        "forced_tree_termination": true,
+        "exit_code": -9,
+        "elapsed_s": 2.0521488749946,
+        "log_path": "/private/tmp/ejp-p03-results/final-forced/worker.log"
+      },
+      "retained_log": "transcripts/forced.txt",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "child_after_cancel": {
+        "pid": 80861,
+        "ps_returncode": 1,
+        "state": "",
+        "alive": false
+      }
+    },
+    {
+      "name": "fail",
+      "request": {
+        "worker_sha256": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+        "protocol_version": 1,
+        "job_id": "37f04d55-bc0e-4d9c-9c59-d87b31b87b4e",
+        "operation": "fail",
+        "device": "cpu",
+        "repo": null
+      },
+      "result": {
+        "protocol_version": 1,
+        "job_id": "37f04d55-bc0e-4d9c-9c59-d87b31b87b4e",
+        "host_frozen": true,
+        "host_executable": "/private/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+        "operation": "fail",
+        "status": "failed",
+        "exit_code": 1,
+        "worker": {
+          "request_digest": "adaca3e6c8591d70e92ad8600c7008fd3cb8028d73df2d93b5a719f2ca2153a6",
+          "operation": "fail",
+          "outputs": [],
+          "protocol_version": 1,
+          "job_id": "37f04d55-bc0e-4d9c-9c59-d87b31b87b4e",
+          "status": "failed",
+          "python": "3.12.13 (main, Mar  3 2026, 12:39:30) [Clang 21.0.0 (clang-2100.0.123.102)]",
+          "executable": "/Users/leonis/Documents/ai-physics-tracker/.venv/bin/python",
+          "platform": "macOS-27.0-arm64-arm-64bit",
+          "machine": "arm64",
+          "worker_frozen": false,
+          "error": {
+            "type": "RuntimeError",
+            "message": "Intentional failure to verify actionable logs"
+          }
+        },
+        "elapsed_s": 0.12228554199100472,
+        "log_path": "/private/tmp/ejp-p03-results/final-fail/worker.log"
+      },
+      "retained_log": "transcripts/fail.txt",
+      "log_sha256": "91fc09d8e152be54cd0eb8656da1d5ec749f71f526b2e3d32503ffe382d7fe15"
+    },
+    {
+      "name": "dlc",
+      "request": {
+        "worker_sha256": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+        "protocol_version": 1,
+        "job_id": "29e75bb4-4487-4a41-b80b-638673288c4e",
+        "operation": "dlc_smoke",
+        "device": "cpu",
+        "repo": "/Users/leonis/Documents/ai-physics-tracker-ejp"
+      },
+      "result": {
+        "protocol_version": 1,
+        "job_id": "29e75bb4-4487-4a41-b80b-638673288c4e",
+        "host_frozen": true,
+        "host_executable": "/private/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+        "operation": "dlc_smoke",
+        "status": "success",
+        "exit_code": 0,
+        "worker": {
+          "request_digest": "997df34dab5e9277eabfb920b0392e76cf0ea830fc194b408b3dd338f403ed6c",
+          "operation": "dlc_smoke",
+          "outputs": [
+            {
+              "path": "dlc-artifacts/project/project.json",
+              "size": 24385,
+              "sha256": "f5a9012049e23b56826e996592e3c3f70f1bb1398cd4d00f673f9a425934428e"
+            }
+          ],
+          "protocol_version": 1,
+          "job_id": "29e75bb4-4487-4a41-b80b-638673288c4e",
+          "status": "success",
+          "python": "3.12.13 (main, Mar  3 2026, 12:39:30) [Clang 21.0.0 (clang-2100.0.123.102)]",
+          "executable": "/Users/leonis/Documents/ai-physics-tracker/.venv/bin/python",
+          "platform": "macOS-27.0-arm64-arm-64bit",
+          "machine": "arm64",
+          "worker_frozen": false,
+          "dlc_training_verified": true,
+          "scope": "existing single-track 1-epoch CPU train/infer; not four-landmark or accuracy acceptance"
+        },
+        "elapsed_s": 17.242929250001907,
+        "log_path": "/private/tmp/ejp-p03-results/final-dlc/worker.log"
+      },
+      "retained_log": "transcripts/dlc.txt",
+      "log_sha256": "99692ff39b85968b0825818982aeea8fabccd4b5007b7357fc565064f487446a"
+    },
+    {
+      "name": "dlc-cancel",
+      "request": {
+        "worker_sha256": "b5836590972b5d2834a2c8e1fb164c36b00df8624fd1e79396a39f5fe6c4890e",
+        "protocol_version": 1,
+        "job_id": "0c82f195-5505-4447-88e2-2af5918cf4bb",
+        "operation": "dlc_smoke",
+        "device": "cpu",
+        "repo": "/Users/leonis/Documents/ai-physics-tracker-ejp"
+      },
+      "result": {
+        "protocol_version": 1,
+        "job_id": "0c82f195-5505-4447-88e2-2af5918cf4bb",
+        "host_frozen": true,
+        "host_executable": "/private/tmp/ejp-p03-dist-v3/ejp-runtime-host/ejp-runtime-host",
+        "operation": "dlc_smoke",
+        "status": "cancelled",
+        "cancel_reason": "requested",
+        "forced_tree_termination": true,
+        "exit_code": -9,
+        "elapsed_s": 5.0994677919952665,
+        "log_path": "/private/tmp/ejp-p03-results/final-dlc-cancel/worker.log"
+      },
+      "retained_log": "transcripts/dlc-cancel.txt",
+      "log_sha256": "736dc1e731b5fbd9c877f009c7204c6fe8a9dd37ebfa41fa0465daee451e6579",
+      "limit": "Cancelled during startup/import, before training progress. Does not prove in-epoch GPU cancellation."
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+54 INFO: PyInstaller: 6.22.3, contrib hooks: 2026.7
+54 INFO: Python: 3.12.13
+62 INFO: Platform: macOS-27.0-arm64-arm-64bit
+62 INFO: Python environment: /private/tmp/ejp-p03-build-env
+62 INFO: wrote /tmp/ejp-p03-work-v3/ejp-runtime-host.spec
+65 INFO: Removing temporary files and cleaning cache in /Users/leonis/Library/Application Support/pyinstaller
+73 INFO: Module search paths (PYTHONPATH):
+['/Users/leonis/Documents/ai-physics-tracker-ejp',
+ '/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python312.zip',
+ '/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12',
+ '/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/lib-dynload',
+ '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages',
+ '/opt/homebrew/opt/python-tk@3.12/libexec',
+ '/Users/leonis/Documents/ai-physics-tracker-ejp/scripts/publication_runtime_spike']
+172 INFO: checking Analysis
+172 INFO: Building Analysis because Analysis-00.toc is non existent
+172 INFO: Looking for Python shared library...
+175 INFO: Using Python shared library: /opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/Python
+175 INFO: Running Analysis Analysis-00.toc
+175 INFO: Target bytecode optimization level: 0
+175 INFO: Initializing module dependency graph...
+176 INFO: Initializing module graph hook caches...
+186 INFO: Analyzing modules for base_library.zip ...
+582 INFO: Processing standard module hook 'hook-encodings.py' from '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/hooks'
+827 INFO: Processing standard module hook 'hook-math.py' from '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/hooks'
+1372 INFO: Processing standard module hook 'hook-pickle.py' from '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/hooks'
+1842 INFO: Processing standard module hook 'hook-heapq.py' from '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/hooks'
+2064 INFO: Caching module dependency graph...
+2083 INFO: Analyzing /Users/leonis/Documents/ai-physics-tracker-ejp/scripts/publication_runtime_spike/host.py
+2096 INFO: Processing standard module hook 'hook-_ctypes.py' from '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/hooks'
+2136 INFO: Processing standard module hook 'hook-platform.py' from '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/hooks'
+2151 INFO: Processing standard module hook 'hook-xml.py' from '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/hooks'
+2153 INFO: Processing module hooks (post-graph stage)...
+2313 INFO: Performing binary vs. data reclassification (2 entries)
+2316 INFO: Looking for ctypes DLLs
+2320 INFO: Analyzing run-time hooks ...
+2320 INFO: Including run-time hook 'pyi_rth_inspect.py' from '/private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+2323 INFO: Creating base_library.zip...
+2336 INFO: Looking for dynamic libraries
+2409 INFO: Warnings written to /tmp/ejp-p03-work-v3/ejp-runtime-host/warn-ejp-runtime-host.txt
+2415 INFO: Graph cross-reference written to /tmp/ejp-p03-work-v3/ejp-runtime-host/xref-ejp-runtime-host.html
+2446 INFO: checking PYZ
+2446 INFO: Building PYZ because PYZ-00.toc is non existent
+2446 INFO: Building PYZ (ZlibArchive) /tmp/ejp-p03-work-v3/ejp-runtime-host/PYZ-00.pyz
+2559 INFO: Building PYZ (ZlibArchive) /tmp/ejp-p03-work-v3/ejp-runtime-host/PYZ-00.pyz completed successfully.
+2560 INFO: EXE target arch: arm64
+2560 INFO: Code signing identity: None
+2561 INFO: checking PKG
+2561 INFO: Building PKG because PKG-00.toc is non existent
+2561 INFO: Building PKG (CArchive) ejp-runtime-host.pkg
+2570 INFO: Building PKG (CArchive) ejp-runtime-host.pkg completed successfully.
+2571 INFO: Bootloader /private/tmp/ejp-p03-build-env/lib/python3.12/site-packages/PyInstaller/bootloader/Darwin-64bit/run
+2571 INFO: checking EXE
+2571 INFO: Building EXE because EXE-00.toc is non existent
+2571 INFO: Building EXE from EXE-00.toc
+2571 INFO: Copying bootloader EXE to /tmp/ejp-p03-work-v3/ejp-runtime-host/ejp-runtime-host
+2572 INFO: Converting EXE to target arch (arm64)
+2651 INFO: Removing signature(s) from EXE
+2669 INFO: Modifying Mach-O image UUID(s) in EXE
+2673 INFO: Appending PKG archive to EXE
+2673 INFO: Fixing EXE headers for code signing
+2676 INFO: Re-signing the EXE
+2700 INFO: Building EXE from EXE-00.toc completed successfully.
+2702 INFO: checking COLLECT
+2702 INFO: Building COLLECT because COLLECT-00.toc is non existent
+2702 INFO: Building COLLECT COLLECT-00.toc
+4175 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+4175 INFO: Build complete! The results are available in: /tmp/ejp-p03-dist-v3
