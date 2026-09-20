@@ -1,6 +1,8 @@
 # Current Status
 
-> 项目"现在在哪、下一步做什么"的**唯一权威入口**——不知道该做什么时先读这个文件。
+> Publication worktree note（2026-09-20）：本文件保留 main 通用线状态。本 worktree 的 EJP 平台独立规划、科学契约与下一步见 [publication/STATUS.md](../../publication/STATUS.md) 和 [PHASE_PLAN.md](../../publication/PHASE_PLAN.md)；不以 main Phase 6 完成为前置。本轮仅规划，未启动实现。
+
+> main 通用开发线“现在在哪、下一步做什么”的权威入口；publication worktree使用上方指定的本线状态。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 
 - 最后更新：2026-09-18（**Phase 5.7 Human Review 通过；Phase 5 已收官；下一步等待 Phase 6 立项指令**）
