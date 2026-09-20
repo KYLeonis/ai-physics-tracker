@@ -1,74 +1,44 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-09-20（2026-09-19启动的规划会话收尾）。
-- Worktree：`ai-physics-tracker-ejp`；branch：`publication/ejp-damped-pendulum`。
-- 当前状态：**requirements / scientific asset inventory / master plan已形成；P0–P6尚未开始实现**。
-- 本线状态入口；main状态保留在[docs/status/current.md](../docs/status/current.md)，不能用main Phase6是否完成作为本线科学开发的前置条件。
+- 最后更新：2026-09-20。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
+- 当前：**P0.1 Evidence and Resolved Scientific Profiles — 完成，Independent Scientific Review PASS；可进入P0.2（尚未启动）**。
+- P0.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## Current direction
 
-依照用户本轮指令，本线是pendulum-focused undergraduate experiment platform：
+own video → Pendulum experiment → fixed calibration / manual release → four landmarks → own DLC training OR teacher model import → infer/review/QC → θ/phase/period/energy → M0/M1 → criticism/structural identifiability → export。首发Windows x64 + macOS arm64，轻量app + first-run runtime。
 
-```text
-install → first-run AI runtime setup → own video → Pendulum experiment
-→ fixed pivot / true vertical / scale / release frame
-→ same-frame four-landmark annotation
-→ train own DLC OR Import DLC Model…
-→ inference / review / QC / adopt → θ(t) → phase / period / energy
-→ M0/M1 full-trajectory fitting → model criticism
-→ structural identifiability λ interaction → save / export
-```
+## P0.1 deliverables
 
-Windows x64 installer与macOS Apple Silicon app/dmg均是首发目标；轻量应用+首次AI环境配置，无GPU允许CPU运行；不提供通用pendulum预训练模型/统一训练视频。
+- [Scientific profiles contract](spec/scientific-profiles.md)：legacy/student/diagnostic边界、精确科学语义、Qt-free请求契约、证据限制。
+- [Legacy JSON](profiles/legacy-publication-v1.json)、[student JSON](profiles/student-default-v1.json)、[diagnostics JSON](profiles/diagnostics-v1.json)：数值/公式、边界规则及provenance；不是科学功能实现。
+- [Source map](evidence/source-map.json)：正式source版本、ZIP成员、逐视频input/trajectory hash、SQLite table selection、method→profile→golden。
+- [Golden evidence](evidence/README.md)：15个小型冻结文件，包括24输入元数据、48正式fit、2个完整processed轨迹及诊断；E0–E4字段/单位/比较门槛；synthetic cases合同；其余22条完整轨迹按路径/hash读取原件。
+- [Read-only verifier](../scripts/verify_publication_evidence.py)与[13 contract tests](../tests/publication/test_evidence_contract.py)。
+- [Mini-plan](plans/p0.1-scientific-profiles.md)；[Independent Scientific Review](../docs/reviews/publication-p0.1-review.md)。
 
-## Recently completed — planning only
+## Resolved scientific decisions
 
-- [Platform requirements](spec/platform-requirements.md)：四点/角度/时间/QC/ODE/identifiability/runtime契约及R01–R12首发验收。
-- [Scientific Asset Inventory](spec/scientific-asset-inventory.md)：A01–A16证据对应、真实参数恢复、SQLite表版本区分、discrepancy/unknown登记。
-- [PHASE_PLAN](PHASE_PLAN.md)：P0–P6与Subphase边界、独立审查/真人验收、早期runtime spike、最小架构变更和首发blockers。
-- [README](README.md)同步为publication-native方向，取代旧“等待main Phase6、打包非核心”的假设。
-- 本轮只读调查科研资产与论文；未训练、拟合、生成图或修改原始数据；未新增产品代码、依赖或开始任何Phase。
+- D01：publication SG9/3独立于main7/2；历史短段策略与student≥9点分段策略分别命名。
+- D02：legacy保留原mask（不检查tracked pivot finite）；student严格完整四点+geometry+explicit exclusion，无0.60 hardcut；人工tip相对weight1且confidence保留null。
+- D03/D04：正式effective-release source allowlist；旧residual/history表不能作正式golden；fitting.py使用正式hash匹配的ZIP版本。
+- D05：information extrema、phase halfcycle skip2、EDP skip5、tail、objective各自保留算法和积分容差。halfcycle signed contraction与EDP abs loss分开；速度分层frame/interval分开。
+- D06/U04：manual release无自动−1；前5有效帧且确认静止才默认IC；否则显式fixed IC。student gap不桥接、tail最后1/3且≥10完整周期、fit count/跨度门槛等均标new_student_policy。
+- U03：SciPy1.17.1隐式参数已按版本源码恢复；保留run-reported environment，未伪造完整lock或跨平台数值等价结果。
 
-## Evidence / verification boundary
+## Verification boundary / remaining items
 
-- 仓库调查时HEAD `0e1e4f1`，工作区clean、分支与预期相符；产品基线`62239fa`。
-- 论文PDF文本已阅读，第9页模型/identifiability图目视核对。
-- SQLite用mode=ro核对149张表；正式fit48行与封存CSV关键参数/RMSE/release字段一致。
-- processed θ：24份effective-release CSV.gz；P011 3250点/108.311227s。DB旧`residual_trajectories`是3249点，不作正文轨迹替代。
-- 88-frame盲标与177-frame split记录已核对；11个最终figure-source输入hash匹配；封存zip内fitting.py匹配正式run hash。
-- 用户补充：科研数据已保存SQLite，原始视频已保存且本轮不重要；不继续追查原始视频、labels/checkpoint实体，不将其列为规划前置条件。
-- 未做历史科学全链复跑或新平台验证；804 tests/双平台CI是Phase5.7历史记录，不是本轮执行结果。
-- Phase5.6 AC-9“≥5%可复现改善”未达成的历史缺口仍保留（最佳−3.3%）；本轮没有新增改善证据，也不为解决它规划论文补充实验。
+本轮：13 unittest通过；core.autocrlf=true暂存树临时checkout的哈希验证通过（非Windows数值实测）；离线15文件/48fit/2完整trajectory检查通过；带root的83个外部来源只读hash/表selection核验通过；4个public-library URL源码在恢复时按固定版本取hash。正式source11项均匹配run manifest；全部24 IC hash对应正式fit。未修改科研原件、执行历史分析脚本、重拟合、训练或生成论文图。
 
-## Planning review and document validation
+这些是证据/契约验证，**不是P2–P4数值功能或48fit复跑已通过**。拟定数值容差待未来实现逐项实测；非bitwise依赖lock缺失如实保留。剩余非阻塞项：raw四点→θ/mask及pre-release median没有offline历史重算；历史逐start日志缺失；部分完整轨迹仍从外部根读取；模型/原视频实体按用户要求不追查。angular acceleration无历史默认，本轮不纳入必交付。
 
-- 已完成主Agent自查：核对本轮用户要求、科学来源与unknown标记、各Phase的scope/AC/review gates、只规划边界。
-- 本地Markdown链接、代码围栏与`git diff --check`检查通过；变更仅为Markdown，无产品代码/依赖/科研资产修改。
-- 独立只读审查已发起，但代理因usage limit退出，未返回结论；**独立审查未完成，不声称通过**。本轮是规划交付，不视为P0实施或其Independent Review gate完成；P0启动时须完成契约独立审查。
-- 纯文档变更未运行产品测试；历史804 tests记录不作为本轮测试结果。
+main Phase5.6 AC-9未达到改善目标的历史缺口不受影响；main历史804 tests不能冒称本轮运行结果。P0.1无GUI增量，不触发GUI Human Review。
 
-## Decisions / unresolved gates
+## Review / integration
 
-已定：固定四role、fixed pivot→tip相对true vertical、manual release t=0、内部rad、M0/M1 shared core、完整λ教学交互、双平台轻量发行、publication独立交付。
-
-P0需要裁定/明确：
-
-1. D02：论文all-four QC vs正式拟合mask未检查tracked pivot finite；学生QC与legacy reproduction的关系、likelihood filtering/weighting。
-2. 不同extrema/energy profile的命名与使用，不把skip2/skip5、g/L proxy/ωobs² energy混为一个default。
-3. 缺测/短段、manual weights、预释放不足/非静止IC、短视频tail及有效样本门槛政策。
-4. 多Track单run/四轨原子activation/多输入stale、旧项目兼容与teacher model reference契约。
-5. managed runtime worker协议、真实双平台依赖组合与数值隐式默认恢复。
-
-未修改既有Accepted ADR。ADR proposal主题已写入PHASE_PLAN，不为文档数量创建空ADR。
-
-## Relevant Source Commits
-
-| Source commit | 为什么本线需要 | 本线重新验证 | 状态 |
-| --- | --- | --- | --- |
-| `62239fa` | Phase5.7测量、DLC单点链路与交互地基 | 本轮静态核查training/inference/kinematics/charts/workflow projection；历史804 tests及双平台CI见原记录 | baseline，未新增同步 |
-
-publication自有早期提交：`917cf1d` README、`0e1e4f1` STATUS。本轮没有cherry-pick或合入main；不再把旧文档声称的“落后main6提交”当当前已核验事实。
+Independent Scientific Review已完成：F1–F4修复并独立复审关闭，最终PASS、无未关闭blocking finding。具体处置与验证见review record。未改Accepted ADR；没有引入依赖、产品代码、runtime或数据schema迁移。
 
 ## Next Recommended Action
 
-**本轮规划完成后停止，等待用户启动P0。** 获得下一轮指令后，Sol先读取requirements、inventory §4–6与PHASE_PLAN，编写 **P0.1 Evidence and resolved scientific profiles mini-plan**，明确source map、golden inputs/outputs、数值容差及D02/D05/D06/U03/U04的具体裁定项。随后按P0计划推进数据契约与runtime早期spike；不要先实现GUI或等待main Phase6。
+P0.1已完成，提交/集成至publication分支后停止。**用户下一轮可启动P0.2 — Experiment / run / derived contracts**：先读P0.1 profiles/evidence，写mini-plan，固定四role/release/calibration/teacher-model、多轨事务、multi-input stale、resolved scientific request/result持久化与旧项目兼容。不要开始P1实现或等待main Phase6。

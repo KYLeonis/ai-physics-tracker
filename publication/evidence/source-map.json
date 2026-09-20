@@ -1,0 +1,4436 @@
+{
+  "schema_version": 1,
+  "profile_version": "1.0.0",
+  "evidence_date": "2026-09-20",
+  "roots": {
+    "PROV": "user-supplied scientific asset root",
+    "EJP": "user-supplied manuscript root"
+  },
+  "sources": [
+    {
+      "id": "formal-run",
+      "root": "PROV",
+      "path": "outputs/damping_inversion_effective_release_minus1_20260726/summary_inversion_run.json",
+      "sha256": "2eaa4a9f37cc895cab3a57f89531e65d0f801eb1b76600e79790b7346f2d90ef",
+      "role": "formal_run_manifest"
+    },
+    {
+      "id": "source-pendulum_peak_vs_trajectory",
+      "root": "PROV",
+      "path": "src/inversion/pendulum_peak_vs_trajectory.py",
+      "sha256": "3a95f590918957cfe28bfc97fdc3ad4e7c8cd4a952f1817d8255fec6df8b3b46",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-inversion_types",
+      "root": "PROV",
+      "path": "src/inversion/inversion_types.py",
+      "sha256": "468782fab56cfd61acb9365f90ac9dc4a1c98b0df8904691f0a2ea3022083948",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-data_io",
+      "root": "PROV",
+      "path": "src/inversion/data_io.py",
+      "sha256": "188e630d87a2a43736c8de764d9a2a7645c5a70b7210f62de6f344a066441901",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-fitting",
+      "root": "PROV",
+      "path": "20260726模型选取存档.zip",
+      "sha256": "e9158712782bb56900535f103f8b268cb59112b74b7593a88a2891c179e1e163",
+      "role": "sealed_formal_source",
+      "zip_member": "src/inversion/fitting.py"
+    },
+    {
+      "id": "source-pipeline",
+      "root": "PROV",
+      "path": "src/inversion/pipeline.py",
+      "sha256": "6ee5546777df81b46ebe97643ef49122ab422574618096e39b985268d342a18f",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-reporting",
+      "root": "PROV",
+      "path": "src/inversion/reporting.py",
+      "sha256": "d4d64596486a34b55c146644f77fc753e5957df3a40b55f6e05e1e4a9926f042",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-__init__",
+      "root": "PROV",
+      "path": "src/inversion/models/__init__.py",
+      "sha256": "378fa7ec180f1e7f5216d84f81943538829a0de7675900e17a2971e90d7cb5f0",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-base",
+      "root": "PROV",
+      "path": "src/inversion/models/base.py",
+      "sha256": "74e7f7f62ada4b051a10f7759f94eff2c3f5111dc4785ae403f8bc916fa47d23",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-m0_linear",
+      "root": "PROV",
+      "path": "src/inversion/models/m0_linear.py",
+      "sha256": "af51cbbbf54f04bc61903c0f851e59beb6cb74c71afb80119428a738c39281f0",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-m1_linear_quadratic",
+      "root": "PROV",
+      "path": "src/inversion/models/m1_linear_quadratic.py",
+      "sha256": "6563fa965680883728e01f85869c030f307f7d47755d5408a2dfa925dbe55302",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "source-m2_coulomb",
+      "root": "PROV",
+      "path": "src/inversion/models/m2_coulomb.py",
+      "sha256": "81f7c06e3b7683ca1bff9dcba5a9d5e2124e623db44aae4bd840b2d4773e1aad",
+      "role": "sealed_formal_source"
+    },
+    {
+      "id": "initial",
+      "root": "PROV",
+      "path": "src/preprocessing/prepare_initial_conditions.py",
+      "sha256": "b3908ba639f29f1197e19c5eb654fc1e76343ffab2a169980da41f8ebfb9f87a",
+      "role": "inspected_diagnostic_source_not_formal_run_hash"
+    },
+    {
+      "id": "metrics",
+      "root": "PROV",
+      "path": "src/inversion/diagnostics/metrics.py",
+      "sha256": "6faf02e97ecf67b8112751155d2443c6f712e8c113989631b3245467d7b81667",
+      "role": "inspected_diagnostic_source_not_formal_run_hash"
+    },
+    {
+      "id": "residual-producer",
+      "root": "PROV",
+      "path": "src/inversion/run_residual_diagnostics.py",
+      "sha256": "762bf3badb0af9b04a495c463de985b834e53daf881ec73f72d6caa2cbb10a5b",
+      "role": "inspected_diagnostic_source_not_formal_run_hash"
+    },
+    {
+      "id": "phase",
+      "root": "PROV",
+      "path": "src/validation/audit_phase_space_contraction.py",
+      "sha256": "9601f523c9f81bc671c9eabcc3b7584a60dd1a79467f48ed7e5a8031a7e0f5ff",
+      "role": "inspected_diagnostic_source_not_formal_run_hash"
+    },
+    {
+      "id": "tail",
+      "root": "PROV",
+      "path": "src/validation/validate_tail_frequency_consistency.py",
+      "sha256": "6a8447cc1cb9d88748be3676f18f2b2c9630c577af7cde151d22cda5e51aa55d",
+      "role": "inspected_diagnostic_source_not_formal_run_hash"
+    },
+    {
+      "id": "energy",
+      "root": "PROV",
+      "path": "src/validation/validate_model_energy_frequency.py",
+      "sha256": "4842b6ee5a40c627b6422dd65ca27867587a0c6e69b5ec772b21d0cbee82bfd4",
+      "role": "inspected_diagnostic_source_not_formal_run_hash"
+    },
+    {
+      "id": "information",
+      "root": "PROV",
+      "path": "src/figures/make_identifiability_and_peak_information_figures_school_style.py",
+      "sha256": "c4b4f22675be6a9393b37a94bb899f379e9710299030c19fe3faa2ade0120aa9",
+      "role": "inspected_diagnostic_source_not_formal_run_hash"
+    },
+    {
+      "id": "raw-overlap-producer",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig04/make_fig04.py",
+      "sha256": "f0355a899d3e9507511f31c705964ccc6a15216bda02f9c7e5fbe5f241a472f2",
+      "role": "manuscript_figure_producer"
+    },
+    {
+      "id": "formal-fit-table",
+      "root": "PROV",
+      "path": "outputs/damping_inversion_effective_release_minus1_20260726/table_video_model_results.csv",
+      "sha256": "2209c90a436505b59a67aa632835d7ed4b77ed558690099c5057c82aeefa0c50",
+      "role": "formal_effective_release_results"
+    },
+    {
+      "id": "ic-P001",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P001_parameters.toml",
+      "sha256": "604a53a71536eaf4fe8605b4af4695bb7e6210a62d54c68e5c727dc33b208be3",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P001",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P001_residuals.csv.gz",
+      "sha256": "a24014716202c90f4b35a8737c385999b9857b6a78403f1a08517b3bb3735a64",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3194,
+      "first_frame": 132,
+      "last_time_s": 106.44410680146115
+    },
+    {
+      "id": "ic-P002",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P002_parameters.toml",
+      "sha256": "2bd9cb79d849ba10ab1e3c1806ab4a58d6cee01b3fdbbe7ae9de49b4af7b8dd0",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P002",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P002_residuals.csv.gz",
+      "sha256": "0c19cfe24df1853025adac45dd0c204d5c592d07acd5dbde65f82b67e15409d4",
+      "role": "formal_effective_release_trajectory",
+      "rows": 2656,
+      "first_frame": 111,
+      "last_time_s": 88.50884893386333
+    },
+    {
+      "id": "ic-P004",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P004_parameters.toml",
+      "sha256": "4462cc676af4802d0b7b3ab9c140c089bc55ed3b6cb5ab9b4214ad24e8a69a14",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P004",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P004_residuals.csv.gz",
+      "sha256": "95415b56a65b43fde43f9f51feec4557b114f87647e0c25749f9cc7576d771ad",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3040,
+      "first_frame": 95,
+      "last_time_s": 101.31001690601185
+    },
+    {
+      "id": "ic-P005",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P005_parameters.toml",
+      "sha256": "f9b42730d914dd2167d22ba495229e090b2aaf1c9359d6f8c68ed01e5d2f46a2",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P005",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P005_residuals.csv.gz",
+      "sha256": "6eac8d6f89833e9a7dcad7d2d208a8865730d824ddb447b09ab596f0bc71b227",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3012,
+      "first_frame": 119,
+      "last_time_s": 100.37681766549562
+    },
+    {
+      "id": "ic-P006",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P006_parameters.toml",
+      "sha256": "08f2a38fa53308c8d9640923ed52a73423a4603428e2723d8ab8a3871fbeeb34",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P006",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P006_residuals.csv.gz",
+      "sha256": "c4df8b6930042eba75c1b6e51f96979d1aa8a98d8a178bdfd26fa1f03110851d",
+      "role": "formal_effective_release_trajectory",
+      "rows": 2899,
+      "first_frame": 128,
+      "last_time_s": 96.6098929631747
+    },
+    {
+      "id": "ic-P009",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P009_parameters.toml",
+      "sha256": "218424e53d1c56fe8eb036f8d3837c4c62f8a665c24bc4a4f3405db0493cee36",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P009",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P009_residuals.csv.gz",
+      "sha256": "2ead9a25197c877002dc060da01b5c73f7899b80f368d2c7b5494b6246d24908",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3372,
+      "first_frame": 82,
+      "last_time_s": 112.37805298218406
+    },
+    {
+      "id": "ic-P010",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P010_parameters.toml",
+      "sha256": "eff97e8e8da044f9dc567070baa9119fda8ed9411712af49d5c19d0ee13ff1d5",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P010",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P010_residuals.csv.gz",
+      "sha256": "466c51e5b712bd09dcff3208c9a3cc04e102850d180a5eea9cae6023eb22db36",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3357,
+      "first_frame": 103,
+      "last_time_s": 111.87776711606837
+    },
+    {
+      "id": "ic-P011",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P011_parameters.toml",
+      "sha256": "c9060ec1e6507812bd2970442aa10da1f4690b32d67d1766d5963ad91aa6a773",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P011",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P011_residuals.csv.gz",
+      "sha256": "1bde5da3f79797857f9b5d915595793575b9be66c573049f7444c2fb3ec48571",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3250,
+      "first_frame": 94,
+      "last_time_s": 108.31122727284622
+    },
+    {
+      "id": "ic-P012",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P012_parameters.toml",
+      "sha256": "39099cfcd31a11ad476f47c714bb8666479cf59e8dc0538ca294e1ba1abcd2bb",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P012",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P012_residuals.csv.gz",
+      "sha256": "cf54747e19d2b70ab5f403e1a59d4cb4806f79f72b8508b37d42334e4ed95d77",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3244,
+      "first_frame": 76,
+      "last_time_s": 108.11117901591933
+    },
+    {
+      "id": "ic-P013",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P013_parameters.toml",
+      "sha256": "36a198c58ff94fd79ce5c39a9bf9b65a21c0d8a673ee0e49384d851365187b33",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P013",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P013_residuals.csv.gz",
+      "sha256": "7cfd267a7cffae5872d063969198621f43e2033a2915fb12e5ee47a80638967a",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3450,
+      "first_frame": 97,
+      "last_time_s": 114.9780109951171
+    },
+    {
+      "id": "ic-P014",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P014_parameters.toml",
+      "sha256": "2f0214ebf2ca8c22e6154dd3e5799161fb8eea793d871bbb7943dbf7fd154c2e",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P014",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P014_residuals.csv.gz",
+      "sha256": "01ffcbc612bd13b7d4dc7359f8d6ba9268bac3b59c1ef68474a72c6c5582cb1c",
+      "role": "formal_effective_release_trajectory",
+      "rows": 2976,
+      "first_frame": 101,
+      "last_time_s": 99.17644260266692
+    },
+    {
+      "id": "ic-P015",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P015_parameters.toml",
+      "sha256": "8f2336349be72b151ecc12c412028cfbc9ea39443d740a2715142039991e20ed",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P015",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P015_residuals.csv.gz",
+      "sha256": "0a608aff8fe4c9cd77cc6c9935b6a19c81ad97b1bfb28c1cba03ec14375040bf",
+      "role": "formal_effective_release_trajectory",
+      "rows": 2907,
+      "first_frame": 137,
+      "last_time_s": 96.87653153735123
+    },
+    {
+      "id": "ic-P016",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P016_parameters.toml",
+      "sha256": "1aa286311aa49b825efb451e666f2f18c743a23541275f3fdfa8980c72565392",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P016",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P016_residuals.csv.gz",
+      "sha256": "209eb18a5afaa47fa0df4c75bf9f5951b9c54fe9edbd593362ffaf485e136e91",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3397,
+      "first_frame": 156,
+      "last_time_s": 113.21125734137964
+    },
+    {
+      "id": "ic-P017",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P017_parameters.toml",
+      "sha256": "471cc33dd607523c37b0d5859b1f461c80e3097fb0c52ef83de99e16a4126de2",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P017",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P017_residuals.csv.gz",
+      "sha256": "52eabad08cbcb5a3f1d73116a4b1061f731b64cc1a55c41cb7687e58ac33c743",
+      "role": "formal_effective_release_trajectory",
+      "rows": 2780,
+      "first_frame": 85,
+      "last_time_s": 92.64260205551541
+    },
+    {
+      "id": "ic-P018",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P018_parameters.toml",
+      "sha256": "dd2f7b4b2398133d870eb3c56f27396f081dc45c0439cc16cd3db97a6c99c76d",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P018",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P018_residuals.csv.gz",
+      "sha256": "2c960a90449784466eca200f4519c16263b910f370c445dac18c341ff9e88e61",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3361,
+      "first_frame": 139,
+      "last_time_s": 112.01141333351454
+    },
+    {
+      "id": "ic-P019",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P019_parameters.toml",
+      "sha256": "7efd1920c57ec39cc29e06237bf9aac1d941e068abe9364eeb58bb75f5ccbf6a",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P019",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P019_residuals.csv.gz",
+      "sha256": "a319d66cfffc404bf9364de65b8e721b853304b7b79fb3799b081d5b91453786",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3132,
+      "first_frame": 165,
+      "last_time_s": 104.37690179607219
+    },
+    {
+      "id": "ic-P020",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P020_parameters.toml",
+      "sha256": "3bdcc702c47b7c70b219c353592e6f67b50fe44fb445d252bd7c561b9ad3548f",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P020",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P020_residuals.csv.gz",
+      "sha256": "469acbd50ec08de96400e5288f8e126201d46299c03afe7f176e235a6b6348de",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3113,
+      "first_frame": 126,
+      "last_time_s": 103.74358176374623
+    },
+    {
+      "id": "ic-P021",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P021_parameters.toml",
+      "sha256": "c66faad8b3e6d4d2a681bb1a4529e40f60aa5f57d21d0476c803cadff87173d3",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P021",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P021_residuals.csv.gz",
+      "sha256": "b2e76a6d41144283aa0d33f1b3379a5f4f07907e637788f24fe1e953527f7f1a",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3349,
+      "first_frame": 105,
+      "last_time_s": 111.6110932252234
+    },
+    {
+      "id": "ic-P022",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P022_parameters.toml",
+      "sha256": "220e59c1c1294feba18156d61c58ac1c48464bbbe5eefd20c465a7de047dca42",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P022",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P022_residuals.csv.gz",
+      "sha256": "cfd5e3c86ea71a315dcb2b072484a6cc733fcf93737cd5ee2f8afa3f15829d4f",
+      "role": "formal_effective_release_trajectory",
+      "rows": 2607,
+      "first_frame": 115,
+      "last_time_s": 86.87538950106044
+    },
+    {
+      "id": "ic-P023",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P023_parameters.toml",
+      "sha256": "eac65110fb2d53ffe92f3febb881b8017b15b6401df2db932b4f6b20b313439d",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P023",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P023_residuals.csv.gz",
+      "sha256": "5d2b3e65463c632f3712ee9bcc14a9ba065c6fd8cbe042326af91b49afd8b8a5",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3338,
+      "first_frame": 115,
+      "last_time_s": 111.24471544875163
+    },
+    {
+      "id": "ic-P024",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P024_parameters.toml",
+      "sha256": "0025d6c1eee029b322557dcbe7d5f98514f2a14707bf8747d95ff9baa135be21",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P024",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P024_residuals.csv.gz",
+      "sha256": "abc1b48e18a09d01814aebb4ebc06a1eee7fc3d36dc6acd8e337e25d1b3e5523",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3080,
+      "first_frame": 92,
+      "last_time_s": 102.64379511704966
+    },
+    {
+      "id": "ic-P025",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P025_parameters.toml",
+      "sha256": "01307856e2ee0c8eeab50f5f6400c957354d8b1c66a4069ce2556715b77d3c55",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P025",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P025_residuals.csv.gz",
+      "sha256": "83a55181ce2d17095adf50c9ce1c5b7851164cbae783a417cc7eb860e4967b04",
+      "role": "formal_effective_release_trajectory",
+      "rows": 2977,
+      "first_frame": 117,
+      "last_time_s": 99.21015298417902
+    },
+    {
+      "id": "ic-P026",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P026_parameters.toml",
+      "sha256": "9a6ae41db1f05fa280a6dfa2a2be8ace5b521809ed6e2da20fe4c4e67990b9dd",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P026",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P026_residuals.csv.gz",
+      "sha256": "7fb8a82de209e48022532d06786703060118db5b409b2db67bd7f4375b5cd878",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3299,
+      "first_frame": 142,
+      "last_time_s": 109.94430217328137
+    },
+    {
+      "id": "ic-P027",
+      "root": "PROV",
+      "path": "outputs/initial_conditions_effective_release_minus1_20260726/updated_toml/P027_parameters.toml",
+      "sha256": "5302236354ced37b7442a7c45e634ec008ba1046c4999a43c1d98a3e08b6d837",
+      "role": "effective_release_calibration_and_fixed_IC"
+    },
+    {
+      "id": "trajectory-P027",
+      "root": "PROV",
+      "path": "outputs/residual_diagnostics_effective_release_20260726/trajectories/P027_residuals.csv.gz",
+      "sha256": "4dda05f7cd535a511b7f40c10cd11dcfb8fad6b32d631111ae78e873dcacfc3f",
+      "role": "formal_effective_release_trajectory",
+      "rows": 3326,
+      "first_frame": 72,
+      "last_time_s": 110.84431446600743
+    },
+    {
+      "id": "provenance-fig03",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig03/provenance_manuscript.json",
+      "sha256": "2393b3a96c31d6ac22824d4c98f487c4a44b13e3e8b7d342780a62fdcde8b86e",
+      "role": "figure_provenance"
+    },
+    {
+      "id": "fig03_information_comparison_summary",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig03/source_data/fig03_information_comparison_summary.csv",
+      "sha256": "418b11b5540bb322a417fcabaef06a1c8caaad3f8e9eac9d29f6680b31a00048",
+      "role": "manuscript_diagnostic_expected_output",
+      "recorded_sha256_verified": true
+    },
+    {
+      "id": "provenance-fig04",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig04/provenance_manuscript.json",
+      "sha256": "296ba8f6cb21b241d96342a26afac456e9704d6b1ba173da30838b05f8a1eb69",
+      "role": "figure_provenance"
+    },
+    {
+      "id": "fig04_complete_raw_parameter_sets",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig04/source_data/fig04_complete_raw_parameter_sets.csv",
+      "sha256": "155edf058194a0d54f2858d103b24d026b635c0a940f1ac1cf008be4c8625348",
+      "role": "manuscript_diagnostic_expected_output",
+      "recorded_sha256_verified": true
+    },
+    {
+      "id": "fig04_raw_set_trajectory_overlap",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig04/source_data/fig04_raw_set_trajectory_overlap.csv",
+      "sha256": "ffb2444b57a13a72a01c55070984a4bbc45875ab3e2edf126bb03363ed17697e",
+      "role": "manuscript_diagnostic_expected_output",
+      "recorded_sha256_verified": true
+    },
+    {
+      "id": "fig04_objective_surface",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig04/source_data/fig04_objective_surface.csv",
+      "sha256": "21db3298cf724f3609445a75d74350815c6fa23fe2193c0bf95d9d45399a9612",
+      "role": "manuscript_diagnostic_expected_output",
+      "recorded_sha256_verified": true
+    },
+    {
+      "id": "provenance-fig06",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig06/provenance_manuscript.json",
+      "sha256": "387602d8267259c40ef856683599939657828d2f15629a523bca35f2916a34a4",
+      "role": "figure_provenance"
+    },
+    {
+      "id": "fig06_energy_p011_envelope",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig06/source_data/fig06_energy_p011_envelope.csv",
+      "sha256": "1e13ffe4d494c03c4b7cc4b506d1eafcc10acec145ea58e390caf83dac538552",
+      "role": "manuscript_diagnostic_expected_output",
+      "recorded_sha256_verified": true
+    },
+    {
+      "id": "fig06_energy_skip5_all_videos",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig06/source_data/fig06_energy_skip5_all_videos.csv",
+      "sha256": "112a175e0c1cc59f2a1b59c1a23355b038649db59086fabd178eb772d9eb6a8f",
+      "role": "manuscript_diagnostic_expected_output",
+      "recorded_sha256_verified": true
+    },
+    {
+      "id": "fig06_tail_frequency_all_videos",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig06/source_data/fig06_tail_frequency_all_videos.csv",
+      "sha256": "9e0827cb3430404f058718115b8a946d0f96f7332ec52251c422b1229b5240bd",
+      "role": "manuscript_diagnostic_expected_output",
+      "recorded_sha256_verified": true
+    },
+    {
+      "id": "fig06_length_frequency_all_videos",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig06/source_data/fig06_length_frequency_all_videos.csv",
+      "sha256": "9731892a6f6e0caba11ae52c8b6554240baf74059633b13ca98ffc4b69d8f397",
+      "role": "manuscript_diagnostic_expected_output",
+      "recorded_sha256_verified": true
+    },
+    {
+      "id": "scipy-lsq",
+      "url": "https://raw.githubusercontent.com/scipy/scipy/v1.17.1/scipy/optimize/_lsq/least_squares.py",
+      "sha256": "edb25eca998c20b9cc10b3b22faf9b0861f9be5251209481b739f56d857b1b7c",
+      "role": "versioned_library_implicit_defaults"
+    },
+    {
+      "id": "scipy-rk",
+      "url": "https://raw.githubusercontent.com/scipy/scipy/v1.17.1/scipy/integrate/_ivp/rk.py",
+      "sha256": "fa5d6300917f4f949e699b116f59ae147159d5c6147d55d940dc9d3303891056",
+      "role": "versioned_library_implicit_defaults"
+    },
+    {
+      "id": "scipy-ivp",
+      "url": "https://raw.githubusercontent.com/scipy/scipy/v1.17.1/scipy/integrate/_ivp/ivp.py",
+      "sha256": "aa16f42cc85fa02769ff00bf93bcdb48b6bf568e2d9f8ce48f9f378e76cf8f09",
+      "role": "versioned_library_implicit_defaults"
+    },
+    {
+      "id": "db-report_identifiability_objective_curve",
+      "root": "PROV",
+      "path": "outputs/analysis_datastore_20260726.sqlite",
+      "table": "report_identifiability_objective_curve",
+      "selection": "all rows",
+      "canonicalization": "rows sorted lexicographically by str(column) in schema order; JSON indent=2 UTF8 plus newline",
+      "selected_content_sha256": "f3af3e55c9e3f2a2fbc0f6efb9e08a4f30fe4ba2bb98c9bba517e4755d98b170",
+      "role": "read_only_table_extract"
+    },
+    {
+      "id": "db-m1_tail_frequency_periods",
+      "root": "PROV",
+      "path": "outputs/analysis_datastore_20260726.sqlite",
+      "table": "m1_tail_frequency_periods",
+      "selection": "video_id='P011'",
+      "canonicalization": "rows sorted lexicographically by str(column) in schema order; JSON indent=2 UTF8 plus newline",
+      "selected_content_sha256": "4467f4ec13d424c4948fe9591cb764c32717b2c4e8b37a1d0462af088939fa12",
+      "role": "read_only_table_extract"
+    },
+    {
+      "id": "scipy-curve-fit",
+      "url": "https://raw.githubusercontent.com/scipy/scipy/v1.17.1/scipy/optimize/_minpack_py.py",
+      "sha256": "cc3cb698d859c5f71276bbedf2a3c49a488d26ecf1d3bbe2db7812c9374bdc46",
+      "role": "versioned_library_implicit_defaults"
+    },
+    {
+      "id": "fig03_p011_measured_phase_and_speed",
+      "root": "EJP",
+      "path": "manuscript_assets/figures/fig03/source_data/fig03_p011_measured_phase_and_speed.csv",
+      "sha256": "7eac56b98d0fc85390227caa777083b23bb109cb57ac0c7f1b5bedf9e18c7120",
+      "role": "manuscript_archived_extrema_flags_and_measured_phase",
+      "recorded_sha256_verified": true
+    }
+  ],
+  "local_files": [
+    {
+      "id": "fit48",
+      "path": "golden/formal-fit48.csv",
+      "sha256": "2209c90a436505b59a67aa632835d7ed4b77ed558690099c5057c82aeefa0c50",
+      "kind": "fit_results",
+      "source": "formal-fit-table",
+      "rows": 48,
+      "key": [
+        "video_id",
+        "model"
+      ],
+      "columns": [
+        "video_id",
+        "physics_role",
+        "model",
+        "release_offset_frames",
+        "release_frame_used_0based",
+        "fit_status",
+        "fit_message",
+        "quality_warnings",
+        "fps",
+        "frame_count_total",
+        "frame_count_post_release",
+        "frame_count_geometry_valid",
+        "frame_count_geometry_excluded",
+        "optimization_point_count",
+        "duration_post_release_s",
+        "length_m",
+        "nominal_initial_angle_deg",
+        "theta0_deg_signed",
+        "omega0_assumed_rad_s",
+        "alpha1_s_inv",
+        "alpha2_rad_inv",
+        "omega2_s_inv2",
+        "omega2_over_g_over_l",
+        "alpha1_lower",
+        "alpha1_upper",
+        "alpha2_lower",
+        "alpha2_upper",
+        "omega2_lower",
+        "omega2_upper",
+        "parameter_at_bound",
+        "optimizer_success",
+        "optimizer_nfev",
+        "optimizer_cost",
+        "rmse_deg",
+        "weighted_rmse_deg_exploratory",
+        "early_rmse_deg",
+        "late_rmse_deg",
+        "residual_bias_deg",
+        "max_abs_residual_deg",
+        "late_equilibrium_offset_deg",
+        "frequency_initial_estimate_s_inv2",
+        "frequency_extrema_count",
+        "jacobian_rank",
+        "jacobian_parameter_count",
+        "jacobian_condition_number",
+        "median_marker_likelihood_post_release",
+        "median_abs_delta_deg_post_release",
+        "median_dlc_pivot_to_cad_px",
+        "p95_dlc_pivot_to_cad_px",
+        "csv_filename",
+        "dlc_scorer",
+        "csv_sha256",
+        "calibration_filename",
+        "calibration_sha256",
+        "weighting_status",
+        "interval_status",
+        "alpha1_s_inv_lower",
+        "alpha1_s_inv_upper",
+        "omega2_s_inv2_lower",
+        "omega2_s_inv2_upper",
+        "alpha2_rad_inv_lower",
+        "alpha2_rad_inv_upper"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "video_id"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "physics_role": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "physics_role"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "model": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "model"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "release_offset_frames": {
+          "type": "integer",
+          "unit": "frame",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "release_offset_frames"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "release_frame_used_0based": {
+          "type": "integer",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "release_frame_used_0based"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "fit_status": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "fit_status"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "fit_message": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "fit_message"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "quality_warnings": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "quality_warnings"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "fps": {
+          "type": "number",
+          "unit": "frame/s",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "fps"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frame_count_total": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "frame_count_total"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frame_count_post_release": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "frame_count_post_release"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frame_count_geometry_valid": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "frame_count_geometry_valid"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frame_count_geometry_excluded": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "frame_count_geometry_excluded"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "optimization_point_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "optimization_point_count"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "duration_post_release_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "duration_post_release_s"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "length_m": {
+          "type": "number",
+          "unit": "m",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "length_m"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "nominal_initial_angle_deg": {
+          "type": "integer",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "nominal_initial_angle_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "theta0_deg_signed": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "theta0_deg_signed"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "omega0_assumed_rad_s": {
+          "type": "integer",
+          "unit": "rad/s",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "omega0_assumed_rad_s"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha1_s_inv": {
+          "type": "number",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha1_s_inv"
+          },
+          "comparison": {
+            "gate": "E3",
+            "atol": 1e-05,
+            "rtol": 0.001
+          }
+        },
+        "alpha2_rad_inv": {
+          "type": "number",
+          "unit": "rad^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha2_rad_inv"
+          },
+          "comparison": {
+            "gate": "E3",
+            "atol": 1e-05,
+            "rtol": 0.001
+          }
+        },
+        "omega2_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "omega2_s_inv2"
+          },
+          "comparison": {
+            "gate": "E3",
+            "atol": 0.0001,
+            "rtol": 1e-05
+          }
+        },
+        "omega2_over_g_over_l": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "omega2_over_g_over_l"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha1_lower": {
+          "type": "integer",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha1_lower"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha1_upper": {
+          "type": "number",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha1_upper"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha2_lower": {
+          "type": "integer",
+          "unit": "rad^-1",
+          "nullable": true,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha2_lower"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha2_upper": {
+          "type": "number",
+          "unit": "rad^-1",
+          "nullable": true,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha2_upper"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "omega2_lower": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "omega2_lower"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "omega2_upper": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "omega2_upper"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "parameter_at_bound": {
+          "type": "boolean_token",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "parameter_at_bound"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "optimizer_success": {
+          "type": "boolean_token",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "optimizer_success"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "optimizer_nfev": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "optimizer_nfev"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "optimizer_cost": {
+          "type": "number",
+          "unit": "rad^2",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "optimizer_cost"
+          },
+          "comparison": {
+            "gate": "E3",
+            "atol": 1e-07,
+            "rtol": 0.001
+          }
+        },
+        "rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "rmse_deg"
+          },
+          "comparison": {
+            "gate": "E3",
+            "atol": 0.001,
+            "rtol": 0.001
+          }
+        },
+        "weighted_rmse_deg_exploratory": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "weighted_rmse_deg_exploratory"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "early_rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "early_rmse_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "late_rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "late_rmse_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "residual_bias_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "residual_bias_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "max_abs_residual_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "max_abs_residual_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "late_equilibrium_offset_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "late_equilibrium_offset_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frequency_initial_estimate_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "frequency_initial_estimate_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frequency_extrema_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "frequency_extrema_count"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "jacobian_rank": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "jacobian_rank"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "jacobian_parameter_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "jacobian_parameter_count"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "jacobian_condition_number": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "jacobian_condition_number"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "median_marker_likelihood_post_release": {
+          "type": "integer",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "median_marker_likelihood_post_release"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "median_abs_delta_deg_post_release": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "median_abs_delta_deg_post_release"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "median_dlc_pivot_to_cad_px": {
+          "type": "number",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "median_dlc_pivot_to_cad_px"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "p95_dlc_pivot_to_cad_px": {
+          "type": "number",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "p95_dlc_pivot_to_cad_px"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "csv_filename": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "csv_filename"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "dlc_scorer": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "dlc_scorer"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "csv_sha256": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "csv_sha256"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "calibration_filename": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "calibration_filename"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "calibration_sha256": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "calibration_sha256"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "weighting_status": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "weighting_status"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "interval_status": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "interval_status"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha1_s_inv_lower": {
+          "type": "integer",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha1_s_inv_lower"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha1_s_inv_upper": {
+          "type": "number",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha1_s_inv_upper"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "omega2_s_inv2_lower": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "omega2_s_inv2_lower"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "omega2_s_inv2_upper": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "omega2_s_inv2_upper"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha2_rad_inv_lower": {
+          "type": "integer",
+          "unit": "rad^-1",
+          "nullable": true,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha2_rad_inv_lower"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "alpha2_rad_inv_upper": {
+          "type": "number",
+          "unit": "rad^-1",
+          "nullable": true,
+          "provenance": {
+            "source": "formal-fit-table",
+            "field": "alpha2_rad_inv_upper"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        }
+      }
+    },
+    {
+      "id": "trajectory-P011",
+      "path": "golden/P011-effective.csv.gz",
+      "sha256": "1bde5da3f79797857f9b5d915595793575b9be66c573049f7444c2fb3ec48571",
+      "kind": "trajectory",
+      "source": "trajectory-P011",
+      "rows": 3250,
+      "video_id": "P011",
+      "columns": [
+        "video_id",
+        "frame_index_0based",
+        "time_s",
+        "theta_observed_deg",
+        "phi_observed_deg",
+        "omega_savgol9_rad_s",
+        "marker_likelihood",
+        "geometry_valid",
+        "radius_deviation_fraction",
+        "body_length_px",
+        "dlc_pivot_distance_px",
+        "theta_predicted_deg__M0_linear",
+        "residual_deg__M0_linear",
+        "delta_centered_deg",
+        "theta_predicted_deg__M1_linear_quadratic",
+        "residual_deg__M1_linear_quadratic"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "video_id"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frame_index_0based": {
+          "type": "integer",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "frame_index_0based"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "time_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "time_s"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "theta_observed_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "theta_observed_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "phi_observed_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "phi_observed_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "omega_savgol9_rad_s": {
+          "type": "number",
+          "unit": "rad/s",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "omega_savgol9_rad_s"
+          },
+          "comparison": {
+            "gate": "E1",
+            "atol": 1e-08,
+            "rtol": 1e-08
+          }
+        },
+        "marker_likelihood": {
+          "type": "integer",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "marker_likelihood"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "geometry_valid": {
+          "type": "boolean_token",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "geometry_valid"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "radius_deviation_fraction": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "radius_deviation_fraction"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "body_length_px": {
+          "type": "number",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "body_length_px"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "dlc_pivot_distance_px": {
+          "type": "number",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "dlc_pivot_distance_px"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "theta_predicted_deg__M0_linear": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "theta_predicted_deg__M0_linear"
+          },
+          "comparison": {
+            "gate": "E2",
+            "convert_to": "rad",
+            "max_absolute_difference": 1e-05
+          }
+        },
+        "residual_deg__M0_linear": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "residual_deg__M0_linear"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "delta_centered_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "delta_centered_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "theta_predicted_deg__M1_linear_quadratic": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "theta_predicted_deg__M1_linear_quadratic"
+          },
+          "comparison": {
+            "gate": "E2",
+            "convert_to": "rad",
+            "max_absolute_difference": 1e-05
+          }
+        },
+        "residual_deg__M1_linear_quadratic": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P011",
+            "field": "residual_deg__M1_linear_quadratic"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        }
+      }
+    },
+    {
+      "id": "trajectory-P014",
+      "path": "golden/P014-effective.csv.gz",
+      "sha256": "01ffcbc612bd13b7d4dc7359f8d6ba9268bac3b59c1ef68474a72c6c5582cb1c",
+      "kind": "trajectory",
+      "source": "trajectory-P014",
+      "rows": 2976,
+      "video_id": "P014",
+      "columns": [
+        "video_id",
+        "frame_index_0based",
+        "time_s",
+        "theta_observed_deg",
+        "phi_observed_deg",
+        "omega_savgol9_rad_s",
+        "marker_likelihood",
+        "geometry_valid",
+        "radius_deviation_fraction",
+        "body_length_px",
+        "dlc_pivot_distance_px",
+        "theta_predicted_deg__M0_linear",
+        "residual_deg__M0_linear",
+        "delta_centered_deg",
+        "theta_predicted_deg__M1_linear_quadratic",
+        "residual_deg__M1_linear_quadratic"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "video_id"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frame_index_0based": {
+          "type": "integer",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "frame_index_0based"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "time_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "time_s"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "theta_observed_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "theta_observed_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "phi_observed_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "phi_observed_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "omega_savgol9_rad_s": {
+          "type": "number",
+          "unit": "rad/s",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "omega_savgol9_rad_s"
+          },
+          "comparison": {
+            "gate": "E1",
+            "atol": 1e-08,
+            "rtol": 1e-08
+          }
+        },
+        "marker_likelihood": {
+          "type": "integer",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "marker_likelihood"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "geometry_valid": {
+          "type": "boolean_token",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "geometry_valid"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "radius_deviation_fraction": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "radius_deviation_fraction"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "body_length_px": {
+          "type": "number",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "body_length_px"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "dlc_pivot_distance_px": {
+          "type": "number",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "dlc_pivot_distance_px"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "theta_predicted_deg__M0_linear": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "theta_predicted_deg__M0_linear"
+          },
+          "comparison": {
+            "gate": "E2",
+            "convert_to": "rad",
+            "max_absolute_difference": 1e-05
+          }
+        },
+        "residual_deg__M0_linear": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "residual_deg__M0_linear"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "delta_centered_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "delta_centered_deg"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "theta_predicted_deg__M1_linear_quadratic": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "theta_predicted_deg__M1_linear_quadratic"
+          },
+          "comparison": {
+            "gate": "E2",
+            "convert_to": "rad",
+            "max_absolute_difference": 1e-05
+          }
+        },
+        "residual_deg__M1_linear_quadratic": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "trajectory-P014",
+            "field": "residual_deg__M1_linear_quadratic"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        }
+      }
+    },
+    {
+      "id": "inputs24",
+      "path": "golden/inputs24.json",
+      "sha256": "0277ee9b29ef579b4d293dde8ce64d9eacf8c73528cb57092247ad5017a22170",
+      "kind": "resolved_input_metadata",
+      "source": [
+        "ic-P001",
+        "ic-P002",
+        "ic-P004",
+        "ic-P005",
+        "ic-P006",
+        "ic-P009",
+        "ic-P010",
+        "ic-P011",
+        "ic-P012",
+        "ic-P013",
+        "ic-P014",
+        "ic-P015",
+        "ic-P016",
+        "ic-P017",
+        "ic-P018",
+        "ic-P019",
+        "ic-P020",
+        "ic-P021",
+        "ic-P022",
+        "ic-P023",
+        "ic-P024",
+        "ic-P025",
+        "ic-P026",
+        "ic-P027"
+      ],
+      "rows": 24,
+      "columns": [
+        "video_id",
+        "source",
+        "fps",
+        "frame_count",
+        "release_frame",
+        "theta0_rad",
+        "omega0_rad_s",
+        "initial_frames",
+        "length_m",
+        "length_px",
+        "pivot",
+        "vertical",
+        "raw_csv_sha256"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "filename stem"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "source": {
+          "type": "string",
+          "unit": "source_id",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "source-map ID ic-<video_id>"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "fps": {
+          "type": "number",
+          "unit": "frame/s",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "derived.video.fps"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "frame_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "derived.video.frame_count"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "release_frame": {
+          "type": "integer",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "derived.effective_release.frame_index_0based"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "theta0_rad": {
+          "type": "number",
+          "unit": "rad",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "derived.initial.theta0_rad_signed"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "omega0_rad_s": {
+          "type": "integer",
+          "unit": "rad/s",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "derived.initial.omega0_assumed_rad_s"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "initial_frames": {
+          "type": "array",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "[derived.initial.frame_start_0based,derived.initial.frame_end_0based_inclusive]"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          },
+          "items": "two integer inclusive source_frame_0based endpoints"
+        },
+        "length_m": {
+          "type": "number",
+          "unit": "m",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "scale.length_m"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "length_px": {
+          "type": "number",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "scale.length_px"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        },
+        "pivot": {
+          "type": "object",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "pivot"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          },
+          "properties": {
+            "x_px": "finite number px",
+            "y_px": "finite number px"
+          }
+        },
+        "vertical": {
+          "type": "object",
+          "unit": "px",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "vertical"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          },
+          "properties": {
+            "top_x_px": "finite number px",
+            "top_y_px": "finite number px",
+            "bottom_x_px": "finite number px",
+            "bottom_y_px": "finite number px"
+          }
+        },
+        "raw_csv_sha256": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "row.source resolves ic-<video_id>",
+            "field": "derived.video.csv_sha256 lowercase"
+          },
+          "comparison": {
+            "gate": "E0",
+            "rule": "exact archived input/metadata; SHA-bound; not a numerical output acceptance field"
+          }
+        }
+      }
+    },
+    {
+      "id": "fig03_information_comparison_summary",
+      "path": "golden/fig03_information_comparison_summary.csv.gz",
+      "sha256": "bab0fd89668334bde5ea602f2fdf0517ad592383111b7ad0e98a1fd3fec329ff",
+      "kind": "diagnostic_output",
+      "source": "fig03_information_comparison_summary",
+      "rows": 3,
+      "columns": [
+        "representation",
+        "video_count",
+        "m1_lower_error_count",
+        "median_m1_improvement_pct"
+      ],
+      "fields": {
+        "representation": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig03_information_comparison_summary",
+            "field": "representation"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "video_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "fig03_information_comparison_summary",
+            "field": "video_count"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "m1_lower_error_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "fig03_information_comparison_summary",
+            "field": "m1_lower_error_count"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "median_m1_improvement_pct": {
+          "type": "number",
+          "unit": "percent",
+          "nullable": false,
+          "provenance": {
+            "source": "fig03_information_comparison_summary",
+            "field": "median_m1_improvement_pct"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "fig04_complete_raw_parameter_sets",
+      "path": "golden/fig04_complete_raw_parameter_sets.csv.gz",
+      "sha256": "f257acee29bf02ea3327e51bd6228409c8a0286a97faa0227f6724b409d4092e",
+      "kind": "diagnostic_output",
+      "source": "fig04_complete_raw_parameter_sets",
+      "rows": 2,
+      "columns": [
+        "set",
+        "alpha_a",
+        "alpha1_s_inv",
+        "alpha2_rad_inv",
+        "omega0_sq_s_inv2",
+        "alpha1_star_s_inv",
+        "alpha2_star_rad_inv",
+        "omega_obs_sq_s_inv2",
+        "role"
+      ],
+      "fields": {
+        "set": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "set"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha_a": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "alpha_a"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha1_s_inv": {
+          "type": "number",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "alpha1_s_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha2_rad_inv": {
+          "type": "number",
+          "unit": "rad^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "alpha2_rad_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega0_sq_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "omega0_sq_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha1_star_s_inv": {
+          "type": "number",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "alpha1_star_s_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha2_star_rad_inv": {
+          "type": "number",
+          "unit": "rad^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "alpha2_star_rad_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega_obs_sq_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "omega_obs_sq_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "role": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_complete_raw_parameter_sets",
+            "field": "role"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "fig04_raw_set_trajectory_overlap",
+      "path": "golden/fig04_raw_set_trajectory_overlap.csv.gz",
+      "sha256": "5984a098013b06685855f2edb49a04eea567bfa7457e7301b6686dd559e41f6c",
+      "kind": "diagnostic_output",
+      "source": "fig04_raw_set_trajectory_overlap",
+      "rows": 750,
+      "columns": [
+        "time_s",
+        "theta_A_deg",
+        "theta_B_deg",
+        "theta_observed_deg"
+      ],
+      "fields": {
+        "time_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_raw_set_trajectory_overlap",
+            "field": "time_s"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "theta_A_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_raw_set_trajectory_overlap",
+            "field": "theta_A_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "theta_B_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_raw_set_trajectory_overlap",
+            "field": "theta_B_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "theta_observed_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_raw_set_trajectory_overlap",
+            "field": "theta_observed_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "fig04_objective_surface",
+      "path": "golden/fig04_objective_surface.csv.gz",
+      "sha256": "c835c3333b51231063b4b5bac91bd07fe04233cc10ead8fb705baf8166d6238d",
+      "kind": "diagnostic_output",
+      "source": "fig04_objective_surface",
+      "rows": 9191,
+      "columns": [
+        "alpha_a",
+        "omega0_sq_s_inv2",
+        "omega2_observed_s_inv2",
+        "objective_over_fitted",
+        "log10_objective_over_fitted"
+      ],
+      "fields": {
+        "alpha_a": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_objective_surface",
+            "field": "alpha_a"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega0_sq_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_objective_surface",
+            "field": "omega0_sq_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_observed_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_objective_surface",
+            "field": "omega2_observed_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "objective_over_fitted": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_objective_surface",
+            "field": "objective_over_fitted"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "log10_objective_over_fitted": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig04_objective_surface",
+            "field": "log10_objective_over_fitted"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "fig06_energy_p011_envelope",
+      "path": "golden/fig06_energy_p011_envelope.csv.gz",
+      "sha256": "ce1eb3a309dc667d17ba7d77138dcc3f4b32e7e65f8d42af6141b98c3e451b63",
+      "kind": "diagnostic_output",
+      "source": "fig06_energy_p011_envelope",
+      "rows": 208,
+      "columns": [
+        "video_id",
+        "series",
+        "average_specific_energy_s_inv2",
+        "observed_dissipation_s_inv2",
+        "m1_predicted_dissipation_s_inv2",
+        "r2"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_p011_envelope",
+            "field": "video_id"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "series": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_p011_envelope",
+            "field": "series"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "average_specific_energy_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_p011_envelope",
+            "field": "average_specific_energy_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "observed_dissipation_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_p011_envelope",
+            "field": "observed_dissipation_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "m1_predicted_dissipation_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_p011_envelope",
+            "field": "m1_predicted_dissipation_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "r2": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_p011_envelope",
+            "field": "r2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "fig06_energy_skip5_all_videos",
+      "path": "golden/fig06_energy_skip5_all_videos.csv.gz",
+      "sha256": "fb4b43ec34f261c2d843a429aeb4abb1fcd660d2a17413bcd5b574c320f0dc5a",
+      "kind": "diagnostic_output",
+      "source": "fig06_energy_skip5_all_videos",
+      "rows": 24,
+      "columns": [
+        "video_id",
+        "model",
+        "length_m",
+        "nominal_initial_angle_deg",
+        "skip_initial_extrema",
+        "n_step",
+        "peak_count",
+        "half_period_count",
+        "r2_raw_single_step",
+        "r2_nstep",
+        "r2_envelope",
+        "mean_abs_nstep_residual",
+        "mean_nstep_observed_dissipation",
+        "relative_mean_abs_error_pct",
+        "max_abs_nstep_residual",
+        "envelope_model",
+        "envelope_gamma_s_inv",
+        "theta0_deg_signed",
+        "alpha1_s_inv",
+        "alpha2_rad_inv",
+        "omega2_s_inv2"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "video_id"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "model": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "model"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "length_m": {
+          "type": "number",
+          "unit": "m",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "length_m"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "nominal_initial_angle_deg": {
+          "type": "integer",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "nominal_initial_angle_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "skip_initial_extrema": {
+          "type": "integer",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "skip_initial_extrema"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "n_step": {
+          "type": "integer",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "n_step"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "peak_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "peak_count"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "half_period_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "half_period_count"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "r2_raw_single_step": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "r2_raw_single_step"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "r2_nstep": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "r2_nstep"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "r2_envelope": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "r2_envelope"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "mean_abs_nstep_residual": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "mean_abs_nstep_residual"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "mean_nstep_observed_dissipation": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "mean_nstep_observed_dissipation"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "relative_mean_abs_error_pct": {
+          "type": "number",
+          "unit": "percent",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "relative_mean_abs_error_pct"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "max_abs_nstep_residual": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "max_abs_nstep_residual"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "envelope_model": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "envelope_model"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "envelope_gamma_s_inv": {
+          "type": "number",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "envelope_gamma_s_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "theta0_deg_signed": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "theta0_deg_signed"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha1_s_inv": {
+          "type": "number",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "alpha1_s_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha2_rad_inv": {
+          "type": "number",
+          "unit": "rad^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "alpha2_rad_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_energy_skip5_all_videos",
+            "field": "omega2_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "fig06_tail_frequency_all_videos",
+      "path": "golden/fig06_tail_frequency_all_videos.csv.gz",
+      "sha256": "30b42722a714f403ff253ddc70bd7320e62cc1d3e37b6a1317816cee1928ea71",
+      "kind": "diagnostic_output",
+      "source": "fig06_tail_frequency_all_videos",
+      "rows": 24,
+      "columns": [
+        "video_id",
+        "tail_start_s",
+        "tail_end_s",
+        "tail_duration_s",
+        "tail_valid_frame_count",
+        "tail_equilibrium_mean_deg",
+        "tail_amplitude_p95_deg",
+        "zero_crossing_count",
+        "period_count",
+        "omega2_tail_mean_s_inv2",
+        "omega2_tail_median_s_inv2",
+        "omega2_tail_std_s_inv2",
+        "omega2_tail_cv",
+        "length_m",
+        "nominal_initial_angle_deg",
+        "fps",
+        "release_frame_used_0based",
+        "omega2_m1_full_trajectory_s_inv2",
+        "omega2_peak_method_s_inv2",
+        "tail_minus_m1_signed_pct",
+        "tail_vs_m1_abs_deviation_pct",
+        "tail_minus_peak_signed_pct",
+        "tail_vs_peak_abs_deviation_pct",
+        "closer_method"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "video_id"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_start_s": {
+          "type": "integer",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_start_s"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_end_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_end_s"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_duration_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_duration_s"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_valid_frame_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_valid_frame_count"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_equilibrium_mean_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_equilibrium_mean_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_amplitude_p95_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_amplitude_p95_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "zero_crossing_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "zero_crossing_count"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "period_count": {
+          "type": "integer",
+          "unit": "count",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "period_count"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_tail_mean_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "omega2_tail_mean_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_tail_median_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "omega2_tail_median_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_tail_std_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "omega2_tail_std_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_tail_cv": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "omega2_tail_cv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "length_m": {
+          "type": "number",
+          "unit": "m",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "length_m"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "nominal_initial_angle_deg": {
+          "type": "integer",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "nominal_initial_angle_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "fps": {
+          "type": "number",
+          "unit": "frame/s",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "fps"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "release_frame_used_0based": {
+          "type": "integer",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "release_frame_used_0based"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_m1_full_trajectory_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "omega2_m1_full_trajectory_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_peak_method_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "omega2_peak_method_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_minus_m1_signed_pct": {
+          "type": "number",
+          "unit": "percent",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_minus_m1_signed_pct"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_vs_m1_abs_deviation_pct": {
+          "type": "number",
+          "unit": "percent",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_vs_m1_abs_deviation_pct"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_minus_peak_signed_pct": {
+          "type": "number",
+          "unit": "percent",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_minus_peak_signed_pct"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_vs_peak_abs_deviation_pct": {
+          "type": "number",
+          "unit": "percent",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "tail_vs_peak_abs_deviation_pct"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "closer_method": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_tail_frequency_all_videos",
+            "field": "closer_method"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "fig06_length_frequency_all_videos",
+      "path": "golden/fig06_length_frequency_all_videos.csv.gz",
+      "sha256": "9a9135f15c4c9fcb50792211717eb7413e83f03238e2a5e6256dd6f593ae69e3",
+      "kind": "diagnostic_output",
+      "source": "fig06_length_frequency_all_videos",
+      "rows": 24,
+      "columns": [
+        "video_id",
+        "physics_role",
+        "risk_tag",
+        "length_m",
+        "nominal_initial_angle_deg",
+        "theta0_deg_signed",
+        "theta0_abs_deg",
+        "release_frame_used_0based",
+        "alpha1_s_inv",
+        "alpha2_rad_inv",
+        "omega2_s_inv2",
+        "omega2_to_g_over_l",
+        "omega2_l_over_g",
+        "y_g_over_omega2_l",
+        "effective_length_m",
+        "effective_length_over_measured_length",
+        "rmse_deg",
+        "m0_rmse_deg",
+        "m1_rmse_improvement_deg_vs_m0",
+        "m1_rmse_improvement_pct_vs_m0",
+        "early_rmse_deg",
+        "middle_rmse_deg",
+        "late_rmse_deg",
+        "zero_crossing_error_final_ms",
+        "zero_crossing_drift_ms_per_crossing",
+        "peak_amplitude_error_rmse_deg",
+        "edp_r2_raw_single_step_skip5",
+        "edp_r2_nstep_skip5",
+        "edp_r2_envelope_skip5",
+        "edp_relative_mean_abs_error_pct_skip5",
+        "parameter_at_bound",
+        "jacobian_condition_number",
+        "quality_warnings",
+        "diagnostic_flags"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "video_id"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "physics_role": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "physics_role"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "risk_tag": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "risk_tag"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "length_m": {
+          "type": "number",
+          "unit": "m",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "length_m"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "nominal_initial_angle_deg": {
+          "type": "integer",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "nominal_initial_angle_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "theta0_deg_signed": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "theta0_deg_signed"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "theta0_abs_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "theta0_abs_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "release_frame_used_0based": {
+          "type": "integer",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "release_frame_used_0based"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha1_s_inv": {
+          "type": "number",
+          "unit": "s^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "alpha1_s_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "alpha2_rad_inv": {
+          "type": "number",
+          "unit": "rad^-1",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "alpha2_rad_inv"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "omega2_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_to_g_over_l": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "omega2_to_g_over_l"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_l_over_g": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "omega2_l_over_g"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "y_g_over_omega2_l": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "y_g_over_omega2_l"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "effective_length_m": {
+          "type": "number",
+          "unit": "m",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "effective_length_m"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "effective_length_over_measured_length": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "effective_length_over_measured_length"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "rmse_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "m0_rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "m0_rmse_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "m1_rmse_improvement_deg_vs_m0": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "m1_rmse_improvement_deg_vs_m0"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "m1_rmse_improvement_pct_vs_m0": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "m1_rmse_improvement_pct_vs_m0"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "early_rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "early_rmse_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "middle_rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "middle_rmse_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "late_rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "late_rmse_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "zero_crossing_error_final_ms": {
+          "type": "number",
+          "unit": "ms",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "zero_crossing_error_final_ms"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "zero_crossing_drift_ms_per_crossing": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "zero_crossing_drift_ms_per_crossing"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "peak_amplitude_error_rmse_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "peak_amplitude_error_rmse_deg"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "edp_r2_raw_single_step_skip5": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "edp_r2_raw_single_step_skip5"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "edp_r2_nstep_skip5": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "edp_r2_nstep_skip5"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "edp_r2_envelope_skip5": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "edp_r2_envelope_skip5"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "edp_relative_mean_abs_error_pct_skip5": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "edp_relative_mean_abs_error_pct_skip5"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "parameter_at_bound": {
+          "type": "boolean_token",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "parameter_at_bound"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "jacobian_condition_number": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "jacobian_condition_number"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "quality_warnings": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "quality_warnings"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "diagnostic_flags": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "fig06_length_frequency_all_videos",
+            "field": "diagnostic_flags"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "db-report_identifiability_objective_curve",
+      "path": "golden/report_identifiability_objective_curve.json.gz",
+      "source": "db-report_identifiability_objective_curve",
+      "kind": "diagnostic_output",
+      "sha256": "8505e67ef7f87a2c734cdf2f741e51437acf17218914589d905ebbd07a24c60a",
+      "rows": 222,
+      "columns": [
+        "omega2_observed_s_inv2",
+        "robust_objective",
+        "objective_over_fitted"
+      ],
+      "fields": {
+        "omega2_observed_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "db-report_identifiability_objective_curve",
+            "field": "omega2_observed_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "robust_objective": {
+          "type": "number",
+          "unit": "rad^2",
+          "nullable": false,
+          "provenance": {
+            "source": "db-report_identifiability_objective_curve",
+            "field": "robust_objective"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "objective_over_fitted": {
+          "type": "number",
+          "unit": "dimensionless",
+          "nullable": false,
+          "provenance": {
+            "source": "db-report_identifiability_objective_curve",
+            "field": "objective_over_fitted"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "db-m1_tail_frequency_periods",
+      "path": "golden/m1_tail_frequency_periods.json.gz",
+      "source": "db-m1_tail_frequency_periods",
+      "kind": "diagnostic_output",
+      "sha256": "1eb6ef4a41dc697c2ef7418c6c862047100bc20803a73d5bfb5c3617d7b21e3c",
+      "rows": 75,
+      "columns": [
+        "video_id",
+        "tail_start_s",
+        "period_index_0based",
+        "start_crossing_index_0based",
+        "end_crossing_index_0based",
+        "start_crossing_time_s",
+        "end_crossing_time_s",
+        "start_crossing_frame_0based",
+        "end_crossing_frame_0based",
+        "crossing_direction",
+        "period_s",
+        "omega2_tail_period_s_inv2"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "video_id"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "tail_start_s": {
+          "type": "integer",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "tail_start_s"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "period_index_0based": {
+          "type": "integer",
+          "unit": "index_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "period_index_0based"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "start_crossing_index_0based": {
+          "type": "integer",
+          "unit": "index_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "start_crossing_index_0based"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "end_crossing_index_0based": {
+          "type": "integer",
+          "unit": "index_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "end_crossing_index_0based"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "start_crossing_time_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "start_crossing_time_s"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "end_crossing_time_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "end_crossing_time_s"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "start_crossing_frame_0based": {
+          "type": "number",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "start_crossing_frame_0based"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "end_crossing_frame_0based": {
+          "type": "number",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "end_crossing_frame_0based"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "crossing_direction": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "crossing_direction"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "period_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "period_s"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        },
+        "omega2_tail_period_s_inv2": {
+          "type": "number",
+          "unit": "s^-2",
+          "nullable": false,
+          "provenance": {
+            "source": "db-m1_tail_frequency_periods",
+            "field": "omega2_tail_period_s_inv2"
+          },
+          "comparison": {
+            "gate": "E0 + diagnostic-specific E1/E4 fields",
+            "rule": "exact archived schema; numerical fields/tolerances selected by evidence/README.md Diagnostic exact fields"
+          }
+        }
+      }
+    },
+    {
+      "id": "P011-information-extrema",
+      "path": "golden/P011-information-extrema.csv",
+      "sha256": "3da46227b5e9cb70a4eda768c70e447ae36865e2115e90b1f2ca118f94f3333e",
+      "kind": "diagnostic_output",
+      "source": [
+        "fig03_p011_measured_phase_and_speed",
+        "trajectory-P011"
+      ],
+      "rows": 213,
+      "columns": [
+        "video_id",
+        "extremum_index_0based",
+        "frame_index_0based",
+        "time_s",
+        "extremum_type",
+        "theta_observed_deg",
+        "omega_savgol9_rad_s"
+      ],
+      "fields": {
+        "video_id": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": [
+              "fig03_p011_measured_phase_and_speed",
+              "trajectory-P011"
+            ],
+            "field": "video_id",
+            "transform": "select archived is_detected_extremum; source frame join by row and verified time; type from adjacent archived theta (no re-detection); ordinal source order"
+          },
+          "comparison": {
+            "gate": "E1",
+            "rule": "exact",
+            "atol": 0,
+            "rtol": 0
+          }
+        },
+        "extremum_index_0based": {
+          "type": "integer",
+          "unit": "index_0based",
+          "nullable": false,
+          "provenance": {
+            "source": [
+              "fig03_p011_measured_phase_and_speed",
+              "trajectory-P011"
+            ],
+            "field": "extremum_index_0based",
+            "transform": "select archived is_detected_extremum; source frame join by row and verified time; type from adjacent archived theta (no re-detection); ordinal source order"
+          },
+          "comparison": {
+            "gate": "E1",
+            "rule": "exact",
+            "atol": 0,
+            "rtol": 0
+          }
+        },
+        "frame_index_0based": {
+          "type": "integer",
+          "unit": "source_frame_0based",
+          "nullable": false,
+          "provenance": {
+            "source": [
+              "fig03_p011_measured_phase_and_speed",
+              "trajectory-P011"
+            ],
+            "field": "frame_index_0based",
+            "transform": "select archived is_detected_extremum; source frame join by row and verified time; type from adjacent archived theta (no re-detection); ordinal source order"
+          },
+          "comparison": {
+            "gate": "E1",
+            "rule": "exact",
+            "atol": 0,
+            "rtol": 0
+          }
+        },
+        "time_s": {
+          "type": "number",
+          "unit": "s",
+          "nullable": false,
+          "provenance": {
+            "source": [
+              "fig03_p011_measured_phase_and_speed",
+              "trajectory-P011"
+            ],
+            "field": "time_s",
+            "transform": "select archived is_detected_extremum; source frame join by row and verified time; type from adjacent archived theta (no re-detection); ordinal source order"
+          },
+          "comparison": {
+            "gate": "E1",
+            "rule": "atol+rtol*abs(expected)",
+            "atol": 1e-08,
+            "rtol": 1e-08
+          }
+        },
+        "extremum_type": {
+          "type": "string",
+          "unit": "not_applicable",
+          "nullable": false,
+          "provenance": {
+            "source": [
+              "fig03_p011_measured_phase_and_speed",
+              "trajectory-P011"
+            ],
+            "field": "extremum_type",
+            "transform": "select archived is_detected_extremum; source frame join by row and verified time; type from adjacent archived theta (no re-detection); ordinal source order"
+          },
+          "comparison": {
+            "gate": "E1",
+            "rule": "exact",
+            "atol": 0,
+            "rtol": 0
+          }
+        },
+        "theta_observed_deg": {
+          "type": "number",
+          "unit": "deg",
+          "nullable": false,
+          "provenance": {
+            "source": [
+              "fig03_p011_measured_phase_and_speed",
+              "trajectory-P011"
+            ],
+            "field": "theta_observed_deg",
+            "transform": "select archived is_detected_extremum; source frame join by row and verified time; type from adjacent archived theta (no re-detection); ordinal source order"
+          },
+          "comparison": {
+            "gate": "E1",
+            "rule": "atol+rtol*abs(expected)",
+            "atol": 1e-08,
+            "rtol": 1e-08
+          }
+        },
+        "omega_savgol9_rad_s": {
+          "type": "number",
+          "unit": "rad/s",
+          "nullable": false,
+          "provenance": {
+            "source": [
+              "fig03_p011_measured_phase_and_speed",
+              "trajectory-P011"
+            ],
+            "field": "omega_savgol9_rad_s",
+            "transform": "select archived is_detected_extremum; source frame join by row and verified time; type from adjacent archived theta (no re-detection); ordinal source order"
+          },
+          "comparison": {
+            "gate": "E1",
+            "rule": "atol+rtol*abs(expected)",
+            "atol": 1e-08,
+            "rtol": 1e-08
+          }
+        }
+      }
+    }
+  ],
+  "denied_formal_sources": [
+    "residual_trajectories",
+    "damping_video_model_results",
+    "toml_parameters (without matching calibration hash)",
+    "src/inversion/pendulum_inversion.py",
+    "outputs/damping_inversion_m2_20260726",
+    "legacy 0.38 percent tail-frequency result"
+  ],
+  "evidence_boundary": "Archived evidence verified; no historical refit or new scientific-core numerical equivalence claimed.",
+  "method_map": {
+    "theta_release_IC_QC": {
+      "assets": [
+        "A02",
+        "A08"
+      ],
+      "sources": [
+        "initial",
+        "source-data_io"
+      ],
+      "profiles": [
+        "legacy-publication-v1",
+        "student-default-v1"
+      ],
+      "goldens": [
+        "inputs24",
+        "trajectory-P011",
+        "trajectory-P014"
+      ],
+      "boundary": "processed theta is an input golden; raw four-point reconstruction and pre-release median need synthetic P2 tests"
+    },
+    "full_trajectory_fit": {
+      "assets": [
+        "A10"
+      ],
+      "sources": [
+        "formal-run",
+        "source-fitting",
+        "source-m0_linear",
+        "source-m1_linear_quadratic",
+        "source-pipeline"
+      ],
+      "profiles": [
+        "legacy-publication-v1"
+      ],
+      "goldens": [
+        "fit48",
+        "inputs24",
+        "trajectory-P011",
+        "trajectory-P014"
+      ]
+    },
+    "SG_phase_information": {
+      "assets": [
+        "A08",
+        "A09"
+      ],
+      "sources": [
+        "metrics",
+        "phase",
+        "information"
+      ],
+      "profiles": [
+        "information-extrema-v1",
+        "phase-halfcycle-v1"
+      ],
+      "goldens": [
+        "trajectory-P011",
+        "fig03_information_comparison_summary",
+        "P011-information-extrema"
+      ]
+    },
+    "tail_period": {
+      "assets": [
+        "A14"
+      ],
+      "sources": [
+        "tail"
+      ],
+      "profiles": [
+        "tail-period-legacy-v1"
+      ],
+      "goldens": [
+        "db-m1_tail_frequency_periods",
+        "fig06_tail_frequency_all_videos"
+      ]
+    },
+    "energy": {
+      "assets": [
+        "A15"
+      ],
+      "sources": [
+        "energy"
+      ],
+      "profiles": [
+        "energy-envelope-v1"
+      ],
+      "goldens": [
+        "fig06_energy_p011_envelope",
+        "fig06_energy_skip5_all_videos"
+      ]
+    },
+    "identifiability": {
+      "assets": [
+        "A13"
+      ],
+      "sources": [
+        "information",
+        "raw-overlap-producer"
+      ],
+      "profiles": [
+        "identifiability-valley-v1"
+      ],
+      "goldens": [
+        "db-report_identifiability_objective_curve",
+        "fig04_complete_raw_parameter_sets",
+        "fig04_raw_set_trajectory_overlap",
+        "fig04_objective_surface"
+      ]
+    },
+    "length_checks": {
+      "assets": [
+        "A16"
+      ],
+      "sources": [
+        "source-data_io"
+      ],
+      "profiles": [
+        "legacy-publication-v1"
+      ],
+      "goldens": [
+        "fig06_length_frequency_all_videos"
+      ]
+    }
+  },
+  "profile_files": [
+    {
+      "path": "publication/profiles/diagnostics-v1.json",
+      "sha256": "d58670ec679057cd913407c52341b8aacab141bad162abbd894b0f76c26aae8e"
+    },
+    {
+      "path": "publication/profiles/legacy-publication-v1.json",
+      "sha256": "77ed02f10d2a00fc0cae5fd1ddd5fbe4a3e46f1fed2ff07ed7e8ad4be951ce51"
+    },
+    {
+      "path": "publication/profiles/student-default-v1.json",
+      "sha256": "6b5b28065eebd0f0a26d42b6d279b4d4294af89e1a9bd5da5badaf9101e48d51"
+    }
+  ]
+}

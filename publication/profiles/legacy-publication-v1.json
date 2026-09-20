@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "id": "legacy-publication-v1",
+  "version": "1.0.0",
+  "purpose": "Reproduce effective-release archived analysis; never silently applied to new student videos",
+  "conventions": {
+    "origin": "historical_source",
+    "sources": [
+      "source-data_io",
+      "initial"
+    ],
+    "landmarks": [
+      "tip",
+      "body_top",
+      "body_bottom",
+      "pivot"
+    ],
+    "source_alias": {
+      "marker_tip": "tip"
+    },
+    "theta_formula": "atan2(vy*dx-vx*dy, vx*dx+vy*dy)",
+    "image_axes": "x_right_y_down",
+    "vertical_vector": "normalized(bottom-top)",
+    "d": "tip-fixed_calibrated_pivot",
+    "theta_unit": "rad",
+    "theta_unwrap": false,
+    "phi_vector": "body_top-body_bottom",
+    "phi_unwrap": true,
+    "time_unit": "s",
+    "time_origin": "effective_release_frame",
+    "time_formula": "(frame-release_frame)/fps",
+    "frame_index_base": 0,
+    "theta0_is_not_first_observation": true
+  },
+  "ic": {
+    "origin": "historical_source",
+    "sources": [
+      "initial",
+      "source-data_io"
+    ],
+    "release": "archived_effective_frame_LED_minus_1_already_applied",
+    "additional_offset_frames": 0,
+    "theta0": "archived_TOML_rad_value",
+    "estimator": "reference=arg(mean(exp(i*theta))); wrap(median(reference+wrap(theta-reference))); wrap=(x+pi)%(2*pi)-pi",
+    "preceding_frames": 5,
+    "omega0_rad_s": 0,
+    "fixed_during_fit": true,
+    "raw_pre_release_reconstruction_status": "not_verified_by_processed_trajectory_fixture"
+  },
+  "qc": {
+    "origin": "historical_source",
+    "sources": [
+      "source-data_io"
+    ],
+    "finite_fields": [
+      "theta",
+      "unwrapped_phi",
+      "tip_likelihood",
+      "radius_px",
+      "body_length_px"
+    ],
+    "requires_tracked_pivot_finite": false,
+    "radius_relative_tolerance": 0.1,
+    "body_relative_tolerance": 0.2,
+    "body_reference": "nanmedian_body_length_whole_video",
+    "likelihood_hard_cut": null,
+    "mask": "finite & radius_gate & body_gate",
+    "mask_recomputation_from_processed_fixture": false
+  },
+  "derivative": {
+    "origin": "historical_source",
+    "sources": [
+      "metrics"
+    ],
+    "window_frames": 9,
+    "polyorder": 3,
+    "deriv": 1,
+    "delta": "1/fps",
+    "mode": "interp",
+    "presmoothing": false,
+    "short_series": "largest_odd<=min(9,n); selected<5: numpy.gradient(theta,1/fps); otherwise poly=min(3,selected-2)",
+    "gap_behavior": "historical_whole_array_no_segmentation; no_claim_for_missing_data",
+    "single_point": "historical_gradient_error_not_supported"
+  },
+  "fit": {
+    "origin": "historical_source",
+    "sources": [
+      "source-fitting",
+      "source-m0_linear",
+      "source-m1_linear_quadratic",
+      "source-pipeline",
+      "formal-run"
+    ],
+    "models": [
+      "M0_linear",
+      "M1_linear_quadratic"
+    ],
+    "parameter_order": {
+      "M0_linear": [
+        "alpha1_s_inv",
+        "omega2_s_inv2"
+      ],
+      "M1_linear_quadratic": [
+        "alpha1_s_inv",
+        "alpha2_rad_inv",
+        "omega2_s_inv2"
+      ]
+    },
+    "g_m_s2": 9.80665,
+    "interval": "release_to_record_end_inclusive",
+    "minimum_valid": "max(50,floor(0.5*N_postrelease))",
+    "release_guard": "0<=release<frame_count-10",
+    "bounds": {
+      "alpha1_s_inv": [
+        0,
+        0.5
+      ],
+      "alpha2_rad_inv": [
+        0,
+        0.5
+      ],
+      "omega2_s_inv2": "[0.20*g/L,1.60*g/L]"
+    },
+    "physical_L": "archived scale.length_m; student must specify effective pivot-to-COM length",
+    "fit_observation": "raw_theta_not_SG_smoothed",
+    "objective_residual_sign": "predicted-observed",
+    "initial_condition": "fixed",
+    "statistical_unit": "one_independent_release_video"
+  },
+  "sampling": {
+    "origin": "historical_source",
+    "sources": [
+      "source-fitting"
+    ],
+    "maximum": 500,
+    "algorithm": "candidates=flatnonzero(valid); if n<=maximum all; else unique(candidates[rint(linspace(0,n-1,maximum)).astype(int)])",
+    "rounding": "nearest_ties_to_even",
+    "time_compression": false,
+    "record": "source_frame_indices_and_release_relative_times"
+  },
+  "weighting": {
+    "origin": "historical_source",
+    "sources": [
+      "source-fitting",
+      "source-data_io"
+    ],
+    "quality": "clip(tip_likelihood,0,1)",
+    "residual_multiplier": "sqrt(clip(quality,0.05,1))",
+    "floor": 0.05,
+    "manual_missing_likelihood": "not_defined_historically",
+    "interpretation": "exploratory_relative_weight_not_probability_or_inverse_variance"
+  },
+  "seeds": {
+    "origin": "historical_source",
+    "sources": [
+      "source-fitting",
+      "source-m0_linear",
+      "source-m1_linear_quadratic",
+      "source-pipeline"
+    ],
+    "input": "theta[valid],original_times[valid]",
+    "q_estimate": {
+      "min_samples": 20,
+      "early_limit_s": 35,
+      "tail_center": "median(last max(10,n//5) of early signal)",
+      "prominence": "max(0.08*max(abs(centered[0]),rad(2)),rad(0.15))",
+      "distance": "max(2,int(0.55*Tref/median_dt))",
+      "extrema": "find_peaks(centered) and find_peaks(-centered)",
+      "period_filter": "0.45*Tref<T<1.8*Tref",
+      "aggregate": "(2*pi/median(same-sign periods))^2",
+      "fallback": "g/L",
+      "guess_clip": "[lower*1.01,upper*0.99]"
+    },
+    "alpha1_estimate": {
+      "min_samples": 30,
+      "center": "median(last max(10,n//10))",
+      "signal": "abs(theta-center)",
+      "distance": "max(2,int(0.35*Tguess/median_dt))",
+      "prominence": "max(rad(0.1),abs(theta[0]-center)*0.015)",
+      "peaks": "first 30; at least 4 amplitudes >rad(0.1)",
+      "estimate": "clip(-2*polyfit(t,log(amplitude),1)[0],0.002,0.8*upper)",
+      "fallback": "min(0.02,0.25*upper)"
+    },
+    "q_seed_factors": [
+      0.975,
+      1,
+      1.025
+    ],
+    "q_seed_clip": "[lower*1.001,upper*0.999]",
+    "M0": [
+      "[a1guess,qseed0]",
+      "[max(0.005,a1guess),qseed1]",
+      "[min(0.08,0.5*a1upper),qseed2]"
+    ],
+    "M1": [
+      "[a1guess,0.005,qseed0]",
+      "[max(0.005,0.6*a1guess),0.03,qseed1]",
+      "[0.005,min(0.10,0.5*a2upper),qseed2]"
+    ],
+    "M1_prepend": "finite M0 alpha1 and omega2, even nonconverged, mapped [alpha1,1e-8,omega2]; no success guard in historical pipeline",
+    "start_clip": "[lower+1e-10,upper-1e-10]",
+    "random": false
+  },
+  "integrator": {
+    "origin": "historical_source",
+    "sources": [
+      "source-fitting",
+      "scipy-rk",
+      "scipy-ivp"
+    ],
+    "method": "DOP853",
+    "rtol": 2e-07,
+    "atol": 2e-09,
+    "t_span": "[0,last_evaluation_time]",
+    "t_eval": "actual_selected_times_or_full_prediction_times",
+    "max_step": "infinity",
+    "first_step": null,
+    "vectorized": false,
+    "dense_output": false,
+    "events": null,
+    "implicit_fields": [
+      "max_step",
+      "first_step",
+      "vectorized",
+      "dense_output",
+      "events"
+    ],
+    "on_failure_residual": 1000
+  },
+  "optimiser": {
+    "origin": "historical_source",
+    "sources": [
+      "source-fitting",
+      "scipy-lsq"
+    ],
+    "method": "trf",
+    "jac": "2-point",
+    "ftol": 1e-08,
+    "xtol": 1e-08,
+    "gtol": 1e-08,
+    "x_scale": "jac",
+    "loss": "soft_l1",
+    "f_scale_rad": 0.008726646259971648,
+    "max_nfev": 180,
+    "diff_step": null,
+    "tr_solver": null,
+    "resolved_dense_tr_solver": "exact",
+    "tr_options": {},
+    "jac_sparsity": null,
+    "verbose": 0,
+    "callback": null,
+    "workers": null,
+    "implicit_fields": [
+      "method",
+      "jac",
+      "ftol",
+      "xtol",
+      "gtol",
+      "diff_step",
+      "tr_solver",
+      "tr_options",
+      "jac_sparsity",
+      "verbose",
+      "callback",
+      "workers"
+    ],
+    "candidate": "finite(x) and finite(cost), even if not converged",
+    "selection": "minimum cost; first candidate wins equal cost",
+    "result_status": "best.success determines success vs nonconverged; forward failure remains failure"
+  },
+  "metrics": {
+    "origin": "historical_source",
+    "sources": [
+      "source-fitting"
+    ],
+    "rmse": "sqrt(mean((pred-obs)^2 over all valid postrelease frames))",
+    "rmse_core_unit": "rad",
+    "archived_rmse_unit": "deg",
+    "weighted_exploratory_rmse": "sqrt(mean((sqrt(weight)*(pred-obs))^2)); not divided by sum(weights)",
+    "early_late": "first/last max(1,n_valid//3) valid frames",
+    "cost": "0.5*sum(2*f_scale^2*(sqrt(1+(weighted_residual/f_scale)^2)-1))",
+    "boundary": "distance<=1e-4*max(upper-lower,1)",
+    "jacobian_rank": "singular_value>eps*max(jac.shape)*largest_singular_value",
+    "jacobian_condition_warning": 100000000.0,
+    "late_equilibrium_warning": "abs(deg(median(last max(30,round(5*fps)) raw theta)))>1"
+  },
+  "environment": {
+    "origin": "historical_source",
+    "sources": [
+      "formal-run"
+    ],
+    "python": "3.13.0",
+    "numpy": "2.4.3",
+    "pandas": "3.0.1",
+    "scipy": "1.17.1",
+    "platform": "Windows 11 x64",
+    "lockfile_status": "run-reported versions; complete environment lock unavailable",
+    "product_runtime_recommendation": false
+  }
+}

@@ -82,7 +82,7 @@ internal: rad; display: rad or degree
 - pre-release帧仍可用于初态估计；分析默认完整post-release范围。裁剪/working zone不可偷偷改变t=0或IC。
 - 历史论文LED−1仅是原实验已记录的判定，不作为学生视频自动offset。
 - CFR/时基准确性沿用现有门禁。VFR若只能近似处理，必须展示近似来源；不得宣称严格重现真实采样时刻。
-- 默认θ₀/ω₀政策以历史“释放前5帧circular median、固定ω₀=0”为候选；预释放不足、非静止/手推释放的处理在P0明确。禁止偷偷用第一个抽样点替代释放初态。
+- P0.1已固定：连续有效前5帧circular median且用户确认静止释放时ω₀=0；不足/非静止须显式固定IC，详见[scientific profiles](scientific-profiles.md)。禁止偷偷用第一个抽样点替代释放初态。
 - 标定、release、有效观测、QC mask、分析区间或配置改变，相关θ、导数、fit、model comparison和valley全部stale。计算结果只能在输入版本仍匹配时提交。
 
 ## 5. QC and scientific profiles
@@ -92,7 +92,7 @@ internal: rad; display: rad or degree
 - 几何QC：radius与校准像素半径的偏差；body separation与指定whole-video参考median的偏差；tracked pivot漂移；body pose/θ关系作为诊断。记录参考范围、参考值、阈值、逐帧原因。
 - 历史radius10%、body20%有资产支持；pivot漂移新hard threshold没有已批准来源，未确定前只显示诊断。
 - confidence不是accuracy、visibility或inverse variance；高置信可几何错误，低置信可几何正确。
-- 历史拟合mask、benchmark四点mask和产品0.60过滤不同。D02必须在P0裁定，未裁定不得把任一覆盖另一；必要时保留命名明确的legacy reproduction与student QC策略，均走同一数值核心。
+- 历史拟合mask、benchmark四点mask和产品0.60过滤不同。D02已由P0.1分为legacy reproduction与严格四点student QC，禁止互相覆盖，均走同一数值核心，具体mask见[scientific profiles](scientific-profiles.md)。
 - 缺测保持稀疏/NaN边界，不补0、不压缩时间；导数不跨缺测段，图表不连接缺口；不足数据给出量级明确的限制。
 - 固定检查帧的比较资格继续clean/contaminated/unknown，失败关闭优劣判断；不以同一series ID或后续修正后的标签声称独立验证。
 
@@ -118,7 +118,7 @@ M1: θ¨ + α1* θ˙ + α2* θ˙|θ˙| + ωobs² sinθ = 0
 
 拟合量是time-corresponding θ(t)，不是峰值包络、普通curve_fit或对微分后加速度做回归。不能改变观测时间以追齐phase。先从t=0与明确IC积分，在每个抽样观测的原t值比较。
 
-恢复的候选基准：DOP853(rtol2e−7,atol2e−9)、最多500 valid samples、bounded least_squares、soft-L1 scale0.5°转rad、max_nfev180、x_scale=jac、M0三起点/M1三起点加M0 warm start、α₁/α₂界[0,0.5]、ωobs²界[0.20,1.60]g/L、tip likelihood floor0.05。精确选样、seeds、初态和隐式库默认见inventory，不从main GUI取值。
+P0.1固定的legacy基准（student显式继承/覆盖见profiles）：DOP853(rtol2e−7,atol2e−9)、最多500 valid samples、bounded least_squares、soft-L1 scale0.5°转rad、max_nfev180、x_scale=jac、M0三起点/M1三起点加M0 warm start、α₁/α₂界[0,0.5]、ωobs²界[0.20,1.60]g/L、tip likelihood floor0.05。精确选样、seeds、初态和隐式库默认见[scientific profiles](scientific-profiles.md)及其JSON，不从main GUI取值。
 
 - 同一fit记录保存输入快照身份、实际sample frame/time、mask与weights、IC、bounds、全部starts、integration/optimiser配置及软件版本。
 - 内部角度残差rad；Normal参数显示α₁* s⁻¹、α₂* rad⁻¹、ωobs² s⁻²。raw αa、α₁、α₂、ω₀²不是可独立识别的fit输出。

@@ -1,6 +1,6 @@
 # EJP Publication Platform — Master Phase Plan
 
-- 2026-09-19规划，2026-09-20文档收尾；状态：**requirements / inventory / master planning completed；P0–P6 均未启动实现**。
+- 2026-09-19规划，2026-09-20文档收尾；状态：**P0.1科学契约与golden evidence完成，Independent Scientific Review PASS；P0.2–P6未启动**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -11,7 +11,7 @@
 
 推荐继续采用P0–P6的七阶段边界，但P0包含**runtime执行边界早期spike**，P1包含teacher model最小导入，不把这两项拖到全功能完成后才发现不兼容。P5是整链教学/导出收口，不能成为补造全部前期数据契约的阶段。
 
-本轮只完成规划；所有spike、synthetic tests、golden回归、GUI与打包均是未来工作。下一步要先由用户启动P0，再交给Sol编写P0.1 mini-plan。
+P0.1已由用户启动并建立[scientific profiles](spec/scientific-profiles.md)、[source map/golden evidence](evidence/README.md)和只读契约检查。独立审查已通过，停在P0.2之前；没有实现数值core、GUI或runtime。
 
 ## 2. Scientific Asset Inventory summary
 
@@ -28,14 +28,14 @@
 | 数值配置 | SG9/3直接导数；DOP853；500点；bounded multistart；soft-L1 0.5°；IC/bounds/weights已恢复 | publication profile独立，不继承main SG7/2或0.60截断 |
 | Figures / physical checks | 正文Fig4–7的11个EJP source inputs哈希匹配；period/energy/valley脚本可读 | 提供golden evidence与算法依据，不把论文制图流程移入产品GUI |
 
-### 科学决策入口（P0必须处理）
+### 科学决策入口（P0.1已收敛，保留规划背景）
 
 1. **D02四点QC差异**：正文all-four finite，正式fit mask未检查tracked pivot finite；main有0.60置信过滤，正式fit没有此硬截断。用户裁定legacy mask与student mask的命名/使用，禁止默默统一。
 2. **D05不同诊断不同算法**：信息图extrema、half-cycle extrema、EDP extrema不同；skip2与skip5不混淆。energy raw/envelope/specific proxy分别定义。
 3. **D06/U04新视频政策**：缺测分段/短段、manual权重、release前不足5帧、非静止IC、短视频tail、50点/50%有效门槛。历史值可恢复，任意新视频的默认不能伪称已验证。
 4. **U03数值版本**：恢复SciPy隐式参数，约定跨平台容差和golden比较方式。历史Python3.13环境不直接替代产品Python约束。
 
-这些是实现前的明确决策，不是本轮追加论文科学分析的任务。没有改写任何原始资产或论文。
+上述科学政策当前以[P0.1契约](spec/scientific-profiles.md)为准；用户本轮已授权收敛，新学生政策明确标记，不重复要求许可。以下保留P0其余数据/runtime工作边界。这些不是追加论文科学分析的任务。没有改写任何原始资产或论文。
 
 ## 3. Existing capability vs missing capability
 
@@ -78,7 +78,7 @@
 
 | Subphase | 交付边界 | 完成判据 |
 | --- | --- | --- |
-| P0.1 Evidence and resolved scientific profiles | 固定DB/file source map、精确参数、分歧清单、最小golden测试资产引用；只作软件复现准备 | 每个default能指向版本化来源；D02/D05/D06/U03/U04有明确处理；unknown不填猜测值 |
+| P0.1 Evidence and resolved scientific profiles（✅完成；review PASS） | 固定DB/file source map、精确参数、分歧清单、最小golden测试资产引用；只作软件复现准备 | 每个default能指向版本化来源；D02/D05/D06/U03/U04有明确处理；unknown不填猜测值 |
 | P0.2 Experiment / run / derived contracts | 四role、release/calibration/L、teacher model、四轨原子事务、多输入stale、fit result与export契约 | 旧项目兼容策略和新字段validation明确；schema ADR proposal审定；Normal/Advanced请求同形 |
 | P0.3 Distribution feasibility spike | 最小冻结app→managed Python worker桥接、PyTorch/DLC安装/设备self-test、版本组合调查 | Win x64及Mac arm64记录实际启动/小train+infer/取消结果，CPU可用；没有现成机器则如实留下gate，不推迟到P6才发现 |
 | P0.4 Contracts close | 合并科学/数据/runtime结论，修订后续mini-plan输入 | Independent Review关闭blocking findings；用户关键科学选择记录；P0收尾后停止 |

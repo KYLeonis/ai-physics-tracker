@@ -8,3 +8,8 @@
 *.hdf5 binary
 *.pt binary
 *.pth binary
+
+# Frozen scientific evidence is byte-addressed; preserve archival CRLF/LF exactly.
+/publication/evidence/golden/** -text
+/publication/profiles/*.json text eol=lf
+/publication/evidence/golden/formal-fit48.csv whitespace=cr-at-eol

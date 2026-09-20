@@ -1,0 +1,626 @@
+[
+  {
+    "video_id": "P001",
+    "source": "ic-P001",
+    "fps": 29.9969636267,
+    "frame_count": 3326,
+    "release_frame": 132,
+    "theta0_rad": -1.15345922644,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      127,
+      131
+    ],
+    "length_m": 0.245,
+    "length_px": 597.896,
+    "pivot": {
+      "x_px": 962.5586,
+      "y_px": 192.9452
+    },
+    "vertical": {
+      "top_x_px": 1349.8609,
+      "top_y_px": 34.8919,
+      "bottom_x_px": 1342.5211,
+      "bottom_y_px": 1076.1583
+    },
+    "raw_csv_sha256": "072e6cf871d8e6fc8b91b11daa187735a80c3c8d07641cbb3716dfc579e1ff8d"
+  },
+  {
+    "video_id": "P002",
+    "source": "ic-P002",
+    "fps": 29.9970006613,
+    "frame_count": 2767,
+    "release_frame": 111,
+    "theta0_rad": -0.373473717896,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      106,
+      110
+    ],
+    "length_m": 0.165,
+    "length_px": 428.6927,
+    "pivot": {
+      "x_px": 1050.2787,
+      "y_px": 327.1766
+    },
+    "vertical": {
+      "top_x_px": 1469.2377,
+      "top_y_px": 98.7423,
+      "bottom_x_px": 1454.5583,
+      "bottom_y_px": 1052.6429
+    },
+    "raw_csv_sha256": "c6ea722f402f261ee30a4ea020a24169192a4425cf7a04c0473ec0b76aba0453"
+  },
+  {
+    "video_id": "P004",
+    "source": "ic-P004",
+    "fps": 29.9970337861,
+    "frame_count": 3135,
+    "release_frame": 95,
+    "theta0_rad": -0.345987429566,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      90,
+      94
+    ],
+    "length_m": 0.245,
+    "length_px": 576.3482,
+    "pivot": {
+      "x_px": 1063.4536,
+      "y_px": 180.9265
+    },
+    "vertical": {
+      "top_x_px": 1209.9571,
+      "top_y_px": 29.3299,
+      "bottom_x_px": 1196.669,
+      "bottom_y_px": 1014.2448
+    },
+    "raw_csv_sha256": "08dd7f1c097c429f8dc2eb416b0909a695220cb96cc4f22cab916f7479c920cd"
+  },
+  {
+    "video_id": "P005",
+    "source": "ic-P005",
+    "fps": 29.9969661325,
+    "frame_count": 3131,
+    "release_frame": 119,
+    "theta0_rad": -1.07607523527,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      114,
+      118
+    ],
+    "length_m": 0.165,
+    "length_px": 425.698,
+    "pivot": {
+      "x_px": 1003.9436,
+      "y_px": 334.4204
+    },
+    "vertical": {
+      "top_x_px": 1421.0894,
+      "top_y_px": 106.1078,
+      "bottom_x_px": 1407.1039,
+      "bottom_y_px": 965.6086
+    },
+    "raw_csv_sha256": "3d063f561824747ccbbda4ec03f5db3a74779ddb4903b5c527a0c1fa2e435f0b"
+  },
+  {
+    "video_id": "P006",
+    "source": "ic-P006",
+    "fps": 29.9969279658,
+    "frame_count": 3027,
+    "release_frame": 128,
+    "theta0_rad": -0.378932275694,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      123,
+      127
+    ],
+    "length_m": 0.32,
+    "length_px": 734.7932,
+    "pivot": {
+      "x_px": 1000.9165,
+      "y_px": 203.0603
+    },
+    "vertical": {
+      "top_x_px": 1249.0184,
+      "top_y_px": 50.4893,
+      "bottom_x_px": 1235.0231,
+      "bottom_y_px": 1054.7251
+    },
+    "raw_csv_sha256": "a88abed8535f582c20b7f37df37a6f84efad998876efe4bbab0c44fcf254892b"
+  },
+  {
+    "video_id": "P009",
+    "source": "ic-P009",
+    "fps": 29.9969603543,
+    "frame_count": 3454,
+    "release_frame": 82,
+    "theta0_rad": -1.20854252644,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      77,
+      81
+    ],
+    "length_m": 0.32,
+    "length_px": 729.6663,
+    "pivot": {
+      "x_px": 1006.5838,
+      "y_px": 193.4525
+    },
+    "vertical": {
+      "top_x_px": 1261.3415,
+      "top_y_px": 44.6884,
+      "bottom_x_px": 1233.8503,
+      "bottom_y_px": 1040.3859
+    },
+    "raw_csv_sha256": "6a6e71dc755532e2e642d610a78c4fc866facaf88fba6934c3e4da391c34feb0"
+  },
+  {
+    "video_id": "P010",
+    "source": "ic-P010",
+    "fps": 29.9970234168,
+    "frame_count": 3460,
+    "release_frame": 103,
+    "theta0_rad": -0.495366653566,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      98,
+      102
+    ],
+    "length_m": 0.32,
+    "length_px": 733.0493,
+    "pivot": {
+      "x_px": 1000.2026,
+      "y_px": 204.3254
+    },
+    "vertical": {
+      "top_x_px": 1255.335,
+      "top_y_px": 50.4141,
+      "bottom_x_px": 1242.6157,
+      "bottom_y_px": 1068.7071
+    },
+    "raw_csv_sha256": "55ceffc1814aae6a0b199bd156701f4afb41cdc9404d58776402e115553df07a"
+  },
+  {
+    "video_id": "P011",
+    "source": "ic-P011",
+    "fps": 29.9968902745,
+    "frame_count": 3344,
+    "release_frame": 94,
+    "theta0_rad": -1.22088559213,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      89,
+      93
+    ],
+    "length_m": 0.245,
+    "length_px": 581.9994,
+    "pivot": {
+      "x_px": 979.8586,
+      "y_px": 181.3683
+    },
+    "vertical": {
+      "top_x_px": 1344.154,
+      "top_y_px": 27.5812,
+      "bottom_x_px": 1332.7688,
+      "bottom_y_px": 1037.8378
+    },
+    "raw_csv_sha256": "86c786373c2cd44bc807d98940a24ca2028eca749ccf8b27ee0b46d33a8cba2c"
+  },
+  {
+    "video_id": "P012",
+    "source": "ic-P012",
+    "fps": 29.9968979112,
+    "frame_count": 3320,
+    "release_frame": 76,
+    "theta0_rad": -0.872612534234,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      71,
+      75
+    ],
+    "length_m": 0.165,
+    "length_px": 371.6217,
+    "pivot": {
+      "x_px": 979.5149,
+      "y_px": 212.9871
+    },
+    "vertical": {
+      "top_x_px": 1388.4757,
+      "top_y_px": 61.7392,
+      "bottom_x_px": 1385.2224,
+      "bottom_y_px": 1073.1584
+    },
+    "raw_csv_sha256": "83293e36ad676f12608f576d73f34040ebd5f2c66eabf98beb33612706b6eb59"
+  },
+  {
+    "video_id": "P013",
+    "source": "ic-P013",
+    "fps": 29.997040044,
+    "frame_count": 3547,
+    "release_frame": 97,
+    "theta0_rad": -1.17911291302,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      92,
+      96
+    ],
+    "length_m": 0.32,
+    "length_px": 727.6456,
+    "pivot": {
+      "x_px": 1010.5547,
+      "y_px": 193.1318
+    },
+    "vertical": {
+      "top_x_px": 1266.0428,
+      "top_y_px": 42.7584,
+      "bottom_x_px": 1240.706,
+      "bottom_y_px": 1066.3684
+    },
+    "raw_csv_sha256": "3d635eb344564485e286d9fc45c7dc8c31ee6b620387a5491a7cfc190a37a374"
+  },
+  {
+    "video_id": "P014",
+    "source": "ic-P014",
+    "fps": 29.9970428655,
+    "frame_count": 3077,
+    "release_frame": 101,
+    "theta0_rad": -0.356797272768,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      96,
+      100
+    ],
+    "length_m": 0.245,
+    "length_px": 574.8121,
+    "pivot": {
+      "x_px": 1051.563,
+      "y_px": 183.6113
+    },
+    "vertical": {
+      "top_x_px": 1197.4767,
+      "top_y_px": 32.4033,
+      "bottom_x_px": 1184.0067,
+      "bottom_y_px": 1034.1219
+    },
+    "raw_csv_sha256": "83917c1534a513ef1c80c875c618263b1e2ae0b8bd6b6f6b4cc8864a9cbb71b3"
+  },
+  {
+    "video_id": "P015",
+    "source": "ic-P015",
+    "fps": 29.9969451206,
+    "frame_count": 3044,
+    "release_frame": 137,
+    "theta0_rad": -1.00791417159,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      132,
+      136
+    ],
+    "length_m": 0.165,
+    "length_px": 422.3712,
+    "pivot": {
+      "x_px": 974.1642,
+      "y_px": 329.4522
+    },
+    "vertical": {
+      "top_x_px": 1393.3329,
+      "top_y_px": 99.478,
+      "bottom_x_px": 1379.1318,
+      "bottom_y_px": 1063.3135
+    },
+    "raw_csv_sha256": "2ea6958ce2a7a18ac0b12c64ed2a77f770b88525ec2223b8c79aa0b372bd987b"
+  },
+  {
+    "video_id": "P016",
+    "source": "ic-P016",
+    "fps": 29.9970169023,
+    "frame_count": 3553,
+    "release_frame": 156,
+    "theta0_rad": -0.932297037078,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      151,
+      155
+    ],
+    "length_m": 0.245,
+    "length_px": 581.3514,
+    "pivot": {
+      "x_px": 975.9579,
+      "y_px": 179.0258
+    },
+    "vertical": {
+      "top_x_px": 1340.1854,
+      "top_y_px": 24.8818,
+      "bottom_x_px": 1331.6401,
+      "bottom_y_px": 1072.1495
+    },
+    "raw_csv_sha256": "903fb1c764f9697536abeb39930cac74cf83b8917760165161e78261c9bb61d9"
+  },
+  {
+    "video_id": "P017",
+    "source": "ic-P017",
+    "fps": 29.9969985551,
+    "frame_count": 2865,
+    "release_frame": 85,
+    "theta0_rad": -0.485221235105,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      80,
+      84
+    ],
+    "length_m": 0.165,
+    "length_px": 427.4686,
+    "pivot": {
+      "x_px": 1074.6941,
+      "y_px": 328.8651
+    },
+    "vertical": {
+      "top_x_px": 1493.7776,
+      "top_y_px": 100.4402,
+      "bottom_x_px": 1478.8057,
+      "bottom_y_px": 1069.9686
+    },
+    "raw_csv_sha256": "567acc88ec6702d6930abdd9d5a9f915c5e21a8e9989f7d54d26ede2e54229da"
+  },
+  {
+    "video_id": "P018",
+    "source": "ic-P018",
+    "fps": 29.9969431686,
+    "frame_count": 3500,
+    "release_frame": 139,
+    "theta0_rad": -0.935388160346,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      134,
+      138
+    ],
+    "length_m": 0.32,
+    "length_px": 732.3117,
+    "pivot": {
+      "x_px": 1004.4475,
+      "y_px": 202.4168
+    },
+    "vertical": {
+      "top_x_px": 1249.8877,
+      "top_y_px": 49.2178,
+      "bottom_x_px": 1235.6417,
+      "bottom_y_px": 1073.4997
+    },
+    "raw_csv_sha256": "0c251a704b9e5220a0cab0c06103b6f37c30c1224a727c22132975f3408bee8c"
+  },
+  {
+    "video_id": "P019",
+    "source": "ic-P019",
+    "fps": 29.99705822,
+    "frame_count": 3297,
+    "release_frame": 165,
+    "theta0_rad": -1.08948672255,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      160,
+      164
+    ],
+    "length_m": 0.165,
+    "length_px": 426.342,
+    "pivot": {
+      "x_px": 966.4085,
+      "y_px": 327.3692
+    },
+    "vertical": {
+      "top_x_px": 1385.3847,
+      "top_y_px": 98.0556,
+      "bottom_x_px": 1370.9131,
+      "bottom_y_px": 1076.2759
+    },
+    "raw_csv_sha256": "9f456ef6ca7b39b667c49b48fcb2d9a20fc86dd14d51a100741ffcb69df536c8"
+  },
+  {
+    "video_id": "P020",
+    "source": "ic-P020",
+    "fps": 29.9970364151,
+    "frame_count": 3239,
+    "release_frame": 126,
+    "theta0_rad": -0.519762281499,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      121,
+      125
+    ],
+    "length_m": 0.32,
+    "length_px": 737.9609,
+    "pivot": {
+      "x_px": 992.0667,
+      "y_px": 203.1266
+    },
+    "vertical": {
+      "top_x_px": 1246.3917,
+      "top_y_px": 52.2961,
+      "bottom_x_px": 1231.6537,
+      "bottom_y_px": 1076.9018
+    },
+    "raw_csv_sha256": "e2974ab5593dbad9c99ae70178fd17c44c1829ae02b56978401e7dc94d76668f"
+  },
+  {
+    "video_id": "P021",
+    "source": "ic-P021",
+    "fps": 29.9970182466,
+    "frame_count": 3454,
+    "release_frame": 105,
+    "theta0_rad": -1.21088566847,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      100,
+      104
+    ],
+    "length_m": 0.245,
+    "length_px": 581.182,
+    "pivot": {
+      "x_px": 988.7339,
+      "y_px": 178.7607
+    },
+    "vertical": {
+      "top_x_px": 1352.3562,
+      "top_y_px": 26.0487,
+      "bottom_x_px": 1341.6273,
+      "bottom_y_px": 1074.3531
+    },
+    "raw_csv_sha256": "72181e80d32afd5f2f9ec6298561a0a086cfdb31f92c342d8beb3ca0ef24039b"
+  },
+  {
+    "video_id": "P022",
+    "source": "ic-P022",
+    "fps": 29.9969878117,
+    "frame_count": 2722,
+    "release_frame": 115,
+    "theta0_rad": -0.516796778648,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      110,
+      114
+    ],
+    "length_m": 0.165,
+    "length_px": 428.2809,
+    "pivot": {
+      "x_px": 1015.5445,
+      "y_px": 339.9391
+    },
+    "vertical": {
+      "top_x_px": 1455.1228,
+      "top_y_px": 102.3084,
+      "bottom_x_px": 1445.5532,
+      "bottom_y_px": 1072.4109
+    },
+    "raw_csv_sha256": "709766c900d31d681251d0e73b3081c3725cdf42a30b49471fec4c6e8397ca59"
+  },
+  {
+    "video_id": "P023",
+    "source": "ic-P023",
+    "fps": 29.9969305197,
+    "frame_count": 3453,
+    "release_frame": 115,
+    "theta0_rad": -0.904972662811,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      110,
+      114
+    ],
+    "length_m": 0.32,
+    "length_px": 731.5107,
+    "pivot": {
+      "x_px": 968.151,
+      "y_px": 205.8412
+    },
+    "vertical": {
+      "top_x_px": 1216.432,
+      "top_y_px": 49.8969,
+      "bottom_x_px": 1201.5544,
+      "bottom_y_px": 1073.6879
+    },
+    "raw_csv_sha256": "72046566bdcbe07d0b4c9f0144833b81d0c8266bab21d195883ffebf3d9d613f"
+  },
+  {
+    "video_id": "P024",
+    "source": "ic-P024",
+    "fps": 29.9969423041,
+    "frame_count": 3172,
+    "release_frame": 92,
+    "theta0_rad": -0.339573769987,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      87,
+      91
+    ],
+    "length_m": 0.245,
+    "length_px": 572.7413,
+    "pivot": {
+      "x_px": 1047.3096,
+      "y_px": 188.4166
+    },
+    "vertical": {
+      "top_x_px": 1192.3993,
+      "top_y_px": 36.8112,
+      "bottom_x_px": 1178.6435,
+      "bottom_y_px": 1069.2597
+    },
+    "raw_csv_sha256": "97ef55516d2e29d5aa52c4ad8ad5318fbdaa3bab817f71b03d6b5472081f5e90"
+  },
+  {
+    "video_id": "P025",
+    "source": "ic-P025",
+    "fps": 29.9969298553,
+    "frame_count": 3094,
+    "release_frame": 117,
+    "theta0_rad": -0.875274051426,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      112,
+      116
+    ],
+    "length_m": 0.165,
+    "length_px": 369.7006,
+    "pivot": {
+      "x_px": 1048.8081,
+      "y_px": 216.0858
+    },
+    "vertical": {
+      "top_x_px": 1459.2229,
+      "top_y_px": 58.4892,
+      "bottom_x_px": 1458.4407,
+      "bottom_y_px": 1067.8218
+    },
+    "raw_csv_sha256": "24224d5f6920acce1f855a73f34d643de5bcd56d89f061e3423bfeeba9e2c991"
+  },
+  {
+    "video_id": "P026",
+    "source": "ic-P026",
+    "fps": 29.9970069827,
+    "frame_count": 3441,
+    "release_frame": 142,
+    "theta0_rad": -1.2202742818,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      137,
+      141
+    ],
+    "length_m": 0.32,
+    "length_px": 727.2278,
+    "pivot": {
+      "x_px": 968.7942,
+      "y_px": 186.9758
+    },
+    "vertical": {
+      "top_x_px": 1227.1336,
+      "top_y_px": 32.9598,
+      "bottom_x_px": 1208.4692,
+      "bottom_y_px": 1071.8115
+    },
+    "raw_csv_sha256": "29eb446ae06ce3401fe2c56e669e9dde28311f46090c9a8467a9ec9e0dbd1225"
+  },
+  {
+    "video_id": "P027",
+    "source": "ic-P027",
+    "fps": 29.9970279578,
+    "frame_count": 3398,
+    "release_frame": 72,
+    "theta0_rad": -0.898996807029,
+    "omega0_rad_s": 0.0,
+    "initial_frames": [
+      67,
+      71
+    ],
+    "length_m": 0.245,
+    "length_px": 581.5659,
+    "pivot": {
+      "x_px": 980.5728,
+      "y_px": 177.3669
+    },
+    "vertical": {
+      "top_x_px": 1343.6967,
+      "top_y_px": 23.6724,
+      "bottom_x_px": 1332.6431,
+      "bottom_y_px": 1048.2713
+    },
+    "raw_csv_sha256": "dac241ac8cfc645f267127fbfc1eea358e47177414c0b64dd18420b2fcdc3d2e"
+  }
+]
