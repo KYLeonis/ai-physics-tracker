@@ -473,7 +473,7 @@ def test_suggested_frame_review_roundtrip_and_null_provenance(tmp_path: Path) ->
     run = TrackingRun(
         run_id=uuid4(),
         video_id=video.video_id,
-        track_id=track.track_id,
+        member_track_ids=(track.track_id,),
         engine="dlc",
         engine_version="3.0.1",
         task_type="infer",
@@ -551,7 +551,7 @@ def test_save_load_roundtrip_preserves_refinement_state_and_iteration(
     train_run = TrackingRun(
         run_id=uuid4(),
         video_id=track.video_id,
-        track_id=track.track_id,
+        member_track_ids=(track.track_id,),
         engine="dlc",
         engine_version="3.0.1",
         task_type="train",
@@ -575,7 +575,7 @@ def test_save_load_roundtrip_preserves_refinement_state_and_iteration(
     infer_run = TrackingRun(
         run_id=uuid4(),
         video_id=track.video_id,
-        track_id=track.track_id,
+        member_track_ids=(track.track_id,),
         engine="dlc",
         engine_version="3.0.1",
         task_type="infer",

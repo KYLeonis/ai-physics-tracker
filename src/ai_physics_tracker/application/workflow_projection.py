@@ -231,7 +231,7 @@ def _completed_of(
     """
     return sorted(
         (r for r in runs
-         if r.track_id == track_id and r.task_type == task_type
+         if track_id in r.member_track_ids and r.task_type == task_type
          and r.status == "completed"),
         key=lambda r: r.created_at,
     )
@@ -410,7 +410,7 @@ def project_workflow_state(
         # 最近一次相关训练尝试失败且其后无成功 → 恢复卡
         relevant = [
             r for r in runs
-            if r.track_id == track_id and r.task_type == "train"
+            if track_id in r.member_track_ids and r.task_type == "train"
             and r.status in {"completed", "failed"}]
         latest_attempt = None
         for run in relevant:

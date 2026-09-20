@@ -20,3 +20,23 @@ def require_aware_datetime(value: datetime, field_name: str) -> None:
 
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError(f"{field_name} must include a timezone offset")
+
+
+def canonical_json_digest(value: object) -> str:
+    """对 canonical JSON（sort_keys、紧凑分隔符、禁 NaN/Inf）取 sha256。
+
+    publication 契约 §6 的组件 digest 与 true vertical 端点确认 digest 共用
+    同一表示：float 经 json 的最短 round-trip repr，同值同摘要。
+    """
+
+    import hashlib
+    import json
+
+    serialized = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()

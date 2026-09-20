@@ -184,7 +184,7 @@ def _setup_infer_run_with_prediction(window: MainWindow, tmp_path: Path):
         mark_run_running(
             create_tracking_run(
                 video_id=video_id,
-                track_id=track_id,
+                member_track_ids=(track_id,),
                 task_type="infer",
                 engine="dlc",
                 engine_version="3.0.1",
@@ -244,7 +244,7 @@ def test_mining_button_enablement_ac1(test_window: MainWindow, tmp_path: Path):
 
     # 5. 跨 Track 的 run -> 禁用
     other_track = session.add_track(window.activeVideoId)
-    other_track_run = replace(valid_run, run_id=uuid4(), track_id=other_track.track_id)
+    other_track_run = replace(valid_run, run_id=uuid4(), member_track_ids=(other_track.track_id,))
     session.record_tracking_run(other_track_run)
     actions.onRunSelected(other_track_run.run_id)
     assert not panel.mineButton.isEnabled()

@@ -169,7 +169,7 @@ def _setup_run(window: MainWindow):
         mark_run_running(
             create_tracking_run(
                 video_id=video_id,
-                track_id=track_id,
+                member_track_ids=(track_id,),
                 task_type="infer",
                 engine="dlc",
                 engine_version="3.0.1",

@@ -50,7 +50,7 @@ def _running_infer_run(
 ) -> TrackingRun:
     run = create_tracking_run(
         video_id=video_id,
-        track_id=track_id,
+        member_track_ids=(track_id,),
         task_type="infer",
         source_detail=source_detail,
         config={"frame_range": [0, 7], "min_confidence": 0.5},

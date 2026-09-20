@@ -119,7 +119,7 @@ def test_prepare_tracking_candidate_does_not_mutate_observations(
     # Create completed infer run
     run = create_tracking_run(
         video_id=video.video_id,
-        track_id=track.track_id,
+        member_track_ids=(track.track_id,),
         task_type="infer",
         engine="dlc",
         engine_version="3.0.1",

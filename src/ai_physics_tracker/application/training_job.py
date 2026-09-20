@@ -56,8 +56,14 @@ def prepare_training(
     track = next((t for t in session.tracks if t.track_id == track_id), None)
     if track is None:
         raise ProjectSessionError(f"Unknown track_id: {track_id}")
+    if session.experiment_for_track(track_id) is not None:
+        raise ProjectSessionError(
+            "Track is bound to a pendulum experiment role; "
+            "use the pendulum workflow instead of the single-track pipeline"
+        )
 
-    if any(r.track_id == track_id and r.status == "running" for r in session.tracking_runs()):
+
+    if any(track_id in r.member_track_ids and r.status == "running" for r in session.tracking_runs()):
         raise ProjectSessionError("This track already has an active engine task")
 
     manual_points = tuple(
@@ -176,7 +182,7 @@ def prepare_training(
     completed_train_runs = [
         r
         for r in session.tracking_runs()
-        if r.track_id == track_id and r.task_type == "train" and r.status == "completed"
+        if track_id in r.member_track_ids and r.task_type == "train" and r.status == "completed"
     ]
     iteration_index = len(completed_train_runs)
     previous_training_run_id = completed_train_runs[-1].run_id if completed_train_runs else None
@@ -214,7 +220,7 @@ def prepare_training(
     executed_config["training_mode"] = mode
     run = create_tracking_run(
         video_id=track.video_id,
-        track_id=track_id,
+        member_track_ids=(track_id,),
         task_type="train",
         engine="dlc",
         engine_version=actual_adapter.engine_version(),

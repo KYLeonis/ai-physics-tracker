@@ -12,7 +12,7 @@ from copy import deepcopy
 from dataclasses import replace
 from math import isfinite
 from pathlib import Path
-from typing import Any, Iterable, Protocol, TYPE_CHECKING
+from typing import Any, Iterable, Protocol, TYPE_CHECKING, runtime_checkable
 from uuid import UUID, uuid4
 
 from ai_physics_tracker.application.refinement_history import (
@@ -51,7 +51,16 @@ from ai_physics_tracker.domain.kinematics import (
     expand_to_dense_grid,
     smooth_savgol,
 )
+from ai_physics_tracker.domain.pendulum import (
+    PendulumExperiment,
+    PendulumRoles,
+    PhysicalParameters,
+    RoleBindingEditRecord,
+    TrueVertical,
+    create_pendulum_experiment,
+)
 from ai_physics_tracker.domain.project import (
+    PUBLICATION_REQUIRED_CAPABILITIES,
     Project,
     add_calibration as add_domain_calibration,
     add_video,
@@ -63,6 +72,7 @@ from ai_physics_tracker.domain.project import (
     replace_calibration as replace_domain_calibration,
     set_active_calibration as set_domain_active_calibration,
 )
+from ai_physics_tracker.domain.scientific_result import ScientificResult
 from ai_physics_tracker.domain.derived import DerivedData, DerivedInput, mark_tracks_stale
 from ai_physics_tracker.domain.timeline import (
     TIME_COMPARISON_TOLERANCE_S,
@@ -101,6 +111,15 @@ class ProjectRepositoryPort(Protocol):
 
     def resolve_video_path(self, project_root: Path, video: Video) -> Path | None: ...
 
+
+@runtime_checkable
+class PublicationRepositoryPort(Protocol):
+    """v1→v2 Save As 迁移端口（ADR-0017）；由 infrastructure.ProjectRepository 实现。"""
+
+    def save_as_publication(
+        self, source_root: Path, destination_root: Path, project: Project
+    ) -> Project: ...
+
 # 撤销栈深度上限（快照为不可变元组的引用组合，成本极低）
 UNDO_STACK_LIMIT = 50
 
@@ -119,11 +138,12 @@ TRACK_COLOR_PALETTE = (
 )
 
 
-# 会话历史快照（含 TrackStore 数据、标定、派生数据、TrackingRun 注册表与可选的
-# 审核事务作用域快照）。registry 参与快照使 Undo/Redo 能感知 Track↔run 结构依赖
-# （P6R-01）；合并规则见 ProjectSession._history_transition。
-# 前 _SNAPSHOT_DATA_FIELDS 个元素是"用户数据"；末位的 registry 仅用于历史转换，
-# 不参与 accept_saved_snapshot 的"保存期间产生新数据"判定（stabilization R1 F2）。
+# 会话历史快照（含 TrackStore 数据、标定、派生数据、publication 集合、
+# TrackingRun 注册表与可选的审核事务作用域快照）。registry 参与快照使
+# Undo/Redo 能感知 Track↔run 结构依赖（P6R-01）；合并规则见
+# ProjectSession._history_transition。前 _SNAPSHOT_DATA_FIELDS 个元素是
+# "用户数据"；末位的 registry 仅用于历史转换，不参与
+# accept_saved_snapshot 的"保存期间产生新数据"判定（stabilization R1 F2）。
 _SessionDataSnapshot = tuple[
     tuple[Track, ...],
     tuple[TrackPoint, ...],
@@ -131,9 +151,11 @@ _SessionDataSnapshot = tuple[
     dict[UUID, UUID],
     tuple[DerivedData, ...],
     dict[UUID, dict[str, Any] | None] | None,
+    tuple[PendulumExperiment, ...],
+    tuple[ScientificResult, ...],
     tuple[TrackingRun, ...],
 ]
-_SNAPSHOT_DATA_FIELDS = 6
+_SNAPSHOT_DATA_FIELDS = 8
 
 
 class ProjectSessionError(Exception):
@@ -356,6 +378,8 @@ class ProjectSession:
     ) -> BatchWriteResult:
         """原子导入已完成推理批次，并记录导入统计。"""
 
+        for member in completed_run.member_track_ids:
+            self._require_unbound_track(member, "engine point import")
         registered_run = next(
             (run for run in self._project.tracking_runs
              if run.run_id == completed_run.run_id),
@@ -650,7 +674,7 @@ class ProjectSession:
         """返回项目中的 TrackingRun，可选按 track_id 过滤。"""
         if track_id is None:
             return self._project.tracking_runs
-        return tuple(r for r in self._project.tracking_runs if r.track_id == track_id)
+        return tuple(r for r in self._project.tracking_runs if track_id in r.member_track_ids)
 
     def add_calibration(
         self,
@@ -705,6 +729,8 @@ class ProjectSession:
                 updated_project = set_domain_active_calibration(
                     updated_project, vid, cal.calibration_id
                 )
+                # active 解释基准变化使该 video experiment 的科学结果失效（契约 §6）
+                updated_project = self._with_stale_results_for_video(updated_project, vid)
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
 
@@ -722,10 +748,18 @@ class ProjectSession:
     def remove_calibration(self, calibration_id: UUID) -> None:
         """删除指定标定方案；若为 active 则级联失效。"""
 
+        removed = next(
+            (c for c in self._project.calibrations if c.calibration_id == calibration_id),
+            None,
+        )
         try:
             updated_project = delete_domain_calibration(self._project, calibration_id)
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
+        if removed is not None:
+            updated_project = self._with_stale_results_for_video(
+                updated_project, removed.video_id
+            )
         self._commit_project(updated_project)
 
     delete_calibration = remove_calibration
@@ -733,12 +767,15 @@ class ProjectSession:
     def set_active_calibration(self, video_id: UUID, calibration_id: UUID | None) -> None:
         """切换或清除视频的 active 标定方案。"""
 
+        previous = self._project.active_calibration_by_video.get(video_id)
         try:
             updated_project = set_domain_active_calibration(
                 self._project, video_id, calibration_id
             )
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
+        if previous != calibration_id:
+            updated_project = self._with_stale_results_for_video(updated_project, video_id)
         self._commit_project(updated_project)
 
     def update_calibration(self, calibration: Calibration) -> None:
@@ -748,6 +785,9 @@ class ProjectSession:
             updated_project = replace_domain_calibration(self._project, calibration)
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
+        updated_project = self._with_stale_results_for_video(
+            updated_project, calibration.video_id
+        )
         self._commit_project(updated_project)
 
     replace_calibration = update_calibration
@@ -1119,7 +1159,7 @@ class ProjectSession:
           步骤覆盖，原子拒绝。
         """
 
-        tracks, observations, calibrations, active_map, derived, scoped_reviews, snapshot_runs = snapshot
+        tracks, observations, calibrations, active_map, derived, scoped_reviews, experiments, results, snapshot_runs = snapshot
         target_ids = {t.track_id for t in tracks}
         current_ids = {t.track_id for t in self._store.tracks}
         restored_ids = target_ids - current_ids
@@ -1128,14 +1168,17 @@ class ProjectSession:
         merged_runs: list[TrackingRun]
         if restored_ids or removed_ids:
             snapshot_run_ids = {r.run_id for r in snapshot_runs}
+            # 多成员 run（experiment joint run）按每个成员登记；恢复时按
+            # run_id 去重，避免一个 run 被多个成员重复追加。
             snapshot_runs_by_track: dict[UUID, list[TrackingRun]] = {}
             for run in snapshot_runs:
-                snapshot_runs_by_track.setdefault(run.track_id, []).append(run)
+                for member in run.member_track_ids:
+                    snapshot_runs_by_track.setdefault(member, []).append(run)
             merged_runs = []
             for run in self._project.tracking_runs:
-                if run.track_id in restored_ids:
+                if any(member in restored_ids for member in run.member_track_ids):
                     continue  # 恢复 Track 的 run 一律以快照为准
-                if run.track_id in removed_ids:
+                if any(member in removed_ids for member in run.member_track_ids):
                     if is_undo and run.run_id not in snapshot_run_ids:
                         # 该拒绝仅在 undo 方向可达：redo 的栈在每次前向写入
                         # （含 record_tracking_run）时已清空，被移除 track 的 run
@@ -1147,8 +1190,12 @@ class ProjectSession:
                         )
                     continue
                 merged_runs.append(run)
+            restored_run_ids: set[UUID] = set()
             for track_id in restored_ids:
-                merged_runs.extend(snapshot_runs_by_track.get(track_id, ()))
+                for run in snapshot_runs_by_track.get(track_id, ()):
+                    if run.run_id not in restored_run_ids:
+                        restored_run_ids.add(run.run_id)
+                        merged_runs.append(run)
         else:
             merged_runs = list(self._project.tracking_runs)
 
@@ -1176,6 +1223,8 @@ class ProjectSession:
             calibrations=calibrations,
             active_calibration_by_video=active_map,
             derived=derived,
+            experiments=experiments,
+            scientific_results=results,
             tracking_runs=updated_runs,
         )
         self._check_validation_series_removal(candidate_project)
@@ -1192,6 +1241,8 @@ class ProjectSession:
             dict(self._project.active_calibration_by_video),
             self._project.derived,
             deepcopy(scoped_reviews) if scoped_reviews is not None else None,
+            self._project.experiments,
+            self._project.scientific_results,
             self._project.tracking_runs,
         )
 
@@ -1740,6 +1791,367 @@ class ProjectSession:
         return check_validation_series_consistency(active_series, manual_points)
 
     # ------------------------------------------------------------------
+    # Pendulum experiment setup (P1.1, contract §1–§2)
+    # ------------------------------------------------------------------
+
+    def pendulum_experiments(self) -> tuple[PendulumExperiment, ...]:
+        """项目中的全部 Pendulum experiment（publication 项目；v1 为空）。"""
+
+        return self._project.experiments
+
+    def pendulum_experiment(self, experiment_id: UUID) -> PendulumExperiment:
+        experiment = next(
+            (
+                item
+                for item in self._project.experiments
+                if item.experiment_id == experiment_id
+            ),
+            None,
+        )
+        if experiment is None:
+            raise ProjectSessionError(f"unknown experiment_id: {experiment_id}")
+        return experiment
+
+    def experiment_for_track(self, track_id: UUID) -> PendulumExperiment | None:
+        """返回绑定了该 Track 的 experiment；未绑定时 None（guard 查询）。"""
+
+        for experiment in self._project.experiments:
+            if track_id in experiment.roles.track_ids():
+                return experiment
+        return None
+
+    def _require_unbound_track(self, track_id: UUID, action: str) -> None:
+        """experiment-bound Track 拒绝旧单轨 AI 写入（契约 §2，fail closed）。"""
+
+        experiment = self.experiment_for_track(track_id)
+        if experiment is not None:
+            role = next(
+                role
+                for role, member in experiment.roles.by_role().items()
+                if member == track_id
+            )
+            raise ProjectSessionError(
+                f"Track is bound to pendulum experiment role '{role}'; "
+                f"use the pendulum workflow instead of {action}"
+            )
+
+    def _with_stale_results_for_experiment(
+        self, project: Project, experiment_id: UUID
+    ) -> Project:
+        """保守失效：experiment 事实变化置其全部科学结果 stale（契约 §6）。"""
+
+        results = tuple(
+            replace(result, freshness="stale")
+            if result.experiment_id == experiment_id and result.freshness == "valid"
+            else result
+            for result in project.scientific_results
+        )
+        if results == project.scientific_results:
+            return project
+        return replace(project, scientific_results=results)
+
+    def _with_stale_results_for_video(self, project: Project, video_id: UUID) -> Project:
+        results = tuple(
+            replace(result, freshness="stale")
+            if any(
+                experiment.video_id == video_id
+                and experiment.experiment_id == result.experiment_id
+                for experiment in project.experiments
+            )
+            and result.freshness == "valid"
+            else result
+            for result in project.scientific_results
+        )
+        if results == project.scientific_results:
+            return project
+        return replace(project, scientific_results=results)
+
+    def create_pendulum_experiment(
+        self, video_id: UUID, roles: PendulumRoles
+    ) -> PendulumExperiment:
+        """在 publication 项目上创建 experiment：四 role 一次提交，revision 1。
+
+        v1 generic 项目不承载 experiment：先经 save_as_publication 迁移，
+        或对新项目以 v2 首存（设计决策 1/2）。
+        """
+
+        if not self._project.required_capabilities:
+            raise ProjectSessionError(
+                "creating a pendulum experiment requires a publication project; "
+                "use Save As publication first"
+            )
+        if any(item.video_id == video_id for item in self._project.experiments):
+            raise ProjectSessionError(
+                "this video already has a pendulum experiment"
+            )
+        experiment = create_pendulum_experiment(uuid4(), video_id, roles)
+        try:
+            candidate = replace(
+                self._project, experiments=(*self._project.experiments, experiment)
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        self._commit_project(candidate)
+        logger.info(
+            "pendulum experiment created: experiment=%s video=%s",
+            experiment.experiment_id,
+            video_id,
+        )
+        return experiment
+
+    def rebind_pendulum_roles(
+        self, experiment_id: UUID, new_roles: PendulumRoles
+    ) -> PendulumExperiment:
+        """整体替换四 role 绑定：一次事务清除旧成员 AI 投影并记录历史。
+
+        旧 active run 不得重新解释为新 role：rebind 在同一事务内清除旧四成员
+        的引擎观测（manual 保留）、active 指针置空、追加绑定历史并使科学
+        结果 stale（契约 §2）。
+        """
+
+        experiment = self.pendulum_experiment(experiment_id)
+        candidate_store = TrackStore(self._store.tracks, self._store.observations)
+        for old_member in experiment.roles.track_ids():
+            candidate_store.clear_track_engine_points(old_member)
+        record = RoleBindingEditRecord(
+            record_id=uuid4(),
+            timestamp=utc_now(),
+            old_roles=experiment.roles,
+            new_roles=new_roles,
+            revision=experiment.measurement_revision + 1,
+        )
+        updated = replace(
+            experiment,
+            roles=new_roles,
+            measurement_revision=experiment.measurement_revision + 1,
+            active_infer_run_id=None,
+            activation_history=(*experiment.activation_history, record),
+        )
+        try:
+            candidate = replace(
+                self._project,
+                experiments=tuple(
+                    updated if item.experiment_id == experiment_id else item
+                    for item in self._project.experiments
+                ),
+                tracks=candidate_store.tracks,
+                observations=candidate_store.observations,
+            )
+            candidate = self._with_stale_results_for_experiment(candidate, experiment_id)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        self._commit_project(candidate, candidate_store)
+        return updated
+
+    def delete_pendulum_experiment(self, experiment_id: UUID) -> None:
+        """删除 experiment；被 run 或科学结果引用时拒绝（契约 §5）。"""
+
+        experiment = self.pendulum_experiment(experiment_id)
+        referencing_runs = [
+            run.run_id
+            for run in self._project.tracking_runs
+            if run.experiment_id == experiment_id
+        ]
+        if referencing_runs:
+            raise ProjectSessionError(
+                "cannot delete an experiment referenced by tracking runs; "
+                "delete those runs first"
+            )
+        referencing_results = [
+            result.result_id
+            for result in self._project.scientific_results
+            if result.experiment_id == experiment_id
+        ]
+        if referencing_results:
+            raise ProjectSessionError(
+                "cannot delete an experiment referenced by scientific results"
+            )
+        candidate = replace(
+            self._project,
+            experiments=tuple(
+                item
+                for item in self._project.experiments
+                if item.experiment_id != experiment_id
+            ),
+        )
+        self._commit_project(candidate)
+        logger.info("pendulum experiment deleted: %s", experiment.experiment_id)
+
+    def _commit_experiment_change(
+        self, experiment_id: UUID, updated: PendulumExperiment
+    ) -> PendulumExperiment:
+        """实验事实变更的公共提交：revision 递增已由调用方完成，这里统一
+        失效科学结果并单次提交。"""
+
+        try:
+            candidate = replace(
+                self._project,
+                experiments=tuple(
+                    updated if item.experiment_id == experiment_id else item
+                    for item in self._project.experiments
+                ),
+            )
+            candidate = self._with_stale_results_for_experiment(candidate, experiment_id)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        self._commit_project(candidate)
+        return updated
+
+    def _bump_experiment(self, experiment_id: UUID) -> tuple[PendulumExperiment, int]:
+        experiment = self.pendulum_experiment(experiment_id)
+        return experiment, experiment.measurement_revision + 1
+
+    def set_fixed_pivot(
+        self, experiment_id: UUID, pivot_px: tuple[float, float] | None
+    ) -> PendulumExperiment:
+        """保存/清除固定 pivot（像素）；tracked pivot 永不写入此字段。"""
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        try:
+            geometry = replace(experiment.geometry, fixed_pivot_px=pivot_px)
+            updated = replace(experiment, geometry=geometry, measurement_revision=revision)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def set_true_vertical(
+        self,
+        experiment_id: UUID,
+        top_px: tuple[float, float],
+        bottom_px: tuple[float, float],
+    ) -> PendulumExperiment:
+        """设置 true vertical 端点（top→bottom 为待确认的向下方向）。
+
+        端点变化即撤销既有确认（契约 §2）：新对象从 direction_confirmed=False
+        开始，用户需重新 confirm。
+        """
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        try:
+            vertical = TrueVertical(top_px=top_px, bottom_px=bottom_px)
+            geometry = replace(experiment.geometry, true_vertical=vertical)
+            updated = replace(experiment, geometry=geometry, measurement_revision=revision)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def confirm_true_vertical(self, experiment_id: UUID) -> PendulumExperiment:
+        """确认当前端点的 top→bottom 即重力向下方向（绑定端点 digest）。"""
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        vertical = experiment.geometry.true_vertical
+        if vertical is None:
+            raise ProjectSessionError("set true vertical endpoints before confirming")
+        try:
+            geometry = replace(experiment.geometry, true_vertical=vertical.confirmed())
+            updated = replace(experiment, geometry=geometry, measurement_revision=revision)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def clear_true_vertical(self, experiment_id: UUID) -> PendulumExperiment:
+        """清除 true vertical 事实。"""
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        geometry = replace(experiment.geometry, true_vertical=None)
+        updated = replace(experiment, geometry=geometry, measurement_revision=revision)
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def set_physical(
+        self, experiment_id: UUID,
+        physical: PhysicalParameters | None,
+    ) -> PendulumExperiment:
+        """保存/清除物理参数（effective pivot-to-COM 长度与 g，来源必须显式）。"""
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        try:
+            updated = replace(
+                experiment, physical=physical, measurement_revision=revision
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def set_release_frame(
+        self, experiment_id: UUID, frame_index: int | None
+    ) -> PendulumExperiment:
+        """保存/清除 release 帧（当前源帧，不做 -1 调整；D06/U04）。"""
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        video = next(
+            (
+                video
+                for video in self._project.videos
+                if video.video_id == experiment.video_id
+            ),
+            None,
+        )
+        if video is None:
+            raise ProjectSessionError("experiment video is not registered")
+        if frame_index is not None and not 0 <= frame_index < video.frame_count:
+            raise ProjectSessionError(
+                f"release frame {frame_index} is outside the video frame range"
+            )
+        try:
+            updated = replace(
+                experiment,
+                release_frame_index=frame_index,
+                measurement_revision=revision,
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def save_as_publication(
+        self, destination: Path, roles: PendulumRoles | None = None
+    ) -> Project:
+        """v1→v2 显式迁移到新目录（ADR-0017）；成功后切换会话根目录。
+
+        `roles` 提供时在同一 candidate 中创建首个 experiment（向导的
+        "destination + 完整四 role draft 一次提交"）。任何失败保持当前
+        v1 session/root/manifest/backup 不变。
+        """
+
+        if not isinstance(self._repository, PublicationRepositoryPort):
+            raise ProjectSessionError(
+                "repository does not support publication migration"
+            )
+        if self._project.required_capabilities:
+            raise ProjectSessionError(
+                "project is already a publication project"
+            )
+        if self._project_root is None:
+            raise ProjectSessionError(
+                "save the project first; publication migration requires a v1 root"
+            )
+        candidate = replace(
+            self._project, required_capabilities=PUBLICATION_REQUIRED_CAPABILITIES
+        )
+        if roles is not None:
+            video_ids = {
+                track.video_id for track in self._project.tracks
+                if track.track_id in roles.track_ids()
+            }
+            if len(video_ids) != 1:
+                raise ProjectSessionError(
+                    "pendulum roles must reference four tracks of one video"
+                )
+            experiment = create_pendulum_experiment(
+                uuid4(), video_ids.pop(), roles
+            )
+            candidate = replace(candidate, experiments=(experiment,))
+        destination = destination.resolve()
+        saved = self._repository.save_as_publication(
+            self._project_root, destination, candidate
+        )
+        self._project = saved
+        self._project_root = destination
+        self._saved_project = saved
+        self._undo_stack.clear()
+        self._redo_stack.clear()
+        return saved
+
+    # ------------------------------------------------------------------
     # Inference Result Activation & Replacement (Phase 5.4 ADR-0014)
     # ------------------------------------------------------------------
 
@@ -1776,7 +2188,7 @@ class ProjectSession:
         matching_runs = [
             r
             for r in self.tracking_runs()
-            if r.track_id == track_id and r.task_type == "infer" and r.source_detail in source_details
+            if track_id in r.member_track_ids and r.task_type == "infer" and r.source_detail in source_details
         ]
         if len(source_details) == 1 and len(matching_runs) == 1:
             return "legacy_inferred", matching_runs[0].run_id, "Inferred from single matching infer run"
@@ -1788,6 +2200,7 @@ class ProjectSession:
         run_id: UUID,
     ) -> ActivationRecord:
         """激活指定的 completed infer run（当前 Track 必须尚未激活任何 AI 结果）。"""
+        self._require_unbound_track(track_id, "activate_infer_run")
         status, active_run_id, _ = self.get_track_activation_status(track_id)
         if status in ("active", "legacy_inferred", "legacy_mixed"):
             raise ProjectSessionError(
@@ -1802,6 +2215,7 @@ class ProjectSession:
         run_id: UUID,
     ) -> ActivationRecord:
         """用指定的 completed infer run 替换当前 Track 的活动 AI 结果（ADR-0014：须已有结果）。"""
+        self._require_unbound_track(track_id, "replace_active_infer_run")
         status, _active_run_id, _ = self.get_track_activation_status(track_id)
         if status == "none":
             raise ProjectSessionError(
@@ -1817,13 +2231,14 @@ class ProjectSession:
         track = next((t for t in self._store.tracks if t.track_id == track_id), None)
         if track is None:
             raise ProjectSessionError(f"unknown track_id: {track_id}")
+        self._require_unbound_track(track_id, "clear_active_ai_observations")
 
         ref_state = extract_refinement_state(track)
         status, prev_run_id, _ = self.get_track_activation_status(track_id)
         if status == "none":
             raise ProjectSessionError("Track has no active AI observations to clear")
 
-        if any(r.track_id == track_id and r.status in {"pending", "running"} for r in self.tracking_runs()):
+        if any(track_id in r.member_track_ids and r.status in {"pending", "running"} for r in self.tracking_runs()):
             raise ProjectSessionError("Cannot activate or modify tracking results while a task is running on this track")
 
         candidate_store = TrackStore(self._store.tracks, self._store.observations)
@@ -1886,7 +2301,7 @@ class ProjectSession:
         if target_run.status != "completed":
             raise ProjectSessionError(f"Run {run_id} is not completed (status: {target_run.status})")
 
-        if any(r.track_id == track_id and r.status in {"pending", "running"} for r in self.tracking_runs()):
+        if any(track_id in r.member_track_ids and r.status in {"pending", "running"} for r in self.tracking_runs()):
             raise ProjectSessionError("Cannot activate or modify tracking results while a task is running on this track")
 
         root = self.project_root

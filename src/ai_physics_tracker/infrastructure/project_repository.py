@@ -1,7 +1,7 @@
 """面向可移植、带 schema 版本项目目录的文件系统仓储。"""
 
-from collections.abc import Callable
 from dataclasses import replace
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -10,7 +10,12 @@ import tempfile
 from threading import RLock
 from typing import cast
 
-from ai_physics_tracker.domain.project import Project, create_project
+from ai_physics_tracker.domain.project import (
+    PUBLICATION_REQUIRED_CAPABILITIES,
+    MigrationRecord,
+    Project,
+    create_project,
+)
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.domain.video import Video
 from ai_physics_tracker.infrastructure.errors import (
@@ -19,14 +24,13 @@ from ai_physics_tracker.infrastructure.errors import (
 )
 from ai_physics_tracker.infrastructure.project_serializer import (
     CURRENT_SCHEMA_VERSION,
+    LEGACY_SCHEMA_VERSION,
     project_from_payload,
     project_to_payload,
 )
 
 PROJECT_FILE_NAME = "project.json"
 BACKUP_FILE_NAME = "project.backup.json"
-Migration = Callable[[dict[str, object]], dict[str, object]]
-_MIGRATIONS: dict[int, Migration] = {}
 
 
 class ProjectRepository:
@@ -63,8 +67,8 @@ class ProjectRepository:
             if not isinstance(raw, dict):
                 raise ValueError("root JSON value must be an object")
             payload = cast(dict[str, object], raw)
-            migrated = _migrate_payload(payload)
-            project = project_from_payload(migrated)
+            _guard_schema_version(payload)
+            project = project_from_payload(payload)
             _validate_resolved_video_locators(project_root, project)
             return project
         except UnsupportedSchemaVersionError:
@@ -112,6 +116,61 @@ class ProjectRepository:
         if destination_root == source_root or source_root in destination_root.parents:
             raise ValueError("save-as destination cannot be the source or its child")
         return self._publish_project(destination_root, project, source_root)
+
+    def save_as_publication(
+        self, source_root: Path, destination_root: Path, project: Project
+    ) -> Project:
+        """v1→v2 显式 Save As 迁移（ADR-0017）：新目录、新 schema，原件不动。
+
+        `project` 是调用方在已加载 v1 状态上构造的 publication candidate
+        （required_capabilities 已置、无既有 migration 记录）；本方法读取
+        source manifest 校验其确为 v1 且 project_id 一致，计算 manifest
+        sha256 写入 MigrationRecord，再复用 staging/copy/原子发布路径。
+        任何失败保持源目录与调用方会话零改动。
+        """
+
+        source_root = source_root.resolve()
+        if not source_root.is_dir():
+            raise FileNotFoundError(f"source project directory not found: {source_root}")
+        manifest_path = source_root / PROJECT_FILE_NAME
+        if not manifest_path.is_file():
+            raise FileNotFoundError(f"project manifest not found: {manifest_path}")
+        manifest_bytes = manifest_path.read_bytes()
+        try:
+            source_payload = json.loads(manifest_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError(f"source manifest is not valid JSON: {error}") from error
+        if not isinstance(source_payload, dict):
+            raise ValueError("source manifest root JSON value must be an object")
+        source_version = source_payload.get("schema_version")
+        if source_version != LEGACY_SCHEMA_VERSION:
+            raise ValueError(
+                "save-as publication source must be a schema v1 project; "
+                f"got schema_version {source_version!r}"
+            )
+        if source_payload.get("project_id") != str(project.project_id):
+            raise ValueError(
+                "publication candidate project_id does not match the source manifest"
+            )
+        declared = set(project.required_capabilities)
+        if declared != set(PUBLICATION_REQUIRED_CAPABILITIES):
+            raise ValueError(
+                "save-as publication requires a publication candidate "
+                "with the required capabilities declared"
+            )
+        if project.migration is not None:
+            raise ValueError("publication candidate must not carry an existing migration record")
+        candidate = replace(
+            project,
+            migration=MigrationRecord(
+                source_schema_version=LEGACY_SCHEMA_VERSION,
+                source_manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+            ),
+        )
+        destination_root = destination_root.resolve()
+        if destination_root == source_root or source_root in destination_root.parents:
+            raise ValueError("save-as destination cannot be the source or its child")
+        return self._publish_project(destination_root, candidate, source_root)
 
     def _publish_project(
         self, destination: Path, project: Project, source_root: Path | None = None
@@ -187,7 +246,14 @@ class ProjectRepository:
         return PurePosixPath(relative.as_posix())
 
 
-def _migrate_payload(payload: dict[str, object]) -> dict[str, object]:
+def _guard_schema_version(payload: dict[str, object]) -> None:
+    """只做版本守卫，不做自动迁移（ADR-0017）。
+
+    v1 是被永久支持的终态格式：generic 项目加载/保存始终留在 v1；
+    升级到 v2 只能经显式 Save As publication 迁移，因此这里不存在
+    payload 级迁移链。未知更高版本明确拒绝。
+    """
+
     version = payload.get("schema_version")
     if isinstance(version, bool) or not isinstance(version, int):
         raise ProjectFormatError("schema_version must be an integer")
@@ -196,19 +262,10 @@ def _migrate_payload(payload: dict[str, object]) -> dict[str, object]:
             f"project schema version {version} requires a newer application; "
             f"this version supports up to {CURRENT_SCHEMA_VERSION}"
         )
-    migrated = payload
-    while version < CURRENT_SCHEMA_VERSION:
-        migration = _MIGRATIONS.get(version)
-        if migration is None:
-            raise ProjectFormatError(
-                f"no migration path from schema version {version} "
-                f"to {CURRENT_SCHEMA_VERSION}"
-            )
-        # 迁移函数从 schema v2 起才存在。此处保留循环是为了显式表达守卫
-        # 逻辑，而不是虚构出一个 pre-v1 格式。
-        migrated = migration(migrated)
-        version += 1
-    return migrated
+    if version < LEGACY_SCHEMA_VERSION:
+        raise ProjectFormatError(
+            f"no migration path from schema version {version}"
+        )
 
 
 def _atomic_write_manifest(project_root: Path, serialized: str) -> None:

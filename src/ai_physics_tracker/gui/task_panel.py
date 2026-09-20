@@ -674,7 +674,7 @@ class TaskPanel(QDockWidget):
             for run in runs:
                 if (
                     track_id is None
-                    or run.track_id != track_id
+                    or track_id not in run.member_track_ids
                     or run.task_type != "train"
                     or run.status != "completed"
                     or not run.model_snapshot
@@ -794,7 +794,7 @@ class TaskPanel(QDockWidget):
     def _updateActivationButtonStates(self) -> None:
         track_runs = [
             run for run in self._runs_by_id.values()
-            if run.track_id == self._current_track_id
+            if self._current_track_id in run.member_track_ids
         ]
         track_busy = any(run.status in {"pending", "running"} for run in track_runs)
         if self._busy or self._project_busy or track_busy:
@@ -823,7 +823,7 @@ class TaskPanel(QDockWidget):
         is_completed_infer = (
             run is not None
             and self._current_track_id is not None
-            and run.track_id == self._current_track_id
+            and self._current_track_id in run.member_track_ids
             and run.task_type == "infer"
             and run.status == "completed"
         )
@@ -937,8 +937,9 @@ class TaskPanel(QDockWidget):
         if run.task_type == "infer":
             if run.run_id == self._active_run_id:
                 status_str = "Active"
-            elif (run.track_id != self._current_track_id
-                  and run.run_id == self._active_run_ids_by_track.get(run.track_id)):
+            elif (self._current_track_id not in run.member_track_ids
+                  and any(run.run_id == self._active_run_ids_by_track.get(member)
+                          for member in run.member_track_ids)):
                 # 项目级 historyList：其他 Track 正在使用的结果不能标成
                 # "Not active" 误导用户（review F-4）
                 status_str = "Active (other track)"
@@ -977,7 +978,7 @@ class TaskPanel(QDockWidget):
         """训练迭代的完整可追溯展示（label 数、审核摘要、coverage、可比性）。"""
         lines: list[str] = []
         if run.task_type == "train" and run.status == "completed":
-            state = self._ref_state if run.track_id == self._current_track_id else None
+            state = self._ref_state if self._current_track_id in run.member_track_ids else None
             exposure = validation_comparison_exposure(self._runs_by_id.values(), run, state)
             lines.append(f"validation_comparison={exposure.qualification}")
             if exposure.qualification != "clean":
