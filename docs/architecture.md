@@ -167,3 +167,7 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 - [0006 — 项目工作流采用候选提交与 FFprobe 时序关卡](decisions/0006-project-workflow-and-timing-gate.md)
 - [0007 — 响应式首帧预览与显式近似时序确认](decisions/0007-responsive-preview-and-explicit-timing-approximation.md)
 - [0008 — 数值微分与平滑方法（Savitzky-Golay 先平滑后微分）](decisions/0008-numerical-differentiation-and-smoothing.md)
+
+## Publication branch contract boundary
+
+本线未来Pendulum schema2/multi-track与typed scientific results见[ADR-0017](decisions/0017-publication-project-contract.md)及[合同](../publication/spec/experiment-run-derived-contracts.md)。本轮只固定契约，src仍是既有schema1实现。外置AI进程边界见[runtime contract](../publication/spec/runtime-boundary.md)，Mac探针不替代Windows验收或正式安装实现。

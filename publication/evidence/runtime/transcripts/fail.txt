@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/Users/leonis/Documents/ai-physics-tracker-ejp/scripts/publication_runtime_spike/worker.py", line 42, in main
+    raise RuntimeError('Intentional failure to verify actionable logs')
+RuntimeError: Intentional failure to verify actionable logs

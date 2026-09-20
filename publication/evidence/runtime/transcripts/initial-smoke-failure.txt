@@ -1,0 +1,22 @@
+Artifacts retained at: /private/tmp/ejp-p03-results/dlc-cpu/dlc-artifacts
+Progress: 1/1
+Training snapshot: data/engines/28508947-4356-459c-9f11-732622d12ff0/dlc-models-pytorch/iteration-0/28508947-4356-459c-9f11-732622d12ff0Sep20-trainset95shuffle1/train/snapshot-001.pt
+Progress: 0/10
+Progress: 2/10
+Progress: 4/10
+Progress: 6/10
+Progress: 8/10
+Progress: 10/10
+Traceback (most recent call last):
+  File "/Users/leonis/Documents/ai-physics-tracker-ejp/scripts/smoke_test_dlc_infer.py", line 127, in <module>
+    main()
+  File "/Users/leonis/Documents/ai-physics-tracker-ejp/scripts/smoke_test_dlc_infer.py", line 114, in main
+    assert completed.extra_fields["import_summary"]["inserted"] == 5
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+KeyError: 'inserted'
+Traceback (most recent call last):
+  File "/Users/leonis/Documents/ai-physics-tracker-ejp/scripts/publication_runtime_spike/worker.py", line 61, in main
+    subprocess.run([sys.executable, str(script), '--output', str(root / 'dlc-artifacts')],
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/Users/leonis/Documents/ai-physics-tracker/.venv/bin/python', '/Users/leonis/Documents/ai-physics-tracker-ejp/scripts/smoke_test_dlc_infer.py', '--output', '/private/tmp/ejp-p03-results/dlc-cpu/dlc-artifacts']' returned non-zero exit status 1.

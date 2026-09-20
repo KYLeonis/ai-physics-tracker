@@ -1,0 +1,11 @@
+Artifacts retained at: /private/tmp/ejp-p03-results/final-dlc/dlc-artifacts
+Progress: 1/1
+Training snapshot: data/engines/e5979d3e-0236-4c95-ad1e-5354b52f3ff1/dlc-models-pytorch/iteration-0/e5979d3e-0236-4c95-ad1e-5354b52f3ff1Sep20-trainset95shuffle1/train/snapshot-001.pt
+Progress: 0/10
+Progress: 2/10
+Progress: 4/10
+Progress: 6/10
+Progress: 8/10
+Progress: 10/10
+PASSED: {'row_count': 10, 'missing_count': 0, 'low_confidence_count': 0}
+Pipeline smoke only; one training epoch is not a tracking accuracy benchmark.

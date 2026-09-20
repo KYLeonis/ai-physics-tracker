@@ -2,8 +2,18 @@
 
 - 最后更新：2026-09-20。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0.1 Evidence and Resolved Scientific Profiles — 完成，Independent Scientific Review PASS；可进入P0.2（尚未启动）**。
-- P0.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+- 当前：**P0.2–P0.4完成，P0收尾；Independent Review PASS。Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run**。
+- P1–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+
+## P0.2–P0.4 deliverables / current gate
+
+- [Experiment/run/derived contract](spec/experiment-run-derived-contracts.md)：四role、scale与方向确认、release/L/g、model来源、四轨事务、single-track API guard、多输入stale及Qt-free结果。
+- [ADR-0017](../docs/decisions/0017-publication-project-contract.md)：用户已明确批准schema v2 + Save As迁移副本；本轮没有实现迁移。
+- [Runtime boundary](spec/runtime-boundary.md)、[8项冻结程序实测证据/命令](evidence/runtime/README.md)、[结果及source hashes](evidence/runtime/results.json)：Mac CPU真实1 epoch训练/10帧推理/5manual保护/保存重开通过；MPS仅tensor自检。取消/错误日志通过；DLC取消只测到启动期。
+- 20项contract tests、P0.1离线15文件校验通过。src/产品代码未改；仅修复既有DLC smoke的过期自动激活断言。无GUI，无GUI Human Review。
+- **未满足的验收：Windows x64 frozen启动/CPU DLC train+infer/进程树取消（G1–G4）**。已备PowerShell交接命令；用户已明确选择“明确延期 Windows 验证，作为 P6 前必须完成的门禁”（2026-09-20）。macOS已有venv不能证明clean-machine安装，G5保留P6。本次延期仅调整验收时点，不将Windows标记通过；未完成该门禁不得进入P6。
+
+独立只读Reviewer最终确认：数据合同/协议范围PASS，无未关闭blocking finding；其独立运行7项tests通过。记录：[P0.2](../docs/reviews/publication-p0.2-review.md)、[P0.3](../docs/reviews/publication-p0.3-review.md)、[P0.4](../docs/reviews/publication-p0.4-review.md)。合同审查通过不代替Windows证据。
 
 ## Current direction
 
@@ -35,10 +45,10 @@ own video → Pendulum experiment → fixed calibration / manual release → fou
 
 main Phase5.6 AC-9未达到改善目标的历史缺口不受影响；main历史804 tests不能冒称本轮运行结果。P0.1无GUI增量，不触发GUI Human Review。
 
-## Review / integration
+## P0.1 Review / integration
 
 Independent Scientific Review已完成：F1–F4修复并独立复审关闭，最终PASS、无未关闭blocking finding。具体处置与验证见review record。未改Accepted ADR；没有引入依赖、产品代码、runtime或数据schema迁移。
 
 ## Next Recommended Action
 
-P0.1已完成，提交/集成至publication分支后停止。**用户下一轮可启动P0.2 — Experiment / run / derived contracts**：先读P0.1 profiles/evidence，写mini-plan，固定四role/release/calibration/teacher-model、多轨事务、multi-input stale、resolved scientific request/result持久化与旧项目兼容。不要开始P1实现或等待main Phase6。
+P0已按用户批准的延期安排收尾，提交/集成并push后停止。下一轮经用户授权可进入P1.1：先写schema/experiment与四轨事务mini-plan，读P0.1科学profiles、P0.2数据合同、runtime boundary及review records。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。不要自动开始P1。

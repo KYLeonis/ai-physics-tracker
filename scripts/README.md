@@ -16,7 +16,7 @@
 `smoke_test_dlc_infer.py [--output <不存在的目录>]`：4.3 的真实 CPU 闭环验证。
 使用已有本地环境运行 `.venv/bin/python scripts/smoke_test_dlc_infer.py`，生成 10 帧
 恒定帧率合成视频和 5 个人工点，经统一 `TrackingJobRunner` 在 spawn 进程训练 1 epoch，
-再使用同一 runner 与快照推理，检查真实帧进度、5 个新增 AI 点、人工点保护、
+再使用同一 runner 与快照推理，检查真实帧进度、candidate不自动采用、显式Activate后5个新增AI点、人工点保护、
 运动学计算及保存重开。默认使用新的临时目录；成功和失败的文件均保留，脚本会打印位置。
 需要本地已安装 DLC/PyTorch/Pandas/PyTables；不用于无 DLC 的 CI，也不代表跟踪精度验收。
 
@@ -31,3 +31,5 @@ parent；需要本地 DLC 环境。
 `emit-audit` 从本地项目的 completed infer run 生成盲评审计表（打乱、隐藏来源），
 `score` 在人工标注后确定性重算两种策略并写比较报告；用法与标注约定见
 `docs/benchmarks/README.md`。
+
+`publication_runtime_spike/host.py` + `worker.py`：P0.3可丢弃的frozen host→外置Python探针，运行/证据见`publication/evidence/runtime/README.md`；不是正式runtime或installer。
