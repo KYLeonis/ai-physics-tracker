@@ -534,3 +534,137 @@ class TestSetupProjectionAndDigest:
             ),
         )
         assert experiment_dependency_digest(moved, moved.experiments[0]) != base
+
+
+class TestReviewFindings:
+    """S3 Independent Review findings 的回归测试(G1–G4)。"""
+
+    def test_migration_strips_legacy_active_pointer_from_bound_tracks(self, tmp_path):
+        from ai_physics_tracker.application.refinement_history import (
+            ActivationRecord,
+            RefinementState,
+            attach_refinement_state,
+            extract_refinement_state,
+        )
+
+        repository = ProjectRepository()
+        video = _video()
+        tracks = tuple(
+            _track(video, name) for name in ("tip", "body top", "body bottom", "pivot")
+        )
+        legacy_run = TrackingRun(
+            run_id=uuid4(),
+            video_id=video.video_id,
+            member_track_ids=(tracks[0].track_id,),
+            engine="dlc",
+            engine_version="3.0.1",
+            task_type="infer",
+            config={},
+            source_detail="dlc:infer:legacy",
+            created_at=utc_now(),
+            status="completed",
+            completed_at=utc_now(),
+        )
+        state = RefinementState(
+            active_infer_run_id=legacy_run.run_id,
+            activation_history=(
+                ActivationRecord(
+                    record_id=uuid4(),
+                    timestamp="2026-01-01T00:00:00+00:00",
+                    action="activate",
+                    from_run_id=None,
+                    to_run_id=legacy_run.run_id,
+                    point_count=3,
+                    manual_preserved_count=0,
+                ),
+            ),
+        )
+        archived_track = attach_refinement_state(tracks[0], state)
+        tracks = (archived_track, *tracks[1:])
+        project = Project(
+            project_id=uuid4(),
+            name="legacy pointer",
+            created_at=utc_now(),
+            modified_at=utc_now(),
+            videos=(video,),
+            timelines=(_timeline(video),),
+            tracks=tracks,
+            tracking_runs=(legacy_run,),
+        )
+        session = ProjectSession(repository, project)
+        root = tmp_path / "source"
+        session.save_as(root)
+        session = ProjectSession.load(repository, root)
+        assert extract_refinement_state(
+            next(t for t in session.tracks if t.track_id == tracks[0].track_id)
+        ).active_infer_run_id == legacy_run.run_id
+
+        roles = PendulumRoles(
+            tip=tracks[0].track_id,
+            body_top=tracks[1].track_id,
+            body_bottom=tracks[2].track_id,
+            pivot=tracks[3].track_id,
+        )
+        session.save_as_publication(tmp_path / "publication", roles)
+        restored = extract_refinement_state(
+            next(
+                t for t in session.tracks if t.track_id == tracks[0].track_id
+            )
+        )
+        # 指针清除,activation history 归档保留(契约 §2)
+        assert restored.active_infer_run_id is None
+        assert len(restored.activation_history) == 1
+
+    def test_delete_track_blocked_by_experiment_joint_run_membership(self):
+        project, roles, _, _ = _bound_project_with_free_track(with_active_run=True)
+        session = ProjectSession(ProjectRepository(), project)
+        video = project.videos[0]
+        replacement = session.add_track(video.video_id, "new tip")
+        new_roles = PendulumRoles(
+            tip=replacement.track_id,
+            body_top=roles.body_top,
+            body_bottom=roles.body_bottom,
+            pivot=roles.pivot,
+        )
+        session.rebind_pendulum_roles(
+            project.experiments[0].experiment_id, new_roles
+        )
+        # 旧 tip 已解除 role 绑定,但仍被 joint run 引用:删除必须被阻止
+        from ai_physics_tracker.application.project_session import ProjectSessionError
+
+        with pytest.raises(ProjectSessionError, match="joint run"):
+            session.remove_track(roles.tip)
+        # run 记录未被级联删除
+        assert any(
+            run.experiment_id == project.experiments[0].experiment_id
+            for run in session.project.tracking_runs
+        )
+
+    def test_new_generic_run_registration_rejected_on_bound_track(self):
+        project, roles, _, _ = _bound_project_with_free_track()
+        session = ProjectSession(ProjectRepository(), project)
+        bound_run = TrackingRun(
+            run_id=uuid4(),
+            video_id=project.videos[0].video_id,
+            member_track_ids=(roles.tip,),
+            engine="dlc",
+            engine_version="3.0.1",
+            task_type="infer",
+            config={},
+            source_detail="dlc:infer:single",
+            created_at=utc_now(),
+            status="pending",
+        )
+        with pytest.raises(ProjectSessionError, match="pendulum experiment role"):
+            session.record_tracking_run(bound_run)
+        assert session.project.tracking_runs == ()
+
+    def test_manual_point_on_bound_track_bumps_revision_and_stales(self):
+        project, roles, _, _ = _bound_project_with_free_track(with_result=True)
+        session = ProjectSession(ProjectRepository(), project)
+        session._verified_videos.add(project.videos[0].video_id)
+        before = session.pendulum_experiments()[0]
+        session.mark_point(roles.body_top, 5, 30.0, 40.0)
+        after = session.pendulum_experiments()[0]
+        assert after.measurement_revision == before.measurement_revision + 1
+        assert session.project.scientific_results[0].freshness == "stale"

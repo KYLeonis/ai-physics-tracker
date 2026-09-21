@@ -287,7 +287,10 @@ class ProjectSession:
     def remove_track(self, track_id: UUID) -> None:
         """删除 Track 并级联删除其观测、派生数据与 TrackingRun 记录。"""
 
-        candidate = delete_track(self._project, track_id)
+        try:
+            candidate = delete_track(self._project, track_id)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
         # 提交整个 candidate：runs 级联发生在 delete_track 返回的聚合里，
         # 只回填 tracks/observations/derived 会把已删除的 run 带回来。
         self._commit_project(candidate, TrackStore(candidate.tracks, candidate.observations))
@@ -338,7 +341,14 @@ class ProjectSession:
         )
         candidate = TrackStore(self._store.tracks, self._store.observations)
         candidate.add_manual_point(point)
-        self._commit_store(candidate, mark_tracks_stale(self._project.derived, {track_id}))
+        project = replace(
+            self._project,
+            tracks=candidate.tracks,
+            observations=candidate.observations,
+            derived=mark_tracks_stale(self._project.derived, {track_id}),
+        )
+        project = self._with_manual_edit_experiment_state(project, track_id)
+        self._commit_project(project, candidate)
         logger.info(
             "manual point marked track=%s frame=%d pixel=(%.1f, %.1f)",
             track.name,
@@ -650,6 +660,9 @@ class ProjectSession:
         """
         if any(r.run_id == run.run_id for r in self._project.tracking_runs):
             raise ProjectSessionError(f"tracking run_id already exists: {run.run_id}")
+        if run.experiment_id is None:
+            for member in run.member_track_ids:
+                self._require_unbound_track(member, "single-track run registration")
         self._project = replace(
             self._project,
             tracking_runs=(*self._project.tracking_runs, run),
@@ -668,6 +681,9 @@ class ProjectSession:
                 runs.append(existing)
         if not found:
             raise ProjectSessionError(f"unknown tracking run_id: {run.run_id}")
+        if run.experiment_id is None:
+            for member in run.member_track_ids:
+                self._require_unbound_track(member, "single-track run updates")
         self._project = replace(self._project, tracking_runs=tuple(runs))
 
     def tracking_runs(self, track_id: UUID | None = None) -> tuple[TrackingRun, ...]:
@@ -1517,6 +1533,9 @@ class ProjectSession:
             derived=mark_tracks_stale(self._project.derived, {track.track_id}),
             tracking_runs=runs,
         )
+        updated_project = self._with_manual_edit_experiment_state(
+            updated_project, track.track_id
+        )
         self._commit_project(updated_project, candidate_store, scoped_reviews)
         logger.info(
             "corrected suggested frame run=%s track=%s frame=%d point_id=%s pixel=(%.1f, %.1f)",
@@ -1585,6 +1604,9 @@ class ProjectSession:
             observations=candidate_store.observations,
             derived=mark_tracks_stale(self._project.derived, {track_id}),
             tracking_runs=tuple(updated_runs_list),
+        )
+        updated_project = self._with_manual_edit_experiment_state(
+            updated_project, track_id
         )
         self._commit_project(
             updated_project,
@@ -1849,6 +1871,31 @@ class ProjectSession:
         if results == project.scientific_results:
             return project
         return replace(project, scientific_results=results)
+
+    def _with_manual_edit_experiment_state(
+        self, project: Project, track_id: UUID
+    ) -> Project:
+        """契约 §2：bound Track 的人工单点修正递增 measurement_revision
+        并置结果 stale，不改变 active run 身份。"""
+
+        experiment = self.experiment_for_track(track_id)
+        if experiment is None:
+            return project
+        updated = replace(
+            experiment, measurement_revision=experiment.measurement_revision + 1
+        )
+        project = replace(
+            project,
+            experiments=tuple(
+                updated
+                if item.experiment_id == experiment.experiment_id
+                else item
+                for item in project.experiments
+            ),
+        )
+        return self._with_stale_results_for_experiment(
+            project, experiment.experiment_id
+        )
 
     def _with_stale_results_for_video(self, project: Project, video_id: UUID) -> Project:
         results = tuple(
@@ -2139,7 +2186,21 @@ class ProjectSession:
             experiment = create_pendulum_experiment(
                 uuid4(), video_ids.pop(), roles
             )
-            candidate = replace(candidate, experiments=(experiment,))
+            # 契约 §2：迁移时清除/归档 bound Track 的旧单轨 active 指针——
+            # experiment 是唯一 activation 真值，遗留指针会造成双源显示且
+            # guard 封死了应用内清理路径。activation_history 保留在
+            # refinement state 内作为归档记录。
+            stripped_tracks = tuple(
+                self._strip_legacy_active_pointer(track)
+                if track.track_id in roles.track_ids()
+                else track
+                for track in self._project.tracks
+            )
+            candidate = replace(
+                candidate,
+                tracks=stripped_tracks,
+                experiments=(experiment,),
+            )
         destination = destination.resolve()
         saved = self._repository.save_as_publication(
             self._project_root, destination, candidate
@@ -2147,9 +2208,19 @@ class ProjectSession:
         self._project = saved
         self._project_root = destination
         self._saved_project = saved
+        # tracks 可能被迁移事务改写（清除 legacy 指针），重建镜像 store
+        self._store = TrackStore(saved.tracks, saved.observations)
         self._undo_stack.clear()
         self._redo_stack.clear()
         return saved
+
+    @staticmethod
+    def _strip_legacy_active_pointer(track: Track) -> Track:
+        state = extract_refinement_state(track)
+        if state.active_infer_run_id is None:
+            return track
+        cleared = replace(state, active_infer_run_id=None)
+        return attach_refinement_state(track, cleared)
 
     # ------------------------------------------------------------------
     # Inference Result Activation & Replacement (Phase 5.4 ADR-0014)

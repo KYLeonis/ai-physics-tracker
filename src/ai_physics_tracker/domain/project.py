@@ -334,7 +334,9 @@ def delete_track(project: Project, track_id: UUID) -> Project:
     悬空引用）。
 
     experiment-bound Track 拒绝删除（契约 §5）：必须先显式删除或改绑
-    experiment，不允许留下断引用的 roles/results。
+    experiment，不允许留下断引用的 roles/results。同理，被 experiment
+    joint run 引用（即便已因 rebind 解除 role 绑定）的 Track 也拒绝——
+    级联删除会整条抹掉共享测量历史，契约要求显式删除计划（不自动断引用）。
     """
 
     if not any(track.track_id == track_id for track in project.tracks):
@@ -344,6 +346,12 @@ def delete_track(project: Project, track_id: UUID) -> Project:
             raise ValueError(
                 f"track is bound to pendulum experiment {experiment.experiment_id}; "
                 "rebind or delete the experiment before deleting the track"
+            )
+    for run in project.tracking_runs:
+        if run.experiment_id is not None and track_id in run.member_track_ids:
+            raise ValueError(
+                f"track is a member of experiment joint run {run.run_id}; "
+                "delete the referencing experiment runs before deleting the track"
             )
     return replace(
         project,
@@ -567,6 +575,8 @@ def _validate_publication_collections(
         if run.experiment_id is None:
             if len(run.member_track_ids) != 1:
                 raise ValueError("generic tracking runs must have exactly one member")
+            # 迁移携带的 legacy generic run 允许引用 bound track（历史记录）；
+            # 新的 generic run 注册在 session 层被拒绝（_require_unbound_track）。
             continue
         experiment = experiments_by_id.get(run.experiment_id)
         if experiment is None:
