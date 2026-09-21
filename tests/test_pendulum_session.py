@@ -668,3 +668,168 @@ class TestReviewFindings:
         after = session.pendulum_experiments()[0]
         assert after.measurement_revision == before.measurement_revision + 1
         assert session.project.scientific_results[0].freshness == "stale"
+
+
+class TestSchemaReviewFindings:
+    """R2 schema review findings 的回归测试(F1–F6)。"""
+
+    def test_validation_series_ops_survive_joint_run_presence(self):
+        from ai_physics_tracker.application.refinement_history import (
+            RefinementState,
+            attach_refinement_state,
+        )
+
+        project, roles, _, _ = _bound_project_with_free_track(with_active_run=True)
+        track = next(t for t in project.tracks if t.track_id == roles.tip)
+        from ai_physics_tracker.application.refinement_history import (
+            ValidationLabelSnapshot,
+            ValidationSeries,
+        )
+
+        series = ValidationSeries(
+            series_id=uuid4(),
+            name="frozen",
+            created_at="2026-01-01T00:00:00+00:00",
+            label_snapshots=(
+                ValidationLabelSnapshot(
+                    point_id=uuid4(),
+                    frame_index=0,
+                    pixel_x=1.0,
+                    pixel_y=2.0,
+                    modified_at="2026-01-01T00:00:00+00:00",
+                ),
+            ),
+        )
+        state = replace(RefinementState(), validation_series=(series,))
+        populated = replace(
+            project,
+            tracks=tuple(
+                attach_refinement_state(track, state) if t.track_id == track.track_id else t
+                for t in project.tracks
+            ),
+        )
+        session = ProjectSession(ProjectRepository(), populated)
+        # joint run 在场时,validation series 删除/撤销不得抛裸 ValueError
+        session.delete_validation_series(roles.tip, series.series_id)
+        session.undo()
+
+    def test_create_experiment_strips_legacy_active_pointers(self, tmp_path):
+        from ai_physics_tracker.application.refinement_history import (
+            RefinementState,
+            attach_refinement_state,
+            extract_refinement_state,
+        )
+
+        repository = ProjectRepository()
+        video = _video()
+        tracks = tuple(
+            _track(video, name) for name in ("tip", "body top", "body bottom", "pivot")
+        )
+        legacy_run = TrackingRun(
+            run_id=uuid4(),
+            video_id=video.video_id,
+            member_track_ids=(tracks[0].track_id,),
+            engine="dlc",
+            engine_version="3.0.1",
+            task_type="infer",
+            config={},
+            source_detail="dlc:infer:legacy",
+            created_at=utc_now(),
+            status="completed",
+            completed_at=utc_now(),
+        )
+        state = RefinementState(active_infer_run_id=legacy_run.run_id)
+        project = Project(
+            project_id=uuid4(),
+            name="two step",
+            created_at=utc_now(),
+            modified_at=utc_now(),
+            videos=(video,),
+            timelines=(_timeline(video),),
+            tracks=(attach_refinement_state(tracks[0], state), *tracks[1:]),
+            tracking_runs=(legacy_run,),
+        )
+        session = ProjectSession(repository, project)
+        session.save_as(tmp_path / "v1")
+        session = ProjectSession.load(repository, tmp_path / "v1")
+        # 两步流:先迁移(无 roles),再创建 experiment
+        session.save_as_publication(tmp_path / "v2")
+        roles = PendulumRoles(
+            tip=tracks[0].track_id,
+            body_top=tracks[1].track_id,
+            body_bottom=tracks[2].track_id,
+            pivot=tracks[3].track_id,
+        )
+        session.create_pendulum_experiment(video.video_id, roles)
+        restored = extract_refinement_state(
+            next(t for t in session.tracks if t.track_id == tracks[0].track_id)
+        )
+        assert restored.active_infer_run_id is None
+
+    def test_migration_rejects_v2_colliding_extra_keys(self, tmp_path):
+        repository = ProjectRepository()
+        video = _video()
+        project = Project(
+            project_id=uuid4(),
+            name="collide",
+            created_at=utc_now(),
+            modified_at=utc_now(),
+            videos=(video,),
+            timelines=(_timeline(video),),
+            extra_fields={"experiments": {"smuggled": True}},
+        )
+        session = ProjectSession(repository, project)
+        root = tmp_path / "source"
+        session.save_as(root)
+        with pytest.raises(Exception, match="colliding"):
+            session.save_as_publication(tmp_path / "v2")
+
+    def test_active_run_role_binding_permutation_rejected(self):
+        project, roles, _, _ = _bound_project_with_free_track()
+        experiment = project.experiments[0]
+        run = TrackingRun(
+            run_id=uuid4(),
+            video_id=experiment.video_id,
+            member_track_ids=(roles.body_top, roles.tip, roles.body_bottom, roles.pivot),
+            engine="dlc",
+            engine_version="3.0.1",
+            task_type="infer",
+            config={},
+            source_detail="dlc:infer:swapped",
+            created_at=utc_now(),
+            status="completed",
+            completed_at=utc_now(),
+            experiment_id=experiment.experiment_id,
+            role_bindings=PendulumRoles(
+                tip=roles.body_top,
+                body_top=roles.tip,
+                body_bottom=roles.body_bottom,
+                pivot=roles.pivot,
+            ),
+        )
+        with pytest.raises(ValueError, match="role_bindings must equal"):
+            replace(
+                project,
+                tracking_runs=(run,),
+                experiments=(replace(experiment, active_infer_run_id=run.run_id),),
+            )
+
+    def test_serializer_dispatch_rejects_non_integer_schema_version(self):
+        from ai_physics_tracker.infrastructure.project_serializer import (
+            project_from_payload,
+            project_to_payload,
+        )
+
+        payload = project_to_payload(create_project_plain())
+        payload["schema_version"] = 2.0
+        with pytest.raises(ValueError, match="must be an integer"):
+            project_from_payload(payload)
+        payload["schema_version"] = True
+        with pytest.raises(ValueError, match="must be an integer"):
+            project_from_payload(payload)
+
+
+def create_project_plain():
+    from ai_physics_tracker.domain.project import create_project
+
+    return create_project("dispatch")

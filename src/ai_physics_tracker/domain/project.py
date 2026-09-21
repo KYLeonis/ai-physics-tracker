@@ -571,6 +571,10 @@ def _validate_publication_collections(
             raise ValueError(
                 "experiment active run members must match the current role bindings"
             )
+        if run.role_bindings != experiment.roles:
+            raise ValueError(
+                "experiment active run role_bindings must equal the current roles"
+            )
     for run in project.tracking_runs:
         if run.experiment_id is None:
             if len(run.member_track_ids) != 1:

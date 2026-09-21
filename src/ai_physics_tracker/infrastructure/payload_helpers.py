@@ -13,14 +13,20 @@ def parse_datetime(value: str) -> datetime:
 
 
 def string(payload: dict[str, object], key: str) -> str:
+    if key not in payload:
+        raise ValueError(f"{key} is required but missing")
     return expect_string(payload[key], key)
 
 
 def integer(payload: dict[str, object], key: str) -> int:
+    if key not in payload:
+        raise ValueError(f"{key} is required but missing")
     return expect_integer(payload[key], key)
 
 
 def number(payload: dict[str, object], key: str) -> float:
+    if key not in payload:
+        raise ValueError(f"{key} is required but missing")
     return expect_number(payload[key], key)
 
 

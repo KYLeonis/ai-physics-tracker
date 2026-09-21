@@ -87,8 +87,6 @@ def _common_collections_to_payload(project: Project) -> dict[str, object]:
             for video_id, calibration_id in project.active_calibration_by_video.items()
         },
         "derived": [_derived_to_payload(item) for item in project.derived],
-        "registries": _registries_to_payload(project.registries),
-        "ui_state": project.ui_state,
     }
 
 
@@ -112,6 +110,8 @@ def _project_to_payload_v1(project: Project) -> dict[str, object]:
     payload["tracking_runs"] = [
         tracking_run_to_payload(item) for item in project.tracking_runs
     ]
+    payload["registries"] = _registries_to_payload(project.registries)
+    payload["ui_state"] = project.ui_state
     return payload
 
 
@@ -143,6 +143,8 @@ def _project_to_payload_v2(project: Project) -> dict[str, object]:
     }
     if project.migration is not None:
         payload["migration"] = migration_to_payload(project.migration)
+    payload["registries"] = _registries_to_payload(project.registries)
+    payload["ui_state"] = project.ui_state
     return payload
 
 
@@ -150,6 +152,8 @@ def project_from_payload(payload: dict[str, object]) -> Project:
     """按 payload 的 schema_version 反序列化；未知版本拒绝。"""
 
     version = payload.get("schema_version")
+    if isinstance(version, bool) or not isinstance(version, int):
+        raise ValueError(f"schema_version must be an integer, got {version!r}")
     if version == LEGACY_SCHEMA_VERSION:
         return _project_from_payload_v1(payload)
     if version == CURRENT_SCHEMA_VERSION:

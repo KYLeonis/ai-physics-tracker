@@ -28,6 +28,7 @@ from ai_physics_tracker.infrastructure.project_serializer import (
     project_from_payload,
     project_to_payload,
 )
+from ai_physics_tracker.infrastructure.publication_serializer import V2_TOP_LEVEL_KEYS
 
 PROJECT_FILE_NAME = "project.json"
 BACKUP_FILE_NAME = "project.backup.json"
@@ -160,6 +161,14 @@ class ProjectRepository:
             )
         if project.migration is not None:
             raise ValueError("publication candidate must not carry an existing migration record")
+        colliding = set(project.extra_fields) & V2_TOP_LEVEL_KEYS
+        if colliding:
+            # 契约 §1 要求迁移保留未知 siblings；与 v2 顶层键同名时静默丢弃
+            # 不可接受，fail closed 强迫显式处理（F3）。
+            raise ValueError(
+                f"v1 project carries unknown keys colliding with schema v2 "
+                f"top-level keys: {sorted(colliding)}"
+            )
         candidate = replace(
             project,
             migration=MigrationRecord(

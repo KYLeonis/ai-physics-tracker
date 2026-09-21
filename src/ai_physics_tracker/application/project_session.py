@@ -1288,7 +1288,7 @@ class ProjectSession:
             if not removed:
                 continue
             for run in candidate.tracking_runs:
-                if run.track_id != track.track_id or run.task_type != "train":
+                if track.track_id not in run.member_track_ids or run.task_type != "train":
                     continue
                 iteration = extract_refinement_iteration(run)
                 if (run.status in {"pending", "running"}
@@ -1457,9 +1457,16 @@ class ProjectSession:
         原 prediction 快照（无论是否低于导入阈值或缺测）随审核记录持久化。
         """
         run = self._validate_infer_run_for_review(run_id)
-        track = next((t for t in self._store.tracks if t.track_id == run.track_id), None)
+        if len(run.member_track_ids) != 1:
+            raise ProjectSessionError(
+                "frame review is a single-track workflow; joint runs are not reviewable here"
+            )
+        track = next(
+            (t for t in self._store.tracks if t.track_id == run.member_track_ids[0]),
+            None,
+        )
         if track is None:
-            raise ProjectSessionError(f"track {run.track_id} not found")
+            raise ProjectSessionError(f"track {run.member_track_ids[0]} not found")
         if track.video_id not in self._verified_videos:
             raise ProjectSessionError("video timing is not verified CFR; new measurements disabled")
         timeline = next((t for t in self._project.timelines if t.video_id == track.video_id), None)
@@ -1932,13 +1939,25 @@ class ProjectSession:
                 "this video already has a pendulum experiment"
             )
         experiment = create_pendulum_experiment(uuid4(), video_id, roles)
+        # 契约 §2：绑定即清除/归档旧单轨 active 指针（与迁移路径同语义），
+        # 避免 guard 封死后留下不可清理的双真值状态。
+        stripped_tracks = tuple(
+            self._strip_legacy_active_pointer(track)
+            if track.track_id in roles.track_ids()
+            else track
+            for track in self._store.tracks
+        )
         try:
             candidate = replace(
-                self._project, experiments=(*self._project.experiments, experiment)
+                self._project,
+                tracks=stripped_tracks,
+                experiments=(*self._project.experiments, experiment),
             )
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
-        self._commit_project(candidate)
+        self._commit_project(
+            candidate, TrackStore(candidate.tracks, candidate.observations)
+        )
         logger.info(
             "pendulum experiment created: experiment=%s video=%s",
             experiment.experiment_id,
