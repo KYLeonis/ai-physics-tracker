@@ -8,6 +8,8 @@ ProjectActions 的后台线程完成。
 from pathlib import Path
 from uuid import UUID
 
+from typing import Callable
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -188,21 +190,33 @@ class PendulumWizardDialog(QDialog):
         tracks: list[Track],
         *,
         require_destination: bool = True,
+        first_save: bool = False,
         default_destination: str = "",
+        create_track: Callable[[str], Track] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Create Pendulum experiment")
         self.setMinimumWidth(520)
         self._require_destination = require_destination
+        self._create_track = create_track
 
         layout = QVBoxLayout(self)
 
         if require_destination:
-            intro = QLabel(
-                "This saves a NEW publication copy of the project in schema v2.\n"
-                "The current project stays untouched and can still be opened on "
-                "its own.", self)
+            if first_save:
+                intro_text = (
+                    "This saves the project as a NEW publication project "
+                    "(schema v2) at the chosen directory.\n"
+                    "Nothing is discarded — this is simply the project's first "
+                    "save, in the publication format.")
+            else:
+                intro_text = (
+                    "This saves a NEW publication copy of the project in "
+                    "schema v2.\n"
+                    "The current project stays untouched and can still be "
+                    "opened on its own.")
+            intro = QLabel(intro_text, self)
             intro.setWordWrap(True)
             layout.addWidget(intro)
             destRow = QHBoxLayout()
@@ -229,8 +243,23 @@ class PendulumWizardDialog(QDialog):
             for track in tracks:
                 combo.addItem(track.name, str(track.track_id))
             self._role_combos[role] = combo
-            rolesLayout.addWidget(label)
-            rolesLayout.addWidget(combo)
+            if create_track is not None:
+                new_button = QPushButton(f"New track for {role}", rolesGroup)
+                new_button.clicked.connect(
+                    lambda _checked=False, r=role: self._create_track_for_role(r)
+                )
+                row = QHBoxLayout()
+                row.addWidget(combo, 1)
+                row.addWidget(new_button)
+                rolesLayout.addWidget(label)
+                rolesLayout.addLayout(row)
+            else:
+                rolesLayout.addWidget(label)
+                rolesLayout.addWidget(combo)
+        # ≥4 track 时预填四个互不相同的 track，避免首点 Create 必报重复
+        if len(tracks) >= len(ROLE_ORDER):
+            for index, role in enumerate(ROLE_ORDER):
+                self._role_combos[role].setCurrentIndex(index)
         layout.addWidget(rolesGroup)
 
         self.errorLabel = QLabel("", self)
@@ -245,6 +274,17 @@ class PendulumWizardDialog(QDialog):
         buttons.accepted.connect(self._validate_and_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+    def _create_track_for_role(self, role: str) -> None:
+        if self._create_track is None:
+            return
+        try:
+            track = self._create_track(role)
+        except Exception as error:  # session guard 拒绝时只提示，不关闭向导
+            self.errorLabel.setText(f"Could not create track: {error}")
+            return
+        self.set_role_track(role, track)
+        self.errorLabel.setText("")
 
     def _browse(self) -> None:
         selected = QFileDialog.getExistingDirectory(

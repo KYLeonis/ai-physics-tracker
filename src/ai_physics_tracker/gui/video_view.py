@@ -74,6 +74,16 @@ class CalibrationView:
     rotation_deg: float = 0.0
 
 
+@dataclass(frozen=True)
+class PendulumOverlayView:
+    """pendulum 固定几何的只读视图模型（gui 层，事实源在 experiment）。"""
+
+    fixed_pivot_px: tuple[float, float] | None = None
+    vertical_top_px: tuple[float, float] | None = None
+    vertical_bottom_px: tuple[float, float] | None = None
+    vertical_confirmed: bool = False
+
+
 class VideoView(QGraphicsView):
     """展示解耦的 RGB 帧；fit 模式自动适配，自由缩放后保持用户缩放。"""
 
@@ -102,6 +112,7 @@ class VideoView(QGraphicsView):
         self._current_frame: int | None = None
         self._calibration_items: list[QGraphicsItem] = []
         self._calibration_view: CalibrationView | None = None
+        self._pendulum_items: list[QGraphicsItem] = []
         self._calibration_mode: str | None = None
         self._scale_draw_start: tuple[float, float] | None = None
         self._scale_preview_item: QGraphicsLineItem | None = None
@@ -743,6 +754,92 @@ class VideoView(QGraphicsView):
         """当前 overlay 的标定视图快照。"""
 
         return self._calibration_view
+
+    def set_pendulum_overlay(self, view: PendulumOverlayView | None) -> None:
+        """整批替换 fixed pivot / true vertical 的持久 overlay（S6-R1）。
+
+        只读投影：内容来自 experiment.geometry，不构成第二事实源。
+        vertical 用虚线+「not confirmed」标签表示待确认方向，确认后实线。
+        """
+
+        for item in self._pendulum_items:
+            self._scene.removeItem(item)
+        self._pendulum_items = []
+        if view is None:
+            return
+
+        pen = QPen(QColor("#ffb300"))
+        pen.setWidthF(2.0)
+        pen.setCosmetic(True)
+        pen.setStyle(
+            Qt.PenStyle.SolidLine
+            if view.vertical_confirmed
+            else Qt.PenStyle.DashLine
+        )
+
+        if view.fixed_pivot_px is not None:
+            px, py = view.fixed_pivot_px
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                tick = QGraphicsLineItem(
+                    px + dx * 9.0, py + dy * 9.0, px + dx * 2.0, py + dy * 2.0
+                )
+                tick.setPen(pen)
+                tick.setZValue(20.0)
+                self._scene.addItem(tick)
+                self._pendulum_items.append(tick)
+            ring = QGraphicsEllipseItem(-6, -6, 12, 12)
+            ring.setPos(px, py)
+            ring.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True
+            )
+            ring.setPen(pen)
+            ring.setZValue(20.5)
+            self._scene.addItem(ring)
+            self._pendulum_items.append(ring)
+
+        if (
+            view.vertical_top_px is not None
+            and view.vertical_bottom_px is not None
+        ):
+            tx, ty = view.vertical_top_px
+            bx, by = view.vertical_bottom_px
+            line = QGraphicsLineItem(tx, ty, bx, by)
+            line.setPen(pen)
+            line.setZValue(20.0)
+            self._scene.addItem(line)
+            self._pendulum_items.append(line)
+            for pt in ((tx, ty), (bx, by)):
+                handle = QGraphicsEllipseItem(-3, -3, 6, 6)
+                handle.setPos(*pt)
+                handle.setFlag(
+                    QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations,
+                    True,
+                )
+                handle.setPen(pen)
+                handle.setBrush(QBrush(QColor("#ffb300")))
+                handle.setZValue(20.5)
+                self._scene.addItem(handle)
+                self._pendulum_items.append(handle)
+            label = QGraphicsSimpleTextItem(
+                "down (confirmed)" if view.vertical_confirmed
+                else "down — NOT confirmed"
+            )
+            font = QFont()
+            font.setBold(True)
+            font.setPointSize(9)
+            label.setFont(font)
+            label.setBrush(QBrush(QColor("#ffb300")))
+            label.setPen(QPen(QColor("#000000"), 0.5))
+            label.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True
+            )
+            label.setPos(bx + 10.0, by - 8.0)
+            label.setZValue(21.0)
+            self._scene.addItem(label)
+            self._pendulum_items.append(label)
+
+    def pendulum_overlay_items_count(self) -> int:
+        return len(self._pendulum_items)
 
     def calibration_items_count(self) -> int:
         return len(self._calibration_items)

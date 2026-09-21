@@ -98,7 +98,9 @@ class _WizardStub:
         offered_tracks: list[Track],
         *,
         require_destination: bool = True,
+        first_save: bool = False,
         default_destination: str = "",
+        create_track=None,
         parent=None,
     ) -> None:
         self.offered_tracks = list(offered_tracks)
@@ -606,3 +608,55 @@ class TestPublicationFailureAndReopen:
             lambda: "Setup complete" in window.pendulumPanel.statusLabel.text(),
             timeout=5000,
         )
+
+
+class TestS6ReviewFixes:
+    """S6 终审 R1/R2/R3 修复的回归测试。"""
+
+    def test_geometry_overlay_persisted_after_writes(self, qtbot, synthetic_video_path, tmp_path, monkeypatch):
+        window = _window()
+        qtbot.addWidget(window)
+        assert window.openVideo(synthetic_video_path, show_error=False)
+        session = window.analysisSession
+        tracks = [session.add_track(window.activeVideoId) for _ in range(4)]
+        _accept_wizard(monkeypatch, tracks, tmp_path / "v2")
+        window.projectActions.createPendulumExperiment()
+        qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
+
+        experiment = window.analysisSession.pendulum_experiments()[0]
+        session = window.analysisSession
+        assert window.videoView.pendulum_overlay_items_count() == 0
+        window.beginPivotPick()
+        window._onPivotClicked(QPointF(10.0, 20.0))
+        assert window.videoView.pendulum_overlay_items_count() > 0
+        window.beginVerticalPick()
+        window._onVerticalLineDrawn(QPointF(5.0, 1.0), QPointF(5.5, 90.0))
+        window._confirmVerticalDirection()
+        # 确认态 overlay 仍然存在(实线 + confirmed 标签)
+        assert window.videoView.pendulum_overlay_items_count() > 0
+        del experiment
+
+    def test_wizard_preselects_distinct_tracks_when_available(self):
+        video_id = uuid4()
+        tracks = [
+            Track(track_id=uuid4(), video_id=video_id, name=f"t{i}",
+                  color="#123456", created_at=utc_now())
+            for i in range(4)
+        ]
+        dialog = PendulumWizardDialog(
+            tracks, require_destination=False, parent=None)
+        assert dialog.validate() is None  # 预填四个不同 track,无需手动选择
+        roles = dialog.pendulum_roles()
+        assert len({roles.tip, roles.body_top, roles.body_bottom, roles.pivot}) == 4
+
+    def test_wizard_create_track_button_fills_role(self):
+        video_id = uuid4()
+        dialog = PendulumWizardDialog(
+            [], require_destination=False, parent=None,
+            create_track=lambda role: Track(
+                track_id=uuid4(), video_id=video_id, name=f"Pendulum {role}",
+                color="#123456", created_at=utc_now()),
+        )
+        for role in ("tip", "body_top", "body_bottom", "pivot"):
+            dialog._create_track_for_role(role)
+        assert dialog.validate() is None

@@ -49,6 +49,7 @@ from ai_physics_tracker.gui.pendulum_setup import (
     PendulumSetupPanel,
     PhysicalParametersDialog,
 )
+from ai_physics_tracker.gui.video_view import PendulumOverlayView
 from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.gui.timing_actions import TimingActions
 from ai_physics_tracker.gui.chart_actions import ChartActions
@@ -531,6 +532,8 @@ class MainWindow(QMainWindow):
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             self.reviewActions.cancelCorrectMode()
         self.videoView.set_annotation_mode(False)
+        if self.videoView.is_calibration_mode() in ("pivot", "vertical"):
+            self._hidePendulumGuide()
         self.videoView.set_calibration_mode(None)
         self.drawScaleButton.setChecked(False)
         self.setOriginButton.setChecked(False)
@@ -1213,6 +1216,7 @@ class MainWindow(QMainWindow):
             "Fixed pivot — click the suspension point on the video. This is the "
             "fixed geometry reference for the analysis; tracking a pivot landmark "
             "will not overwrite it. Press Esc to cancel.")
+        self.trackList.clearSelection()
         self.videoView.set_calibration_mode("pivot")
 
     def beginVerticalPick(self) -> None:
@@ -1224,6 +1228,7 @@ class MainWindow(QMainWindow):
             "True vertical — click the TOP end first, then the BOTTOM end "
             "(the direction pointing down along gravity). The direction must be "
             "confirmed afterwards before analysis. Press Esc to cancel.")
+        self.trackList.clearSelection()
         self.videoView.set_calibration_mode("vertical")
 
     def _exitPendulumPick(self) -> None:
@@ -1596,6 +1601,7 @@ class MainWindow(QMainWindow):
         # 变化"收敛点（导入/标定编辑/历史步进/几何录入）。
         self.pendulumPanel.refresh(
             self._annotation_session, self._annotation_video_id)
+        self._refreshPendulumOverlay()
         if self._annotation_session is None or self._annotation_video_id is None:
             self.calibrationStatusLabel.setText("Status: Uncalibrated")
             with QSignalBlocker(self.calibrationSelector):
@@ -1678,9 +1684,33 @@ class MainWindow(QMainWindow):
                     return v.height_px
         return 480
 
+    def _refreshPendulumOverlay(self) -> None:
+        """experiment.geometry → 只读 overlay(S6-R1);无 experiment 即清空。"""
+
+        experiment = self.currentPendulumExperiment()
+        vertical = (
+            experiment.geometry.true_vertical if experiment is not None else None
+        )
+        view = (
+            PendulumOverlayView(
+                fixed_pivot_px=experiment.geometry.fixed_pivot_px,
+                vertical_top_px=vertical.top_px if vertical is not None else None,
+                vertical_bottom_px=(
+                    vertical.bottom_px if vertical is not None else None
+                ),
+                vertical_confirmed=(
+                    vertical.direction_confirmed if vertical is not None else False
+                ),
+            )
+            if experiment is not None
+            else None
+        )
+        self.videoView.set_pendulum_overlay(view)
+
     def _refreshCalibrationOverlay(self) -> None:
         if self._annotation_session is None or self._annotation_video_id is None:
             self.videoView.set_calibration(None)
+            self.videoView.set_pendulum_overlay(None)
             return
         active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
         if active_cal is None:

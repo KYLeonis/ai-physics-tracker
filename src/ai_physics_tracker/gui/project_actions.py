@@ -248,13 +248,29 @@ class ProjectActions(QObject):
             return
         tracks = [t for t in session.tracks if t.video_id == video_id]
         require_destination = not session.project.required_capabilities
+        first_save = session.project_root is None
+
+        def create_track_for_role(role: str):
+            return session.add_track(video_id, f"Pendulum {role}")
+
         wizard = PendulumWizardDialog(
-            tracks, require_destination=require_destination, parent=self.window)
+            tracks,
+            require_destination=require_destination,
+            first_save=first_save,
+            create_track=create_track_for_role,
+            parent=self.window,
+        )
         if wizard.exec() != wizard.DialogCode.Accepted:
             return
         roles = wizard.pendulum_roles()
         if session.project.required_capabilities:
-            # 已是 publication 项目：直接创建（可撤销的单次事务）
+            # 已是 publication 项目：直接创建（可撤销的单次事务）；与迁移
+            # 路径一致，AI 任务运行中不允许改变 role 绑定
+            tracking = getattr(self.window, "trackingActions", None)
+            if tracking and tracking.pending:
+                self.window.statusBar().showMessage(
+                    "Cancel the AI task before creating the experiment")
+                return
             try:
                 session.create_pendulum_experiment(video_id, roles)
             except ProjectSessionError as error:
@@ -291,8 +307,9 @@ class ProjectActions(QObject):
             self.window._refreshTrackList()
             self.window._refreshCalibrationUI()
             self.window._refreshHistoryButtons()
+            created = user_messages.publication_created(str(saved.project_root))
             self.window.statusBar().showMessage(
-                user_messages.publication_created(str(saved.project_root)).title)
+                f"{created.title} {saved.project_root}")
             self.refresh()
 
         # 与 save_as 相同的不可取消文件提交阶段；失败用三问结论呈现
@@ -398,6 +415,9 @@ class ProjectActions(QObject):
                     str(getattr(message, "full_text", lambda: str(error))()))
             else:
                 QMessageBox.critical(self.window, "Project operation failed", str(error))
+        finally:
+            # 失败文案只对单次运行有效；残留会把后续 autosave 失败误报成迁移事故
+            self._failure_message = None
         if self.busy:
             return  # 保存后续动作已启动新任务，不恢复旧任务的交互状态。
         self.window.syncVideoSelector()
