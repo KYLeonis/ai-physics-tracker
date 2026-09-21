@@ -81,6 +81,8 @@ class VideoView(QGraphicsView):
     annotationClicked = Signal(QPoint)
     scaleLineDrawn = Signal(QPointF, QPointF)
     originClicked = Signal(QPointF)
+    pivotClicked = Signal(QPointF)
+    verticalLineDrawn = Signal(QPointF, QPointF)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -104,6 +106,9 @@ class VideoView(QGraphicsView):
         self._scale_draw_start: tuple[float, float] | None = None
         self._scale_preview_item: QGraphicsLineItem | None = None
         self._is_scale_dragging = False
+        # pendulum 几何点选（P1.1）：vertical 端点有序（第一点 = top）
+        self._vertical_draw_start: tuple[float, float] | None = None
+        self._is_vertical_dragging = False
         self._annotation_mode = False
         self._fit_pending = True
         self.setMinimumSize(240, 160)
@@ -316,7 +321,8 @@ class VideoView(QGraphicsView):
         self.scaleChanged.emit(self.currentScale())
 
     def set_calibration_mode(self, mode: str | None) -> None:
-        """设置标定交互模式：'scale'（绘制比例尺）、'origin'（设置原点）或 None。"""
+        """设置几何点选模式：'scale'（比例尺）、'origin'（原点）、
+        'pivot'（固定 pivot 单点）、'vertical'（top→bottom 有序两点）或 None。"""
 
         self._calibration_mode = mode
         if mode is not None:
@@ -747,6 +753,8 @@ class VideoView(QGraphicsView):
             self._scale_preview_item = None
         self._scale_draw_start = None
         self._is_scale_dragging = False
+        self._vertical_draw_start = None
+        self._is_vertical_dragging = False
 
     def _update_scale_preview(self, p1: tuple[float, float], p2: tuple[float, float]) -> None:
         if self._scale_preview_item is None:
@@ -785,6 +793,31 @@ class VideoView(QGraphicsView):
                     self.originClicked.emit(QPointF(pt[0], pt[1]))
                     event.accept()
                     return
+            elif self._calibration_mode == "pivot":
+                pt = self.mapScreenToPixel(event.position().toPoint())
+                if pt is not None:
+                    self.pivotClicked.emit(QPointF(pt[0], pt[1]))
+                    event.accept()
+                    return
+            elif self._calibration_mode == "vertical":
+                # 与 scale 相同的两点采集，但端点有序：第一点 = top（上端），
+                # 第二点 = bottom（重力指向的下端）
+                pt = self.mapScreenToPixel(event.position().toPoint())
+                if pt is not None:
+                    if self._vertical_draw_start is not None:
+                        top = self._vertical_draw_start
+                        self._vertical_draw_start = None
+                        self._clear_scale_preview()
+                        self.verticalLineDrawn.emit(
+                            QPointF(top[0], top[1]),
+                            QPointF(pt[0], pt[1]),
+                        )
+                    else:
+                        self._vertical_draw_start = pt
+                        self._is_vertical_dragging = True
+                        self._update_scale_preview(pt, pt)
+                    event.accept()
+                    return
             elif self._annotation_mode:
                 self.annotationClicked.emit(event.position().toPoint())
                 event.accept()
@@ -795,31 +828,52 @@ class VideoView(QGraphicsView):
         if self._calibration_mode == "scale" and self._scale_draw_start is not None:
             scene_pos = self.mapToScene(event.position().toPoint())
             self._update_scale_preview(self._scale_draw_start, (scene_pos.x(), scene_pos.y()))
+        elif self._calibration_mode == "vertical" and self._vertical_draw_start is not None:
+            scene_pos = self.mapToScene(event.position().toPoint())
+            self._update_scale_preview(
+                self._vertical_draw_start, (scene_pos.x(), scene_pos.y())
+            )
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if (
-            self._calibration_mode == "scale"
-            and self._is_scale_dragging
-            and self._scale_draw_start is not None
-        ):
-            self._is_scale_dragging = False
-            pt = self.mapScreenToPixel(event.position().toPoint())
-            if pt is not None:
-                dist = math.hypot(
-                    pt[0] - self._scale_draw_start[0], pt[1] - self._scale_draw_start[1]
-                )
-                if dist >= 5.0:
-                    start_pt = self._scale_draw_start
-                    self._scale_draw_start = None
-                    self._clear_scale_preview()
-                    self.scaleLineDrawn.emit(
-                        QPointF(start_pt[0], start_pt[1]),
-                        QPointF(pt[0], pt[1]),
-                    )
-                    event.accept()
-                    return
+        if self._calibration_mode == "scale":
+            self._finish_two_point_pick(event, "scale")
+            return
+        if self._calibration_mode == "vertical":
+            self._finish_two_point_pick(event, "vertical")
+            return
         super().mouseReleaseEvent(event)
+
+    def _finish_two_point_pick(self, event: QMouseEvent, mode: str) -> None:
+        """scale/vertical 共享的拖拽成线逻辑（≥5px 才有效，防误触）。"""
+
+        if mode == "scale":
+            dragging, start, signal = (
+                self._is_scale_dragging, self._scale_draw_start, self.scaleLineDrawn)
+        else:
+            dragging, start, signal = (
+                self._is_vertical_dragging, self._vertical_draw_start,
+                self.verticalLineDrawn)
+        if not dragging or start is None:
+            if mode == "scale":
+                super().mouseReleaseEvent(event)
+            return
+        if mode == "scale":
+            self._is_scale_dragging = False
+        else:
+            self._is_vertical_dragging = False
+        pt = self.mapScreenToPixel(event.position().toPoint())
+        if pt is not None:
+            dist = math.hypot(pt[0] - start[0], pt[1] - start[1])
+            if dist >= 5.0:
+                self._scale_draw_start = None
+                self._vertical_draw_start = None
+                self._clear_scale_preview()
+                signal.emit(QPointF(start[0], start[1]), QPointF(pt[0], pt[1]))
+                event.accept()
+                return
+        if mode == "scale":
+            super().mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         # 双击回到 fit 模式（浏览模式专属；标注/标定模式下不重置）

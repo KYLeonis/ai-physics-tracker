@@ -218,9 +218,10 @@ class TestCreateAndMigrationSessionFlow:
         )
         with pytest.raises(ProjectSessionError, match="already a publication"):
             migrated_session.save_as_publication(tmp_path / "again")
+        # rootless 新项目不再要求先保存:v2 首存路径(设计决策 2)
         rootless = ProjectSession.start(ProjectRepository())
-        with pytest.raises(ProjectSessionError, match="v1 root"):
-            rootless.save_as_publication(tmp_path / "no-root")
+        saved = rootless.save_as_publication(tmp_path / "no-root")
+        assert saved.required_capabilities == PUBLICATION_REQUIRED_CAPABILITIES
 
 
 class TestExperimentTransactions:
@@ -833,3 +834,115 @@ def create_project_plain():
     from ai_physics_tracker.domain.project import create_project
 
     return create_project("dispatch")
+
+
+class TestPublicationFirstSaveAndAcceptance:
+    """P1.1-S5:rootless v2 首存路径与迁移结果整会话采纳。"""
+
+    def test_rootless_project_first_saves_as_v2_without_migration(self, tmp_path):
+        video = _video()
+        session = ProjectSession.start(ProjectRepository())
+        project = Project(
+            project_id=session.project.project_id,
+            name="rootless",
+            created_at=session.project.created_at,
+            modified_at=session.project.modified_at,
+            videos=(video,),
+            timelines=(_timeline(video),),
+        )
+        session = ProjectSession(ProjectRepository(), project)
+        tracks = tuple(session.add_track(video.video_id) for _ in range(4))
+        roles = PendulumRoles(
+            tip=tracks[0].track_id,
+            body_top=tracks[1].track_id,
+            body_bottom=tracks[2].track_id,
+            pivot=tracks[3].track_id,
+        )
+        destination = tmp_path / "first-v2"
+        saved = session.save_as_publication(destination, roles)
+        assert saved.required_capabilities == PUBLICATION_REQUIRED_CAPABILITIES
+        assert session.project_root == destination.resolve()
+        manifest = __import__("json").loads(
+            (destination / "project.json").read_text(encoding="utf-8")
+        )
+        assert manifest["schema_version"] == 2
+        # 新项目首存不是迁移:无 migration 记录
+        assert "migration" not in manifest
+        assert len(session.pendulum_experiments()) == 1
+        assert not session.can_undo  # 保存边界
+
+    def test_accept_migrated_snapshot_adopts_full_state(self, tmp_path):
+        repository = ProjectRepository()
+        video = _video()
+        from ai_physics_tracker.application.refinement_history import (
+            RefinementState,
+            attach_refinement_state,
+        )
+
+        tip_track = _track(video, "tip")
+        legacy = TrackingRun(
+            run_id=uuid4(),
+            video_id=video.video_id,
+            member_track_ids=(tip_track.track_id,),
+            engine="dlc",
+            engine_version="3.0.1",
+            task_type="infer",
+            config={},
+            source_detail="dlc:infer:legacy",
+            created_at=utc_now(),
+            status="completed",
+            completed_at=utc_now(),
+        )
+        bound_track = attach_refinement_state(
+            tip_track, RefinementState(active_infer_run_id=legacy.run_id)
+        )
+        tracks = (
+            bound_track,
+            _track(video, "body top"),
+            _track(video, "body bottom"),
+            _track(video, "pivot"),
+            _track(video, "free"),
+        )
+        project = Project(
+            project_id=uuid4(),
+            name="accept",
+            created_at=utc_now(),
+            modified_at=utc_now(),
+            videos=(video,),
+            timelines=(_timeline(video),),
+            tracks=tracks,
+            tracking_runs=(legacy,),
+        )
+        live = ProjectSession(repository, project)
+        live.save_as(tmp_path / "v1")
+        live = ProjectSession.load(repository, tmp_path / "v1")
+
+        roles = PendulumRoles(
+            tip=tracks[0].track_id,
+            body_top=tracks[1].track_id,
+            body_bottom=tracks[2].track_id,
+            pivot=tracks[3].track_id,
+        )
+        candidate = live.detached()
+        candidate.save_as_publication(tmp_path / "v2", roles)
+
+        live.accept_migrated_snapshot(candidate)
+        assert live.project_root == (tmp_path / "v2").resolve()
+        assert live.project.required_capabilities
+        assert len(live.pendulum_experiments()) == 1
+        # 迁移对 tracks 的改写(清 legacy 指针)必须反映到 live 镜像
+        assert all(
+            point.source == "manual"
+            for point in live.project.observations
+        )
+        from ai_physics_tracker.application.refinement_history import (
+            extract_refinement_state,
+        )
+
+        assert (
+            extract_refinement_state(
+                next(t for t in live.tracks if t.track_id == tracks[0].track_id)
+            ).active_infer_run_id
+            is None
+        )
+        assert not live.can_undo and not live.can_redo

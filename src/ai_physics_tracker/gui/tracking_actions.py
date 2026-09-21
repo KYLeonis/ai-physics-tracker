@@ -145,7 +145,9 @@ class TrackingActions(QObject):
                self.window.reviewActions.is_correcting
                if hasattr(self.window, "reviewActions") else False,
                self.window.reviewActions.paused_run_id
-               if hasattr(self.window, "reviewActions") else None)
+               if hasattr(self.window, "reviewActions") else None,
+               tuple((item.experiment_id, item.measurement_revision)
+                     for item in session.pendulum_experiments()) if session else ())
         if key == self._context_key:
             return
         self._context_key = key
@@ -671,6 +673,23 @@ class TrackingActions(QObject):
             return
         if action_id == "set_scale":
             window.beginCalibrationFlow("acquire")
+            return
+        if action_id == "create_experiment":
+            window.projectActions.createPendulumExperiment()
+            return
+        if action_id == "setup_fixed_pivot":
+            window.setWorkspace("setup")
+            window.beginPivotPick()
+            return
+        if action_id == "setup_true_vertical":
+            window.setWorkspace("setup")
+            window.beginVerticalPick()
+            return
+        if action_id == "setup_physical":
+            window.openPhysicalDialog()
+            return
+        if action_id == "set_release_frame":
+            window._setReleaseToCurrentFrame()
             return
         track_id = window.selectedTrackId
         if session is None or track_id is None:

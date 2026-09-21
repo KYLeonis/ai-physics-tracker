@@ -9,8 +9,13 @@ from PySide6.QtCore import QObject, QTimer, Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
 
+from ai_physics_tracker.application import user_messages
 from ai_physics_tracker.application.project_media import PreparedProject
-from ai_physics_tracker.application.project_session import ProjectSession
+from ai_physics_tracker.application.project_session import (
+    ProjectSession,
+    ProjectSessionError,
+)
+from ai_physics_tracker.gui.pendulum_setup import PendulumWizardDialog
 
 if TYPE_CHECKING:
     from ai_physics_tracker.gui.main_window import MainWindow
@@ -32,6 +37,7 @@ class ProjectActions(QObject):
         self._progress: QProgressDialog | None = None
         self._future: Future | None = None
         self._completion: Callable | None = None
+        self._failure_message: Callable[[str], object] | None = None
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._poll)
         menu = window.menuBar().addMenu("File")
@@ -39,6 +45,7 @@ class ProjectActions(QObject):
             ("New project", QKeySequence.StandardKey.New, self.newProject),
             ("Open project…", QKeySequence.StandardKey.Open, self.openProject),
             ("Open video (new session)…", None, self.openVideo),
+            ("Create Pendulum experiment…", None, self.createPendulumExperiment),
             ("Save", QKeySequence.StandardKey.Save, self.save),
             ("Save as…", QKeySequence.StandardKey.SaveAs, self.saveAs),
             ("Relink video…", None, self.relinkVideo),
@@ -52,6 +59,10 @@ class ProjectActions(QObject):
             action.triggered.connect(lambda _checked=False, fn=callback: fn())
             menu.addAction(action)
             self.actions.append(action)
+            if title == "Save as…":
+                self.saveAsAction = action
+            elif title == "Relink video…":
+                self.relinkVideoAction = action
 
     def refresh(self) -> None:
         session = self.window._annotation_session
@@ -60,9 +71,9 @@ class ProjectActions(QObject):
         self.window.setWindowTitle(f"{name}{dirty} — AI Physics Tracker")
         tracking = getattr(self.window, "trackingActions", None)
         if tracking is not None and not self.busy:
-            for index in (4, 5):
-                self.actions[index].setEnabled(not tracking.pending)
-                self.actions[index].setToolTip("Cancel the AI task before changing project/media location" if tracking.pending else "")
+            for action in (self.saveAsAction, self.relinkVideoAction):
+                action.setEnabled(not tracking.pending)
+                action.setToolTip("Cancel the AI task before changing project/media location" if tracking.pending else "")
 
     def guarded(self, continuation: Callable[[], None]) -> None:
         if self.busy:
@@ -215,6 +226,81 @@ class ProjectActions(QObject):
         self._future = self.executor.submit(save_worker, self._cancel)
         self._timer.start(30)
 
+    def createPendulumExperiment(self) -> None:
+        """向导入口：v1 项目走 Save As publication 迁移；已 publication 项目
+        直接创建 experiment；rootless 新项目以 v2 首存。"""
+
+        if self.busy:
+            return
+        session = self.window._annotation_session
+        video_id = self.window.activeVideoId
+        if session is None or video_id is None:
+            QMessageBox.information(
+                self.window, "Create Pendulum experiment",
+                "Open an experiment video first.")
+            return
+        if any(
+            item.video_id == video_id for item in session.pendulum_experiments()
+        ):
+            QMessageBox.information(
+                self.window, "Create Pendulum experiment",
+                "This video already has a pendulum experiment.")
+            return
+        tracks = [t for t in session.tracks if t.video_id == video_id]
+        require_destination = not session.project.required_capabilities
+        wizard = PendulumWizardDialog(
+            tracks, require_destination=require_destination, parent=self.window)
+        if wizard.exec() != wizard.DialogCode.Accepted:
+            return
+        roles = wizard.pendulum_roles()
+        if session.project.required_capabilities:
+            # 已是 publication 项目：直接创建（可撤销的单次事务）
+            try:
+                session.create_pendulum_experiment(video_id, roles)
+            except ProjectSessionError as error:
+                QMessageBox.warning(
+                    self.window, "Create Pendulum experiment", str(error))
+                return
+            self.window._afterPendulumChange("Pendulum experiment created")
+            return
+        destination = wizard.destination()
+        self._publishPublicationCandidate(destination, roles)
+
+    def _publishPublicationCandidate(self, destination, roles) -> None:
+        tracking = getattr(self.window, "trackingActions", None)
+        if tracking and tracking.pending:
+            self.window.statusBar().showMessage(
+                "Cancel the AI task before creating the publication copy")
+            return
+        session = self.window._annotation_session
+        if session is None:
+            return
+        candidate = session.detached()
+        candidate.update_view_state(self.window.captureProjectView())
+
+        def migration_worker(_cancel: Event) -> ProjectSession:
+            candidate.save_as_publication(destination, roles)
+            return candidate
+
+        def accept(saved: ProjectSession) -> None:
+            if self.window._annotation_session is not session:
+                return
+            # 迁移可能改写 tracks（清 legacy 指针）：整会话采纳，不走
+            # accept_saved_snapshot 的"保留 live 数据"语义。
+            session.accept_migrated_snapshot(saved)
+            self.window._refreshTrackList()
+            self.window._refreshCalibrationUI()
+            self.window._refreshHistoryButtons()
+            self.window.statusBar().showMessage(
+                user_messages.publication_created(str(saved.project_root)).title)
+            self.refresh()
+
+        # 与 save_as 相同的不可取消文件提交阶段；失败用三问结论呈现
+        self._run(
+            migration_worker, accept, cancellable=False,
+            failure_message=user_messages.publication_migration_failed,
+        )
+
     def saveAs(self, after: Callable[[], None] | None = None) -> None:
         tracking = getattr(self.window, "trackingActions", None)
         if tracking and tracking.pending:
@@ -250,10 +336,14 @@ class ProjectActions(QObject):
         # 文件提交阶段不接受取消，避免已写入但 UI 声称未保存；选择目录阶段可取消。
         self._run(save_worker, accept, cancellable=False)
 
-    def _run(self, work: Callable, completion: Callable, *, cancellable: bool) -> None:
+    def _run(
+        self, work: Callable, completion: Callable, *, cancellable: bool,
+        failure_message: Callable[[str], object] | None = None,
+    ) -> None:
         if self.busy:
             return
         self.busy = True
+        self._failure_message = failure_message
         self._cancellable = cancellable
         self._cancel = Event()
         self._completion = completion
@@ -301,7 +391,13 @@ class ProjectActions(QObject):
         except CancelledError:
             self.window.statusBar().showMessage("Cancelled; current project retained")
         except Exception as error:
-            QMessageBox.critical(self.window, "Project operation failed", str(error))
+            if self._failure_message is not None:
+                message = self._failure_message(str(error))
+                QMessageBox.critical(
+                    self.window, str(getattr(message, "title", "Operation failed")),
+                    str(getattr(message, "full_text", lambda: str(error))()))
+            else:
+                QMessageBox.critical(self.window, "Project operation failed", str(error))
         if self.busy:
             return  # 保存后续动作已启动新任务，不恢复旧任务的交互状态。
         self.window.syncVideoSelector()

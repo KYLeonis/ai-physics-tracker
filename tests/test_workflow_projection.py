@@ -31,6 +31,9 @@ from ai_physics_tracker.application.workflow_projection import (
     ACTION_START_LEARNING,
     ACTION_UPDATE_CHARTS,
     ACTION_VIEW_ANALYSIS,
+    ACTION_CREATE_EXPERIMENT,
+    MODE_ANNOTATE,
+    MODE_SETUP,
     ANALYSIS_LATEST,
     ANALYSIS_NEEDS_UPDATE,
     ANALYSIS_NOT_COMPUTABLE,
@@ -747,3 +750,103 @@ def test_candidate_comparison_non_finite_metrics_are_incomparable(
     facts = candidate_comparison(session, track.track_id, session.tracking_runs())
     assert facts.conclusion == COMPARISON_INCOMPARABLE
     assert "nan" in facts.detail
+
+
+class TestPendulumSetupProjection:
+    """P1.1-S5:experiment 事实投影与任务卡(experiment 存在时优先 setup 卡)。"""
+
+    def _v1_session(self, tmp_path: Path):
+        session = ProjectSession.start(ProjectRepository(), name="PendulumProj")
+        session.save_as(tmp_path / "v1")
+        video_file = tmp_path / "clip.mp4"
+        video_file.write_bytes(b"dummy")
+        video, _ = session.register_external_video(video_file, _info(frame_count=20))
+        tracks = [session.add_track(video.video_id) for _ in range(4)]
+        return session, video, tracks
+
+    def _roles(self, tracks):
+        from ai_physics_tracker.domain.pendulum import PendulumRoles
+
+        return PendulumRoles(
+            tip=tracks[0].track_id,
+            body_top=tracks[1].track_id,
+            body_bottom=tracks[2].track_id,
+            pivot=tracks[3].track_id,
+        )
+
+    def _migrated(self, tmp_path: Path):
+        session, video, tracks = self._v1_session(tmp_path)
+        session.save_as_publication(tmp_path / "v2", self._roles(tracks))
+        return session, video, tracks
+
+    def test_fresh_v1_project_offers_create_experiment_secondary(self, tmp_path):
+        session, video, tracks = self._v1_session(tmp_path)
+        state = project_workflow_state(session, tracks[0].track_id, ())
+        card = select_task_card(state)
+        assert state.pendulum is None
+        assert state.pendulum_creation_available
+        assert card.mode == MODE_ANNOTATE
+        assert card.secondary[0].action_id == ACTION_CREATE_EXPERIMENT
+
+    def test_pendulum_card_lists_missing_setup_in_order(self, tmp_path):
+        from ai_physics_tracker.application.workflow_projection import (
+            ACTION_SET_RELEASE,
+            ACTION_SET_SCALE,
+            ACTION_SETUP_FIXED_PIVOT,
+            ACTION_SETUP_PHYSICAL,
+            ACTION_SETUP_TRUE_VERTICAL,
+        )
+
+        session, video, tracks = self._migrated(tmp_path)
+        state = project_workflow_state(session, tracks[0].track_id, ())
+        card = select_task_card(state)
+        assert card.mode == MODE_SETUP
+        assert card.title == "Current: pendulum experiment setup"
+        assert card.primary.action_id == ACTION_SETUP_FIXED_PIVOT
+        secondary_ids = [spec.action_id for spec in card.secondary]
+        assert secondary_ids == [
+            ACTION_SETUP_TRUE_VERTICAL,
+            ACTION_SET_SCALE,
+            ACTION_SETUP_PHYSICAL,
+            ACTION_SET_RELEASE,
+        ]
+
+    def test_setup_complete_falls_through_to_generic_flow(self, tmp_path):
+        from ai_physics_tracker.domain.calibration import Calibration
+        from ai_physics_tracker.domain.pendulum import (
+            PendulumGeometry,
+            PhysicalParameters,
+            TrueVertical,
+        )
+
+        session, video, tracks = self._migrated(tmp_path)
+        experiment = session.pendulum_experiments()[0]
+        session._verified_videos.add(video.video_id)
+        session.add_calibration(
+            Calibration(
+                calibration_id=uuid4(),
+                video_id=video.video_id,
+                name="ruler",
+                scale_end_1_px=(0.0, 0.0),
+                scale_end_2_px=(10.0, 0.0),
+                known_length=0.1,
+                unit="m",
+                created_at=__import__("ai_physics_tracker.domain.types", fromlist=["utc_now"]).utc_now(),
+            )
+        )
+        session.set_fixed_pivot(experiment.experiment_id, (5.0, 5.0))
+        session.set_true_vertical(experiment.experiment_id, (5.0, 1.0), (5.5, 19.0))
+        session.confirm_true_vertical(experiment.experiment_id)
+        session.set_physical(
+            experiment.experiment_id,
+            PhysicalParameters(
+                length_m=1.0, g_m_s2=9.8, length_source="s", g_source="s"
+            ),
+        )
+        session.set_release_frame(experiment.experiment_id, 2)
+
+        state = project_workflow_state(session, tracks[0].track_id, ())
+        assert state.pendulum is not None
+        assert state.pendulum.setup_complete
+        card = select_task_card(state)
+        assert card.title != "Current: pendulum experiment setup"

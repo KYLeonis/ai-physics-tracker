@@ -542,6 +542,23 @@ class ProjectSession:
             ui_state=saved.project.ui_state,
         )
 
+    def accept_migrated_snapshot(self, saved: "ProjectSession") -> None:
+        """整会话采纳迁移结果：迁移会改写 tracks（清 legacy 指针），因此
+        不走 accept_saved_snapshot 的"保留 live 数据"语义。
+
+        时序验证状态（_verified_videos）保留：迁移不改 video 身份，
+        重验只会浪费用户时间。undo/redo 清空（保存边界语义）。
+        """
+
+        if saved.project.project_id != self.project.project_id:
+            raise ProjectSessionError("Saved snapshot belongs to another project")
+        self._project = saved.project
+        self._saved_project = saved._saved_project
+        self._project_root = saved._project_root
+        self._store = TrackStore(saved.project.tracks, saved.project.observations)
+        self._undo_stack.clear()
+        self._redo_stack.clear()
+
     def apply_tracking_candidate(self, candidate: "TrackingCandidate") -> bool:
         """主线程只接收仍匹配当前快照的后台候选；过期时由调用方重新准备。"""
         if self._project is not candidate.base_project:
@@ -2171,11 +2188,13 @@ class ProjectSession:
     def save_as_publication(
         self, destination: Path, roles: PendulumRoles | None = None
     ) -> Project:
-        """v1→v2 显式迁移到新目录（ADR-0017）；成功后切换会话根目录。
+        """保存为 publication 项目（ADR-0017）；成功后切换会话根目录。
 
-        `roles` 提供时在同一 candidate 中创建首个 experiment（向导的
+        已有 v1 根目录 → 显式迁移到新目录（记录 source manifest SHA）；
+        尚未保存的新项目 → 以 v2 首存（设计决策 2，无迁移记录）。`roles`
+        提供时在同一 candidate 中创建首个 experiment（向导的
         "destination + 完整四 role draft 一次提交"）。任何失败保持当前
-        v1 session/root/manifest/backup 不变。
+        session/root/manifest/backup 不变。
         """
 
         if not isinstance(self._repository, PublicationRepositoryPort):
@@ -2187,39 +2206,16 @@ class ProjectSession:
                 "project is already a publication project"
             )
         if self._project_root is None:
-            raise ProjectSessionError(
-                "save the project first; publication migration requires a v1 root"
-            )
+            return self._first_save_publication(destination, roles)
         candidate = replace(
             self._project, required_capabilities=PUBLICATION_REQUIRED_CAPABILITIES
         )
         if roles is not None:
-            video_ids = {
-                track.video_id for track in self._project.tracks
-                if track.track_id in roles.track_ids()
-            }
-            if len(video_ids) != 1:
-                raise ProjectSessionError(
-                    "pendulum roles must reference four tracks of one video"
-                )
-            experiment = create_pendulum_experiment(
-                uuid4(), video_ids.pop(), roles
-            )
             # 契约 §2：迁移时清除/归档 bound Track 的旧单轨 active 指针——
             # experiment 是唯一 activation 真值，遗留指针会造成双源显示且
             # guard 封死了应用内清理路径。activation_history 保留在
             # refinement state 内作为归档记录。
-            stripped_tracks = tuple(
-                self._strip_legacy_active_pointer(track)
-                if track.track_id in roles.track_ids()
-                else track
-                for track in self._project.tracks
-            )
-            candidate = replace(
-                candidate,
-                tracks=stripped_tracks,
-                experiments=(experiment,),
-            )
+            candidate = self._candidate_with_experiment(candidate, roles)
         destination = destination.resolve()
         saved = self._repository.save_as_publication(
             self._project_root, destination, candidate
@@ -2232,6 +2228,49 @@ class ProjectSession:
         self._undo_stack.clear()
         self._redo_stack.clear()
         return saved
+
+    def _first_save_publication(
+        self, destination: Path, roles: PendulumRoles | None
+    ) -> Project:
+        """新项目 v2 首存：无 v1 源，不写 migration 记录（设计决策 2）。"""
+
+        candidate = replace(
+            self._project, required_capabilities=PUBLICATION_REQUIRED_CAPABILITIES
+        )
+        if roles is not None:
+            candidate = self._candidate_with_experiment(candidate, roles)
+        destination = destination.resolve()
+        saved = self._repository.create_from_project(destination, candidate)
+        self._project = saved
+        self._project_root = destination
+        self._saved_project = saved
+        self._store = TrackStore(saved.tracks, saved.observations)
+        self._undo_stack.clear()
+        self._redo_stack.clear()
+        return saved
+
+    def _candidate_with_experiment(
+        self, candidate: Project, roles: PendulumRoles
+    ) -> Project:
+        video_ids = {
+            track.video_id for track in candidate.tracks
+            if track.track_id in roles.track_ids()
+        }
+        if len(video_ids) != 1:
+            raise ProjectSessionError(
+                "pendulum roles must reference four tracks of one video"
+            )
+        experiment = create_pendulum_experiment(uuid4(), video_ids.pop(), roles)
+        # 契约 §2：绑定即清除/归档旧单轨 active 指针（guard 会封死旧清理路径）
+        stripped_tracks = tuple(
+            self._strip_legacy_active_pointer(track)
+            if track.track_id in roles.track_ids()
+            else track
+            for track in candidate.tracks
+        )
+        return replace(
+            candidate, tracks=stripped_tracks, experiments=(experiment,)
+        )
 
     @staticmethod
     def _strip_legacy_active_pointer(track: Track) -> Track:

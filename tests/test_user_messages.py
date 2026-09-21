@@ -18,6 +18,8 @@ from ai_physics_tracker.application import user_messages as um
     um.no_difficult_frames(excluded_count=4),
     um.activation_failure("artifact missing"),
     um.charts_not_updated("inputs changed"),
+    um.publication_migration_failed("destination exists"),
+    um.publication_created("/tmp/demo"),
 ])
 def test_every_failure_message_answers_three_questions(message) -> None:
     assert message.answers_three_questions()
