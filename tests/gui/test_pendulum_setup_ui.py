@@ -18,7 +18,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from PySide6.QtCore import QPointF
-from PySide6.QtWidgets import QDialog, QFileDialog
+from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.project_session import ProjectSession
@@ -492,3 +492,117 @@ def test_card_actions_route_to_pendulum_entries(
     window.trackingActions._onCardAction("setup_true_vertical")
     assert window.videoView.is_calibration_mode() == "vertical"
     window._exitAnnotationMode()
+
+
+class TestPublicationFailureAndReopen:
+    """P1.1-S6:迁移失败探针与 setup 事实的保存重开。"""
+
+    def test_migration_failure_shows_three_question_message_and_keeps_session(
+        self, qtbot, synthetic_video_path, tmp_path, monkeypatch
+    ):
+        window = _window()
+        qtbot.addWidget(window)
+        assert window.openVideo(synthetic_video_path, show_error=False)
+        session = window.analysisSession
+        session.save_as(tmp_path / "v1")
+        tracks = [session.add_track(window.activeVideoId) for _ in range(4)]
+        destination = tmp_path / "broken-copy"
+
+        shown: list[str] = []
+
+        def critical(parent, title, text, *args, **kwargs):
+            shown.append(f"{title}\n{text}")
+
+        monkeypatch.setattr(QMessageBox, "critical", staticmethod(critical))
+
+        def failing_save_as_publication(self_repo, source, dest, project):
+            raise RuntimeError("simulated disk failure; recovery staging: /tmp/x")
+
+        monkeypatch.setattr(
+            ProjectRepository, "save_as_publication", failing_save_as_publication
+        )
+        _accept_wizard(monkeypatch, tracks, destination)
+        window.projectActions.createPendulumExperiment()
+        qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
+
+        assert shown, "failure dialog must be shown"
+        joined = "\n".join(shown)
+        assert "not created" in joined          # 发生了什么
+        assert "unchanged" in joined            # 数据是否还在
+        assert "Next:" in joined                # 下一步
+        # 失败后 v1 会话原样保留:根目录与 schema 都不变
+        assert window.analysisSession is session
+        assert session.project_root == (tmp_path / "v1").resolve()
+        assert session.project.required_capabilities == ()
+        assert not destination.exists()
+
+    def test_setup_facts_survive_save_and_reopen(
+        self, qtbot, synthetic_video_path, tmp_path, monkeypatch
+    ):
+        from ai_physics_tracker.domain.calibration import Calibration
+        from ai_physics_tracker.domain.pendulum import PhysicalParameters
+        from ai_physics_tracker.domain.types import utc_now
+
+        window = _window()
+        qtbot.addWidget(window)
+        assert window.openVideo(synthetic_video_path, show_error=False)
+        session = window.analysisSession
+        session.save_as(tmp_path / "v1")
+        tracks = [session.add_track(window.activeVideoId) for _ in range(4)]
+        _accept_wizard(monkeypatch, tracks, tmp_path / "v2")
+        window.projectActions.createPendulumExperiment()
+        qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
+
+        experiment = window.analysisSession.pendulum_experiments()[0]
+        session = window.analysisSession
+        session._verified_videos.add(window.activeVideoId)
+        session.add_calibration(
+            Calibration(
+                calibration_id=uuid4(),
+                video_id=window.activeVideoId,
+                name="ruler",
+                scale_end_1_px=(0.0, 0.0),
+                scale_end_2_px=(10.0, 0.0),
+                known_length=0.1,
+                unit="m",
+                created_at=utc_now(),
+            )
+        )
+        session.set_fixed_pivot(experiment.experiment_id, (12.0, 34.0))
+        session.set_true_vertical(experiment.experiment_id, (12.0, 2.0), (13.0, 44.0))
+        session.confirm_true_vertical(experiment.experiment_id)
+        session.set_physical(
+            experiment.experiment_id,
+            PhysicalParameters(
+                length_m=0.5, g_m_s2=9.81, length_source="ruler", g_source="standard"
+            ),
+        )
+        window._presented_frame_index = 2
+        session.set_release_frame(experiment.experiment_id, 2)
+        before = session.pendulum_experiments()[0]
+        session.save()
+
+        # 重开:走 openProject 的文件对话框路径
+        monkeypatch.setattr(
+            QFileDialog,
+            "getOpenFileName",
+            staticmethod(
+                lambda *a, **k: (str(tmp_path / "v2" / "project.json"), "")
+            ),
+        )
+        window.projectActions.openProject()
+        qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
+
+        reopened = window.analysisSession
+        assert reopened is not session
+        assert reopened.project_root == (tmp_path / "v2").resolve()
+        restored = reopened.pendulum_experiments()[0]
+        assert restored == before  # frozen 事实完整往返(含 revision/history)
+        assert restored.geometry.fixed_pivot_px == (12.0, 34.0)
+        assert restored.geometry.true_vertical.direction_confirmed
+        assert restored.physical is not None and restored.physical.length_m == 0.5
+        assert restored.release_frame_index == 2
+        qtbot.waitUntil(
+            lambda: "Setup complete" in window.pendulumPanel.statusLabel.text(),
+            timeout=5000,
+        )
