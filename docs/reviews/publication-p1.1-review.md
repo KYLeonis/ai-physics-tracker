@@ -3,11 +3,11 @@
 - Date:2026-09-21;Scope:P1.1 S1–S4(schema v2 domain/serializer、Save As 迁移、session invariants/legacy guards、geometry/release 动作),commits `c7e3dd0` + `0d0970b`,分支 `feat/p1.1-pendulum-setup`。
 - Reviewer:两个 fresh-context 只读 GLM-5.3-Flash agent 并行(R1 legacy bypass/guard 专项;R2 schema/migration/data-loss 专项)。Reviewer 只读,处置全部由实现方完成并复测。
 - 计划:[p1.1 执行 mini-plan](../../publication/plans/p1.1-pendulum-setup-execution.md);契约:[experiment-run-derived-contracts](../../publication/spec/experiment-run-derived-contracts.md);ADR-0017。
-- 状态:**S3 gate 进行中**——R1 findings 已全部修复复测;R2 首次运行因网络中断,已重试。S5 GUI 在本 review 关闭前不开始。
+- 状态:**S3 review gate 的两轮初审 NEEDS-FIX 已全部修复复测(899 passed)**;S6 收尾前做最终 re-review。S5 GUI 尚未开始。
 
 ## R1 — legacy bypass / guard 完整性专项
 
-Verdict(初审):NEEDS-FIX → 修复后由实现方复测(下表);最终复审待 S6 前统一进行。
+Verdict(初审):NEEDS-FIX → 全部 findings 已修复复测(下表)。
 
 | Finding | 摘要 | 处置 | 状态 |
 | --- | --- | --- | --- |
@@ -23,14 +23,27 @@ R1 其余专项结论(无 finding):guard 拒绝后五状态零变化;rebind 单�
 
 ## R2 — schema / migration / data-loss 专项
 
-(首次运行因 API 网络 DNS 故障中断;重试结果待补。)
+Verdict(初审):NEEDS-FIX → 全部 findings 已修复并复测(下表)。方法:代码走读 + 全量测试 + 7 个 /tmp 对抗性验证脚本(旧 serializer 字节级对照、30+ 类恶意 payload、迁移故障注入、undo/redo 混合序列、binding 篡改、task-result 交换)。
+
+| Finding | 摘要 | 处置 | 状态 |
+| --- | --- | --- | --- |
+| F1 (Major) | joint run 在场时 `_check_validation_series_removal`/`correct_suggested_frame` 经 `run.track_id` 抛裸 ValueError,validation series 删除/undo 永久不可用 | 两处改成员判断;review 路径对多成员 run 显式 ProjectSessionError。回归:`test_validation_series_ops_survive_joint_run_presence` | CLOSED(fixed `d999ad7`) |
+| F2 (Major) | 两步流(先迁移后 `create_pendulum_experiment`)不清 legacy 单轨 active 指针,guard 封死后无清理路径 | `create_pendulum_experiment` 对四个新 bound track 执行与迁移一致的 strip(归档保留)。回归:`test_create_experiment_strips_legacy_active_pointers` | CLOSED(fixed `d999ad7`) |
+| F3 (Minor) | 迁移静默丢弃与 v2 顶层键(`experiments` 等)同名的 v1 未知 sibling | `save_as_publication` fail closed 拒绝并点名冲突键。回归:`test_migration_rejects_v2_colliding_extra_keys` | CLOSED(fixed `d999ad7`) |
+| F4 (Minor) | active run 的 role_bindings 与当前 roles 置换不一致时加载不拒绝(契约 §2"加载时也验证") | active 指针校验补 `run.role_bindings != experiment.roles → raise`。回归:`test_active_run_role_binding_permutation_rejected` | CLOSED(fixed `d999ad7`) |
+| F5 (Nit) | v1 manifest 键序改变(tracking_runs 移末尾) | v1/v2 writer 显式排序,恢复原布局 | CLOSED(fixed `d999ad7`) |
+| F6 (Nit) | serializer 直调时 `2.0`/`True` 因 Python `==` 语义误入 v2/v1 分支 | dispatch 前置 bool/非 int 拒绝。回归:`test_serializer_dispatch_rejects_non_integer_schema_version` | CLOSED(fixed `d999ad7`) |
+| F7 (Nit) | 缺键 payload 抛裸 KeyError | `payload_helpers.string/integer/number` 缺键抛带键名 ValueError | CLOSED(fixed `d999ad7`) |
+
+R2 通过项(无 finding):v1 纯净性(域层+serializer 双保险,generic 项目不可能被写成 v2);v2 读侧 30+ 类恶意 payload 全拒绝;迁移 8 类故障注入下源目录零改动、staging 总保留、migration SHA 对应磁盘原件;快照一致性(9 元组在 undo/redo/accept_* 全路径一致);dispatch 边界;双 codec(v2 中 generic/legacy run 语义一致)。
 
 ## Verification
 
-- 修复后全量:`python -m pytest` **894 passed, 9 subtests**(基线 804 + 新增 90:P1.1 domain/serializer/migration/session/review 回归);`compileall` 通过。
-- 新增测试文件:`tests/test_pendulum_experiment.py`、`tests/test_project_serializer_v2.py`、`tests/test_publication_migration.py`、`tests/test_pendulum_session.py`;更新 `tests/publication/test_legacy_reader_boundary.py`(v2 合法 payload 现在应加载,缺/未知 capability 仍拒绝且 manifest 不动)。
+- 修复后全量:`python -m pytest` **899 passed, 9 subtests**(基线 804 + P1.1 新增 95);`compileall` 通过。
+- 新增测试文件:`tests/test_pendulum_experiment.py`、`tests/test_project_serializer_v2.py`、`tests/test_publication_migration.py`、`tests/test_pendulum_session.py`(含 R1/R2 回归);更新 `tests/publication/test_legacy_reader_boundary.py`(v2 合法 payload 现在应加载,缺/未知 capability 仍拒绝且 manifest 不动)。
 - 测试机械迁移(TrackingRun `track_id`→`member_track_ids`)由独立 Flash agent 完成(9 文件 20 处),其发现的唯一真实回归(`training_job.py:223` 关键字漏改)由实现方修复。
+- 两个 Reviewer 均只读;R1 初次启动的 code-reviewer agent 因缺思考档位配置失败,改用 general-purpose(同 Flash)完成;`~/.zcode/agents/code-reviewer.md` 已补 `$high` 档位待下次会话生效。
 
 ## Boundary
 
-本 review 覆盖 S1–S4 的数据/兼容面。S5 GUI 与 S6 集成/Human Review 未开始;真实 DLC smoke 不适用于 P1.1(计划明确无 AI 验收);Windows G1–G4 仍为批准的 P6 前门禁。
+本 review 覆盖 S1–S4 的数据/兼容面,两轮初审 NEEDS-FIX 的全部 Major/Minor/Nit 已修复复测;S6 收尾前将做最终 re-review 复核。S5 GUI 与 S6 集成/Human Review 未开始;真实 DLC smoke 不适用于 P1.1(计划明确无 AI 验收);Windows G1–G4 仍为批准的 P6 前门禁。
