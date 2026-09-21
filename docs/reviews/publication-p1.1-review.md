@@ -44,6 +44,26 @@ R2 通过项(无 finding):v1 纯净性(域层+serializer 双保险,generic 项�
 - 测试机械迁移(TrackingRun `track_id`→`member_track_ids`)由独立 Flash agent 完成(9 文件 20 处),其发现的唯一真实回归(`training_job.py:223` 关键字漏改)由实现方修复。
 - 两个 Reviewer 均只读;R1 初次启动的 code-reviewer agent 因缺思考档位配置失败,改用 general-purpose(同 Flash)完成;`~/.zcode/agents/code-reviewer.md` 已补 `$high` 档位待下次会话生效。
 
+## R3 — S5/S6 最终复审(2026-09-21)
+
+Reviewer 只读复审 S5(`55ce737`)/S6(`0fd3494`),方法:代码走读 + 全量 917 passed + 4 个 /tmp 探针。初审 Verdict:NEEDS-FIX → 全部 findings 修复复测(920 passed,commit `157ed8e`)。
+
+| Finding | 摘要 | 处置 | 状态 |
+| --- | --- | --- | --- |
+| S6-R1 (Major) | pivot/true vertical 写入后视频上无持久标记,偏离 HR-3.2 语义(探针实证 scene 零几何图元) | `PendulumOverlayView` 只读视图模型 + `VideoView.set_pendulum_overlay`(十字 pivot、虚线未确认/实线已确认 vertical + down 标签),`_refreshPendulumOverlay` 从 experiment.geometry 投影。回归:`test_geometry_overlay_persisted_after_writes` | CLOSED(fixed `157ed8e`) |
+| S6-R2 (Minor) | `_failure_message` 残留使后续 autosave 失败被误报为迁移失败(探针复现) | `_poll` finally 清空。回归:`test_migration_failure_shows_three_question_message_and_keeps_session` 路径覆盖 | CLOSED(fixed `157ed8e`) |
+| S6-R3 (Minor) | 向导缺省四组合框同选第 0 项必报重复;<4 track 无创建出口 | ≥4 track 预填四个不同 track;每 role 提供 "New track" 创建按钮(session 回调);<4 track 不再死路。回归:preselect/create-button 两用例 | CLOSED(fixed `157ed8e`) |
+| S6-R4 (Nit) | 迁移成功状态栏不含副本路径 | 状态栏附 `project_root` | CLOSED(fixed `157ed8e`) |
+| S6-R5 (Nit) | rootless 首存沿用"原项目不动"文案 | `first_save` 参数切换文案 | CLOSED(fixed `157ed8e`) |
+| S6-R6 (Nit) | 点选模式不清 track 选择;seekFrame 退出不隐藏引导条 | 入口 `clearSelection()`(与 scale/origin 一致);seekFrame 分支隐藏引导 | CLOSED(fixed `157ed8e`) |
+| S6-R7 (Nit) | 直创建路径不检查 tracking.pending | 与迁移路径相同的 pending 检查 | CLOSED(fixed `157ed8e`) |
+
+R3 指定审查项结论:GUI 单一事实源通过(setup 写入全经 ProjectSession,完整性只算于 `pendulum_setup_status`,向导只持 draft);G1/G2/F2/F4 关闭项抽查无回归;HR 协议除 R1(已修)外全部对齐;线程边界/`_run` 扩展/错误处理合格。
+
+## Final verdict
+
+三轮 review(R1 guard 专项、R2 schema 专项、R3 S5/S6 终审)的全部 findings 已修复并复测;最终验证 `python -m pytest` **920 passed, 9 subtests** + `compileall` 通过。剩余 gate:**Human Review(用户照 publication/plans/p1.1-human-review.md 执行)**,通过后合并回 `publication/ejp-damped-pendulum` 并收尾。
+
 ## Boundary
 
-本 review 覆盖 S1–S4 的数据/兼容面,两轮初审 NEEDS-FIX 的全部 Major/Minor/Nit 已修复复测;S6 收尾前将做最终 re-review 复核。S5 GUI 与 S6 集成/Human Review 未开始;真实 DLC smoke 不适用于 P1.1(计划明确无 AI 验收);Windows G1–G4 仍为批准的 P6 前门禁。
+真实 DLC smoke 不适用于 P1.1(计划明确无 AI 验收);Windows G1–G4 仍为批准的 P6 前门禁;P1.2–P1.4 未开始。
