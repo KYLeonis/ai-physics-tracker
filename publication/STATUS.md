@@ -69,4 +69,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-继续 P1.1-S5:setup GUI/workflow projection(分支已就绪,挂载点见上)。S5 完成后 S6 集成验证 → Human Review(用户)→ Independent re-review → 合并回 `publication/ejp-damped-pendulum`。P1–P5期间安排原生Windows x64 G1–G4取证;**进入P6之前必须完成**,不得以CI/mock/Mac代替。
+继续 P1.1-S5:setup GUI/workflow projection(分支已就绪,挂载点见上)。S5 完成后 S6 集成验证 → [Human Review 协议已定稿](plans/p1.1-human-review.md)(用户照单执行)→ Independent re-review → 合并回 `publication/ejp-damped-pendulum`。P1–P5期间安排原生Windows x64 G1–G4取证;**进入P6之前必须完成**,不得以CI/mock/Mac代替。
