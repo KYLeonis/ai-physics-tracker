@@ -1,8 +1,8 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-09-20。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P1 — Four-Landmark Pendulum Measurement 已完成完整规划，implementation not started**。
+- 最后更新：2026-09-21。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.1-pendulum-setup`(未合并、未 push)。
+- 当前：**P1.1 S1–S6 全部实现：schema v2/迁移/事务 guards/geometry 动作 + setup GUI(向导/侧栏 checklist/视频点选/overlay)+ 三轮独立 review findings 全部修复复测(920 tests)。剩余唯一 gate:Human Review(用户照 [p1.1-human-review.md](plans/p1.1-human-review.md) 执行)，通过后合并**。P1.2–P1.4 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。P1–P6产品实现均未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
