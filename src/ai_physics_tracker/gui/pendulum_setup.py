@@ -43,6 +43,9 @@ _ROLE_DESCRIPTIONS = {
     "pivot": "the fixed suspension point (tracked for quality checks only)",
 }
 
+# 契约 §2 域字段为 length_m(米);学生用毫米输入与阅读(UI 约定,2026-09-21 HR)
+MM_PER_M = 1000.0
+
 _GAP_LABELS = {
     "fixed_pivot": "fixed pivot on the video",
     "true_vertical": "true vertical (top→bottom)",
@@ -62,9 +65,8 @@ class PendulumSetupPanel(QGroupBox):
 
         self.statusLabel = QLabel("Setup incomplete", self)
         self.statusLabel.setWordWrap(True)
-
         self.scaleLabel = QLabel("scale: not set (uses Calibration)", self)
-        self.pivotButton = QPushButton("Mark fixed pivot", self)
+        self.pivotButton = QPushButton("Mark fixed pivot…", self)
         self.pivotLabel = QLabel("fixed pivot: not set", self)
         self.verticalButton = QPushButton("Mark vertical (top→bottom)", self)
         self.verticalLabel = QLabel("true vertical: not set", self)
@@ -79,21 +81,27 @@ class PendulumSetupPanel(QGroupBox):
         self.releaseButton = QPushButton("Set release to current frame", self)
         self.releaseLabel = QLabel("release frame: not set", self)
 
+        # 260px 侧栏内 label 与按钮垂直堆叠且 label 可换行;水平并排会把
+        # "fixed pivot: (106.0, 20.0) px" 这类数值文本挤到截断(HR 反馈)
+        for name in (
+            "scaleLabel", "pivotLabel", "verticalLabel",
+            "physicalLabel", "releaseLabel",
+        ):
+            getattr(self, name).setWordWrap(True)
+
         layout = QVBoxLayout(self)
         layout.addWidget(self.statusLabel)
         layout.addWidget(self.scaleLabel)
-        for label, button in (
-            (self.pivotLabel, self.pivotButton),
-            (self.verticalLabel, self.verticalButton),
-            (self.physicalLabel, self.physicalButton),
-        ):
-            row = QHBoxLayout()
-            row.addWidget(label, 1)
-            row.addWidget(button)
-            layout.addLayout(row)
+        layout.addWidget(self.pivotLabel)
+        layout.addWidget(self.pivotButton)
+        layout.addWidget(self.verticalLabel)
+        layout.addWidget(self.verticalButton)
         layout.addWidget(self.confirmVerticalButton)
+        layout.addWidget(self.physicalLabel)
+        layout.addWidget(self.physicalButton)
         layout.addWidget(self.releaseButton)
         layout.addWidget(self.releaseLabel)
+        layout.addStretch(1)
         self.hide()
 
     def experimentId(self) -> UUID | None:
@@ -151,7 +159,7 @@ class PendulumSetupPanel(QGroupBox):
 
         if status.physical_set and experiment.physical is not None:
             self.physicalLabel.setText(
-                f"L = {experiment.physical.length_m:.3f} m, "
+                f"L = {experiment.physical.length_m * MM_PER_M:.1f} mm, "
                 f"g = {experiment.physical.g_m_s2:.2f} m/s²"
             )
         else:
@@ -357,12 +365,12 @@ class PhysicalParametersDialog(QDialog):
         form = QFormLayout(self)
 
         self.lengthSpin = QDoubleSpinBox(self)
-        self.lengthSpin.setRange(0.001, 100.0)
-        self.lengthSpin.setDecimals(4)
-        self.lengthSpin.setSuffix(" m")
+        self.lengthSpin.setRange(1.0, 100000.0)
+        self.lengthSpin.setDecimals(1)
+        self.lengthSpin.setSuffix(" mm")
         self.lengthSpin.setToolTip(
-            "Effective pivot-to-center-of-mass length (measure with a ruler; "
-            "do not estimate from the bob radius)"
+            "Effective pivot-to-center-of-mass length in millimetres (measure "
+            "with a ruler; do not estimate from the bob radius)"
         )
         form.addRow("L (pivot to center of mass):", self.lengthSpin)
 
@@ -409,8 +417,16 @@ class PhysicalParametersDialog(QDialog):
 
     def physical_parameters(self) -> PhysicalParameters:
         return PhysicalParameters(
-            length_m=self.lengthSpin.value(),
+            length_m=self.lengthSpin.value() / MM_PER_M,  # UI mm → 域 m
             g_m_s2=self.gSpin.value(),
             length_source=self.lengthSourceEdit.text().strip(),
             g_source=self.gSourceEdit.text().strip(),
         )
+
+    def set_physical(self, physical: PhysicalParameters) -> None:
+        """按已保存事实预填(域 m → UI mm)。"""
+
+        self.lengthSpin.setValue(physical.length_m * MM_PER_M)
+        self.gSpin.setValue(physical.g_m_s2)
+        self.lengthSourceEdit.setText(physical.length_source)
+        self.gSourceEdit.setText(physical.g_source)

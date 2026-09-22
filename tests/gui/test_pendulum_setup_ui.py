@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from PySide6.QtCore import QPointF
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 from pytestqt.qtbot import QtBot
 
@@ -312,13 +312,17 @@ def test_physical_dialog_saves_and_validates(
     assert dialog.validate() is not None
     dialog.gSourceEdit.setText("standard gravity")
     assert dialog.validate() is None
-    dialog.lengthSpin.setValue(2.5)
+    # UI 以 mm 输入(HR 反馈),域存储为 m(length_m 契约字段)
+    dialog.lengthSpin.setValue(2500.0)
     assert dialog.physical_parameters() == PhysicalParameters(
         length_m=2.5,
         g_m_s2=dialog.gSpin.value(),
         length_source="ruler",
         g_source="standard gravity",
     )
+    dialog.set_physical(PhysicalParameters(
+        length_m=0.5, g_m_s2=9.81, length_source="r", g_source="s"))
+    assert dialog.lengthSpin.value() == 500.0  # 域 m → UI mm 预填
 
     # 窗口入口：对话框接受后经 session 落库并刷新面板
     parameters = PhysicalParameters(
@@ -332,7 +336,7 @@ def test_physical_dialog_saves_and_validates(
         PhysicalParametersDialog, "physical_parameters", lambda self: parameters)
     window.openPhysicalDialog()
     assert window.currentPendulumExperiment().physical == parameters
-    assert "L = 1.250 m" in window.pendulumPanel.physicalLabel.text()
+    assert "L = 1250.0 mm" in window.pendulumPanel.physicalLabel.text()
 
 
 def test_release_uses_presented_frame(
@@ -660,3 +664,26 @@ class TestS6ReviewFixes:
         for role in ("tip", "body_top", "body_bottom", "pivot"):
             dialog._create_track_for_role(role)
         assert dialog.validate() is None
+
+
+def test_bound_track_disables_single_track_ai_buttons(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+) -> None:
+    """HR 反馈:bound track 上 Start learning 曾静默失败——现在按钮禁用并给出原因。"""
+
+    window = _opened_window(qtbot, synthetic_video_path)
+    session = window.analysisSession
+    tracks = _four_tracks(session, window.activeVideoId)
+    _experiment_via_menu(
+        qtbot, monkeypatch, window, tracks, tmp_path / "publication-copy")
+    # 选中一个 bound track,刷新上下文
+    window.trackList.clearSelection()
+    for row in range(window.trackList.count()):
+        if window.trackList.item(row).data(Qt.ItemDataRole.UserRole) == tracks[0].track_id:
+            window.trackList.setCurrentRow(row)
+            break
+    window.trackingActions.refresh()
+    panel = window.trackingActions.panel
+    assert not panel.trainButton.isEnabled()
+    assert "Bound to pendulum experiment" in panel.trainReasonLabel.text()
+    assert not panel.inferButton.isEnabled()

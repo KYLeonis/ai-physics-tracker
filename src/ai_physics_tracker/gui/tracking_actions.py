@@ -167,10 +167,23 @@ class TrackingActions(QObject):
             reason = "Frame selection is running"
         elif hasattr(self.window, "reviewActions") and self.window.reviewActions.busy:
             reason = "Difficult frame mining is running"
-        train_reason = reason
+        # P1.1 契约 §2:experiment-bound track 的单轨 AI 写入口 fail closed。
+        # 在按钮层提前禁用并说明,而不是点击后才在 activity 区闪一条错误;
+        # joint 训练/推理属于 P1.3/P1.4,当前版本 bound track 尚无 AI 路径。
+        bound_reason = (
+            "Bound to pendulum experiment — single-track AI disabled "
+            "(joint training comes in a later phase)"
+            if (
+                session is not None
+                and track_id is not None
+                and session.experiment_for_track(track_id) is not None
+            )
+            else None
+        )
+        train_reason = reason or bound_reason
         if not train_reason and len(session.manual_points(track_id)) < 3:
             train_reason = "Mark at least 3 frames; cover different target positions"
-        infer_reason = reason
+        infer_reason = reason or bound_reason
         if not infer_reason and not any(run.track_id == track_id and run.task_type == "train"
                 and run.status == "completed" and run.model_snapshot for run in runs):
             infer_reason = "Train a model for this track first"

@@ -1302,10 +1302,7 @@ class MainWindow(QMainWindow):
             return
         dialog = PhysicalParametersDialog(self)
         if experiment.physical is not None:
-            dialog.lengthSpin.setValue(experiment.physical.length_m)
-            dialog.gSpin.setValue(experiment.physical.g_m_s2)
-            dialog.lengthSourceEdit.setText(experiment.physical.length_source)
-            dialog.gSourceEdit.setText(experiment.physical.g_source)
+            dialog.set_physical(experiment.physical)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         try:
