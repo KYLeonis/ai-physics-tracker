@@ -67,6 +67,13 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - 验证:全量 **899 passed, 9 subtests** + `compileall`;S5 GUI 挂载点勘探完成(File 菜单 specs、workflow 投影分支、video_view 点选模式、guide 复用)。
 - 测试命令(macOS):`PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m pytest`(本 worktree 无独立 venv,借用主 worktree 解释器 + PYTHONPATH 指向本树)。
 
+## P1.2 progress (2026-09-23)
+
+- 分支 `feat/p1.2-complete-frame-annotation`;执行 mini-plan [p1.2-complete-frame-annotation-execution.md](plans/p1.2-complete-frame-annotation-execution.md)(Context Pack 勘探完成,exporter 首列缺陷定位 `dlc_adapter.py:197-204`,其固化断言 `test_dlc_adapter.py:481` 待 S5 重写)。
+- **S1 完成**(`1a1886e`+`e321f96`):ExperimentFrameSet 域对象、v2 serializer 无损通道(P1.1 manifest 兼容)、session set/clear 动作;独立 review FS1–FS5 已修复闭环(working_zone 内容校验、serializer fail-closed、死代码、mini-plan 同步)。
+- **S2 完成**(`daf535a`):`application/annotation_join.py` 纯函数——同帧 4/4 join(complete/partial/superseded-only/AI-only/non-finite 分类,AI 永不补位,duplicate 防御)+ canonical label digest(坐标/point_id/frame 敏感,显示属性无关)。
+- 验证:全量 **946 passed**。identity 专项 review 运行中;S3(引导标注 UI)/S4(共享 fixed-check)/S5(四 bodypart exporter)/S6(DLC smoke)未开始。
+
 ## Next Recommended Action
 
-P1.1 已合并关闭(实施分支 `feat/p1.1-pendulum-setup` --no-ff 合入 `publication/ejp-damped-pendulum`)。下一开发周期启动 **P1.2 — Complete-frame annotation**(`feat/p1.2-complete-frame-annotation`):experiment 共享代表帧集 → 同帧 4/4 引导标注 → 共同 fixed-check → 四 bodypart exporter;真实 DLC dataset smoke 是 P1.2 硬验收。P1–P5期间安排原生Windows x64 G1–G4取证;**进入P6之前必须完成**,不得以CI/mock/Mac代替。
+处理 identity review findings → S3 引导标注 UI(含 frame selection owner identity 的 experiment 化)→ S4 共享 fixed-check → S5 exporter → S6 真实 DLC smoke。P1–P5期间安排原生Windows x64 G1–G4取证;**进入P6之前必须完成**,不得以CI/mock/Mac代替。
