@@ -3,7 +3,7 @@
 - 最后更新：2026-09-21。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.1-pendulum-setup`(未合并、未 push)。
 - 当前：**P1.1 完成并已合并（2026-09-21）：三轮 independent review + 两轮 Human Review 全部通过，921 tests。下一步 P1.2 — Complete-frame annotation**。P1.2–P1.4 未开始。
-- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。P1–P6产品实现均未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
 
@@ -69,4 +69,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-继续 P1.1-S5:setup GUI/workflow projection(分支已就绪,挂载点见上)。S5 完成后 S6 集成验证 → [Human Review 协议已定稿](plans/p1.1-human-review.md)(用户照单执行)→ Independent re-review → 合并回 `publication/ejp-damped-pendulum`。P1–P5期间安排原生Windows x64 G1–G4取证;**进入P6之前必须完成**,不得以CI/mock/Mac代替。
+P1.1 已合并关闭(实施分支 `feat/p1.1-pendulum-setup` --no-ff 合入 `publication/ejp-damped-pendulum`)。下一开发周期启动 **P1.2 — Complete-frame annotation**(`feat/p1.2-complete-frame-annotation`):experiment 共享代表帧集 → 同帧 4/4 引导标注 → 共同 fixed-check → 四 bodypart exporter;真实 DLC dataset smoke 是 P1.2 硬验收。P1–P5期间安排原生Windows x64 G1–G4取证;**进入P6之前必须完成**,不得以CI/mock/Mac代替。
