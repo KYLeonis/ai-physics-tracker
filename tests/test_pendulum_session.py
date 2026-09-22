@@ -946,3 +946,46 @@ class TestPublicationFirstSaveAndAcceptance:
             is None
         )
         assert not live.can_undo and not live.can_redo
+
+
+class TestExperimentFrameSetActions:
+    """P1.2-S1:帧集 session 动作的 revision/stale/undo 语义。"""
+
+    def _frame_set(self, frames=(2, 7, 11)):
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        return ExperimentFrameSet(
+            frames=tuple(frames), algorithm="kmeans", created_at=utc_now(), seed=1
+        )
+
+    def test_set_and_clear_frame_set_bump_revision_and_undo(self):
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        project, _, _, _ = _bound_project_with_free_track(with_result=True)
+        session = ProjectSession(ProjectRepository(), project)
+        experiment_id = project.experiments[0].experiment_id
+        before = session.pendulum_experiments()[0]
+
+        session.set_experiment_frame_set(experiment_id, self._frame_set())
+        current = session.pendulum_experiments()[0]
+        assert current.frame_set is not None
+        assert current.frame_set.frames == (2, 7, 11)
+        assert current.measurement_revision == before.measurement_revision + 1
+        assert session.project.scientific_results[0].freshness == "stale"
+
+        session.undo()
+        assert session.pendulum_experiments()[0].frame_set is None
+
+        session.redo()
+        assert session.pendulum_experiments()[0].frame_set.frames == (2, 7, 11)
+
+        session.clear_experiment_frame_set(experiment_id)
+        assert session.pendulum_experiments()[0].frame_set is None
+
+    def test_frame_set_beyond_frame_count_rejected(self):
+        project, _, _, _ = _bound_project_with_free_track()
+        session = ProjectSession(ProjectRepository(), project)
+        with pytest.raises(ProjectSessionError, match="frame_count"):
+            session.set_experiment_frame_set(
+                project.experiments[0].experiment_id, self._frame_set((5, 1000))
+            )

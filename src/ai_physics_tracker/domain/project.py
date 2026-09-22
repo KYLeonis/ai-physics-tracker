@@ -545,6 +545,10 @@ def _validate_publication_collections(
             experiment.release_frame_index >= video.frame_count
         ):
             raise ValueError("experiment release_frame_index exceeds its video frame_count")
+        if experiment.frame_set is not None and any(
+            frame >= video.frame_count for frame in experiment.frame_set.frames
+        ):
+            raise ValueError("experiment frame set exceeds its video frame_count")
     result_ids = [item.result_id for item in project.scientific_results]
     if len(set(result_ids)) != len(result_ids):
         raise ValueError("result_id values must be unique")

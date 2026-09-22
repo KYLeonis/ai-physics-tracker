@@ -13,6 +13,7 @@ from uuid import UUID
 from ai_physics_tracker.domain.pendulum import (
     ROLE_ORDER,
     ExperimentActivationRecord,
+    ExperimentFrameSet,
     PendulumExperiment,
     PendulumGeometry,
     PendulumRoles,
@@ -140,6 +141,9 @@ def experiment_to_payload(experiment: PendulumExperiment) -> dict[str, object]:
             if experiment.physical is None
             else physical_to_payload(experiment.physical),
             "release_frame_index": experiment.release_frame_index,
+            "frame_set": None
+            if experiment.frame_set is None
+            else frame_set_to_payload(experiment.frame_set),
             "active_infer_run_id": None
             if experiment.active_infer_run_id is None
             else str(experiment.active_infer_run_id),
@@ -163,6 +167,7 @@ def experiment_from_payload(payload: dict[str, object]) -> PendulumExperiment:
         "geometry",
         "physical",
         "release_frame_index",
+        "frame_set",
         "active_infer_run_id",
         "activation_history",
         "created_at",
@@ -179,6 +184,9 @@ def experiment_from_payload(payload: dict[str, object]) -> PendulumExperiment:
         if payload.get("physical") is None
         else physical_from_payload(_object(payload.get("physical"), "physical")),
         release_frame_index=_optional_integer(payload.get("release_frame_index")),
+        frame_set=None
+        if payload.get("frame_set") is None
+        else frame_set_from_payload(_object(payload.get("frame_set"), "frame_set")),
         active_infer_run_id=UUID(active_run) if active_run is not None else None,
         activation_history=tuple(
             history_record_from_payload(item)
@@ -244,6 +252,52 @@ def physical_from_payload(payload: dict[str, object]) -> PhysicalParameters:
         g_m_s2=_number(payload, "g_m_s2"),
         length_source=_string(payload, "length_source"),
         g_source=_string(payload, "g_source"),
+    )
+
+
+def frame_set_to_payload(frame_set: ExperimentFrameSet) -> dict[str, object]:
+    return _merge_publication_extra(
+        frame_set.extra_fields,
+        {
+            "frames": list(frame_set.frames),
+            "algorithm": frame_set.algorithm,
+            "seed": frame_set.seed,
+            "working_zone": list(frame_set.working_zone)
+            if frame_set.working_zone is not None
+            else None,
+            "source_video_sha256": frame_set.source_video_sha256,
+            "created_at": _format_datetime(frame_set.created_at),
+        },
+    )
+
+
+def frame_set_from_payload(payload: dict[str, object]) -> ExperimentFrameSet:
+    known = {
+        "frames",
+        "algorithm",
+        "seed",
+        "working_zone",
+        "source_video_sha256",
+        "created_at",
+    }
+    zone = payload.get("working_zone")
+    working_zone = (
+        (_expect_integer(zone[0], "working_zone[0]"),
+         _expect_integer(zone[1], "working_zone[1]"))
+        if isinstance(zone, list) and len(zone) == 2
+        else None
+    )
+    return ExperimentFrameSet(
+        frames=tuple(
+            _expect_integer(item, "frames item")
+            for item in _sequence(payload.get("frames"), "frames")
+        ),
+        algorithm=_string(payload, "algorithm"),
+        seed=_optional_integer(payload.get("seed")),
+        working_zone=working_zone,
+        source_video_sha256=_optional_string(payload.get("source_video_sha256")),
+        created_at=_parse_datetime(_string(payload, "created_at")),
+        extra_fields=cast(JsonObject, _unknown(payload, known)),
     )
 
 

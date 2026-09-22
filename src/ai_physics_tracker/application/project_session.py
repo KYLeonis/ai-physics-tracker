@@ -52,6 +52,7 @@ from ai_physics_tracker.domain.kinematics import (
     smooth_savgol,
 )
 from ai_physics_tracker.domain.pendulum import (
+    ExperimentFrameSet,
     PendulumExperiment,
     PendulumRoles,
     PhysicalParameters,
@@ -2184,6 +2185,49 @@ class ProjectSession:
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
         return self._commit_experiment_change(experiment_id, updated)
+
+    def _set_frame_set(
+        self, experiment_id: UUID, frame_set: "ExperimentFrameSet | None"
+    ) -> PendulumExperiment:
+        experiment, revision = self._bump_experiment(experiment_id)
+        video = next(
+            (
+                video
+                for video in self._project.videos
+                if video.video_id == experiment.video_id
+            ),
+            None,
+        )
+        if video is None:
+            raise ProjectSessionError("experiment video is not registered")
+        if frame_set is not None:
+            if any(frame >= video.frame_count for frame in frame_set.frames):
+                raise ProjectSessionError(
+                    "frame set contains frames beyond the video frame_count"
+                )
+            if any(
+                not 0 <= frame < video.frame_count for frame in frame_set.frames
+            ):
+                raise ProjectSessionError("frame set contains negative frames")
+        try:
+            updated = replace(
+                experiment, frame_set=frame_set, measurement_revision=revision
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def set_experiment_frame_set(
+        self, experiment_id: UUID, frame_set: ExperimentFrameSet
+    ) -> PendulumExperiment:
+        """保存共享代表帧集（契约 §3：只存一次，四 role 共用）。"""
+
+        return self._set_frame_set(experiment_id, frame_set)
+
+    def clear_experiment_frame_set(self, experiment_id: UUID) -> PendulumExperiment:
+        """清除帧集；既有 manual 点不动（帧集只是建议集合）。"""
+
+        return self._set_frame_set(experiment_id, None)
 
     def save_as_publication(
         self, destination: Path, roles: PendulumRoles | None = None

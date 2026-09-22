@@ -142,6 +142,38 @@ class PhysicalParameters:
 
 
 @dataclass(frozen=True)
+class ExperimentFrameSet:
+    """experiment 级共享代表帧集（契约 §3：帧号与 selection provenance 只存一次）。
+
+    frames 必须升序且唯一；帧界由聚合校验对照 video.frame_count。
+    `source_video_sha256` 冻结选帧时的视频身份，内容变化即作废重选依据。
+    """
+
+    frames: tuple[int, ...]
+    algorithm: str
+    created_at: datetime
+    seed: int | None = None
+    working_zone: tuple[int, int] | None = None
+    source_video_sha256: str | None = None
+    extra_fields: JsonObject = field(default_factory=dict, repr=False)
+
+    def __post_init__(self) -> None:
+        if not self.frames:
+            raise ValueError("experiment frame set must not be empty")
+        if any(frame < 0 for frame in self.frames):
+            raise ValueError("frame indices must be non-negative")
+        if len(set(self.frames)) != len(self.frames):
+            raise ValueError("experiment frame set must not contain duplicates")
+        if list(self.frames) != sorted(self.frames):
+            raise ValueError("experiment frame set must be ordered by frame index")
+        if not self.algorithm.strip():
+            raise ValueError("frame set algorithm provenance must not be blank")
+        require_aware_datetime(self.created_at, "created_at")
+        if self.working_zone is not None and len(self.working_zone) != 2:
+            raise ValueError("working_zone must contain two frame indices")
+
+
+@dataclass(frozen=True)
 class RoleBindingEditRecord:
     """一次 role 绑定编辑的不可变历史：完整 old/new 快照与编辑后 revision。
 
@@ -222,6 +254,7 @@ class PendulumExperiment:
     geometry: PendulumGeometry = field(default_factory=PendulumGeometry)
     physical: PhysicalParameters | None = None
     release_frame_index: int | None = None
+    frame_set: ExperimentFrameSet | None = None
     active_infer_run_id: UUID | None = None
     activation_history: tuple[RoleBindingEditRecord | ExperimentActivationRecord, ...] = ()
     mode: str = PENDULUM_MODE
