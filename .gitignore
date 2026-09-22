@@ -198,3 +198,4 @@ experiment/
 
 # Phase 5.2 benchmark 本地机器侧记录（含策略候选帧，避免破坏盲评）
 docs/benchmarks/*.meta.json
+test1/

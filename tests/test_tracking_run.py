@@ -71,7 +71,7 @@ def test_tracking_run_creation_and_defaults() -> None:
     tid = uuid4()
     run = create_tracking_run(
         video_id=vid,
-        track_id=tid,
+        member_track_ids=(tid,),
         task_type="train",
         config={"epochs": 50, "shuffle": 1},
     )
@@ -90,7 +90,7 @@ def test_tracking_run_creation_and_defaults() -> None:
 
 
 def test_tracking_run_state_transitions() -> None:
-    run = create_tracking_run(video_id=uuid4(), track_id=uuid4(), task_type="train")
+    run = create_tracking_run(video_id=uuid4(), member_track_ids=(uuid4(),), task_type="train")
     assert run.status == "pending"
 
     # Start running
@@ -115,13 +115,13 @@ def test_tracking_run_state_transitions() -> None:
 
 
 def test_tracking_run_fail_and_cancel() -> None:
-    run = create_tracking_run(video_id=uuid4(), track_id=uuid4(), task_type="infer")
+    run = create_tracking_run(video_id=uuid4(), member_track_ids=(uuid4(),), task_type="infer")
     failed = mark_run_failed(run, "CUDA OOM error")
     assert failed.status == "failed"
     assert failed.error_message == "CUDA OOM error"
     assert failed.completed_at is not None
 
-    run2 = create_tracking_run(video_id=uuid4(), track_id=uuid4(), task_type="infer")
+    run2 = create_tracking_run(video_id=uuid4(), member_track_ids=(uuid4(),), task_type="infer")
     cancelled = mark_run_cancelled(run2)
     assert cancelled.status == "cancelled"
     assert cancelled.completed_at is not None
@@ -136,7 +136,7 @@ def test_tracking_run_validation() -> None:
         TrackingRun(
             run_id=uuid4(),
             video_id=vid,
-            track_id=tid,
+            member_track_ids=(tid,),
             engine="",
             engine_version="3.0",
             task_type="train",
@@ -149,7 +149,7 @@ def test_tracking_run_validation() -> None:
         TrackingRun(
             run_id=uuid4(),
             video_id=vid,
-            track_id=tid,
+            member_track_ids=(tid,),
             engine="dlc",
             engine_version="3.0",
             task_type="invalid_type",
@@ -162,7 +162,7 @@ def test_tracking_run_validation() -> None:
         TrackingRun(
             run_id=uuid4(),
             video_id=vid,
-            track_id=tid,
+            member_track_ids=(tid,),
             engine="dlc",
             engine_version="3.0",
             task_type="train",
@@ -178,7 +178,7 @@ def test_tracking_run_validation() -> None:
         TrackingRun(
             run_id=uuid4(),
             video_id=vid,
-            track_id=tid,
+            member_track_ids=(tid,),
             engine="dlc",
             engine_version="3.0",
             task_type="train",
@@ -193,7 +193,7 @@ def test_project_validation_with_tracking_runs() -> None:
     base = create_project("Test Project")
     project, video, track = _sample_video_and_track(base)
 
-    run = create_tracking_run(video_id=video.video_id, track_id=track.track_id, task_type="train")
+    run = create_tracking_run(video_id=video.video_id, member_track_ids=(track.track_id,), task_type="train")
     project_with_run = Project(
         project_id=project.project_id,
         name=project.name,
@@ -207,7 +207,7 @@ def test_project_validation_with_tracking_runs() -> None:
     validate_project(project_with_run)
 
     # Bad video_id
-    bad_vid_run = create_tracking_run(video_id=uuid4(), track_id=track.track_id, task_type="train")
+    bad_vid_run = create_tracking_run(video_id=uuid4(), member_track_ids=(track.track_id,), task_type="train")
     with pytest.raises(ValueError, match="every tracking run must reference a registered video"):
         Project(
             project_id=project.project_id,
@@ -221,8 +221,8 @@ def test_project_validation_with_tracking_runs() -> None:
         )
 
     # Bad track_id
-    bad_track_run = create_tracking_run(video_id=video.video_id, track_id=uuid4(), task_type="train")
-    with pytest.raises(ValueError, match="every tracking run must reference a registered track"):
+    bad_track_run = create_tracking_run(video_id=video.video_id, member_track_ids=(uuid4(),), task_type="train")
+    with pytest.raises(ValueError, match="every tracking run member must reference a registered track"):
         Project(
             project_id=project.project_id,
             name=project.name,
@@ -274,7 +274,7 @@ def test_tracking_run_serialization_roundtrip(tmp_path: Path) -> None:
 
     run = create_tracking_run(
         video_id=video.video_id,
-        track_id=track.track_id,
+        member_track_ids=(track.track_id,),
         task_type="train",
         config={"iterations": 1000},
         model_snapshot="dlc-models/snapshot-1000.pt",

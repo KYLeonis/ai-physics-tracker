@@ -88,13 +88,13 @@ def collect_advisor_input(
         if track is not None else None
     )
     completed_train = [r for r in runs
-                       if r.track_id == track_id and r.task_type == "train"
+                       if track_id in r.member_track_ids and r.task_type == "train"
                        and r.status == "completed"]
     # P6R-04：失败事实 = 最近一次相关训练（completed/failed 取 created_at 最新）
     # 的状态；成功重训之后不再保留历史失败的 OOM 证据。created_at 相同（时钟
     # 分辨率限制，Windows CI 实测可触发）时取注册表更靠后者——注册顺序即尝试顺序。
     relevant_train = [r for r in runs
-                      if r.track_id == track_id and r.task_type == "train"
+                      if track_id in r.member_track_ids and r.task_type == "train"
                       and r.status in {"completed", "failed"}]
     latest_train_attempt = None
     for train_attempt in relevant_train:
@@ -143,7 +143,7 @@ def collect_advisor_input(
 
     # 审核统计：当前 track 最新 completed infer run 的 review summary
     infer_runs = [r for r in runs
-                  if r.track_id == track_id and r.task_type == "infer"
+                  if track_id in r.member_track_ids and r.task_type == "infer"
                   and r.status == "completed"]
     pending_candidates = 0
     correction_yield = None
@@ -197,7 +197,7 @@ def collect_advisor_input(
     # 覆盖率证据对（5.6 Slice 1，仅证据行）：最近两个 completed infer run 的
     # prediction coverage
     infer_runs_all = sorted(
-        (r for r in runs if r.track_id == track_id and r.task_type == "infer"
+        (r for r in runs if track_id in r.member_track_ids and r.task_type == "infer"
          and r.status == "completed"),
         key=lambda r: r.created_at)
 

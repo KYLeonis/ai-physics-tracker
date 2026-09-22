@@ -63,11 +63,19 @@ def prepare_tracking_request(session: ProjectSession, track_id: UUID,
                              training_mode: str = "restart",
                              resume_from_training_run_id: UUID | None = None) -> TrackingRequest:
     """仅检查内存条件和捕获快照；不导入引擎、读视频或扫描文件。"""
+    track = next((track for track in session.tracks if track.track_id == track_id), None)
+    if track is None:
+        raise ProjectSessionError("Select a track with authorized video timing")
+    if session.experiment_for_track(track_id) is not None:
+        raise ProjectSessionError(
+            "Track is bound to a pendulum experiment role; "
+            "use the pendulum workflow instead of the single-track pipeline"
+        )
     if session.project_root is None:
         raise ProjectSessionError("Save the project before starting an AI task")
-    track = next((track for track in session.tracks if track.track_id == track_id), None)
-    if track is None or not session.can_measure(track.video_id):
+    if not session.can_measure(track.video_id):
         raise ProjectSessionError("Select a track with authorized video timing")
+
     if any(run.status in {"pending", "running"} for run in session.tracking_runs()):
         raise ProjectSessionError("Another AI task is active")
     detail = session.measurement_timing_detail(track.video_id)

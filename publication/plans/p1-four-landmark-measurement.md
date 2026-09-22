@@ -575,4 +575,5 @@ GUI使用`QT_QPA_PLATFORM=offscreen`自动化；体验只由Human Review判定�
 
 ## 13. Result
 
-本轮只完成P1规划。P1.1–P1.4均未开始实现；schema仍为v1，DLC产品路径仍为single-bodypart/current-process runner，P0.3 spike仍是disposable evidence。
+- **P1.1（2026-09-21，`feat/p1.1-pendulum-setup` 已合并）**：S1–S6 全部完成。schema v1/v2 双格式读写（required_capabilities 分派、keyed publication 集合、capability fail-closed）、v1→v2 显式 Save As 迁移（source manifest SHA、源零改动经故障注入）、rootless v2 首存、`PendulumExperiment`/四 role/几何（true vertical 端点 digest 确认）/物理/release、多成员 `TrackingRun`（单成员兼容访问器 fail-closed）、experiment 事务与全部旧单轨 AI 入口 guard、geometry/release 动作（revision/stale/undo）、setup GUI（向导/侧栏 checklist/视频 pivot 与 vertical 有序点选/持久 overlay/L·g mm 输入/release 当前帧）、workflow 投影 experiment 事实卡、scientific result envelope 验证与无损保存（无 producer）。三轮 independent review（guard/schema/S5-S6 终审）与两轮 Human Review 全部通过；最终 921 tests。已知中间态：bound track 无 AI 训练路径（joint 属 P1.3）；migration 后旧 generic run 保留为历史记录。Real DLC smoke：不适用（P1.1 无 AI 验收）。
+- P1.2–P1.4 未开始。

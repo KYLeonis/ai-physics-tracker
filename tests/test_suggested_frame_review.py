@@ -40,7 +40,7 @@ def _sample_run(extra_fields: dict | None = None) -> TrackingRun:
     return TrackingRun(
         run_id=uuid4(),
         video_id=uuid4(),
-        track_id=uuid4(),
+        member_track_ids=(uuid4(),),
         engine="dlc",
         engine_version="3.0.1",
         task_type="infer",

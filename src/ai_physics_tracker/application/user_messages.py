@@ -129,6 +129,38 @@ def activation_failure(error: str) -> UXMessage:
     )
 
 
+def publication_migration_failed(error: str) -> UXMessage:
+    """Save As publication 迁移失败：新副本未建立，原件保持 v1。"""
+
+    return UXMessage(
+        title=f"Publication copy not created: {error}",
+        body=(
+            "The new schema v2 copy was not published. The original project "
+            "directory and its manifest are unchanged.",
+            "Any recovery staging folder mentioned in the error is safe to "
+            "delete once you have read the message.",
+        ),
+        next_hint="Fix the cause (e.g. choose another destination directory) "
+                  "and run Create Pendulum experiment again.",
+    )
+
+
+def publication_created(destination: str) -> UXMessage:
+    """迁移/首存成功的结束结论。"""
+
+    return UXMessage(
+        title="Publication project created",
+        body=(
+            f"The publication copy was created at {destination}. The original "
+            "project is unchanged and can still be opened on its own.",
+            "The four landmark roles are bound; finish the setup checklist "
+            "before analysis.",
+        ),
+        next_hint="Continue in the Pendulum experiment panel: scale, fixed "
+                  "pivot, vertical direction, L and g, release frame.",
+    )
+
+
 def charts_not_updated(reason: str) -> UXMessage:
     return UXMessage(
         title=f"Charts were not updated: {reason}",

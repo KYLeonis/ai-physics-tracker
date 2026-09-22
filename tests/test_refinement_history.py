@@ -324,7 +324,7 @@ def test_attach_and_extract_helpers_and_coexistence() -> None:
     # TrackingRun with both suggested_frame_review and refinement_iteration
     run = create_tracking_run(
         video_id=track.video_id,
-        track_id=track.track_id,
+        member_track_ids=(track.track_id,),
         engine="dlc",
         engine_version="3.0",
         task_type="train",

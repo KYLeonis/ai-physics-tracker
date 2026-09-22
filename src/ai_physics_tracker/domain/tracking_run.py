@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from uuid import UUID, uuid4
 
+from ai_physics_tracker.domain.pendulum import PendulumRoles
 from ai_physics_tracker.domain.types import JsonObject, require_aware_datetime, utc_now
 
 RUN_STATUSES = {"pending", "running", "completed", "failed", "cancelled"}
@@ -12,11 +13,18 @@ TASK_TYPES = {"train", "infer"}
 
 @dataclass(frozen=True)
 class TrackingRun:
-    """一次引擎训练或推理运行的完整元数据记录。"""
+    """一次引擎训练或推理运行的完整元数据记录。
+
+    `member_track_ids` 是有序唯一成员 Track 列表（契约 §3）：generic/legacy
+    run 恰好一个成员且不带 experiment 绑定；Pendulum run 恰好四个成员，
+    `experiment_id` 与 `role_bindings` 快照同时存在。旧代码经 `track_id`
+    兼容访问器读取单成员 run；多成员 run 访问该属性显式报错，防止被
+    静默当成某一条 Track（ADR-0017）。
+    """
 
     run_id: UUID
     video_id: UUID
-    track_id: UUID
+    member_track_ids: tuple[UUID, ...]
     engine: str
     engine_version: str
     task_type: str
@@ -27,9 +35,15 @@ class TrackingRun:
     model_snapshot: str | None = None
     error_message: str | None = None
     completed_at: datetime | None = None
+    experiment_id: UUID | None = None
+    role_bindings: PendulumRoles | None = None
     extra_fields: JsonObject = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
+        if not self.member_track_ids:
+            raise ValueError("tracking run requires at least one member track")
+        if len(set(self.member_track_ids)) != len(self.member_track_ids):
+            raise ValueError("member_track_ids must be unique")
         if not self.engine.strip():
             raise ValueError("engine must not be blank")
         if not self.engine_version.strip():
@@ -40,16 +54,30 @@ class TrackingRun:
             raise ValueError(f"task_type must be one of {sorted(TASK_TYPES)}, got '{self.task_type}'")
         if self.status not in RUN_STATUSES:
             raise ValueError(f"status must be one of {sorted(RUN_STATUSES)}, got '{self.status}'")
+        if (self.experiment_id is None) != (self.role_bindings is None):
+            raise ValueError(
+                "experiment_id and role_bindings must be provided together"
+            )
         require_aware_datetime(self.created_at, "created_at")
         if self.completed_at is not None:
             require_aware_datetime(self.completed_at, "completed_at")
             if self.completed_at < self.created_at:
                 raise ValueError("completed_at cannot be earlier than created_at")
 
+    @property
+    def track_id(self) -> UUID:
+        """单成员兼容访问器；多成员 run 必须走显式 member API。"""
+
+        if len(self.member_track_ids) != 1:
+            raise ValueError(
+                "multi-member run has no single track_id; use member_track_ids"
+            )
+        return self.member_track_ids[0]
+
 
 def create_tracking_run(
     video_id: UUID,
-    track_id: UUID,
+    member_track_ids: UUID | tuple[UUID, ...],
     task_type: str,
     *,
     engine: str = "dlc",
@@ -58,16 +86,22 @@ def create_tracking_run(
     source_detail: str | None = None,
     model_snapshot: str | None = None,
     run_id: UUID | None = None,
+    experiment_id: UUID | None = None,
+    role_bindings: PendulumRoles | None = None,
 ) -> TrackingRun:
-    """构造初始 pending 状态的 TrackingRun。"""
+    """构造初始 pending 状态的 TrackingRun；单 Track 可直接传 UUID。"""
 
+    if isinstance(member_track_ids, UUID):
+        members: tuple[UUID, ...] = (member_track_ids,)
+    else:
+        members = tuple(member_track_ids)
     now = utc_now()
     run_id = run_id or uuid4()
     actual_source_detail = source_detail or f"{engine}:{task_type}:{run_id}"
     return TrackingRun(
         run_id=run_id,
         video_id=video_id,
-        track_id=track_id,
+        member_track_ids=members,
         engine=engine,
         engine_version=engine_version,
         task_type=task_type,
@@ -76,6 +110,8 @@ def create_tracking_run(
         created_at=now,
         status="pending",
         model_snapshot=model_snapshot,
+        experiment_id=experiment_id,
+        role_bindings=role_bindings,
     )
 
 

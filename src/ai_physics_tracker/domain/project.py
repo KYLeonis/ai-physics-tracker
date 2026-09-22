@@ -12,6 +12,8 @@ from ai_physics_tracker.domain.derived import (
     mark_calibrations_stale,
     mark_tracks_stale,
 )
+from ai_physics_tracker.domain.pendulum import PendulumExperiment
+from ai_physics_tracker.domain.scientific_result import ScientificResult, is_sha256_hex
 from ai_physics_tracker.domain.timeline import (
     Timeline,
     frame_to_time,
@@ -21,6 +23,31 @@ from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.domain.types import JsonObject, require_aware_datetime, utc_now
 from ai_physics_tracker.domain.video import Video
+
+# publication 契约 §1：v2 顶层 required_capabilities 固定包含这两项；读者必须
+# 理解全部 required 项才能写入，未知项在 load/save 两侧均拒绝。
+PUBLICATION_REQUIRED_CAPABILITIES: tuple[str, ...] = (
+    "pendulum-four-role-v1",
+    "scientific-results-v1",
+)
+KNOWN_REQUIRED_CAPABILITIES = frozenset(PUBLICATION_REQUIRED_CAPABILITIES)
+
+
+@dataclass(frozen=True)
+class MigrationRecord:
+    """v1→v2 显式 Save As 迁移的来源事实（契约 §1）。
+
+    只记录 provenance；v1 原件保持不变，不提供 v2→v1 降级。
+    """
+
+    source_schema_version: int
+    source_manifest_sha256: str
+
+    def __post_init__(self) -> None:
+        if self.source_schema_version < 1:
+            raise ValueError("migration source_schema_version must be positive")
+        if not is_sha256_hex(self.source_manifest_sha256):
+            raise ValueError("migration source_manifest_sha256 must be a 64-hex digest")
 
 
 @dataclass(frozen=True)
@@ -69,6 +96,10 @@ class Project:
     active_calibration_by_video: dict[UUID, UUID] = field(default_factory=dict)
     derived: tuple[DerivedData, ...] = ()
     tracking_runs: tuple[TrackingRun, ...] = ()
+    required_capabilities: tuple[str, ...] = ()
+    migration: MigrationRecord | None = None
+    experiments: tuple[PendulumExperiment, ...] = ()
+    scientific_results: tuple[ScientificResult, ...] = ()
     registries: Registries = field(default_factory=Registries)
     ui_state: JsonObject = field(default_factory=dict)
     extra_fields: JsonObject = field(default_factory=dict, repr=False)
@@ -296,15 +327,32 @@ def replace_calibration(project: Project, calibration: Calibration) -> Project:
 def delete_track(project: Project, track_id: UUID) -> Project:
     """将确认删除的 Track 级联到观测、派生数据与引擎运行记录。
 
-    TrackingRun 以 track 为主体（§7.6），run 不能脱离其 track 存活；
+    TrackingRun 以成员 Track 为主体（§7.6），run 不能脱离其成员存活；
     保留会在下一次 replace 的聚合校验中被拒绝。撤销恢复 track/观测/派生时，
     该 track 的 run 由会话历史快照一并恢复（P6R-01；Phase 5.4 起 Track 的
     refinement state 含 active run pointer，"恢复 track 不恢复 run"必然产生
     悬空引用）。
+
+    experiment-bound Track 拒绝删除（契约 §5）：必须先显式删除或改绑
+    experiment，不允许留下断引用的 roles/results。同理，被 experiment
+    joint run 引用（即便已因 rebind 解除 role 绑定）的 Track 也拒绝——
+    级联删除会整条抹掉共享测量历史，契约要求显式删除计划（不自动断引用）。
     """
 
     if not any(track.track_id == track_id for track in project.tracks):
         raise ValueError(f"unknown track_id: {track_id}")
+    for experiment in project.experiments:
+        if track_id in experiment.roles.track_ids():
+            raise ValueError(
+                f"track is bound to pendulum experiment {experiment.experiment_id}; "
+                "rebind or delete the experiment before deleting the track"
+            )
+    for run in project.tracking_runs:
+        if run.experiment_id is not None and track_id in run.member_track_ids:
+            raise ValueError(
+                f"track is a member of experiment joint run {run.run_id}; "
+                "delete the referencing experiment runs before deleting the track"
+            )
     return replace(
         project,
         tracks=tuple(track for track in project.tracks if track.track_id != track_id),
@@ -313,7 +361,8 @@ def delete_track(project: Project, track_id: UUID) -> Project:
         ),
         derived=tuple(item for item in project.derived if item.track_id != track_id),
         tracking_runs=tuple(
-            run for run in project.tracking_runs if run.track_id != track_id
+            run for run in project.tracking_runs
+            if track_id not in run.member_track_ids
         ),
     )
 
@@ -417,8 +466,137 @@ def validate_project(project: Project) -> None:
     for run in project.tracking_runs:
         if run.video_id not in videos_by_id:
             raise ValueError("every tracking run must reference a registered video")
-        if run.track_id not in track_id_set:
-            raise ValueError("every tracking run must reference a registered track")
+        if any(member not in track_id_set for member in run.member_track_ids):
+            raise ValueError("every tracking run member must reference a registered track")
+        for member in run.member_track_ids:
+            if tracks_by_id[member].video_id != run.video_id:
+                raise ValueError("every tracking run member must belong to the run's video")
+    _validate_format_mode(project, videos_by_id, tracks_by_id)
+
+
+def _validate_format_mode(
+    project: Project,
+    videos_by_id: dict[UUID, Video],
+    tracks_by_id: dict[UUID, Track],
+) -> None:
+    """区分 v1 generic 与 v2 publication 项目：不允许格式语义混装。
+
+    capabilities 为空 = v1 语义，不得携带任何 publication 事实（契约 §1）；
+    capabilities 非空 = v2 语义，必须恰好是已知的 publication 集合。
+    """
+
+    declared = set(project.required_capabilities)
+    if not declared:
+        if project.migration is not None:
+            raise ValueError("v1 project must not carry a migration record")
+        if project.experiments or project.scientific_results:
+            raise ValueError("v1 project must not carry publication collections")
+        for run in project.tracking_runs:
+            if len(run.member_track_ids) != 1 or run.experiment_id is not None:
+                raise ValueError(
+                    "v1 project tracking runs must be single-member without experiment bindings"
+                )
+        return
+    unknown = declared - KNOWN_REQUIRED_CAPABILITIES
+    if unknown:
+        raise ValueError(f"unknown required capabilities: {sorted(unknown)}")
+    missing = set(PUBLICATION_REQUIRED_CAPABILITIES) - declared
+    if missing:
+        raise ValueError(f"publication project missing required capabilities: {sorted(missing)}")
+    _validate_publication_collections(project, videos_by_id, tracks_by_id)
+
+
+def _validate_publication_collections(
+    project: Project,
+    videos_by_id: dict[UUID, Video],
+    tracks_by_id: dict[UUID, Track],
+) -> None:
+    """v2 publication 集合的跨对象不变量（契约 §2/§3）。
+
+    单对象结构校验（四 role distinct、geometry/physical 有限性、digest
+    一致性）已在值对象构造期完成；这里负责引用存在性、同 video 约束、
+    唯一性与 active run 结构一致性。
+    """
+
+    experiment_ids = [item.experiment_id for item in project.experiments]
+    if len(set(experiment_ids)) != len(experiment_ids):
+        raise ValueError("experiment_id values must be unique")
+    experiments_by_video: dict[UUID, PendulumExperiment] = {}
+    bound_track_owner: dict[UUID, UUID] = {}
+    experiments_by_id: dict[UUID, PendulumExperiment] = {}
+    for experiment in project.experiments:
+        video = videos_by_id.get(experiment.video_id)
+        if video is None:
+            raise ValueError("every experiment must reference a registered video")
+        if experiment.video_id in experiments_by_video:
+            raise ValueError("a video must have at most one pendulum experiment")
+        experiments_by_video[experiment.video_id] = experiment
+        experiments_by_id[experiment.experiment_id] = experiment
+        for role, member in experiment.roles.by_role().items():
+            if member not in tracks_by_id:
+                raise ValueError(f"experiment role '{role}' must reference a registered track")
+            if tracks_by_id[member].video_id != experiment.video_id:
+                raise ValueError("experiment roles must reference tracks of the same video")
+            owner = bound_track_owner.get(member)
+            if owner is not None and owner != experiment.experiment_id:
+                raise ValueError("a track cannot bind to two pendulum experiments")
+            bound_track_owner[member] = experiment.experiment_id
+        if experiment.release_frame_index is not None and (
+            experiment.release_frame_index >= video.frame_count
+        ):
+            raise ValueError("experiment release_frame_index exceeds its video frame_count")
+    result_ids = [item.result_id for item in project.scientific_results]
+    if len(set(result_ids)) != len(result_ids):
+        raise ValueError("result_id values must be unique")
+    for result in project.scientific_results:
+        if result.experiment_id not in experiments_by_id:
+            raise ValueError("every scientific result must reference a registered experiment")
+    runs_by_id = {run.run_id: run for run in project.tracking_runs}
+    for experiment in project.experiments:
+        active_id = experiment.active_infer_run_id
+        if active_id is None:
+            continue
+        run = runs_by_id.get(active_id)
+        if run is None:
+            raise ValueError("experiment active_infer_run_id must reference a registered run")
+        if (
+            run.experiment_id != experiment.experiment_id
+            or run.task_type != "infer"
+            or run.status != "completed"
+        ):
+            raise ValueError(
+                "experiment active run must be a completed joint inference of this experiment"
+            )
+        if set(run.member_track_ids) != set(experiment.roles.track_ids()):
+            raise ValueError(
+                "experiment active run members must match the current role bindings"
+            )
+        if run.role_bindings != experiment.roles:
+            raise ValueError(
+                "experiment active run role_bindings must equal the current roles"
+            )
+    for run in project.tracking_runs:
+        if run.experiment_id is None:
+            if len(run.member_track_ids) != 1:
+                raise ValueError("generic tracking runs must have exactly one member")
+            # 迁移携带的 legacy generic run 允许引用 bound track（历史记录）；
+            # 新的 generic run 注册在 session 层被拒绝（_require_unbound_track）。
+            continue
+        experiment = experiments_by_id.get(run.experiment_id)
+        if experiment is None:
+            raise ValueError("experiment-bound runs must reference a registered experiment")
+        if experiment.video_id != run.video_id:
+            raise ValueError("experiment-bound runs must belong to the experiment's video")
+        # 角色快照是历史解释（契约 §3）：rebind 后旧 run 保留原快照，
+        # 只有 experiment.active_infer_run_id 指向的 run 必须匹配当前 roles
+        # （该检查在上方 active 指针校验中完成）。
+        bindings = run.role_bindings
+        if bindings is None:
+            raise ValueError("experiment-bound run requires a role_bindings snapshot")
+        if run.member_track_ids != bindings.track_ids():
+            raise ValueError(
+                "experiment-bound run members must follow the canonical role order"
+            )
 
 
 def _video_reference_key(video: Video) -> tuple[str, str]:

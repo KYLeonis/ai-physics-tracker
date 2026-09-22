@@ -101,11 +101,21 @@ def prepare_inference(
     trained = next((run for run in session.tracking_runs() if run.run_id == training_run_id), None)
     if trained is None or trained.task_type != "train" or trained.status != "completed":
         raise ProjectSessionError("Select a completed training run")
-    track = next((item for item in session.tracks if item.track_id == trained.track_id), None)
+    if any(
+        session.experiment_for_track(member) is not None
+        for member in trained.member_track_ids
+    ):
+        raise ProjectSessionError(
+            "Track is bound to a pendulum experiment role; "
+            "use the pendulum workflow instead of the single-track pipeline"
+        )
+    track = next(
+        (item for item in session.tracks if item.track_id == trained.track_id), None
+    )
     if track is None or track.video_id != trained.video_id:
         raise ProjectSessionError("Training run does not match a current track/video")
     if any(
-        run.track_id == trained.track_id and run.status == "running"
+        trained.track_id in run.member_track_ids and run.status == "running"
         for run in session.tracking_runs()
     ):
         raise ProjectSessionError("This track already has an active engine task")

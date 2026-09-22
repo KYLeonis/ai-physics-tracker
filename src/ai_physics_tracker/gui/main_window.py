@@ -12,6 +12,7 @@ from PySide6.QtCore import QObject, QPoint, QPointF, QSignalBlocker, Qt, QTimer,
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
+    QDialog,
     QDoubleSpinBox,
     QGroupBox,
     QInputDialog,
@@ -44,6 +45,11 @@ from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.application.project_media import ProjectMediaService, PreparedProject, workflow_state
 from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
+from ai_physics_tracker.gui.pendulum_setup import (
+    PendulumSetupPanel,
+    PhysicalParametersDialog,
+)
+from ai_physics_tracker.gui.video_view import PendulumOverlayView
 from ai_physics_tracker.gui.project_actions import ProjectActions
 from ai_physics_tracker.gui.timing_actions import TimingActions
 from ai_physics_tracker.gui.chart_actions import ChartActions
@@ -297,8 +303,10 @@ class MainWindow(QMainWindow):
         self.trackGroup = QGroupBox("Tracks", self)
         self.trackGroup.setLayout(trackPanel)
 
+        self.pendulumPanel = PendulumSetupPanel(self)
         sideLayout = QVBoxLayout()
         sideLayout.addWidget(self.calibrationGroup)
+        sideLayout.addWidget(self.pendulumPanel)
         sideLayout.addWidget(self.trackGroup, 1)
         trackSide = QWidget(self)
         trackSide.setLayout(sideLayout)
@@ -447,6 +455,14 @@ class MainWindow(QMainWindow):
         self.videoView.annotationClicked.connect(self._onAnnotationClicked)
         self.videoView.scaleLineDrawn.connect(self._onScaleLineDrawn)
         self.videoView.originClicked.connect(self._onOriginClicked)
+        self.videoView.pivotClicked.connect(self._onPivotClicked)
+        self.videoView.verticalLineDrawn.connect(self._onVerticalLineDrawn)
+        self.pendulumPanel.pivotButton.clicked.connect(self.beginPivotPick)
+        self.pendulumPanel.verticalButton.clicked.connect(self.beginVerticalPick)
+        self.pendulumPanel.confirmVerticalButton.clicked.connect(
+            self._confirmVerticalDirection)
+        self.pendulumPanel.physicalButton.clicked.connect(self.openPhysicalDialog)
+        self.pendulumPanel.releaseButton.clicked.connect(self._setReleaseToCurrentFrame)
         self.drawScaleButton.clicked.connect(self._toggleDrawScaleMode)
         self.setOriginButton.clicked.connect(self._toggleSetOriginMode)
         self.calibrationGuideButton.clicked.connect(self._onCalibrationGuideAction)
@@ -516,6 +532,8 @@ class MainWindow(QMainWindow):
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             self.reviewActions.cancelCorrectMode()
         self.videoView.set_annotation_mode(False)
+        if self.videoView.is_calibration_mode() in ("pivot", "vertical"):
+            self._hidePendulumGuide()
         self.videoView.set_calibration_mode(None)
         self.drawScaleButton.setChecked(False)
         self.setOriginButton.setChecked(False)
@@ -1065,6 +1083,9 @@ class MainWindow(QMainWindow):
         if self.setOriginButton.isChecked():
             self.setOriginButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
+        if self.videoView.is_calibration_mode() in ("pivot", "vertical"):
+            self.videoView.set_calibration_mode(None)
+            self._hidePendulumGuide()
         self.statusBar().showMessage("Browse mode")
 
     def _setCalibrationGuide(
@@ -1155,6 +1176,169 @@ class MainWindow(QMainWindow):
                     break
         self.statusBar().showMessage(
             "Calibration complete — continue marking representative frames")
+
+    # ------------------------------------------------------------------
+    # Pendulum experiment setup（P1.1；契约 §2 的 setup 事实录入）
+    # ------------------------------------------------------------------
+
+    def currentPendulumExperiment(self):
+        """当前视频的 experiment；每 video 至多一个（域不变量）。"""
+
+        session = self._annotation_session
+        if session is None or self._annotation_video_id is None:
+            return None
+        return next(
+            (
+                item
+                for item in session.pendulum_experiments()
+                if item.video_id == self._annotation_video_id
+            ),
+            None,
+        )
+
+    def _hidePendulumGuide(self) -> None:
+        self.calibrationGuideLabel.hide()
+        self.calibrationGuideButton.hide()
+        self._calibration_guide_action = None
+
+    def _pendulumGuide(self, message: str) -> None:
+        """复用标定引导条展示 pendulum 点选说明（不注册 return 动作）。"""
+
+        self.setWorkspace(WORKSPACE_SETUP)
+        self._setCalibrationGuide(message)
+
+    def beginPivotPick(self) -> None:
+        if self.currentPendulumExperiment() is None:
+            return
+        if not self._measurement_allowed or self.projectActions.busy:
+            return
+        self._pendulumGuide(
+            "Fixed pivot — click the suspension point on the video. This is the "
+            "fixed geometry reference for the analysis; tracking a pivot landmark "
+            "will not overwrite it. Press Esc to cancel.")
+        self.trackList.clearSelection()
+        self.videoView.set_calibration_mode("pivot")
+
+    def beginVerticalPick(self) -> None:
+        if self.currentPendulumExperiment() is None:
+            return
+        if not self._measurement_allowed or self.projectActions.busy:
+            return
+        self._pendulumGuide(
+            "True vertical — click the TOP end first, then the BOTTOM end "
+            "(the direction pointing down along gravity). The direction must be "
+            "confirmed afterwards before analysis. Press Esc to cancel.")
+        self.trackList.clearSelection()
+        self.videoView.set_calibration_mode("vertical")
+
+    def _exitPendulumPick(self) -> None:
+        self.videoView.set_calibration_mode(None)
+        self._hidePendulumGuide()
+
+    def _onPivotClicked(self, point: QPointF) -> None:
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if (
+            not self._measurement_allowed
+            or self.projectActions.busy
+            or session is None
+            or experiment is None
+        ):
+            self._exitPendulumPick()
+            return
+        try:
+            session.set_fixed_pivot(
+                experiment.experiment_id, (point.x(), point.y())
+            )
+        except ProjectSessionError as error:
+            self.statusBar().showMessage(f"Fixed pivot not saved: {error}")
+            self._exitPendulumPick()
+            return
+        self._exitPendulumPick()
+        self._afterPendulumChange(f"Fixed pivot set at ({point.x():.1f}, {point.y():.1f}) px")
+
+    def _onVerticalLineDrawn(self, top: QPointF, bottom: QPointF) -> None:
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if (
+            not self._measurement_allowed
+            or self.projectActions.busy
+            or session is None
+            or experiment is None
+        ):
+            self._exitPendulumPick()
+            return
+        try:
+            session.set_true_vertical(
+                experiment.experiment_id,
+                (top.x(), top.y()),
+                (bottom.x(), bottom.y()),
+            )
+        except ProjectSessionError as error:
+            self.statusBar().showMessage(f"True vertical not saved: {error}")
+            self._exitPendulumPick()
+            return
+        self._exitPendulumPick()
+        self._afterPendulumChange(
+            "True vertical saved (top→bottom) — direction NOT confirmed yet; "
+            "press 'Confirm direction' in the Pendulum panel")
+
+    def _confirmVerticalDirection(self) -> None:
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if session is None or experiment is None:
+            return
+        try:
+            session.confirm_true_vertical(experiment.experiment_id)
+        except ProjectSessionError as error:
+            self.statusBar().showMessage(f"Direction not confirmed: {error}")
+            return
+        self._afterPendulumChange("Vertical direction confirmed (top→bottom = down)")
+
+    def openPhysicalDialog(self) -> None:
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if session is None or experiment is None:
+            return
+        dialog = PhysicalParametersDialog(self)
+        if experiment.physical is not None:
+            dialog.set_physical(experiment.physical)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            session.set_physical(
+                experiment.experiment_id, dialog.physical_parameters()
+            )
+        except ProjectSessionError as error:
+            QMessageBox.warning(self, "Physical parameters", str(error))
+            return
+        self._afterPendulumChange("Physical parameters saved")
+
+    def _setReleaseToCurrentFrame(self) -> None:
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if session is None or experiment is None:
+            return
+        if self._presented_frame_index is None:
+            self.statusBar().showMessage(
+                "Navigate to the release frame first, then press this button")
+            return
+        try:
+            session.set_release_frame(
+                experiment.experiment_id, self._presented_frame_index
+            )
+        except ProjectSessionError as error:
+            self.statusBar().showMessage(f"Release frame not saved: {error}")
+            return
+        self._afterPendulumChange(
+            f"Release frame set to {self._presented_frame_index}")
+
+    def _afterPendulumChange(self, message: str) -> None:
+        """pendulum 事实写入后的统一收敛：面板/卡片/标题同步。"""
+
+        self._refreshCalibrationUI()
+        self._refreshHistoryButtons()
+        self.statusBar().showMessage(message)
 
     def _toggleDrawScaleMode(self, checked: bool) -> None:
         if checked:
@@ -1410,6 +1594,11 @@ class MainWindow(QMainWindow):
         self._refreshHistoryButtons()
 
     def _refreshCalibrationUI(self) -> None:
+        # pendulum checklist 与标定同批刷新：两者共享同一组"session 事实
+        # 变化"收敛点（导入/标定编辑/历史步进/几何录入）。
+        self.pendulumPanel.refresh(
+            self._annotation_session, self._annotation_video_id)
+        self._refreshPendulumOverlay()
         if self._annotation_session is None or self._annotation_video_id is None:
             self.calibrationStatusLabel.setText("Status: Uncalibrated")
             with QSignalBlocker(self.calibrationSelector):
@@ -1492,9 +1681,33 @@ class MainWindow(QMainWindow):
                     return v.height_px
         return 480
 
+    def _refreshPendulumOverlay(self) -> None:
+        """experiment.geometry → 只读 overlay(S6-R1);无 experiment 即清空。"""
+
+        experiment = self.currentPendulumExperiment()
+        vertical = (
+            experiment.geometry.true_vertical if experiment is not None else None
+        )
+        view = (
+            PendulumOverlayView(
+                fixed_pivot_px=experiment.geometry.fixed_pivot_px,
+                vertical_top_px=vertical.top_px if vertical is not None else None,
+                vertical_bottom_px=(
+                    vertical.bottom_px if vertical is not None else None
+                ),
+                vertical_confirmed=(
+                    vertical.direction_confirmed if vertical is not None else False
+                ),
+            )
+            if experiment is not None
+            else None
+        )
+        self.videoView.set_pendulum_overlay(view)
+
     def _refreshCalibrationOverlay(self) -> None:
         if self._annotation_session is None or self._annotation_video_id is None:
             self.videoView.set_calibration(None)
+            self.videoView.set_pendulum_overlay(None)
             return
         active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
         if active_cal is None:

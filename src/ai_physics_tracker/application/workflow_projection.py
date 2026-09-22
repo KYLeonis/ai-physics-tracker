@@ -71,6 +71,11 @@ ACTION_REVIEW_NEXT = "review_next"
 ACTION_FINISH_CHECKING = "finish_checking"
 ACTION_CANCEL_PLACEMENT = "cancel_placement"
 ACTION_SET_SCALE = "set_scale"
+ACTION_CREATE_EXPERIMENT = "create_experiment"        # P1.1：发起 Save As publication 向导
+ACTION_SETUP_FIXED_PIVOT = "setup_fixed_pivot"        # P1.1：视频上点选固定 pivot
+ACTION_SETUP_TRUE_VERTICAL = "setup_true_vertical"    # P1.1：top→bottom 两点 + 方向确认
+ACTION_SETUP_PHYSICAL = "setup_physical"              # P1.1：录入 L/g 与来源
+ACTION_SET_RELEASE = "set_release_frame"              # P1.1：release = 当前帧
 
 # --- 分析可用性四态（设计 §11.1）---
 
@@ -159,6 +164,19 @@ class AnalysisFacts:
 
 
 @dataclass(frozen=True)
+class PendulumSetupFacts:
+    """当前输入所属 experiment 的 setup 事实（P1.1，来源 pendulum_setup）。"""
+
+    experiment_id: UUID
+    missing: tuple[str, ...]          # pendulum_setup_status.missing_for_analysis
+    can_analyze: bool = False
+
+    @property
+    def setup_complete(self) -> bool:
+        return not self.missing
+
+
+@dataclass(frozen=True)
 class WorkflowState:
     """三维修量投影 + 组装卡片/状态头所需的全部摘要。"""
 
@@ -175,6 +193,8 @@ class WorkflowState:
     learned_not_generated: bool = False   # 最新完成训练晚于最新完成推理
     new_labels_since_last_train: int = 0
     candidate_comparison: "ComparisonFacts | None" = None
+    pendulum: PendulumSetupFacts | None = None        # 当前 track 所属 experiment
+    pendulum_creation_available: bool = False         # 无 experiment 且具备创建前置
 
 
 @dataclass(frozen=True)
@@ -231,7 +251,7 @@ def _completed_of(
     """
     return sorted(
         (r for r in runs
-         if r.track_id == track_id and r.task_type == task_type
+         if track_id in r.member_track_ids and r.task_type == task_type
          and r.status == "completed"),
         key=lambda r: r.created_at,
     )
@@ -374,6 +394,27 @@ def project_workflow_state(
     trajectory = trajectory_facts(session, track_id, runs)
     analysis = analysis_facts(session, track_id)
 
+    pendulum = None
+    if track_id is not None:
+        experiment = session.experiment_for_track(track_id)
+        if experiment is not None:
+            from ai_physics_tracker.application.pendulum_setup import (
+                pendulum_setup_status,
+            )
+
+            status = pendulum_setup_status(session.project, experiment)
+            pendulum = PendulumSetupFacts(
+                experiment_id=experiment.experiment_id,
+                missing=status.missing_for_analysis,
+                can_analyze=status.can_analyze,
+            )
+    pendulum_creation_available = (
+        pendulum is None
+        and bool(session.project.videos)
+        and session.project_root is not None
+        and not session.project.required_capabilities
+    )
+
     fixed_frames = 0
     fixed_valid = False
     completed_train = completed_infer = 0
@@ -410,7 +451,7 @@ def project_workflow_state(
         # 最近一次相关训练尝试失败且其后无成功 → 恢复卡
         relevant = [
             r for r in runs
-            if r.track_id == track_id and r.task_type == "train"
+            if track_id in r.member_track_ids and r.task_type == "train"
             and r.status in {"completed", "failed"}]
         latest_attempt = None
         for run in relevant:
@@ -449,6 +490,8 @@ def project_workflow_state(
         learned_not_generated=learned_not_generated,
         new_labels_since_last_train=new_labels,
         candidate_comparison=comparison,
+        pendulum=pendulum,
+        pendulum_creation_available=pendulum_creation_available,
     )
 
 
@@ -496,6 +539,11 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             "select or create a track": ActionSpec(ACTION_CREATE_TRACK, "Create a track"),
             "save the project before AI tasks": ActionSpec(ACTION_SAVE_PROJECT, "Save the project"),
         }.get(first, ActionSpec(ACTION_CREATE_TRACK, "Create a track"))
+        create_experiment_secondary = (
+            (ActionSpec(ACTION_CREATE_EXPERIMENT, "Create Pendulum experiment…"),)
+            if state.pendulum_creation_available
+            else ()
+        )
         return TaskCard(
             mode=MODE_SETUP,
             title="Current: experiment setup",
@@ -503,7 +551,52 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 "Define what you are measuring before acquiring trajectories.",
                 f"Next: {first}."),
             primary=primary,
+            secondary=create_experiment_secondary,
             evidence=(f"Missing: {', '.join(state.prerequisites)}.",),
+        )
+
+    # 1.5 pendulum experiment setup 未完成 → checklist 卡（experiment 存在即优先；
+    # 卡片是引导不是门禁：标注/训练入口不受影响，仅 P2 分析被 setup 阻塞）
+    if state.pendulum is not None and state.pendulum.missing:
+        gap_actions = {
+            "fixed_pivot": ActionSpec(ACTION_SETUP_FIXED_PIVOT, "Mark fixed pivot"),
+            "true_vertical": ActionSpec(
+                ACTION_SETUP_TRUE_VERTICAL, "Mark vertical (top→bottom)"
+            ),
+            "true_vertical_confirmation": ActionSpec(
+                ACTION_SETUP_TRUE_VERTICAL, "Confirm vertical direction"
+            ),
+            "active_calibration": ActionSpec(ACTION_SET_SCALE, "Set scale"),
+            "physical_parameters": ActionSpec(ACTION_SETUP_PHYSICAL, "Enter L and g"),
+            "release_frame": ActionSpec(ACTION_SET_RELEASE, "Set release to current frame"),
+        }
+        gaps = state.pendulum.missing
+        primary = gap_actions.get(
+            gaps[0], ActionSpec(ACTION_CREATE_EXPERIMENT, "Create Pendulum experiment…")
+        )
+        secondary = tuple(gap_actions[gap] for gap in gaps[1:5])
+        labels = {
+            "fixed_pivot": "fixed pivot",
+            "true_vertical": "true vertical (top→bottom)",
+            "true_vertical_confirmation": "vertical direction confirmation",
+            "active_calibration": "active scale calibration",
+            "physical_parameters": "physical L and g",
+            "release_frame": "release frame",
+        }
+        return TaskCard(
+            mode=MODE_SETUP,
+            title="Current: pendulum experiment setup",
+            explanation=(
+                "Finish the experiment setup to enable analysis.",
+                "Next: " + labels.get(gaps[0], gaps[0]) + ".",
+            ),
+            primary=primary,
+            secondary=secondary,
+            evidence=(
+                "Setup checklist: "
+                + ("ok" if not gaps else "missing — " + ", ".join(
+                    labels.get(gap, gap) for gap in gaps)),
+            ),
         )
 
     # 2. 取消中 / 执行中
@@ -617,6 +710,13 @@ def select_task_card(state: WorkflowState) -> TaskCard:
     # 7. 标注不足 / 首次学习就绪
     if traj.manual_count < _MIN_LABELS_FOR_TRAINING:
         needed = _MIN_LABELS_FOR_TRAINING - traj.manual_count
+        # publication 线主入口之一：generic v1 项目就绪后，卡片提供
+        # "Create Pendulum experiment…" 的显式入口（另一入口在 File 菜单）
+        create_experiment_secondary = (
+            (ActionSpec(ACTION_CREATE_EXPERIMENT, "Create Pendulum experiment…"),)
+            if state.pendulum_creation_available
+            else ()
+        )
         return TaskCard(
             mode=MODE_ANNOTATE,
             title="Current: mark example positions",
@@ -629,6 +729,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 if traj.manual_count == 0 else
                 ActionSpec(ACTION_LABEL_FRAME, "Mark next suggested frame")
             ),
+            secondary=create_experiment_secondary,
             evidence=("Manual positions are the only ground truth; suggestions "
                       "create no labels.",),
         )
