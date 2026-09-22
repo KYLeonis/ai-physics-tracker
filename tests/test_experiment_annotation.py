@@ -38,7 +38,11 @@ from ai_physics_tracker.domain.pendulum import (
     PendulumRoles,
     create_pendulum_experiment,
 )
-from ai_physics_tracker.domain.project import Project, create_project
+from ai_physics_tracker.domain.project import (
+    PUBLICATION_REQUIRED_CAPABILITIES,
+    Project,
+    create_project,
+)
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.types import utc_now
@@ -83,7 +87,11 @@ def _track(video: Video, name: str) -> Track:
 
 
 def _manual_point(
-    track_id: UUID, frame_index: int, *, status: str = "active"
+    track_id: UUID,
+    frame_index: int,
+    *,
+    status: str = "active",
+    superseded_by: UUID | None = None,
 ) -> TrackPoint:
     now = utc_now()
     return TrackPoint(
@@ -96,6 +104,26 @@ def _manual_point(
         source="manual",
         visibility="visible",
         status=status,
+        superseded_by=superseded_by,
+        created_at=now,
+        modified_at=now,
+    )
+
+
+def _engine_point(track_id: UUID, frame_index: int) -> TrackPoint:
+    now = utc_now()
+    return TrackPoint(
+        point_id=uuid4(),
+        track_id=track_id,
+        frame_index=frame_index,
+        time_s=frame_index / 30.0,
+        pixel_x=10.0,
+        pixel_y=20.0,
+        source="dlc",
+        source_detail="dlc:infer:test",
+        confidence=0.9,
+        visibility="visible",
+        status="active",
         created_at=now,
         modified_at=now,
     )
@@ -158,6 +186,7 @@ def _experiment_project(
         timelines=(_timeline(video),),
         tracks=project_tracks,
         observations=observations,
+        required_capabilities=PUBLICATION_REQUIRED_CAPABILITIES,
         experiments=(experiment,),
     )
     return project, experiment, tracks
@@ -192,7 +221,8 @@ class TestAnnotationGuideState:
 
         state = annotation_guide_state(project, experiment, 4)
 
-        assert state.done_roles == ("body_top", "tip")
+        # done/pending 都按 ROLE_ORDER 规范序，与标注先后顺序无关
+        assert state.done_roles == ("tip", "body_top")
         assert state.pending_roles == ("body_bottom", "pivot")
         assert state.current_role == "body_bottom"
         assert state.progress_label == "2/4 landmark roles marked"
@@ -258,6 +288,13 @@ class TestAnnotationGuideState:
         video = _video()
         roles, tracks, free = _roles_and_tracks(video)
         experiment = create_pendulum_experiment(uuid4(), video.video_id, roles)
+        # 域校验：superseded 点必须指认同 track 同帧的现存替代点；
+        # 这里以 AI 点为替代，使 tip 在帧 4 只有 superseded manual 历史
+        replacement = _engine_point(tracks["tip"].track_id, 4)
+        superseded_tip = _manual_point(
+            tracks["tip"].track_id, 4, status="superseded",
+            superseded_by=replacement.point_id,
+        )
         project = Project(
             project_id=uuid4(),
             name="guide fixture",
@@ -267,11 +304,13 @@ class TestAnnotationGuideState:
             timelines=(_timeline(video),),
             tracks=(*tracks.values(), free),
             observations=(
-                # superseded manual 不算已标（历史点不补位）
-                _manual_point(tracks["tip"].track_id, 4, status="superseded"),
+                replacement,
+                # superseded manual 不算已标（历史点不补位，AI 也不补位）
+                superseded_tip,
                 # 未绑定 role 的 track 上的 manual 不算
                 _manual_point(free.track_id, 4),
             ),
+            required_capabilities=PUBLICATION_REQUIRED_CAPABILITIES,
             experiments=(experiment,),
         )
 
@@ -421,6 +460,7 @@ class TestPrepareExperimentFrameSelection:
         plain_video, _ = plain.register_external_video(synthetic_video_path, info)
         track_a = plain.add_track(plain_video.video_id, "A")
         track_b = plain.add_track(plain_video.video_id, "B")
+        plain.save_as(tmp_path / "plain-project")
         for frame in (2, 4):
             plain.mark_point(track_a.track_id, frame, 10.0, 20.0)
         for frame in (6, 8):

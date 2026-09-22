@@ -1161,6 +1161,11 @@ class MainWindow(QMainWindow):
             "Calibration complete — return to Acquire trajectory to continue marking")
 
     def _onCalibrationGuideAction(self) -> None:
+        if self._calibration_guide_action in (
+            "guide_skip", "guide_next", "guide_finish"
+        ):
+            self._onAnnotationGuideAction(self._calibration_guide_action)
+            return
         if self._calibration_guide_action == "retry_scale":
             if self.drawScaleButton.isEnabled() and not self.drawScaleButton.isChecked():
                 self.drawScaleButton.click()
@@ -1501,6 +1506,8 @@ class MainWindow(QMainWindow):
                 hint, "guide_skip", f"Skip {remaining[0]}"
             )
         else:
+            # 全部剩余 role 均已跳过：保持 skip 集合直到换帧（presentFrame
+            # 统一清空），否则引导点击会重新落到被跳过的 role 上
             self._setCalibrationGuide(
                 f"Frame {state.frame_index}: remaining roles skipped — "
                 "frame stays partial (never used for training).",
@@ -1510,7 +1517,6 @@ class MainWindow(QMainWindow):
                 if state.next_frame_set_index is None
                 else f"Next frame ({state.next_frame_set_index})",
             )
-            self._guide_skipped_roles.clear()
 
     def _toggleDrawScaleMode(self, checked: bool) -> None:
         if checked:
@@ -2000,7 +2006,10 @@ class MainWindow(QMainWindow):
         self._refreshMarkers()
         self._refreshHistoryButtons()
         self._register_mark_for_autosave()
-        self._refreshAnnotationGuide()
+        if self._guide_skipped_roles:
+            self._refreshAnnotationGuideForced()
+        else:
+            self._refreshAnnotationGuide()
 
     def _refreshMarkers(self) -> None:
         if self._annotation_session is None:
