@@ -148,13 +148,21 @@ def join_complete_frames(
     )
 
 
-def canonical_label_digest(result: AnnotationJoinResult) -> str:
+def canonical_label_digest(
+    result: AnnotationJoinResult, frames: tuple[int, ...] | None = None
+) -> str:
     """complete 标签集合的 canonical digest（训练 request 与 fixed-check 共用）。
 
     覆盖帧号、每帧 point_id 与坐标；role 顺序即规范序。显示名、颜色、
-    created_at 等非语义字段不进入 digest。
+    created_at 等非语义字段不进入 digest。`frames` 给出时只对子集计算
+    （fixed-check 的冻结比较只看检查帧——帧外的点改动不应使检查失效）。
     """
 
+    selected = (
+        result.complete
+        if frames is None
+        else [label for label in result.complete if label.frame_index in set(frames)]
+    )
     payload: dict[str, Any] = {
         "kind": "pendulum-four-role-labels-v1",
         "frames": [
@@ -170,7 +178,29 @@ def canonical_label_digest(result: AnnotationJoinResult) -> str:
                     for role_index, point in enumerate(label.points)
                 ],
             }
-            for label in result.complete
+            for label in selected
         ],
     }
     return canonical_json_digest(payload)
+
+
+def fixed_check_status(
+    project: Project, experiment: PendulumExperiment
+) -> tuple[bool, str | None]:
+    """experiment 级 fixed-check 一致性：帧仍 4/4 且子集 digest 未变。
+
+    返回 (valid, reason)；无 fixed_check 返回 (False, "no fixed check set")。
+    """
+
+    fixed_check = experiment.fixed_check
+    if fixed_check is None:
+        return False, "no fixed check set"
+    result = join_complete_frames(project, experiment)
+    complete_frames = set(result.complete_frame_indices)
+    missing = [frame for frame in fixed_check.frames if frame not in complete_frames]
+    if missing:
+        return False, f"frames no longer complete: {sorted(missing)}"
+    current = canonical_label_digest(result, tuple(fixed_check.frames))
+    if current != fixed_check.label_digest:
+        return False, "labels changed since the check set was frozen"
+    return True, None

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 from PySide6.QtWidgets import QMessageBox
 
 from ai_physics_tracker.application.tracking_job import (
+    prepare_experiment_frame_selection,
     prepare_tracking_request, run_tracking_worker, prepare_tracking_candidate,
     cancel_tracking_job, read_task_log, verify_request_files, TrackingJobRunner,
     prepare_frame_selection_request, run_frame_selection_worker,
@@ -24,7 +25,9 @@ from ai_physics_tracker.application.advisor_collection import collect_advisor_in
 from ai_physics_tracker.application import user_messages
 from ai_physics_tracker.application.refinement_history import extract_refinement_state
 from ai_physics_tracker.application.training_advisor import AdvisorInput, recommend_training_action
+from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
+from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.application.tracking_types import TaskProgress, TaskLog, TaskResult
 from ai_physics_tracker.gui.task_panel import TaskPanel
 
@@ -1272,6 +1275,7 @@ class FrameSelectionActions(QObject):
         # selectedTrackChanged，只有真正切换 track/project 才取消或清空；
         # 结果按 track 缓存，取消选择/切走后重新选中同一 track 时恢复显示
         self._running_track_id = None
+        self._running_experiment_id = None
         self._result_track_id = None
         self._cached_result = None
         self._cached_status = ""
@@ -1322,14 +1326,34 @@ class FrameSelectionActions(QObject):
         ):
             return
         session = self.window.analysisSession
-        track_id = self.window.selectedTrackId
-        if session is None or track_id is None:
+        if session is None:
             self.panel.setSuggestStatus("No track selected")
             return
+        # P1.2:experiment 存在于当前视频时帧集归 experiment(契约 §3),
+        # 排除集为四 role 并集;结果回填后持久化到 experiment.frame_set。
+        experiment = next(
+            (
+                item
+                for item in session.pendulum_experiments()
+                if item.video_id == self.window.activeVideoId
+            ),
+            None,
+        )
         try:
-            job_request = prepare_frame_selection_request(
-                session, track_id, n_frames, algorithm=algorithm
-            )
+            if experiment is not None:
+                owner_id = experiment.experiment_id
+                job_request = prepare_experiment_frame_selection(
+                    session, owner_id, n_frames, algorithm=algorithm
+                )
+            else:
+                track_id = self.window.selectedTrackId
+                if track_id is None:
+                    self.panel.setSuggestStatus("No track selected")
+                    return
+                owner_id = track_id
+                job_request = prepare_frame_selection_request(
+                    session, track_id, n_frames, algorithm=algorithm
+                )
         except Exception as error:
             self.panel.setSuggestStatus(f"Cannot start: {error}")
             return
@@ -1337,7 +1361,10 @@ class FrameSelectionActions(QObject):
         request_id = _uuid4()
         self._request_id = request_id
         self._job_request = job_request
-        self._running_track_id = track_id
+        self._running_track_id = owner_id
+        self._running_experiment_id = (
+            experiment.experiment_id if experiment is not None else None
+        )
         self._result_track_id = None
         self._cached_result = None
         self._cached_status = ""
@@ -1399,6 +1426,25 @@ class FrameSelectionActions(QObject):
 
     def _finish_success(self, result) -> None:
         self.panel.setSuggestResult(result)
+        if self._running_experiment_id is not None and result.suggested_frames:
+            # 契约 §3:共享帧集持久化到 experiment(可撤销事务)
+            session = self.window.analysisSession
+            if session is not None:
+                try:
+                    session.set_experiment_frame_set(
+                        self._running_experiment_id,
+                        ExperimentFrameSet(
+                            frames=tuple(result.suggested_frames),
+                            algorithm=result.request_algorithm,
+                            created_at=utc_now(),
+                        ),
+                    )
+                    self.panel.setSuggestStatus(
+                        f"Saved as shared frame set "
+                        f"({len(result.suggested_frames)} frames, undoable)")
+                except Exception as error:
+                    self.panel.setSuggestStatus(
+                        f"Saved result could not persist: {error}")
         self._result_track_id = self._running_track_id
         self._cached_result = result
         self._cached_status = self.panel.suggestStatusLabel.text()
@@ -1417,6 +1463,7 @@ class FrameSelectionActions(QObject):
         self._result_track_id = None
         self._cached_result = None
         self._cached_status = ""
+        self._running_experiment_id = None
         self._reset()
         self._refreshEnabled()
 
@@ -1425,6 +1472,7 @@ class FrameSelectionActions(QObject):
         self._result_track_id = None
         self._cached_result = None
         self._cached_status = ""
+        self._running_experiment_id = None
         self._reset()
         self._refreshEnabled()
 

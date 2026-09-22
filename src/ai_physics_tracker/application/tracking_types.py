@@ -212,6 +212,10 @@ class FrameSelectionRequest:
     cluster_step: int = 1              # K-means 聚类步长，控制扫描帧密度
     color_mode: str = "rgb"            # 颜色空间，供 DLC K-means 使用
     candidate_frames: frozenset[int] | None = None  # 显式候选帧集合（5.2 多样性）
+    # P1.2：experiment 共享帧集的 owner（契约 §3 帧号只存一次）。
+    # 提供时 track_id 仅为兼容必填位的角色代表，excluded_frames 已由
+    # 调用方按四 role 并集计算；worker/adapter 不消费该字段。
+    experiment_id: UUID | None = None
 
     def __post_init__(self) -> None:
         if self.algorithm not in {"kmeans", "uniform"}:

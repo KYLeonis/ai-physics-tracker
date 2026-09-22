@@ -13,6 +13,7 @@ from uuid import UUID
 from ai_physics_tracker.domain.pendulum import (
     ROLE_ORDER,
     ExperimentActivationRecord,
+    ExperimentFixedCheck,
     ExperimentFrameSet,
     PendulumExperiment,
     PendulumGeometry,
@@ -144,6 +145,9 @@ def experiment_to_payload(experiment: PendulumExperiment) -> dict[str, object]:
             "frame_set": None
             if experiment.frame_set is None
             else frame_set_to_payload(experiment.frame_set),
+            "fixed_check": None
+            if experiment.fixed_check is None
+            else fixed_check_to_payload(experiment.fixed_check),
             "active_infer_run_id": None
             if experiment.active_infer_run_id is None
             else str(experiment.active_infer_run_id),
@@ -168,6 +172,7 @@ def experiment_from_payload(payload: dict[str, object]) -> PendulumExperiment:
         "physical",
         "release_frame_index",
         "frame_set",
+        "fixed_check",
         "active_infer_run_id",
         "activation_history",
         "created_at",
@@ -187,6 +192,9 @@ def experiment_from_payload(payload: dict[str, object]) -> PendulumExperiment:
         frame_set=None
         if payload.get("frame_set") is None
         else frame_set_from_payload(_object(payload.get("frame_set"), "frame_set")),
+        fixed_check=None
+        if payload.get("fixed_check") is None
+        else fixed_check_from_payload(_object(payload.get("fixed_check"), "fixed_check")),
         active_infer_run_id=UUID(active_run) if active_run is not None else None,
         activation_history=tuple(
             history_record_from_payload(item)
@@ -303,6 +311,25 @@ def frame_set_from_payload(payload: dict[str, object]) -> ExperimentFrameSet:
         source_video_sha256=_optional_string(payload.get("source_video_sha256")),
         created_at=_parse_datetime(_string(payload, "created_at")),
         extra_fields=cast(JsonObject, _unknown(payload, known)),
+    )
+
+
+def fixed_check_to_payload(fixed_check: ExperimentFixedCheck) -> dict[str, object]:
+    return {
+        "frames": list(fixed_check.frames),
+        "label_digest": fixed_check.label_digest,
+        "created_at": _format_datetime(fixed_check.created_at),
+    }
+
+
+def fixed_check_from_payload(payload: dict[str, object]) -> ExperimentFixedCheck:
+    return ExperimentFixedCheck(
+        frames=tuple(
+            _expect_integer(item, "frames item")
+            for item in _sequence(payload.get("frames"), "frames")
+        ),
+        label_digest=_string(payload, "label_digest"),
+        created_at=_parse_datetime(_string(payload, "created_at")),
     )
 
 

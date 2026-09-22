@@ -501,6 +501,79 @@ def prepare_frame_selection_request(
     )
 
 
+def prepare_experiment_frame_selection(
+    session: "ProjectSession",
+    experiment_id: UUID,
+    n_frames: int,
+    algorithm: str = "kmeans",
+    seed: int = 0,
+    cluster_step: int | None = None,
+    color_mode: str = "rgb",
+) -> FrameSelectionJobRequest:
+    """experiment 共享帧集的选取请求（契约 §3：帧号只存一次）。
+
+    与单轨版本的区别仅在 owner 与排除集：excluded_frames 取四 role 全部
+    manual 帧的并集（任一 role 已标的帧不再建议）；`experiment_id` 写入
+    请求供 GUI/审计消费，worker 不依赖它。
+    """
+
+    experiment = session.pendulum_experiment(experiment_id)
+    video = next(
+        (v for v in session.project.videos if v.video_id == experiment.video_id),
+        None,
+    )
+    if video is None:
+        raise ProjectSessionError("Video not found for the experiment")
+    video_path = session.video_path(video)
+    if video_path is None or not video_path.is_file():
+        raise ProjectSessionError("Video file is missing; cannot request frame suggestions")
+    timeline = next(
+        (t for t in session.project.timelines if t.video_id == experiment.video_id),
+        None,
+    )
+    if timeline is None:
+        raise ProjectSessionError("Timeline not found for the selected video")
+    zone = timeline.working_zone
+    if zone is not None:
+        zone_start, zone_end = int(zone[0]), int(zone[1])
+    else:
+        zone_start, zone_end = 0, video.frame_count - 1
+
+    # 四 role manual 帧并集：任一 role 已标的帧都不重复建议（契约 §3）
+    excluded: set[int] = set()
+    for member in experiment.roles.track_ids():
+        excluded.update(p.frame_index for p in session.manual_points(member))
+
+    total_zone_frames = zone_end - zone_start + 1
+    if cluster_step is not None and cluster_step > 0:
+        actual_cluster_step = cluster_step
+    else:
+        target_candidates = max(50, min(120, n_frames * 10))
+        actual_cluster_step = max(1, total_zone_frames // target_candidates)
+
+    sel_request = FrameSelectionRequest(
+        video_id=experiment.video_id,
+        track_id=experiment.roles.tip,  # 兼容必填位;worker 不消费
+        video_path=video_path.resolve(),
+        frame_count=video.frame_count,
+        zone_start=zone_start,
+        zone_end=zone_end,
+        n_frames=n_frames,
+        algorithm=algorithm,
+        excluded_frames=frozenset(excluded),
+        seed=seed,
+        cluster_step=actual_cluster_step,
+        color_mode=color_mode,
+        experiment_id=experiment_id,
+    )
+    stat = video_path.stat()
+    return FrameSelectionJobRequest(
+        selection_request=sel_request,
+        project_root=session.project_root,
+        video_file_info=(stat.st_size, stat.st_mtime_ns),
+    )
+
+
 def run_frame_selection_worker(
     request_id: UUID,
     queue: Any,

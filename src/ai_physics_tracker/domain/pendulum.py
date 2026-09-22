@@ -180,6 +180,32 @@ class ExperimentFrameSet:
 
 
 @dataclass(frozen=True)
+class ExperimentFixedCheck:
+    """experiment 级固定检查帧集（契约 §3：四 role 共同进 test/共同排除）。
+
+    `label_digest` 冻结 freeze 时的 canonical 标签 digest（S2）；任一 role
+    的点改动都会使当前 digest 偏离 → invalid，需 renew（重新冻结）。
+    """
+
+    frames: tuple[int, ...]
+    label_digest: str
+    created_at: datetime
+
+    def __post_init__(self) -> None:
+        if not self.frames:
+            raise ValueError("fixed check set must not be empty")
+        if len(set(self.frames)) != len(self.frames):
+            raise ValueError("fixed check frames must be unique")
+        if list(self.frames) != sorted(self.frames):
+            raise ValueError("fixed check frames must be ordered by frame index")
+        if len(self.label_digest) != 64 or any(
+            char not in "0123456789abcdef" for char in self.label_digest
+        ):
+            raise ValueError("fixed check label_digest must be a sha256 hex digest")
+        require_aware_datetime(self.created_at, "created_at")
+
+
+@dataclass(frozen=True)
 class RoleBindingEditRecord:
     """一次 role 绑定编辑的不可变历史：完整 old/new 快照与编辑后 revision。
 
@@ -261,6 +287,7 @@ class PendulumExperiment:
     physical: PhysicalParameters | None = None
     release_frame_index: int | None = None
     frame_set: ExperimentFrameSet | None = None
+    fixed_check: ExperimentFixedCheck | None = None
     active_infer_run_id: UUID | None = None
     activation_history: tuple[RoleBindingEditRecord | ExperimentActivationRecord, ...] = ()
     mode: str = PENDULUM_MODE

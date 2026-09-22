@@ -24,7 +24,16 @@ from ai_physics_tracker.domain.project import (
 )
 from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.domain.types import utc_now
-from test_pendulum_experiment import _timeline, _track, _video
+from ai_physics_tracker.infrastructure.project_serializer import (
+    project_from_payload,
+    project_to_payload,
+)
+from test_pendulum_experiment import (
+    _publication_project,
+    _timeline,
+    _track,
+    _video,
+)
 
 
 def _make_point(
@@ -317,3 +326,97 @@ class TestIdentityReviewAdditions:
         result = join_complete_frames(project, experiment)
         assert result.partial == ((8, 3),)
         assert not result.complete
+
+
+class TestFixedCheck:
+    """P1.2-S4:experiment 级固定检查集的冻结与失效。"""
+
+    def test_subset_digest_only_tracks_check_frames(self):
+        build, roles = _build()
+        points = _all_four(roles, 5) + _all_four(roles, 9)
+        project, experiment, _ = build(points)
+        result = join_complete_frames(project, experiment)
+        subset = canonical_label_digest(result, (5,))
+        full = canonical_label_digest(result)
+        assert subset != full
+        # 帧外点(帧 9 的 tip)改动:子集 digest 不变、全集 digest 变
+        moved_points = list(project.observations)
+        moved_points[4] = replace(moved_points[4], pixel_x=99.0)
+        moved_result = join_complete_frames(
+            replace(project, observations=tuple(moved_points)), experiment
+        )
+        assert canonical_label_digest(moved_result, (5,)) == subset
+        assert canonical_label_digest(moved_result) != full
+
+    def test_fixed_check_status_lifecycle(self):
+        from ai_physics_tracker.application.annotation_join import fixed_check_status
+        from ai_physics_tracker.application.project_session import ProjectSession
+        from ai_physics_tracker.infrastructure.project_repository import (
+            ProjectRepository,
+        )
+
+        build, roles = _build()
+        project, experiment, _ = build(
+            _all_four(roles, 5) + _all_four(roles, 9) + _all_four(roles, 20)
+        )
+        session = ProjectSession(ProjectRepository(), project)
+        session._verified_videos.add(project.videos[0].video_id)
+        experiment_id = experiment.experiment_id
+
+        assert fixed_check_status(session.project, session.pendulum_experiments()[0]) == (
+            False, "no fixed check set")
+
+        session.freeze_experiment_fixed_check(experiment_id, (5, 9))
+        frozen = session.pendulum_experiments()[0].fixed_check
+        assert frozen.frames == (5, 9)
+        valid, reason = fixed_check_status(session.project, session.pendulum_experiments()[0])
+        assert valid and reason is None
+
+        # 改检查帧外 → 仍 valid
+        session.mark_point(roles.tip, 20, 1.0, 2.0)
+        assert fixed_check_status(session.project, session.pendulum_experiments()[0])[0]
+
+        # 改检查帧上的点 → invalid("labels changed")
+        session.mark_point(roles.tip, 5, 42.0, 43.0)
+        valid, reason = fixed_check_status(session.project, session.pendulum_experiments()[0])
+        assert not valid
+        assert reason == "labels changed since the check set was frozen"
+
+        session.undo()  # 撤销改动 → 回到 valid
+        assert fixed_check_status(session.project, session.pendulum_experiments()[0])[0]
+
+        session.clear_experiment_fixed_check(experiment_id)
+        assert session.pendulum_experiments()[0].fixed_check is None
+
+    def test_freeze_rejects_incomplete_frames(self):
+        from ai_physics_tracker.application.project_session import (
+            ProjectSession,
+            ProjectSessionError,
+        )
+        from ai_physics_tracker.infrastructure.project_repository import (
+            ProjectRepository,
+        )
+
+        build, roles = _build()
+        project, experiment, _ = build(_all_four(roles, 5) + [_make_point(roles.pivot, 9)])
+        session = ProjectSession(ProjectRepository(), project)
+        with pytest.raises(ProjectSessionError, match="incomplete"):
+            session.freeze_experiment_fixed_check(
+                experiment.experiment_id, (5, 9)
+            )
+        # 状态零变化
+        assert session.pendulum_experiments()[0].fixed_check is None
+
+    def test_fixed_check_round_trips_through_v2_payload(self):
+        from ai_physics_tracker.domain.pendulum import ExperimentFixedCheck
+
+        project = _publication_project()
+        experiment = replace(
+            project.experiments[0],
+            fixed_check=ExperimentFixedCheck(
+                frames=(5, 9), label_digest="a" * 64, created_at=utc_now()
+            ),
+        )
+        payload = project_to_payload(replace(project, experiments=(experiment,)))
+        restored = project_from_payload(payload)
+        assert restored.experiments[0].fixed_check == experiment.fixed_check
