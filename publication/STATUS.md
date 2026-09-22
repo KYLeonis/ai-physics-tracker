@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-21。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.1-pendulum-setup`(未合并、未 push)。
-- 当前：**P1.1 完成并已合并（2026-09-21）：三轮 independent review + 两轮 Human Review 全部通过，921 tests。下一步 P1.2 — Complete-frame annotation**。P1.2–P1.4 未开始。
+- 当前：**P1.2 S1–S6 全部实现（2026-09-23）：三轮 review 闭环 + DLC smoke PASS，980 tests；等待 Human Review 后合并**。P1.1 已合并；P1.3–P1.4 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -76,4 +76,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-处理 identity review findings → S3 引导标注 UI(含 frame selection owner identity 的 experiment 化)→ S4 共享 fixed-check → S5 exporter → S6 真实 DLC smoke。P1–P5期间安排原生Windows x64 G1–G4取证;**进入P6之前必须完成**,不得以CI/mock/Mac代替。
+**等待用户执行 [P1.2 Human Review](plans/p1.2-human-review.md)**（引导标注交互 + 帧集持久化，一次验收）。通过后：P1.2 合并关闭 → P1.3（joint training + teacher import）。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。
