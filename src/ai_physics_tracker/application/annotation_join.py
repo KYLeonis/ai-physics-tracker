@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from math import isfinite
 from typing import Any
 
-from ai_physics_tracker.domain.pendulum import PendulumExperiment
+from ai_physics_tracker.domain.pendulum import ROLE_ORDER, PendulumExperiment
 from ai_physics_tracker.domain.project import Project
 from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.domain.types import canonical_json_digest
@@ -53,10 +53,16 @@ def join_complete_frames(
     - 帧上只有 AI 观测 → ai_only_frames（manual 缺席即不完整，AI 不补位）；
     - active manual 含 non-finite 坐标 → nonfinite_frames（整体不完整，
       不产出半个 label）。
+
+    分类优先级：count<4 先归 partial（此时坐标损坏一并记入 nonfinite
+    诊断）；superseded_frames 与 nonfinite_frames 两桶是对外部改写
+    manifest 的 defense-in-depth——产品写路径中 manual superseded 不产生
+    （add_manual_point 直接删旧点）、非有限值被 TrackPoint 构造期拒绝，
+    正常流程两桶为空。
     """
 
     role_track_ids = experiment.roles.track_ids()
-    role_names = ("tip", "body_top", "body_bottom", "pivot")
+    role_names = ROLE_ORDER
     active_by_frame: dict[int, list[TrackPoint | None]] = {}
     any_manual_frames: set[int] = set()
     superseded_only: dict[int, int] = {}
@@ -93,6 +99,12 @@ def join_complete_frames(
         count = sum(1 for point in slots if point is not None)
         if count < 4:
             partial.append((frame_index, count))
+            if any(
+                not isfinite(point.pixel_x) or not isfinite(point.pixel_y)
+                for point in slots
+                if point is not None
+            ):
+                nonfinite.append(frame_index)
             continue
         if any(
             not isfinite(point.pixel_x) or not isfinite(point.pixel_y)

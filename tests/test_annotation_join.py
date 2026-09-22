@@ -274,3 +274,46 @@ class TestCanonicalLabelDigest:
         assert canonical_label_digest(
             join_complete_frames(replace(base_project, tracks=swapped), base_experiment)
         ) == base
+
+
+class TestIdentityReviewAdditions:
+    """identity review ID5:补三类行为回归。"""
+
+    def test_role_rebind_changes_digest(self):
+        """重绑(swap 两 role 的 track)→ 同坐标点集 digest 变(role 身份变)。"""
+
+        build, roles = _build()
+        base_project, base_experiment, _ = build(_all_four(roles, 5))
+        base = canonical_label_digest(
+            join_complete_frames(base_project, base_experiment)
+        )
+        # role 互换:tip↔body_top 的 track 对调(重绑是一等域操作)
+        swapped_roles = PendulumRoles(
+            tip=roles.body_top,
+            body_top=roles.tip,
+            body_bottom=roles.body_bottom,
+            pivot=roles.pivot,
+        )
+        rebound = replace(
+            base_experiment, roles=swapped_roles
+        )
+        # 重绑后,同一物理点集的 role 归属变化必须体现为 digest 变化
+        assert (
+            canonical_label_digest(join_complete_frames(base_project, rebound))
+            != base
+        )
+
+    def test_partial_count_ignores_shadowed_superseded_residual(self):
+        """superseded 残留不影响 partial 计数(last-wins 语义的一致性)。"""
+
+        build, roles = _build()
+        actives = _all_four(roles, 8)
+        actives.pop(1)  # body_top 缺 → 3/4
+        shadowed = _make_point(
+            roles.tip, 8, x=99.0, status="superseded",
+            superseded_by=actives[0].point_id,
+        )
+        project, experiment, _ = build(actives + [shadowed])
+        result = join_complete_frames(project, experiment)
+        assert result.partial == ((8, 3),)
+        assert not result.complete
