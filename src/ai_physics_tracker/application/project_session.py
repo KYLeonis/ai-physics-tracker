@@ -2200,15 +2200,13 @@ class ProjectSession:
         )
         if video is None:
             raise ProjectSessionError("experiment video is not registered")
-        if frame_set is not None:
-            if any(frame >= video.frame_count for frame in frame_set.frames):
-                raise ProjectSessionError(
-                    "frame set contains frames beyond the video frame_count"
-                )
-            if any(
-                not 0 <= frame < video.frame_count for frame in frame_set.frames
-            ):
-                raise ProjectSessionError("frame set contains negative frames")
+        if frame_set is not None and any(
+            frame >= video.frame_count for frame in frame_set.frames
+        ):
+            # 负帧已由域构造拒绝,无需重复检查
+            raise ProjectSessionError(
+                "frame set contains frames beyond the video frame_count"
+            )
         try:
             updated = replace(
                 experiment, frame_set=frame_set, measurement_revision=revision

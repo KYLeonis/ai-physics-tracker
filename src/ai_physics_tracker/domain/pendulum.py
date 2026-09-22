@@ -169,8 +169,14 @@ class ExperimentFrameSet:
         if not self.algorithm.strip():
             raise ValueError("frame set algorithm provenance must not be blank")
         require_aware_datetime(self.created_at, "created_at")
-        if self.working_zone is not None and len(self.working_zone) != 2:
-            raise ValueError("working_zone must contain two frame indices")
+        if self.working_zone is not None:
+            if len(self.working_zone) != 2:
+                raise ValueError("working_zone must contain two frame indices")
+            # 对齐 Timeline 先例:拒绝负起点与逆序区间
+            if self.working_zone[0] < 0 or self.working_zone[1] < self.working_zone[0]:
+                raise ValueError(
+                    "working_zone must be a non-empty ascending frame range"
+                )
 
 
 @dataclass(frozen=True)

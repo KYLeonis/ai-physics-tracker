@@ -281,12 +281,17 @@ def frame_set_from_payload(payload: dict[str, object]) -> ExperimentFrameSet:
         "created_at",
     }
     zone = payload.get("working_zone")
-    working_zone = (
-        (_expect_integer(zone[0], "working_zone[0]"),
-         _expect_integer(zone[1], "working_zone[1]"))
-        if isinstance(zone, list) and len(zone) == 2
-        else None
-    )
+    if zone is None:
+        working_zone = None
+    elif isinstance(zone, list) and len(zone) == 2:
+        working_zone = (
+            _expect_integer(zone[0], "working_zone[0]"),
+            _expect_integer(zone[1], "working_zone[1]"),
+        )
+    else:
+        # 与 _timeline_from_payload 同标准:畸形 zone fail closed,
+        # 不静默降级为 None(会造成不可逆的数据形态丢失)
+        raise ValueError("frame_set working_zone must be null or two frame indices")
     return ExperimentFrameSet(
         frames=tuple(
             _expect_integer(item, "frames item")
