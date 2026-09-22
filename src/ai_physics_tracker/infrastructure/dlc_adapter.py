@@ -269,6 +269,10 @@ class DLCAdapter:
             raise RuntimeError(
                 f"Cannot read DLC config for bodypart order: {config_path}: {error}"
             ) from error
+        if not isinstance(project_cfg, dict):
+            raise RuntimeError(
+                f"DLC config is not a YAML mapping: {config_path}"
+            )
         config_bodyparts = list(project_cfg.get("bodyparts") or [])
         if config_bodyparts != list(ROLE_ORDER):
             raise RuntimeError(
@@ -312,6 +316,15 @@ class DLCAdapter:
                 raise RuntimeError(
                     f"Frame {row.frame_index} does not carry exactly "
                     f"{len(ROLE_ORDER)} landmark coordinates"
+                )
+            if any(
+                len(point) != 2
+                or not all(isfinite(value) for value in point)
+                for point in row.coordinates
+            ):
+                raise RuntimeError(
+                    f"Frame {row.frame_index} carries non-finite or "
+                    "malformed landmark coordinates"
                 )
             img_rel = f"labeled-data/{video_stem}/img{row.frame_index:0{index_width}d}.png"
             img_abs = proj_dir / img_rel
