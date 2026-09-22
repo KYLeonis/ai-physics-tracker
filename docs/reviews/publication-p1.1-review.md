@@ -60,9 +60,20 @@ Reviewer 只读复审 S5(`55ce737`)/S6(`0fd3494`),方法:代码走读 + 全量 9
 
 R3 指定审查项结论:GUI 单一事实源通过(setup 写入全经 ProjectSession,完整性只算于 `pendulum_setup_status`,向导只持 draft);G1/G2/F2/F4 关闭项抽查无回归;HR 协议除 R1(已修)外全部对齐;线程边界/`_run` 扩展/错误处理合格。
 
+## Human Review(2026-09-21,用户真人真机)
+
+按 [p1.1-human-review.md](../../publication/plans/p1.1-human-review.md) 执行,两轮:
+
+- **Round 1 反馈(3 项,全部修复,commit `c0290bf`,复测 921 passed)**:
+  1. 侧栏面板字符截断 → label/按钮垂直堆叠 + wordwrap(260px 侧栏内水平并排不可行);
+  2. 摆长单位统一 mm(UI 输入/显示;域仍存契约 `length_m`,对话框换算);
+  3. bound track 上 Start learning 静默失败(日志取证:无新 run,guard 在 prepare 阶段拒绝但错误只闪在 activity 区)→ train/infer 按钮提前禁用并显示原因"Bound to pendulum experiment — single-track AI disabled (joint training comes in a later phase)"。joint 训练属 P1.3,bound track 暂无 AI 路径是计划内中间态。
+  附带:用户 test1 项目被 `git add -A` 误收 → 已 `git rm --cached` + `.gitignore`,文件未动。
+- **Round 2:用户确认"测试通过"**。Q1 清楚 / Q2 无歧义 / Q3 准确;Q4 由 Round 1 修复闭环。
+
 ## Final verdict
 
-三轮 review(R1 guard 专项、R2 schema 专项、R3 S5/S6 终审)的全部 findings 已修复并复测;最终验证 `python -m pytest` **920 passed, 9 subtests** + `compileall` 通过。剩余 gate:**Human Review(用户照 publication/plans/p1.1-human-review.md 执行)**,通过后合并回 `publication/ejp-damped-pendulum` 并收尾。
+三轮 independent review(R1 guard、R2 schema、R3 S5/S6 终审)全部 findings 修复复测 + Human Review 两轮通过。最终 `python -m pytest` **921 passed, 9 subtests**。P1.1 关闭,合并 `feat/p1.1-pendulum-setup` → `publication/ejp-damped-pendulum`;下一步 P1.2。
 
 ## Boundary
 
