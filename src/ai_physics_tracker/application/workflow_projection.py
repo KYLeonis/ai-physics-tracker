@@ -76,6 +76,7 @@ ACTION_SETUP_FIXED_PIVOT = "setup_fixed_pivot"        # P1.1：视频上点选�
 ACTION_SETUP_TRUE_VERTICAL = "setup_true_vertical"    # P1.1：top→bottom 两点 + 方向确认
 ACTION_SETUP_PHYSICAL = "setup_physical"              # P1.1：录入 L/g 与来源
 ACTION_SET_RELEASE = "set_release_frame"              # P1.1：release = 当前帧
+ACTION_GUIDED_MARKING = "guided_marking"              # P1.2：四 role 引导标注入口
 
 # --- 分析可用性四态（设计 §11.1）---
 
@@ -597,6 +598,27 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 + ("ok" if not gaps else "missing — " + ", ".join(
                     labels.get(gap, gap) for gap in gaps)),
             ),
+        )
+
+    # 1.6 experiment-bound track：joint 训练属 P1.3，单轨 AI 已在按钮层
+    # 禁用——卡片不再出现任何 AI 动作，主行动作是继续引导标注（P1.2）
+    if state.pendulum is not None:
+        setup_note = (
+            "setup complete"
+            if state.pendulum.setup_complete
+            else "setup incomplete: " + ", ".join(state.pendulum.missing)
+        )
+        return TaskCard(
+            mode=MODE_SETUP,
+            title="Current: pendulum measurement",
+            explanation=(
+                "All four landmark roles are bound to this track. Single-track "
+                "learning is disabled for experiment tracks; joint AI training "
+                "arrives in a later phase (P1.3).",
+                "Continue marking landmark frames to improve the labels.",
+            ),
+            primary=ActionSpec(ACTION_GUIDED_MARKING, "Mark landmark frames"),
+            evidence=(f"Experiment setup: {setup_note}.",),
         )
 
     # 2. 取消中 / 执行中

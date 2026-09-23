@@ -693,6 +693,9 @@ class TrackingActions(QObject):
         if action_id == "create_experiment":
             window.projectActions.createPendulumExperiment()
             return
+        if action_id == "guided_marking":
+            window.beginExperimentAnnotation()
+            return
         if action_id == "setup_fixed_pivot":
             window.setWorkspace("setup")
             window.beginPivotPick()

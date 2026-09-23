@@ -32,6 +32,7 @@ from ai_physics_tracker.application.workflow_projection import (
     ACTION_UPDATE_CHARTS,
     ACTION_VIEW_ANALYSIS,
     ACTION_CREATE_EXPERIMENT,
+    ACTION_GUIDED_MARKING,
     MODE_ANNOTATE,
     MODE_SETUP,
     ANALYSIS_LATEST,
@@ -849,4 +850,28 @@ class TestPendulumSetupProjection:
         assert state.pendulum is not None
         assert state.pendulum.setup_complete
         card = select_task_card(state)
-        assert card.title != "Current: pendulum experiment setup"
+        # setup 完成后 bound track 显示专用 measurement 卡(joint 训练属
+        # P1.3,单轨 AI 卡不再出现——用户反馈的 Start learning 无反应修复)
+        assert card.title == "Current: pendulum measurement"
+        assert card.primary.action_id == ACTION_GUIDED_MARKING
+        assert "P1.3" in card.explanation[0]
+
+    def test_bound_track_never_shows_ai_cards(self, tmp_path):
+        from ai_physics_tracker.application.workflow_projection import (
+            ACTION_START_LEARNING,
+            ACTION_GENERATE_TRAJECTORY,
+        )
+
+        session, video, tracks = self._migrated(tmp_path)
+        # 标很多点:若无拦截,此状态会走 annotate/learn 分支
+        for frame in range(3, 9):
+            for track in tracks:
+                session.mark_point(track.track_id, frame, 10.0, 20.0)
+        state = project_workflow_state(session, tracks[0].track_id, ())
+        card = select_task_card(state)
+        action_ids = {card.primary.action_id} | {
+            spec.action_id for spec in card.secondary
+        }
+        assert ACTION_START_LEARNING not in action_ids
+        assert ACTION_GENERATE_TRAJECTORY not in action_ids
+        assert ACTION_PICK_FRAMES not in action_ids
