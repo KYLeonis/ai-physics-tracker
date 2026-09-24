@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-24。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.2-complete-frame-annotation`(未合并、未 push)。
-- 当前：**P1.2 Human Review 通过（2026-09-24）：HR-A/B/C/D 全 PASS、Q1–Q4 用户裁定通过、F1 已修复+回归测试+真机重测（982 tests）、test1 帧集 10/10 全 4/4 完成；仅剩 F4/F5（帧集进度可见性 UX）待用户裁定，不阻塞。等待用户指令合并关闭 P1.2**。P1.1 已合并；P1.3–P1.4 未开始。
+- 当前：**P1.2 已完成并合并（2026-09-24，merge `5cad79c`）：HR 通过（自动化 A–D + 用户 Q1–Q4），F1–F5 全部处置完毕（F1/F4/F5 修复，F2 WONTFIX，F3 关闭），987 tests，test1 帧集 10/10 全 4/4**。P1.1、P1.2 已合并；下一步 P1.3（external worker/joint training/teacher import）待用户授权立项。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
