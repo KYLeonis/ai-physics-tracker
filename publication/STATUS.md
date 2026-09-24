@@ -76,5 +76,5 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-1. **用户复核 P1.2 HR 结果**（2026-09-24 自动化执行，A/B/C/D 全 PASS）：真机点一次 "▸ Adjust this run's settings" 关闭/证实 F3；扫一遍 [HR record](../docs/reviews/publication-p1.2-review.md) 的 Q1–Q4 与 F1（首次入口跳帧失效，P2 待修复）。
-2. F1 修复 + 仅重测受影响项；用户裁定通过后：P1.2 合并关闭 → P1.3（joint training + teacher import）。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。
+1. **用户复核 P1.2 HR 结果**（2026-09-24 自动化执行，A/B/C/D 全 PASS；用户真人首轮复测已证实 F4——引导条无帧集进度提示，见 review record）：真机点一次 "▸ Adjust this run's settings" 关闭/证实 F3；把帧集剩余帧补完（107 的 pivot + 144）。
+2. F1 修复 + 仅重测受影响项；F4（帧集进度提示）由用户裁定修或延后；用户裁定通过后：P1.2 合并关闭 → P1.3（joint training + teacher import）。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。
