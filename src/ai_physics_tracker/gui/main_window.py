@@ -169,6 +169,14 @@ class MainWindow(QMainWindow):
         # 当前待标 role 的 track（不依赖 track 选中）
         self._guide_experiment_id: UUID | None = None
         self._guide_skipped_roles: set[str] = set()
+        # F1(2026-09-24 HR)：加载后的短暂窗口内 seekFrame 可能被拒
+        # （busy/解码器未就绪），入口跳帧会被静默丢弃。记下目标帧，
+        # 由定时器有界重试，直到呈现目标帧或超时放弃。
+        self._guide_jump_target: int | None = None
+        self._guide_jump_attempts = 0
+        self._guide_jump_timer = QTimer(self)
+        self._guide_jump_timer.setInterval(200)
+        self._guide_jump_timer.timeout.connect(self._retryGuideJump)
 
         self.videoView = VideoView(self)
         self.videoSelector = QComboBox(self)
@@ -1100,6 +1108,8 @@ class MainWindow(QMainWindow):
             self._hidePendulumGuide()
         if self._guide_experiment_id is not None:
             self._guide_experiment_id = None
+            self._guide_jump_target = None
+            self._guide_jump_timer.stop()
             self._guide_skipped_roles.clear()
             self._hidePendulumGuide()
             self._refreshMarkers()
@@ -1376,6 +1386,8 @@ class MainWindow(QMainWindow):
         if self._guide_experiment_id is None:
             return
         self._guide_experiment_id = None
+        self._guide_jump_target = None
+        self._guide_jump_timer.stop()
         self._hidePendulumGuide()
         self._refreshMarkers()
         self.statusBar().showMessage("Guided marking finished")
@@ -1403,7 +1415,7 @@ class MainWindow(QMainWindow):
                 ),
                 worklist[-1],
             )
-            self.jumpToFrame(start_frame)
+            self._beginGuideJump(start_frame)
         self._guide_experiment_id = experiment.experiment_id
         self.trackList.clearSelection()
         self.videoView.set_annotation_mode(True)
@@ -1411,6 +1423,39 @@ class MainWindow(QMainWindow):
         self._refreshAnnotationGuide()
         self.statusBar().showMessage(
             "Guided marking: clicks land on the prompted landmark role")
+
+    def _beginGuideJump(self, start_frame: int) -> None:
+        """入口跳帧：立即尝试；被拒或未达目标时进入有界重试（F1）。
+
+        2026-09-24 HR 真机观察到：项目加载后的第一次进入引导时跳帧偶发
+        丢失（呈现帧停在原处，重新进入才生效），离线复现 2/2；插桩后
+        守卫全绿未能再复现，判定为加载窗口期的瞬态竞态。此处不依赖单次
+        seekFrame 的返回值：定时器每 200ms 重发一次（latest-wins 无副作用），
+        直到呈现目标帧、引导退出或 5s 放弃并提示。
+        """
+
+        self._guide_jump_target = start_frame
+        self._guide_jump_attempts = 25
+        if not self.jumpToFrame(start_frame):
+            self._guide_jump_timer.start()
+        elif self._presented_frame_index == start_frame:
+            self._guide_jump_target = None
+
+    def _retryGuideJump(self) -> None:
+        target = self._guide_jump_target
+        if (target is None or self._guide_experiment_id is None
+                or self._presented_frame_index == target):
+            self._guide_jump_timer.stop()
+            self._guide_jump_target = None
+            return
+        self._guide_jump_attempts -= 1
+        if self._guide_jump_attempts <= 0:
+            self._guide_jump_timer.stop()
+            self._guide_jump_target = None
+            self.statusBar().showMessage(
+                "Frame jump deferred — video still loading; use the timeline")
+            return
+        self.jumpToFrame(target)
 
     def _refreshAnnotationGuide(self) -> None:
         """从当前事实重建引导条；引导未激活时不动标定引导。"""

@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-24。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.2-complete-frame-annotation`(未合并、未 push)。
-- 当前：**P1.2 S1–S6 全部实现 + HR 自动化执行完成（2026-09-24）：HR-A/B/C/D 全 PASS、数据安全否决项干净、981 tests；3 项非阻塞 findings（F1 首次入口跳帧失效 / F2 Space 快捷键抢占 / F3 折叠按钮待用户真机复核）。待用户 Q1–Q4 真机裁定 + F3 复核后关闭合并**。P1.1 已合并；P1.3–P1.4 未开始。
+- 当前：**P1.2 Human Review 通过（2026-09-24）：HR-A/B/C/D 全 PASS、Q1–Q4 用户裁定通过、F1 已修复+回归测试+真机重测（982 tests）、test1 帧集 10/10 全 4/4 完成；仅剩 F4/F5（帧集进度可见性 UX）待用户裁定，不阻塞。等待用户指令合并关闭 P1.2**。P1.1 已合并；P1.3–P1.4 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -76,5 +76,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-1. **用户复核 P1.2 HR 结果**（2026-09-24 自动化执行，A/B/C/D 全 PASS；用户真人首轮复测已证实 F4——引导条无帧集进度提示，见 review record）：真机点一次 "▸ Adjust this run's settings" 关闭/证实 F3；把帧集剩余帧补完（107 的 pivot + 144）。
-2. F1 修复 + 仅重测受影响项；F4（帧集进度提示）由用户裁定修或延后；用户裁定通过后：P1.2 合并关闭 → P1.3（joint training + teacher import）。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。
+**等待用户指令：合并 P1.2**（HR 已通过：自动化 A–D 全 PASS + 用户 Q1–Q4 通过 + F1 修复重测；test1 帧集 10/10 全 4/4）。用户确认后：`--no-ff` 合并 `feat/p1.2-complete-frame-annotation` 回 `publication/ejp-damped-pendulum` → push（push 需用户另行确认）→ P1.3（joint training + teacher import）。独立待办：F4/F5（帧集进度与缺帧指引的 UX 改进）由用户裁定修或延后，不阻塞。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。

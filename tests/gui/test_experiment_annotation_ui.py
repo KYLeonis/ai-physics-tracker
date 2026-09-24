@@ -346,6 +346,47 @@ def test_frame_set_guided_start_next_and_finish(
     assert window.calibrationGuideLabel.isHidden()
 
 
+def test_guide_entry_jump_retries_after_transient_seek_rejection(
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch
+) -> None:
+    """F1(2026-09-24 HR)：加载窗口期内 seekFrame 被拒时入口跳帧不得静默丢失。
+
+    真机观察到项目加载后第一次进入引导偶发不跳帧（呈现帧停在原处，
+    重新进入才生效）。入口路径对单次 seekFrame 失败改为有界重试：
+    本测试拒绝首次 seek 并断言定时器重试最终呈现帧集目标帧。
+    """
+
+    window = _opened_window(qtbot, synthetic_video_path)
+    _wait_presented(qtbot, window)
+    tracks = _four_tracks(window.analysisSession, window.activeVideoId)
+    experiment = _experiment_via_menu(
+        qtbot, monkeypatch, window, tracks, tmp_path / "publication-copy")
+    session = window.analysisSession
+
+    # 帧集只含帧 4（无任何标注）→ 入口目标 4 ≠ 当前呈现帧
+    session.set_experiment_frame_set(
+        experiment.experiment_id,
+        ExperimentFrameSet(frames=(4,), algorithm="uniform", created_at=utc_now()),
+    )
+    assert window._presented_frame_index != 4
+
+    real_seek = window.seekFrame
+    state = {"rejected_first": False}
+
+    def flaky_seek(frame_index: int) -> bool:
+        if not state["rejected_first"]:
+            state["rejected_first"] = True
+            return False
+        return real_seek(frame_index)
+
+    monkeypatch.setattr(window, "seekFrame", flaky_seek)
+    window.beginExperimentAnnotation()
+    assert window.experiment_guide_active
+
+    qtbot.waitUntil(lambda: window._presented_frame_index == 4, timeout=5000)
+    assert "click the tip" in window.calibrationGuideLabel.text()
+
+
 # ---------------------------------------------------------------------------
 # 引导 marker：四 role 全显示
 # ---------------------------------------------------------------------------

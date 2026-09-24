@@ -63,13 +63,13 @@ Verdict:**PASS**(EX1/EX2 Low 已修,EX3–EX5 记录)。核心结论:plan 划分
 
 ### Findings(均非阻塞)
 
-- **F1(Medium,P2)**:项目加载后的**第一次**引导标注入口不执行帧集跳帧(worklist start_frame 不生效,停留当前帧);同会话退出再进入即正常。2/2 复现(两次 project reload 后首入均失败,随后的重入均成功)。A4 的 Next frame 导航本身可靠。→ 待修复;修复后仅需重测"加载后首次入口"。
-- **F2(Low,P3)**:全局 Space 快捷键(播放/暂停,`main_window.py` playShortcut,WindowShortcut 级)抢占按钮键盘激活——焦点在任意按钮上按 Space 会触发播放而非按钮。鼠标点击不受影响;建议改为 `WidgetWithChildrenShortcut` 或限定在视频区。
+- **F1(Medium,P2)→ 已修复(用户裁定"尝试修复",`fix: retry deferred guide-entry jump`)**:项目加载后的**第一次**引导标注入口不执行帧集跳帧(worklist start_frame 不生效,呈现帧停在原处);同会话退出再进入即正常。离线复现 2/2(两次 project reload 后首入均失败);插桩后多次尝试未复现,守卫全绿,判定为加载窗口期的瞬态竞态。修复:入口跳帧不再依赖单次 seekFrame——`_beginGuideJump` 记录目标帧,200ms 定时器有界重试(至多 25 次/5s),直到呈现目标帧、引导退出或超时提示;Esc/Finish 均清理重试状态。回归测试 `test_guide_entry_jump_retries_after_transient_seek_rejection`(变异验证:无修复时失败);真机重测:reopen → Previous(143) → 首次进入 → 正确落到 144。
+- **F2(Low,P3)→ 用户裁定按设计保留(WONTFIX)**:全局 Space 快捷键仅用于播放/暂停,不激活按钮——用户确认为预期行为,关闭。
 - **F3(已关闭,2026-09-24)**:真人二轮复测可正常展开折叠区并点击 Suggest Frames——折叠按钮本身无缺陷,自动化环境下的失效率归因自动化栈。关闭。
 
 ### 结论
 
-HR-A/B/C/D 全部 PASS(无 N-A),数据安全否决项全部干净;F1–F3 不构成阻塞。按协议 §4,通过标准 1–3 满足;标准 4 对 F1 适用(修复后仅重测受影响项);标准 5 的"合并"按用户指示暂缓。**P1.2 处于"HR 功能面通过,待用户 Q1–Q4 真机裁定与 F3 复核后关闭合并"状态;当前不合并、不 push。**
+HR-A/B/C/D 全部 PASS(无 N-A),数据安全否决项全部干净。**Q1–Q4 用户真人裁定全部通过(2026-09-24 下午)**;F3 关闭(真人可操作);F2 用户裁定按设计保留;F1 已修复 + 回归测试 + 真机重测通过(982 passed)。按协议 §4 通过标准全部满足:**P1.2 Human Review 通过**,具备合并条件;按用户指示暂不合并、暂不 push,等待用户明确指令后执行 `--no-ff` 合并回 `publication/ejp-damped-pendulum`。F4/F5(帧集进度可见性,UX)转入用户裁定队列,不阻塞合并。
 
 ## Verification
 
