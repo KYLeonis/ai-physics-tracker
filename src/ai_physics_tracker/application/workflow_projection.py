@@ -76,6 +76,7 @@ ACTION_SETUP_FIXED_PIVOT = "setup_fixed_pivot"        # P1.1：视频上点选�
 ACTION_SETUP_TRUE_VERTICAL = "setup_true_vertical"    # P1.1：top→bottom 两点 + 方向确认
 ACTION_SETUP_PHYSICAL = "setup_physical"              # P1.1：录入 L/g 与来源
 ACTION_SET_RELEASE = "set_release_frame"              # P1.1：release = 当前帧
+ACTION_GUIDED_MARKING = "guided_marking"              # P1.2：四 role 引导标注入口
 
 # --- 分析可用性四态（设计 §11.1）---
 
@@ -177,6 +178,20 @@ class PendulumSetupFacts:
 
 
 @dataclass(frozen=True)
+class FrameSetProgress:
+    """experiment 共享帧集完成度（F5，2026-09-24 HR）：缺哪帧、缺哪个 role。
+
+    done/total 是 4/4 complete 帧计数；next_frame/next_role 指向按升序的
+    第一个未完成帧及其首个待标 role，全部完成时为 None。
+    """
+
+    done: int
+    total: int
+    next_frame: int | None = None
+    next_role: str | None = None
+
+
+@dataclass(frozen=True)
 class WorkflowState:
     """三维修量投影 + 组装卡片/状态头所需的全部摘要。"""
 
@@ -184,6 +199,7 @@ class WorkflowState:
     trajectory: TrajectoryFacts
     analysis: AnalysisFacts
     prerequisites: tuple[str, ...] = ()   # 阻塞 AI 流程的缺失前置
+    frame_set: FrameSetProgress | None = None  # 当前视频 experiment 的帧集进度
     fixed_check_frames: int = 0           # 当前活动检查帧数（0 = 无活动集合）
     fixed_check_valid: bool = False
     fixed_check_invalid: bool = False     # 存在活动集合但已失效（需重建）
@@ -380,8 +396,14 @@ def project_workflow_state(
     track_id: UUID | None,
     runs: Sequence[TrackingRun],
     execution: ExecutionInput | None = None,
+    experiment=None,
 ) -> WorkflowState:
-    """三维修量 + 前置缺失 + 学习/生成推进度的一次性投影（纯读取）。"""
+    """三维修量 + 前置缺失 + 学习/生成推进度的一次性投影（纯读取）。
+
+    ``experiment``：当前视频的 PendulumExperiment（F5）——帧集完成度与
+    选中 track 无关，由调用方（GUI 持有 active video）显式传入；None
+    表示视频无 experiment，卡片不显示帧集进度。
+    """
     execution = execution or ExecutionInput()
     prerequisites: list[str] = []
     if not session.project.videos:
@@ -393,6 +415,38 @@ def project_workflow_state(
 
     trajectory = trajectory_facts(session, track_id, runs)
     analysis = analysis_facts(session, track_id)
+
+    frame_set = None
+    if experiment is not None:
+        from ai_physics_tracker.application.annotation_join import (
+            join_complete_frames,
+        )
+        from ai_physics_tracker.application.experiment_annotation import (
+            annotation_guide_state,
+        )
+
+        frames = (
+            experiment.frame_set.frames
+            if experiment.frame_set is not None else ()
+        )
+        if frames:
+            complete = set(
+                join_complete_frames(
+                    session.project, experiment
+                ).complete_frame_indices
+            )
+            done = sum(1 for frame in frames if frame in complete)
+            next_frame = next(
+                (frame for frame in frames if frame not in complete), None)
+            next_role = (
+                annotation_guide_state(
+                    session.project, experiment, next_frame
+                ).current_role
+                if next_frame is not None else None
+            )
+            frame_set = FrameSetProgress(
+                done=done, total=len(frames),
+                next_frame=next_frame, next_role=next_role)
 
     pendulum = None
     if track_id is not None:
@@ -481,6 +535,7 @@ def project_workflow_state(
         trajectory=trajectory,
         analysis=analysis,
         prerequisites=tuple(prerequisites),
+        frame_set=frame_set,
         fixed_check_frames=fixed_frames,
         fixed_check_valid=fixed_valid,
         fixed_check_invalid=fixed_frames > 0 and not fixed_valid,
@@ -597,6 +652,45 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 + ("ok" if not gaps else "missing — " + ", ".join(
                     labels.get(gap, gap) for gap in gaps)),
             ),
+        )
+
+    # 1.6 experiment-bound track：joint 训练属 P1.3，单轨 AI 已在按钮层
+    # 禁用——卡片不再出现任何 AI 动作，主行动作是继续引导标注（P1.2）
+    if state.pendulum is not None:
+        setup_note = (
+            "setup complete"
+            if state.pendulum.setup_complete
+            else "setup incomplete: " + ", ".join(state.pendulum.missing)
+        )
+        # F5（2026-09-24 HR）：卡片直接给出帧集进度与下一缺帧——主行动作
+        # 本身就会跳到该帧，用户不必逐帧寻找还差什么
+        frame_set_line = None
+        if state.frame_set is not None:
+            progress = state.frame_set
+            if progress.next_frame is None:
+                frame_set_line = (
+                    f"Frame set: {progress.done}/{progress.total} complete — "
+                    "all landmark frames are marked.")
+            else:
+                frame_set_line = (
+                    f"Frame set: {progress.done}/{progress.total} complete — "
+                    f"next missing: frame {progress.next_frame} "
+                    f"({progress.next_role}). Marking resumes there.")
+        explanation = [
+            "All four landmark roles are bound to this track. Single-track "
+            "learning is disabled for experiment tracks; joint AI training "
+            "arrives in a later phase (P1.3).",
+        ]
+        if frame_set_line is not None:
+            explanation.append(frame_set_line)
+        explanation.append(
+            "Continue marking landmark frames to improve the labels.")
+        return TaskCard(
+            mode=MODE_SETUP,
+            title="Current: pendulum measurement",
+            explanation=tuple(explanation),
+            primary=ActionSpec(ACTION_GUIDED_MARKING, "Mark landmark frames"),
+            evidence=(f"Experiment setup: {setup_note}.",),
         )
 
     # 2. 取消中 / 执行中

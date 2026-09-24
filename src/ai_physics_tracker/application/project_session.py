@@ -52,6 +52,7 @@ from ai_physics_tracker.domain.kinematics import (
     smooth_savgol,
 )
 from ai_physics_tracker.domain.pendulum import (
+    ExperimentFrameSet,
     PendulumExperiment,
     PendulumRoles,
     PhysicalParameters,
@@ -2183,6 +2184,100 @@ class ProjectSession:
             )
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def _set_frame_set(
+        self, experiment_id: UUID, frame_set: "ExperimentFrameSet | None"
+    ) -> PendulumExperiment:
+        experiment, revision = self._bump_experiment(experiment_id)
+        video = next(
+            (
+                video
+                for video in self._project.videos
+                if video.video_id == experiment.video_id
+            ),
+            None,
+        )
+        if video is None:
+            raise ProjectSessionError("experiment video is not registered")
+        if frame_set is not None and any(
+            frame >= video.frame_count for frame in frame_set.frames
+        ):
+            # 负帧已由域构造拒绝,无需重复检查
+            raise ProjectSessionError(
+                "frame set contains frames beyond the video frame_count"
+            )
+        try:
+            updated = replace(
+                experiment, frame_set=frame_set, measurement_revision=revision
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def set_experiment_frame_set(
+        self, experiment_id: UUID, frame_set: ExperimentFrameSet
+    ) -> PendulumExperiment:
+        """保存共享代表帧集（契约 §3：只存一次，四 role 共用）。"""
+
+        return self._set_frame_set(experiment_id, frame_set)
+
+    def clear_experiment_frame_set(self, experiment_id: UUID) -> PendulumExperiment:
+        """清除帧集；既有 manual 点不动（帧集只是建议集合）。"""
+
+        return self._set_frame_set(experiment_id, None)
+
+    def freeze_experiment_fixed_check(
+        self, experiment_id: UUID, frames: tuple[int, ...]
+    ) -> PendulumExperiment:
+        """冻结共享固定检查帧集：每帧必须 4/4 complete，digest 随冻结。
+
+        契约 §3：一个检查帧的四个 label 共同进 test、共同排除出训练帧。
+        """
+
+        from ai_physics_tracker.application.annotation_join import (
+            canonical_label_digest,
+            join_complete_frames,
+        )
+        from ai_physics_tracker.domain.pendulum import ExperimentFixedCheck
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        result = join_complete_frames(self._project, experiment)
+        complete_map = {
+            label.frame_index: label for label in result.complete
+        }
+        missing = sorted(
+            frame for frame in frames if frame not in complete_map
+        )
+        if missing:
+            raise ProjectSessionError(
+                "fixed check frames must be complete (4/4); "
+                f"incomplete: {missing}"
+            )
+        if not frames:
+            raise ProjectSessionError("fixed check set must not be empty")
+        digest = canonical_label_digest(result, tuple(frames))
+        try:
+            updated = replace(
+                experiment,
+                fixed_check=ExperimentFixedCheck(
+                    frames=tuple(sorted(set(frames))),
+                    label_digest=digest,
+                    created_at=utc_now(),
+                ),
+                measurement_revision=revision,
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def clear_experiment_fixed_check(self, experiment_id: UUID) -> PendulumExperiment:
+        """解除固定检查集（历史保留在 undo/结果侧；集合本体置空）。"""
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        updated = replace(
+            experiment, fixed_check=None, measurement_revision=revision
+        )
         return self._commit_experiment_change(experiment_id, updated)
 
     def save_as_publication(

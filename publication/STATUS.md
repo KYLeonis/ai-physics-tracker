@@ -1,8 +1,8 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-09-21。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.1-pendulum-setup`(未合并、未 push)。
-- 当前：**P1.1 完成并已合并（2026-09-21）：三轮 independent review + 两轮 Human Review 全部通过，921 tests。下一步 P1.2 — Complete-frame annotation**。P1.2–P1.4 未开始。
+- 最后更新：2026-09-24。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.2-complete-frame-annotation`(未合并、未 push)。
+- 当前：**P1.2 Human Review 通过（2026-09-24）：HR-A/B/C/D 全 PASS、Q1–Q4 用户裁定通过、F1 已修复+回归测试+真机重测（982 tests）、test1 帧集 10/10 全 4/4 完成；仅剩 F4/F5（帧集进度可见性 UX）待用户裁定，不阻塞。等待用户指令合并关闭 P1.2**。P1.1 已合并；P1.3–P1.4 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -67,6 +67,13 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - 验证:全量 **899 passed, 9 subtests** + `compileall`;S5 GUI 挂载点勘探完成(File 菜单 specs、workflow 投影分支、video_view 点选模式、guide 复用)。
 - 测试命令(macOS):`PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m pytest`(本 worktree 无独立 venv,借用主 worktree 解释器 + PYTHONPATH 指向本树)。
 
+## P1.2 progress (2026-09-23)
+
+- 分支 `feat/p1.2-complete-frame-annotation`;执行 mini-plan [p1.2-complete-frame-annotation-execution.md](plans/p1.2-complete-frame-annotation-execution.md)(Context Pack 勘探完成,exporter 首列缺陷定位 `dlc_adapter.py:197-204`,其固化断言 `test_dlc_adapter.py:481` 待 S5 重写)。
+- **S1 完成**(`1a1886e`+`e321f96`):ExperimentFrameSet 域对象、v2 serializer 无损通道(P1.1 manifest 兼容)、session set/clear 动作;独立 review FS1–FS5 已修复闭环(working_zone 内容校验、serializer fail-closed、死代码、mini-plan 同步)。
+- **S2 完成**(`daf535a`):`application/annotation_join.py` 纯函数——同帧 4/4 join(complete/partial/superseded-only/AI-only/non-finite 分类,AI 永不补位,duplicate 防御)+ canonical label digest(坐标/point_id/frame 敏感,显示属性无关)。
+- **identity 专项 review PASS**(5 项 Low/Info:ID1 partial 帧坐标损坏诊断、ID2 ROLE_ORDER 复用、ID3 defense-in-depth 文档、ID5 补 role 重绑/残留测试)——已全部修复复测,最终全量 **948 passed**。S3(引导标注 UI,含 selection owner experiment 化)/S4(共享 fixed-check)/S5(四 bodypart exporter)/S6(DLC smoke)未开始。
+
 ## Next Recommended Action
 
-P1.1 已合并关闭(实施分支 `feat/p1.1-pendulum-setup` --no-ff 合入 `publication/ejp-damped-pendulum`)。下一开发周期启动 **P1.2 — Complete-frame annotation**(`feat/p1.2-complete-frame-annotation`):experiment 共享代表帧集 → 同帧 4/4 引导标注 → 共同 fixed-check → 四 bodypart exporter;真实 DLC dataset smoke 是 P1.2 硬验收。P1–P5期间安排原生Windows x64 G1–G4取证;**进入P6之前必须完成**,不得以CI/mock/Mac代替。
+**等待用户指令：合并 P1.2**（HR 已通过：自动化 A–D 全 PASS + 用户 Q1–Q4 通过 + F1 修复重测；test1 帧集 10/10 全 4/4）。用户确认后：`--no-ff` 合并 `feat/p1.2-complete-frame-annotation` 回 `publication/ejp-damped-pendulum` → push（push 需用户另行确认）→ P1.3（joint training + teacher import）。独立待办：F4/F5（帧集进度与缺帧指引的 UX 改进）由用户裁定修或延后，不阻塞。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。

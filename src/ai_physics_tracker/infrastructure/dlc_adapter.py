@@ -13,6 +13,7 @@ from uuid import UUID
 
 import cv2
 
+from ai_physics_tracker.domain.pendulum import ROLE_ORDER
 from ai_physics_tracker.domain.timeline import Timeline, frame_to_time
 from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.infrastructure.engine_adapter import (
@@ -226,6 +227,152 @@ class DLCAdapter:
             raise RuntimeError(f"Failed to write DLC annotation CSV: {csv_file}") from error
 
         # 同步生成 DLC 所需的 CollectedData_<scorer>.h5 文件
+        h5_file = video_dir / f"CollectedData_{scorer}.h5"
+        try:
+            import pandas as pd
+
+            df = pd.read_csv(csv_file, header=[0, 1, 2], index_col=0)
+            df.to_hdf(str(h5_file), key="df_with_missing", mode="w")
+            if not h5_file.is_file():
+                raise OSError("pandas.to_hdf did not create the output file")
+        except Exception as error:
+            raise RuntimeError(f"Failed to create DLC annotation HDF5: {h5_file}: {error}") from error
+
+        return exported_count
+
+    def export_experiment_annotations(
+        self,
+        rows,  # Sequence[ExperimentExportRow]（application 层构建，鸭子类型）
+        video_reader: OpenCVVideoReader,
+        config_path: Path,
+        scorer: str = "AIPhysicsTracker",
+    ) -> int:
+        """导出 experiment 四 bodypart 标注：一帧一次解码、一行八坐标。
+
+        与单轨 export 的关键区别（P1 计划 Risks 4 的修复）：每行填满
+        规范 role 顺序的四组坐标，不再留空列；bodypart 顺序取自 DLC
+        config 并必须与规范 role 序一致，错位整体拒绝。
+        """
+
+        rows = tuple(rows)
+        if not rows:
+            raise RuntimeError("Cannot export: the export plan has no rows")
+        if not video_reader.is_open:
+            raise RuntimeError("Cannot export annotations: video reader is not open")
+
+        proj_dir = config_path.parent
+        try:
+            import yaml
+
+            project_cfg = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        except Exception as error:
+            raise RuntimeError(
+                f"Cannot read DLC config for bodypart order: {config_path}: {error}"
+            ) from error
+        if not isinstance(project_cfg, dict):
+            raise RuntimeError(
+                f"DLC config is not a YAML mapping: {config_path}"
+            )
+        config_bodyparts = list(project_cfg.get("bodyparts") or [])
+        if config_bodyparts != list(ROLE_ORDER):
+            raise RuntimeError(
+                f"DLC config bodyparts {config_bodyparts} do not match the "
+                f"canonical pendulum role order {list(ROLE_ORDER)}; refusing to "
+                "export (role columns would be misaligned)"
+            )
+        actual_bodyparts = config_bodyparts
+
+        video_stem = video_reader.path.stem
+        labeled_data_root = proj_dir / "labeled-data"
+        labeled_data_root.mkdir(parents=True, exist_ok=True)
+        foreign_dirs = sorted(
+            entry.name
+            for entry in labeled_data_root.iterdir()
+            if entry.is_dir() and entry.name.casefold() != video_stem.casefold()
+        )
+        if foreign_dirs:
+            raise RuntimeError(
+                f"DLC labeled-data contains folders from another video: {foreign_dirs}; "
+                f"expected only {video_stem!r}."
+            )
+        video_dir = labeled_data_root / video_stem
+        video_dir.mkdir(parents=True, exist_ok=True)
+
+        total_frames = video_reader.info.frame_count
+        index_width = max(5, len(str(max(total_frames - 1, 0))))
+
+        # 帧升序 + 去重防御：同一帧两次出现会让 PNG 复用而行错位
+        sorted_rows = sorted(rows, key=lambda row: row.frame_index)
+        seen_frames: set[int] = set()
+        csv_rows: list[list[str]] = []
+        exported_count = 0
+        for row in sorted_rows:
+            if row.frame_index in seen_frames:
+                raise RuntimeError(
+                    f"Duplicate export row for frame {row.frame_index}"
+                )
+            seen_frames.add(row.frame_index)
+            if len(row.coordinates) != len(ROLE_ORDER):
+                raise RuntimeError(
+                    f"Frame {row.frame_index} does not carry exactly "
+                    f"{len(ROLE_ORDER)} landmark coordinates"
+                )
+            if any(
+                len(point) != 2
+                or not all(isfinite(value) for value in point)
+                for point in row.coordinates
+            ):
+                raise RuntimeError(
+                    f"Frame {row.frame_index} carries non-finite or "
+                    "malformed landmark coordinates"
+                )
+            img_rel = f"labeled-data/{video_stem}/img{row.frame_index:0{index_width}d}.png"
+            img_abs = proj_dir / img_rel
+            try:
+                decoded = video_reader.read_frame(row.frame_index)
+                if decoded.frame_index != row.frame_index:
+                    raise ValueError(
+                        f"reader returned frame {decoded.frame_index} for requested "
+                        f"frame {row.frame_index}"
+                    )
+                bgr = cv2.cvtColor(decoded.pixels_rgb, cv2.COLOR_RGB2BGR)
+            except Exception as error:
+                raise RuntimeError(
+                    f"Failed to decode frame {row.frame_index} for DLC annotation "
+                    f"export: {error}"
+                ) from error
+            try:
+                if not cv2.imwrite(str(img_abs), bgr):
+                    raise OSError("cv2.imwrite returned False")
+            except Exception as error:
+                raise RuntimeError(
+                    f"Failed to write PNG annotation frame {row.frame_index}: "
+                    f"{img_abs}: {error}"
+                ) from error
+
+            coords_row = [img_rel]
+            for x, y in row.coordinates:
+                coords_row.extend([f"{x:.2f}", f"{y:.2f}"])
+            csv_rows.append(coords_row)
+            exported_count += 1
+
+        csv_file = video_dir / f"CollectedData_{scorer}.csv"
+        header_scorer = ["scorer"] + [scorer] * (len(actual_bodyparts) * 2)
+        header_bodyparts = ["bodyparts"]
+        for bp in actual_bodyparts:
+            header_bodyparts.extend([bp, bp])
+        header_coords = ["coords"] + ["x", "y"] * len(actual_bodyparts)
+        try:
+            with open(csv_file, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(header_scorer)
+                writer.writerow(header_bodyparts)
+                writer.writerow(header_coords)
+                for row in csv_rows:
+                    writer.writerow(row)
+        except OSError as error:
+            raise RuntimeError(f"Failed to write DLC annotation CSV: {csv_file}") from error
+
         h5_file = video_dir / f"CollectedData_{scorer}.h5"
         try:
             import pandas as pd

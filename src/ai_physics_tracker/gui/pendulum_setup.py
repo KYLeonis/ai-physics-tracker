@@ -78,6 +78,12 @@ class PendulumSetupPanel(QGroupBox):
         )
         self.physicalButton = QPushButton("Enter L and g…", self)
         self.physicalLabel = QLabel("L / g: not set", self)
+        self.annotateButton = QPushButton("Mark landmark frames…", self)
+        self.annotateButton.setEnabled(False)
+        self.annotateButton.setToolTip(
+            "Step through the shared frames marking all four landmarks on "
+            "each frame"
+        )
         self.releaseButton = QPushButton("Set release to current frame", self)
         self.releaseLabel = QLabel("release frame: not set", self)
 
@@ -99,6 +105,7 @@ class PendulumSetupPanel(QGroupBox):
         layout.addWidget(self.confirmVerticalButton)
         layout.addWidget(self.physicalLabel)
         layout.addWidget(self.physicalButton)
+        layout.addWidget(self.annotateButton)
         layout.addWidget(self.releaseButton)
         layout.addWidget(self.releaseLabel)
         layout.addStretch(1)
@@ -174,6 +181,7 @@ class PendulumSetupPanel(QGroupBox):
                 "release frame: not set (annotation works; analysis needs it)"
             )
 
+        self.annotateButton.setEnabled(True)
         if status.can_analyze:
             self.statusLabel.setText("Setup complete — analysis enabled")
         elif status.missing_for_analysis:

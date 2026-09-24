@@ -554,3 +554,109 @@ class TestV2RoundTrip:
         }
         restored = project_from_payload(payload)
         assert restored == project
+
+
+class TestExperimentFrameSet:
+    """P1.2-S1:experiment 级共享帧集的构造不变量与 round-trip。"""
+
+    def _frame_set(self, frames=(1, 5, 9)):
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        return ExperimentFrameSet(
+            frames=tuple(frames), algorithm="kmeans", created_at=utc_now(), seed=3
+        )
+
+    def test_rejects_empty_duplicate_unordered_and_negative(self):
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        for bad in ((), (3, 3, 5), (9, 1, 5), (-1, 5)):
+            with pytest.raises(ValueError):
+                self._frame_set(bad)
+        with pytest.raises(ValueError, match="algorithm"):
+            ExperimentFrameSet(frames=(1,), algorithm=" ", created_at=utc_now())
+
+    def test_frame_set_persists_through_v2_round_trip(self):
+        project = _publication_project()
+        experiment = replace(
+            project.experiments[0], frame_set=self._frame_set((2, 7, 11))
+        )
+        payload = project_to_payload(replace(project, experiments=(experiment,)))
+        stored = payload["experiments"][str(experiment.experiment_id)]["frame_set"]
+        assert stored["frames"] == [2, 7, 11]
+        assert stored["algorithm"] == "kmeans"
+        restored = project_from_payload(payload)
+        assert restored.experiments[0].frame_set == experiment.frame_set
+
+    def test_p11_era_payload_without_frame_set_key_reads_as_none(self):
+        """P1.1 落盘的 v2 experiment(manifest 无 frame_set 键)必须继续可读。"""
+
+        project = _publication_project()
+        payload = project_to_payload(project)
+        exp_payload = payload["experiments"][str(project.experiments[0].experiment_id)]
+        assert exp_payload.get("frame_set") is None  # 新 writer 写显式 null
+        del exp_payload["frame_set"]  # P1.1 writer 完全不写该键
+        restored = project_from_payload(payload)
+        assert restored.experiments[0].frame_set is None
+
+    def test_frame_set_beyond_frame_count_rejected_by_aggregate(self):
+        project = _publication_project()
+        broken = replace(
+            project.experiments[0], frame_set=self._frame_set((5, 1000))
+        )
+        with pytest.raises(ValueError, match="frame_count"):
+            validate_project(replace(project, experiments=(broken,)))
+
+
+class TestFrameSetReviewFixes:
+    """S1 review FS1/FS2 回归:working_zone 内容校验与 serializer fail closed。"""
+
+    def test_working_zone_rejects_negative_and_reversed_ranges(self):
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        for bad_zone in ((-5, 10), (9, 2), (5, 5 - 1)):
+            with pytest.raises(ValueError, match="ascending frame range"):
+                ExperimentFrameSet(
+                    frames=(1,), algorithm="kmeans",
+                    created_at=utc_now(), working_zone=bad_zone,
+                )
+
+    def test_serializer_rejects_malformed_working_zone(self):
+        import copy
+
+        project = _publication_project()
+        experiment = replace(
+            project.experiments[0], frame_set=self._frame_set_helper((2, 7))
+        )
+        payload = project_to_payload(replace(project, experiments=(experiment,)))
+        stored = payload["experiments"][str(experiment.experiment_id)]["frame_set"]
+        for malformed in ([1, 2, 3], 5, [1]):
+            mutated = copy.deepcopy(payload)
+            mutated["experiments"][str(experiment.experiment_id)]["frame_set"][
+                "working_zone"
+            ] = malformed
+            with pytest.raises(ValueError, match="working_zone"):
+                project_from_payload(mutated)
+
+    def test_working_zone_round_trips_when_valid(self):
+        project = _publication_project()
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        experiment = replace(
+            project.experiments[0],
+            frame_set=ExperimentFrameSet(
+                frames=(2, 7), algorithm="uniform", created_at=utc_now(),
+                working_zone=(0, 99), source_video_sha256="a" * 64,
+            ),
+        )
+        payload = project_to_payload(replace(project, experiments=(experiment,)))
+        restored = project_from_payload(payload)
+        assert restored.experiments[0].frame_set.working_zone == (0, 99)
+        assert restored.experiments[0].frame_set.source_video_sha256 == "a" * 64
+
+    @staticmethod
+    def _frame_set_helper(frames):
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        return ExperimentFrameSet(
+            frames=tuple(frames), algorithm="kmeans", created_at=utc_now()
+        )

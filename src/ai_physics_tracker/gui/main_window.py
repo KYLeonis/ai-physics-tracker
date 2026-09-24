@@ -45,6 +45,11 @@ from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.application.project_media import ProjectMediaService, PreparedProject, workflow_state
 from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
+from ai_physics_tracker.application.experiment_annotation import (
+    annotation_guide_state,
+    frame_set_progress,
+    frame_set_worklist,
+)
 from ai_physics_tracker.gui.pendulum_setup import (
     PendulumSetupPanel,
     PhysicalParametersDialog,
@@ -161,6 +166,18 @@ class MainWindow(QMainWindow):
         self._calibration_return_workspace: str | None = None
         self._calibration_return_track_id: UUID | None = None
         self._calibration_guide_action: str | None = None
+        # P1.2 引导标注：experiment_id 非 None 即引导激活；点击落点路由到
+        # 当前待标 role 的 track（不依赖 track 选中）
+        self._guide_experiment_id: UUID | None = None
+        self._guide_skipped_roles: set[str] = set()
+        # F1(2026-09-24 HR)：加载后的短暂窗口内 seekFrame 可能被拒
+        # （busy/解码器未就绪），入口跳帧会被静默丢弃。记下目标帧，
+        # 由定时器有界重试，直到呈现目标帧或超时放弃。
+        self._guide_jump_target: int | None = None
+        self._guide_jump_attempts = 0
+        self._guide_jump_timer = QTimer(self)
+        self._guide_jump_timer.setInterval(200)
+        self._guide_jump_timer.timeout.connect(self._retryGuideJump)
 
         self.videoView = VideoView(self)
         self.videoSelector = QComboBox(self)
@@ -463,6 +480,7 @@ class MainWindow(QMainWindow):
             self._confirmVerticalDirection)
         self.pendulumPanel.physicalButton.clicked.connect(self.openPhysicalDialog)
         self.pendulumPanel.releaseButton.clicked.connect(self._setReleaseToCurrentFrame)
+        self.pendulumPanel.annotateButton.clicked.connect(self.beginExperimentAnnotation)
         self.drawScaleButton.clicked.connect(self._toggleDrawScaleMode)
         self.setOriginButton.clicked.connect(self._toggleSetOriginMode)
         self.calibrationGuideButton.clicked.connect(self._onCalibrationGuideAction)
@@ -531,7 +549,8 @@ class MainWindow(QMainWindow):
         self.stopPlayback()
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             self.reviewActions.cancelCorrectMode()
-        self.videoView.set_annotation_mode(False)
+        if self._guide_experiment_id is None:
+            self.videoView.set_annotation_mode(False)
         if self.videoView.is_calibration_mode() in ("pivot", "vertical"):
             self._hidePendulumGuide()
         self.videoView.set_calibration_mode(None)
@@ -909,6 +928,8 @@ class MainWindow(QMainWindow):
             self._selected_track_id not in track_ids
         ):
             self.trackList.setCurrentRow(-1)  # 触发 _onTrackSelectionChanged
+        if self._guide_experiment_id is not None:
+            self._refreshAnnotationGuide()
         self._refreshTrackList()
         # 选择失效或为空时自动选中第一行：撤销"删除 track"后恢复标注上下文
         if self.trackList.currentRow() == -1 and self.trackList.count() > 0:
@@ -1086,6 +1107,13 @@ class MainWindow(QMainWindow):
         if self.videoView.is_calibration_mode() in ("pivot", "vertical"):
             self.videoView.set_calibration_mode(None)
             self._hidePendulumGuide()
+        if self._guide_experiment_id is not None:
+            self._guide_experiment_id = None
+            self._guide_jump_target = None
+            self._guide_jump_timer.stop()
+            self._guide_skipped_roles.clear()
+            self._hidePendulumGuide()
+            self._refreshMarkers()
         self.statusBar().showMessage("Browse mode")
 
     def _setCalibrationGuide(
@@ -1144,6 +1172,11 @@ class MainWindow(QMainWindow):
             "Calibration complete — return to Acquire trajectory to continue marking")
 
     def _onCalibrationGuideAction(self) -> None:
+        if self._calibration_guide_action in (
+            "guide_skip", "guide_next", "guide_finish"
+        ):
+            self._onAnnotationGuideAction(self._calibration_guide_action)
+            return
         if self._calibration_guide_action == "retry_scale":
             if self.drawScaleButton.isEnabled() and not self.drawScaleButton.isChecked():
                 self.drawScaleButton.click()
@@ -1339,6 +1372,216 @@ class MainWindow(QMainWindow):
         self._refreshCalibrationUI()
         self._refreshHistoryButtons()
         self.statusBar().showMessage(message)
+        if self._guide_experiment_id is not None:
+            self._refreshAnnotationGuide()
+
+    # ------------------------------------------------------------------
+    # Guided four-role marking (P1.2-S3)
+    # ------------------------------------------------------------------
+
+    @property
+    def experiment_guide_active(self) -> bool:
+        return self._guide_experiment_id is not None
+
+    def _exitExperimentGuide(self) -> None:
+        if self._guide_experiment_id is None:
+            return
+        self._guide_experiment_id = None
+        self._guide_jump_target = None
+        self._guide_jump_timer.stop()
+        self._hidePendulumGuide()
+        self._refreshMarkers()
+        self.statusBar().showMessage("Guided marking finished")
+
+    def beginExperimentAnnotation(self) -> None:
+        """进入四 role 顺序引导：点击按当前待标 role 路由，无需选 track。"""
+
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if session is None or experiment is None:
+            return
+        if not self._measurement_allowed or self.projectActions.busy:
+            self.statusBar().showMessage(
+                "Verify video timing before guided marking")
+            return
+        worklist = frame_set_worklist(experiment)
+        if worklist:
+            start_frame = next(
+                (
+                    frame
+                    for frame in worklist
+                    if not annotation_guide_state(
+                        session.project, experiment, frame
+                    ).frame_complete
+                ),
+                worklist[-1],
+            )
+            self._beginGuideJump(start_frame)
+        self._guide_experiment_id = experiment.experiment_id
+        self.trackList.clearSelection()
+        self.videoView.set_annotation_mode(True)
+        self._refreshMarkers()
+        self._refreshAnnotationGuide()
+        self.statusBar().showMessage(
+            "Guided marking: clicks land on the prompted landmark role")
+
+    def _beginGuideJump(self, start_frame: int) -> None:
+        """入口跳帧：立即尝试；被拒或未达目标时进入有界重试（F1）。
+
+        2026-09-24 HR 真机观察到：项目加载后的第一次进入引导时跳帧偶发
+        丢失（呈现帧停在原处，重新进入才生效），离线复现 2/2；插桩后
+        守卫全绿未能再复现，判定为加载窗口期的瞬态竞态。此处不依赖单次
+        seekFrame 的返回值：定时器每 200ms 重发一次（latest-wins 无副作用），
+        直到呈现目标帧、引导退出或 5s 放弃并提示。
+        """
+
+        self._guide_jump_target = start_frame
+        self._guide_jump_attempts = 25
+        if not self.jumpToFrame(start_frame):
+            self._guide_jump_timer.start()
+        elif self._presented_frame_index == start_frame:
+            self._guide_jump_target = None
+
+    def _retryGuideJump(self) -> None:
+        target = self._guide_jump_target
+        if (target is None or self._guide_experiment_id is None
+                or self._presented_frame_index == target):
+            self._guide_jump_timer.stop()
+            self._guide_jump_target = None
+            return
+        self._guide_jump_attempts -= 1
+        if self._guide_jump_attempts <= 0:
+            self._guide_jump_timer.stop()
+            self._guide_jump_target = None
+            self.statusBar().showMessage(
+                "Frame jump deferred — video still loading; use the timeline")
+            return
+        self.jumpToFrame(target)
+
+    def _frameSetProgressSuffix(self, experiment) -> str:
+        """引导条帧集进度后缀（F4）：让"还要标多少帧"可见、循环有限可判。"""
+
+        session = self._annotation_session
+        if session is None:
+            return ""
+        progress = frame_set_progress(session.project, experiment)
+        if progress is None:
+            return ""
+        done, total, remaining = progress
+        if not remaining:
+            return f" Frame set: {done}/{total} complete."
+        shown = ", ".join(str(frame) for frame in remaining[:5])
+        extra = "" if len(remaining) <= 5 else f" …+{len(remaining) - 5}"
+        return f" Frame set: {done}/{total} complete; remaining: {shown}{extra}."
+
+    def _refreshAnnotationGuide(self) -> None:
+        """从当前事实重建引导条；引导未激活时不动标定引导。"""
+
+        if self._guide_experiment_id is None:
+            return
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if (
+            session is None
+            or experiment is None
+            or experiment.experiment_id != self._guide_experiment_id
+        ):
+            self._exitExperimentGuide()
+            return
+        if self._presented_frame_index is None:
+            self._setCalibrationGuide(
+                "Guided marking: choose a frame with the timeline, then "
+                "click the prompted landmark.")
+            self.calibrationGuideButton.hide()
+            return
+        state = annotation_guide_state(
+            session.project, experiment, self._presented_frame_index
+        )
+        suffix = self._frameSetProgressSuffix(experiment)
+        if state.frame_complete:
+            if state.next_frame_set_index is not None:
+                self._setCalibrationGuide(
+                    state.hint() + suffix,
+                    "guide_next",
+                    f"Next frame ({state.next_frame_set_index})",
+                )
+            else:
+                self._setCalibrationGuide(
+                    state.hint() + suffix, "guide_finish", "Finish guided marking"
+                )
+        elif state.current_role is not None:
+            self._setCalibrationGuide(
+                state.hint() + suffix, "guide_skip", f"Skip {state.current_role}"
+            )
+        else:
+            self._setCalibrationGuide(state.hint() + suffix)
+            self.calibrationGuideButton.hide()
+
+    def _onAnnotationGuideAction(self, action: str) -> None:
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if session is None or experiment is None:
+            return
+        if action == "guide_skip":
+            state = annotation_guide_state(
+                session.project, experiment, self._presented_frame_index
+            )
+            # 跳过当前待标 role：从 pending 中移除该 role 在本帧的引导，
+            # 通过记录跳过集合实现
+            self._guide_skipped_roles.add(state.current_role)
+            self._refreshAnnotationGuideForced()
+            return
+        if action == "guide_next":
+            state = annotation_guide_state(
+                session.project, experiment, self._presented_frame_index
+            )
+            if state.next_frame_set_index is not None:
+                self.jumpToFrame(state.next_frame_set_index)
+            return
+        if action == "guide_finish":
+            self._exitExperimentGuide()
+
+    def _refreshAnnotationGuideForced(self) -> None:
+        """Skip role 后按剩余 pending 重建引导条（跳过集合只影响本帧）。"""
+
+        if self._guide_experiment_id is None:
+            return
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if session is None or experiment is None:
+            return
+        state = annotation_guide_state(
+            session.project, experiment, self._presented_frame_index
+        )
+        suffix = self._frameSetProgressSuffix(experiment)
+        remaining = tuple(
+            role
+            for role in state.pending_roles
+            if role not in self._guide_skipped_roles
+        )
+        if remaining:
+            hint = (
+                f"Frame {state.frame_index}: click the {remaining[0]} "
+                f"({len(state.done_roles)}/4 done; skipping: "
+                f"{', '.join(sorted(self._guide_skipped_roles))}). "
+                "Partial frames are saved but never used for training."
+                + suffix
+            )
+            self._setCalibrationGuide(
+                hint, "guide_skip", f"Skip {remaining[0]}"
+            )
+        else:
+            # 全部剩余 role 均已跳过：保持 skip 集合直到换帧（presentFrame
+            # 统一清空），否则引导点击会重新落到被跳过的 role 上
+            self._setCalibrationGuide(
+                f"Frame {state.frame_index}: remaining roles skipped — "
+                "frame stays partial (never used for training)." + suffix,
+                "guide_finish" if state.next_frame_set_index is None
+                else "guide_next",
+                "Finish guided marking"
+                if state.next_frame_set_index is None
+                else f"Next frame ({state.next_frame_set_index})",
+            )
 
     def _toggleDrawScaleMode(self, checked: bool) -> None:
         if checked:
@@ -1727,7 +1970,10 @@ class MainWindow(QMainWindow):
     def _onAnnotationClicked(self, view_pos: QPoint) -> None:
         if not self._measurement_allowed or self.projectActions.busy or not self.videoView.is_annotation_mode():
             return
-        if self._annotation_session is None or self._selected_track_id is None:
+        if self._annotation_session is None:
+            return
+        guided = self._guide_experiment_id is not None
+        if not guided and self._selected_track_id is None:
             return
         if self._presented_frame_index is None:
             return
@@ -1744,6 +1990,9 @@ class MainWindow(QMainWindow):
             if handled:
                 self._refreshMarkers()
                 self._refreshHistoryButtons()
+            return
+        if guided:
+            self._onGuidedAnnotationClicked(pixel)
             return
         try:
             self._annotation_session.mark_point(
@@ -1780,10 +2029,60 @@ class MainWindow(QMainWindow):
             item.setData(Qt.ItemDataRole.UserRole, track.track_id)
             self.trackList.addItem(item)
 
+    def _onGuidedAnnotationClicked(self, pixel: tuple[float, float]) -> None:
+        """引导点击：落点写到当前待标 role 的 track（无第二落点路径）。"""
+
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        if (
+            session is None
+            or experiment is None
+            or experiment.experiment_id != self._guide_experiment_id
+            or self._presented_frame_index is None
+        ):
+            return
+        state = annotation_guide_state(
+            session.project, experiment, self._presented_frame_index
+        )
+        if state.frame_complete:
+            self.statusBar().showMessage(
+                "This frame is complete (4/4); use Next frame or the timeline")
+            return
+        pending = tuple(
+            role
+            for role in state.pending_roles
+            if role not in self._guide_skipped_roles
+        )
+        if not pending:
+            self.statusBar().showMessage(
+                "All remaining roles skipped for this frame; use Next frame")
+            return
+        role = pending[0]
+        try:
+            session.mark_point(
+                experiment.roles.track_id_for(role),
+                self._presented_frame_index,
+                pixel[0],
+                pixel[1],
+            )
+        except ProjectSessionError as error:
+            self.statusBar().showMessage(f"Point not saved: {error}")
+            return
+        self._refreshMarkers()
+        self._refreshHistoryButtons()
+        self._register_mark_for_autosave()
+        if self._guide_skipped_roles:
+            self._refreshAnnotationGuideForced()
+        else:
+            self._refreshAnnotationGuide()
+
     def _refreshMarkers(self) -> None:
         if self._annotation_session is None:
             return
         self.trackDataLabel.setText(f"Stored observations: {len(self._annotation_session.project.observations)}")
+        if self._guide_experiment_id is not None:
+            self._refreshGuidedMarkers()
+            return
         selected = self.trackList.selectedItems()
         key = (self._annotation_session.project.observations, self._annotation_session.project.tracks,
                tuple(item.data(Qt.ItemDataRole.UserRole) for item in selected), self._annotation_video_id)
@@ -1814,6 +2113,44 @@ class MainWindow(QMainWindow):
             )
         self.videoView.set_markers(markers)
 
+    def _refreshGuidedMarkers(self) -> None:
+        """引导模式：四 role 轨迹全部显示（各自 track 颜色），不依赖选中。"""
+
+        session = self._annotation_session
+        experiment = self.currentPendulumExperiment()
+        key = (
+            session.project.observations if session else (),
+            self._presented_frame_index,
+            self._guide_experiment_id,
+        )
+        if key == getattr(self, "_marker_data_key", None):
+            self.videoView.set_current_frame(self._presented_frame_index)
+            return
+        self._marker_data_key = key
+        markers: list[MarkerView] = []
+        if session is not None and experiment is not None:
+            tracks_by_id = {
+                track.track_id: track for track in session.tracks
+            }
+            for role, member in experiment.roles.by_role().items():
+                track = tracks_by_id.get(member)
+                if track is None:
+                    continue
+                markers.extend(
+                    MarkerView(
+                        pixel_x=point.pixel_x,
+                        pixel_y=point.pixel_y,
+                        color=track.color,
+                        is_current_frame=(
+                            point.frame_index == self._presented_frame_index
+                        ),
+                        source=point.source,
+                        frame_index=point.frame_index,
+                    )
+                    for point in session.effective_points(member)
+                )
+        self.videoView.set_markers(markers)
+
     def _onScaleChanged(self, scale: float) -> None:
         self.zoomLabel.setText(f"Zoom: {scale * 100:.0f}%")
 
@@ -1837,6 +2174,10 @@ class MainWindow(QMainWindow):
         self._presented_frame_index = frame.frame_index
         self._refreshMarkers()
         self._refreshDeletePointButton()
+        # 引导标注：换帧即重建引导条（帧完成度随帧变化）
+        if self._guide_experiment_id is not None:
+            self._guide_skipped_roles.clear()
+            self._refreshAnnotationGuide()
         self.presentedFrameChanged.emit(frame.frame_index)
 
     def _step(self, delta: int) -> None:

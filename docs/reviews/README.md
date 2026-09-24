@@ -25,6 +25,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | Publication P0.3 | [publication-p0.3-review.md](publication-p0.3-review.md) | Mac/protocol scoped PASS；Windows not_run | 2026-09-20 |
 | Publication P0.4 | [publication-p0.4-review.md](publication-p0.4-review.md) | 合同PASS；用户已批准Windows延至P6前，P0关闭 | 2026-09-20 |
 | Publication P1.1 (S1–S6) | [publication-p1.1-review.md](publication-p1.1-review.md) | 三轮 review + 两轮 Human Review 全部通过(921 passed);已合并 | 2026-09-21 |
+| Publication P1.2 (S1–S6) | [publication-p1.2-review.md](publication-p1.2-review.md) | 三轮专项 review + HR 通过(自动化 A–D 全 PASS + 用户 Q1–Q4 通过;F1 修复重测,F2 WONTFIX,F3 关闭;982 passed;帧集 10/10 全 4/4);待用户指令合并 | 2026-09-24 |
 | Publication P0.1 | [publication-p0.1-review.md](publication-p0.1-review.md) | PASS；F1–F4闭环，13 contract tests、15 frozen files/83 external sources，只验证证据与契约 | 2026-09-20 |
 | 5.7 | [phase-5.7-review.md](phase-5.7-review.md) | R1/R2 findings 全闭环；HR1 与两轮补充实测修复完成；804 测试 + 最终 Human Review 通过 | 2026-09-18 |
 
