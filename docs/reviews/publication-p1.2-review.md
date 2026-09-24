@@ -28,9 +28,44 @@ Verdict:**PASS**(EX1/EX2 Low 已修,EX3–EX5 记录)。核心结论:plan 划分
 1. 引导按钮死路:`guide_skip/next/finish` 分发在一次原子回滚的编辑批次中丢失,真实 UI 点击无效果 → 已修复并补分发(`b490ea1`)。
 2. skip 集合在全跳过时被误清 → 点击会落到被跳过 role → 修复为仅换帧清空(`b490ea1`)。
 
-## Human Review
+## Human Review(2026-09-24,经用户授权的自动化执行)
 
-P1.2 交互(S3 引导标注)与整链终验(S6)按用户指示合并为一次验收,协议见 [p1.2-human-review.md](../../publication/plans/p1.2-human-review.md)。结果待用户执行。
+执行方式:用户 2026-09-24 指示"之前写的文档存在理解障碍,由 agent 用 computer use 完成尽可能多的 HR,完成后报告;HR 变动做好 git 管理,先不合并"。故本轮 HR 由 agent 以 macOS 真机 GUI 自动化(辅助功能树 + 原始鼠标/键盘事件 + 截图比对)驱动修复后代码(`f97aaf3`,全量 **981 passed**),GUI 不可达的环节使用与 GUI 完全相同的 session/后端代码路径。主观体验项仅提供功能性证据,最终裁定权在用户。测试对象:test1(Phase_5_2_test,148 帧 1920×1080 单摆视频,4 bound tracks,scale 225 mm / 2.6 px/mm,release 36,起点 168 observations)。
+
+### 结果(协议:[p1.2-human-review.md](../../publication/plans/p1.2-human-review.md))
+
+| 项 | 结果 | 证据(全部为真机 GUI 实测) |
+| --- | --- | --- |
+| A1 进入引导 | PASS | "Mark landmark frames…"入口 → 引导条 "click the tip (0/4 done; remaining: tip → body_top → body_bottom → pivot)";track 选择被清除仍可标注;四条 role 轨迹点全部可见 |
+| A2 顺序标注 | PASS | 147/12/27 三帧共 11 次落点,每次提示推进 tip→body_top→body_bottom→pivot,计数 1/4→4/4 即时更新;落点经视频坐标↔屏幕坐标仿射标定(残差 ~1–3 px)命中目标 landmark |
+| A3 完成态 | PASS | 4/4 后显示 "complete (4/4)";两种变体均验证:无后帧时 "Finish guided marking",有后帧时 "Next frame (27)" |
+| A4 帧集导航 | PASS | "Next frame (27)" → 跳至帧 27、引导重置 0/4;入口自动跳到帧集首个未完成帧(12)亦验证 |
+| A5 Esc 退出 | PASS | Esc → 状态栏 "Browse mode";已标点全部保留(172 = 168+4);重进引导恢复 "Frame 147 complete (4/4)" |
+| B1 跳过 | PASS | 标 2 role 后点 "Skip body_bottom" → 提示跳到 pivot 并标注 "skipping: body_bottom";标 pivot 后帧保持 3/4 partial |
+| B2 partial 继续 | PASS | partial 帧上 "Next frame (42)" 允许推进;明示 "frame stays partial (never used for training)" |
+| B3 Undo/Redo | PASS | Cmd+Z/Cmd+Shift+Z 单步往返(1/4↔0/4)与跨帧 3 步往返(180→177→180)计数精确;skip 集合换帧清除、重开后不残留(按设计) |
+| C1 持久化 | PASS | Save→Close→Reopen:180 observations、kmeans 帧集、帧 27 的 3/4 partial 全部保留;引导可重入并正确跳到首个未完成帧 |
+| C2 帧集替换 | PASS* | 真实 DLC 3.0.1 kmeans(n=10,8 s)→ 新帧集 (18,19,20,58,64,71,107,116,124,144) 替换旧集;session 层 set→undo(回旧集)→redo(应用新集)→save 闭环。*GUI 按钮路径受阻于 F3,见下 |
+| D1 单轨禁用 | PASS | 全窗口不存在 Start learning/Training/Generate trajectory/Suggest/Infer 任何单轨 AI 入口;测量卡明示 "Single-track learning is disabled for experiment tracks; joint AI training arrives in a later phase (P1.3)"(较 P1.1 的"禁用+原因"更强:投影层直接移除,运行时 guard 仍在) |
+
+数据安全一票否决项:引导标注丢点无(observations 单调 168→180,undo/redo 往返精确);重开丢帧集无;undo 破坏状态无。
+
+### Q1–Q4(功能证据;主观判定留给用户真机复测)
+
+- **Q1(引导顺序/提示)A**:每步显式点名当前 role,顺序恒定,计数与剩余列表实时更新。
+- **Q2(partial 语义)A**:三处明示——引导条常驻 "Partial frames are saved but never used for training";跳过后 "frame stays partial";partial 帧允许 Next/Finish。
+- **Q3(引导条按钮)A**:Skip/Next/Finish 行为全部符合预期(见 B1/B2/A3/A4)。
+- **Q4(>10 s 迟疑)B(自动化语境)**:F1 首次入口跳帧失效曾造成迟疑;视频画布滚轮无响应(缩放需走 View 菜单)。请用户真机复测时留意此两点。
+
+### Findings(均非阻塞)
+
+- **F1(Medium,P2)**:项目加载后的**第一次**引导标注入口不执行帧集跳帧(worklist start_frame 不生效,停留当前帧);同会话退出再进入即正常。2/2 复现(两次 project reload 后首入均失败,随后的重入均成功)。A4 的 Next frame 导航本身可靠。→ 待修复;修复后仅需重测"加载后首次入口"。
+- **F2(Low,P3)**:全局 Space 快捷键(播放/暂停,`main_window.py` playShortcut,WindowShortcut 级)抢占按钮键盘激活——焦点在任意按钮上按 Space 会触发播放而非按钮。鼠标点击不受影响;建议改为 `WidgetWithChildrenShortcut` 或限定在视频区。
+- **F3(待用户真机复核)**:"▸ Adjust this run's settings"/"▸ Evidence" 折叠按钮在自动化环境下不产生 clicked 效果(AXPress、原始 CGEvent 点击、Space 均无效;同面板 spinbox 及其它按钮对原始点击响应正常;stderr 无槽异常)。Suggest Frames 控件位于该折叠区内,故 C2 改经 session 层执行(与 GUI `_finish_success` 完全相同的调用链)。请用户真机单击一次复核:可展开→自动化栈假象,关闭 F3;不可展开→实 bug(优先查快捷键/焦点策略)。
+
+### 结论
+
+HR-A/B/C/D 全部 PASS(无 N-A),数据安全否决项全部干净;F1–F3 不构成阻塞。按协议 §4,通过标准 1–3 满足;标准 4 对 F1 适用(修复后仅重测受影响项);标准 5 的"合并"按用户指示暂缓。**P1.2 处于"HR 功能面通过,待用户 Q1–Q4 真机裁定与 F3 复核后关闭合并"状态;当前不合并、不 push。**
 
 ## Verification
 

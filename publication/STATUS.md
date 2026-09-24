@@ -1,8 +1,8 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-09-21。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.1-pendulum-setup`(未合并、未 push)。
-- 当前：**P1.2 S1–S6 全部实现（2026-09-23）：三轮 review 闭环 + DLC smoke PASS，980 tests；等待 Human Review 后合并**。P1.1 已合并；P1.3–P1.4 未开始。
+- 最后更新：2026-09-24。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.2-complete-frame-annotation`(未合并、未 push)。
+- 当前：**P1.2 S1–S6 全部实现 + HR 自动化执行完成（2026-09-24）：HR-A/B/C/D 全 PASS、数据安全否决项干净、981 tests；3 项非阻塞 findings（F1 首次入口跳帧失效 / F2 Space 快捷键抢占 / F3 折叠按钮待用户真机复核）。待用户 Q1–Q4 真机裁定 + F3 复核后关闭合并**。P1.1 已合并；P1.3–P1.4 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -76,4 +76,5 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**等待用户执行 [P1.2 Human Review](plans/p1.2-human-review.md)**（引导标注交互 + 帧集持久化，一次验收）。通过后：P1.2 合并关闭 → P1.3（joint training + teacher import）。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。
+1. **用户复核 P1.2 HR 结果**（2026-09-24 自动化执行，A/B/C/D 全 PASS）：真机点一次 "▸ Adjust this run's settings" 关闭/证实 F3；扫一遍 [HR record](../docs/reviews/publication-p1.2-review.md) 的 Q1–Q4 与 F1（首次入口跳帧失效，P2 待修复）。
+2. F1 修复 + 仅重测受影响项；用户裁定通过后：P1.2 合并关闭 → P1.3（joint training + teacher import）。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。
