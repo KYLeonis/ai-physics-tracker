@@ -171,3 +171,12 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 ## Publication branch contract boundary
 
 本线未来Pendulum schema2/multi-track与typed scientific results见[ADR-0017](decisions/0017-publication-project-contract.md)及[合同](../publication/spec/experiment-run-derived-contracts.md)。本轮只固定契约，src仍是既有schema1实现。外置AI进程边界见[runtime contract](../publication/spec/runtime-boundary.md)，Mac探针不替代Windows验收或正式安装实现。
+- [0009 — 交互式图表与分析事务](decisions/0009-interactive-charts-and-analysis-transactions.md)
+- [0010 — 当前图表 PNG 快照](decisions/0010-current-chart-png-snapshots.md)
+- [0011 — DeepLabCut 集成架构](decisions/0011-deeplabcut-integration-architecture.md)
+- [0012 — GUI 跟踪任务边界](decisions/0012-gui-tracking-task-boundaries.md)
+- [0013 — run 级建议帧审核状态](decisions/0013-run-scoped-suggested-frame-review-state.md)
+- [0014 — 结果激活与固定验证历史](decisions/0014-result-activation-and-fixed-validation-history.md)
+- [0015 — Training Advisor 与 Resume 再训练](decisions/0015-training-advisor-and-resume-retraining.md)
+- [0016 — 固定检查帧预选与推荐计划执行](decisions/0016-fixed-check-preselection-and-recommended-plan-execution.md)
+>>>>>>> main

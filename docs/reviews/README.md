@@ -6,6 +6,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 
 - 触发 Independent Review 的 subphase，从首轮 review 开始建立 `phase-X.Y-review.md`；一个 subphase 一个文件，记录完整生命周期：Scope → Findings → Triage → Fixes → Verification → Re-review → Final Verdict。
 - 模板与字段定义：`docs/templates/review.md`；流程与角色规则（Reviewer 只读、Decision 取值、与 Issue/status 的对接）：`docs/workflow.md` §6。
+- **`Closed` 的含义**：该 finding 在**当时的 commit 与证据下**关闭并经复审确认，不是对当前代码的永久证明。后续工作再次触及同一 invariant 时，通过 mini-plan 的 Agent Context Pack 引用相关 finding 作为审查输入（继承规则见 `docs/workflow.md` §6.3）。先例：Pre-Phase 6 review 核实 5.5 review B3 的"已修复"记录与 `main` 实际不符（P6R-04）。
 
 ## 索引
 
