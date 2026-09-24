@@ -67,9 +67,13 @@ Verdict:**PASS**(EX1/EX2 Low 已修,EX3–EX5 记录)。核心结论:plan 划分
 - **F2(Low,P3)→ 用户裁定按设计保留(WONTFIX)**:全局 Space 快捷键仅用于播放/暂停,不激活按钮——用户确认为预期行为,关闭。
 - **F3(已关闭,2026-09-24)**:真人二轮复测可正常展开折叠区并点击 Suggest Frames——折叠按钮本身无缺陷,自动化环境下的失效率归因自动化栈。关闭。
 
+**F4/F5 处置(2026-09-24,用户裁定"现在就修,修好再合并")**:均已修复——
+- F4:`frame_set_progress` 投影(`experiment_annotation.py`)+ 引导条三条 hint 分支(含 skip 强制刷新)拼接 `Frame set: {done}/{total} complete; remaining: …` 后缀;真机验证文案 "Frame 144 complete (4/4). Frame set: 10/10 complete."。单测 `TestFrameSetProgress`。
+- F5:`workflow_projection` 新增 `FrameSetProgress`(done/total/next_frame/next_role,经 `project_workflow_state` 新参 `experiment` 由 GUI 传入,与选中 track 解耦);测量卡 explanation 新增 "Frame set: n/m complete — next missing: frame X (role). Marking resumes there."。单测 2 例。全量 **987 passed**。
+
 ### 结论
 
-HR-A/B/C/D 全部 PASS(无 N-A),数据安全否决项全部干净。**Q1–Q4 用户真人裁定全部通过(2026-09-24 下午)**;F3 关闭(真人可操作);F2 用户裁定按设计保留;F1 已修复 + 回归测试 + 真机重测通过(982 passed)。按协议 §4 通过标准全部满足:**P1.2 Human Review 通过**,具备合并条件;按用户指示暂不合并、暂不 push,等待用户明确指令后执行 `--no-ff` 合并回 `publication/ejp-damped-pendulum`。F4/F5(帧集进度可见性,UX)转入用户裁定队列,不阻塞合并。
+HR-A/B/C/D 全部 PASS(无 N-A),数据安全否决项全部干净。**Q1–Q4 用户真人裁定全部通过(2026-09-24 下午)**;F3 关闭(真人可操作);F2 用户裁定按设计保留(WONTFIX);F1 已修复 + 回归测试(变异验证)+ 真机重测通过;F4/F5 已按用户指令修复(987 passed)。按协议 §4 通过标准全部满足:**P1.2 Human Review 通过**,具备合并条件。
 
 ## Verification
 

@@ -47,6 +47,7 @@ from ai_physics_tracker.application.video_timing import VideoTimingProbe
 from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
 from ai_physics_tracker.application.experiment_annotation import (
     annotation_guide_state,
+    frame_set_progress,
     frame_set_worklist,
 )
 from ai_physics_tracker.gui.pendulum_setup import (
@@ -1457,6 +1458,22 @@ class MainWindow(QMainWindow):
             return
         self.jumpToFrame(target)
 
+    def _frameSetProgressSuffix(self, experiment) -> str:
+        """引导条帧集进度后缀（F4）：让"还要标多少帧"可见、循环有限可判。"""
+
+        session = self._annotation_session
+        if session is None:
+            return ""
+        progress = frame_set_progress(session.project, experiment)
+        if progress is None:
+            return ""
+        done, total, remaining = progress
+        if not remaining:
+            return f" Frame set: {done}/{total} complete."
+        shown = ", ".join(str(frame) for frame in remaining[:5])
+        extra = "" if len(remaining) <= 5 else f" …+{len(remaining) - 5}"
+        return f" Frame set: {done}/{total} complete; remaining: {shown}{extra}."
+
     def _refreshAnnotationGuide(self) -> None:
         """从当前事实重建引导条；引导未激活时不动标定引导。"""
 
@@ -1480,23 +1497,24 @@ class MainWindow(QMainWindow):
         state = annotation_guide_state(
             session.project, experiment, self._presented_frame_index
         )
+        suffix = self._frameSetProgressSuffix(experiment)
         if state.frame_complete:
             if state.next_frame_set_index is not None:
                 self._setCalibrationGuide(
-                    state.hint(),
+                    state.hint() + suffix,
                     "guide_next",
                     f"Next frame ({state.next_frame_set_index})",
                 )
             else:
                 self._setCalibrationGuide(
-                    state.hint(), "guide_finish", "Finish guided marking"
+                    state.hint() + suffix, "guide_finish", "Finish guided marking"
                 )
         elif state.current_role is not None:
             self._setCalibrationGuide(
-                state.hint(), "guide_skip", f"Skip {state.current_role}"
+                state.hint() + suffix, "guide_skip", f"Skip {state.current_role}"
             )
         else:
-            self._setCalibrationGuide(state.hint())
+            self._setCalibrationGuide(state.hint() + suffix)
             self.calibrationGuideButton.hide()
 
     def _onAnnotationGuideAction(self, action: str) -> None:
@@ -1535,6 +1553,7 @@ class MainWindow(QMainWindow):
         state = annotation_guide_state(
             session.project, experiment, self._presented_frame_index
         )
+        suffix = self._frameSetProgressSuffix(experiment)
         remaining = tuple(
             role
             for role in state.pending_roles
@@ -1546,6 +1565,7 @@ class MainWindow(QMainWindow):
                 f"({len(state.done_roles)}/4 done; skipping: "
                 f"{', '.join(sorted(self._guide_skipped_roles))}). "
                 "Partial frames are saved but never used for training."
+                + suffix
             )
             self._setCalibrationGuide(
                 hint, "guide_skip", f"Skip {remaining[0]}"
@@ -1555,7 +1575,7 @@ class MainWindow(QMainWindow):
             # 统一清空），否则引导点击会重新落到被跳过的 role 上
             self._setCalibrationGuide(
                 f"Frame {state.frame_index}: remaining roles skipped — "
-                "frame stays partial (never used for training).",
+                "frame stays partial (never used for training)." + suffix,
                 "guide_finish" if state.next_frame_set_index is None
                 else "guide_next",
                 "Finish guided marking"

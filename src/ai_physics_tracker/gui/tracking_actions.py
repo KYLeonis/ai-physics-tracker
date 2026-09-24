@@ -295,7 +295,15 @@ class TrackingActions(QObject):
         from ai_physics_tracker.application.workflow_projection import (
             project_workflow_state,
         )
-        return project_workflow_state(session, track_id, runs, self._execution_input())
+        # F5：帧集完成度与选中 track 无关——experiment 由 active video 决定
+        experiment = (
+            self.window.currentPendulumExperiment()
+            if session is not None and session is self.window.analysisSession
+            else None
+        )
+        return project_workflow_state(
+            session, track_id, runs, self._execution_input(),
+            experiment=experiment)
 
     def _refresh_workflow_ui(self, session, track_id, runs, video, track) -> None:
         """把投影结果推到任务卡与常驻状态头；决策失败不阻塞面板。"""

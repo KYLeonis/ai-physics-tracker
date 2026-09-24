@@ -812,16 +812,13 @@ class TestPendulumSetupProjection:
             ACTION_SET_RELEASE,
         ]
 
-    def test_setup_complete_falls_through_to_generic_flow(self, tmp_path):
+    @staticmethod
+    def _complete_setup(session, video, experiment) -> None:
+        """补齐 setup（scale/pivot/vertical/L/g/release）→ 走 measurement 卡。"""
         from ai_physics_tracker.domain.calibration import Calibration
-        from ai_physics_tracker.domain.pendulum import (
-            PendulumGeometry,
-            PhysicalParameters,
-            TrueVertical,
-        )
+        from ai_physics_tracker.domain.pendulum import PhysicalParameters
+        from ai_physics_tracker.domain.types import utc_now
 
-        session, video, tracks = self._migrated(tmp_path)
-        experiment = session.pendulum_experiments()[0]
         session._verified_videos.add(video.video_id)
         session.add_calibration(
             Calibration(
@@ -832,7 +829,7 @@ class TestPendulumSetupProjection:
                 scale_end_2_px=(10.0, 0.0),
                 known_length=0.1,
                 unit="m",
-                created_at=__import__("ai_physics_tracker.domain.types", fromlist=["utc_now"]).utc_now(),
+                created_at=utc_now(),
             )
         )
         session.set_fixed_pivot(experiment.experiment_id, (5.0, 5.0))
@@ -846,6 +843,18 @@ class TestPendulumSetupProjection:
         )
         session.set_release_frame(experiment.experiment_id, 2)
 
+    def test_setup_complete_falls_through_to_generic_flow(self, tmp_path):
+        from ai_physics_tracker.domain.calibration import Calibration
+        from ai_physics_tracker.domain.pendulum import (
+            PendulumGeometry,
+            PhysicalParameters,
+            TrueVertical,
+        )
+
+        session, video, tracks = self._migrated(tmp_path)
+        experiment = session.pendulum_experiments()[0]
+        self._complete_setup(session, video, experiment)
+
         state = project_workflow_state(session, tracks[0].track_id, ())
         assert state.pendulum is not None
         assert state.pendulum.setup_complete
@@ -855,6 +864,65 @@ class TestPendulumSetupProjection:
         assert card.title == "Current: pendulum measurement"
         assert card.primary.action_id == ACTION_GUIDED_MARKING
         assert "P1.3" in card.explanation[0]
+
+    def test_measurement_card_shows_frame_set_progress(self, tmp_path):
+        from ai_physics_tracker.domain.pendulum import (
+            ROLE_ORDER,
+            ExperimentFrameSet,
+        )
+        from ai_physics_tracker.domain.types import utc_now
+
+        session, video, tracks = self._migrated(tmp_path)
+        experiment = session.pendulum_experiments()[0]
+        self._complete_setup(session, video, experiment)
+        # set_* 返回更新后的 experiment（frozen dataclass），必须采用返回值
+        experiment = session.set_experiment_frame_set(
+            experiment.experiment_id,
+            ExperimentFrameSet(frames=(2, 5), algorithm="uniform",
+                               created_at=utc_now()),
+        )
+        # 帧 2 四 role 标满；帧 5 只标 tip → 1/2 完成，下一缺帧 5 的 body_top
+        for role in ROLE_ORDER:
+            session.mark_point(experiment.roles.track_id_for(role), 2, 1.0, 2.0)
+        session.mark_point(experiment.roles.track_id_for("tip"), 5, 3.0, 4.0)
+
+        state = project_workflow_state(
+            session, tracks[0].track_id, (), experiment=experiment)
+        assert state.frame_set is not None
+        assert (state.frame_set.done, state.frame_set.total) == (1, 2)
+        assert (state.frame_set.next_frame,
+                state.frame_set.next_role) == (5, "body_top")
+
+        card = select_task_card(state)
+        joined = "\n".join(card.explanation)
+        assert "Frame set: 1/2 complete" in joined
+        assert "next missing: frame 5 (body_top)" in joined
+
+    def test_measurement_card_reports_complete_frame_set(self, tmp_path):
+        from ai_physics_tracker.domain.pendulum import (
+            ROLE_ORDER,
+            ExperimentFrameSet,
+        )
+        from ai_physics_tracker.domain.types import utc_now
+
+        session, video, tracks = self._migrated(tmp_path)
+        experiment = session.pendulum_experiments()[0]
+        self._complete_setup(session, video, experiment)
+        experiment = session.set_experiment_frame_set(
+            experiment.experiment_id,
+            ExperimentFrameSet(frames=(3,), algorithm="uniform",
+                               created_at=utc_now()),
+        )
+        for role in ROLE_ORDER:
+            session.mark_point(experiment.roles.track_id_for(role), 3, 1.0, 2.0)
+
+        state = project_workflow_state(
+            session, tracks[0].track_id, (), experiment=experiment)
+        assert state.frame_set is not None
+        assert state.frame_set.next_frame is None
+        card = select_task_card(state)
+        assert "Frame set: 1/1 complete — all landmark frames are marked." in (
+            "\n".join(card.explanation))
 
     def test_bound_track_never_shows_ai_cards(self, tmp_path):
         from ai_physics_tracker.application.workflow_projection import (

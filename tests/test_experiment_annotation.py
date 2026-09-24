@@ -21,6 +21,7 @@ import pytest
 
 from ai_physics_tracker.application.experiment_annotation import (
     annotation_guide_state,
+    frame_set_progress,
     frame_set_worklist,
 )
 from ai_physics_tracker.application.project_session import (
@@ -345,6 +346,38 @@ class TestFrameSetWorklist:
         _project, experiment, _tracks = _experiment_project()
 
         assert frame_set_worklist(experiment) == ()
+
+
+class TestFrameSetProgress:
+    def test_no_frame_set_returns_none(self) -> None:
+        project, experiment, _tracks = _experiment_project(
+            marks={"tip": (0,), "body_top": (0,), "body_bottom": (0,), "pivot": (0,)}
+        )
+
+        assert frame_set_progress(project, experiment) is None
+
+    def test_counts_complete_frames_and_names_remaining(self) -> None:
+        project, experiment, _tracks = _experiment_project(
+            marks={
+                "tip": (0, 4),
+                "body_top": (0,),
+                "body_bottom": (0,),
+                "pivot": (0,),
+            },
+            frame_set=(0, 4, 8),
+        )
+
+        done, total, remaining = frame_set_progress(project, experiment)
+        assert (done, total, remaining) == (1, 3, (4, 8))
+
+    def test_all_complete_reports_empty_remaining(self) -> None:
+        project, experiment, _tracks = _experiment_project(
+            marks={role: (0, 4) for role in ROLE_ORDER},
+            frame_set=(0, 4),
+        )
+
+        done, total, remaining = frame_set_progress(project, experiment)
+        assert (done, total, remaining) == (2, 2, ())
 
 
 # ---------------------------------------------------------------------------

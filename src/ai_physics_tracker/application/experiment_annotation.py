@@ -100,3 +100,21 @@ def frame_set_worklist(experiment: PendulumExperiment) -> tuple[int, ...]:
     if experiment.frame_set is None:
         return ()
     return experiment.frame_set.frames
+
+
+def frame_set_progress(
+    project: Project, experiment: PendulumExperiment
+) -> tuple[int, int, tuple[int, ...]] | None:
+    """帧集完成度投影（F4/F5，2026-09-24 HR）：还要标多少帧的单一事实源。
+
+    返回 ``(4/4 完成帧数, 帧集总帧数, 未完成帧号升序)``；无帧集返回
+    None。单次 join 同时服务引导条进度与测量卡"下一缺帧"指引，避免
+    逐帧调用 annotation_guide_state 的 O(k·n) 重复投影。
+    """
+
+    frames = experiment.frame_set.frames if experiment.frame_set is not None else ()
+    if not frames:
+        return None
+    complete = set(join_complete_frames(project, experiment).complete_frame_indices)
+    remaining = tuple(frame for frame in frames if frame not in complete)
+    return len(frames) - len(remaining), len(frames), remaining

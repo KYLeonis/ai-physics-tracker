@@ -331,6 +331,8 @@ def test_frame_set_guided_start_next_and_finish(
         window._onGuidedAnnotationClicked((x, 20.0))
     assert "Frame 0 complete (4/4)" in window.calibrationGuideLabel.text()
     assert "Continue to frame 4." in window.calibrationGuideLabel.text()
+    # F4：帧集进度可见（0 与 4 都已 4/4）
+    assert "Frame set: 2/2 complete." in window.calibrationGuideLabel.text()
     assert window.calibrationGuideButton.text() == "Next frame (4)"
 
     # guide_next：跳到帧集的下一帧（异步解码）
