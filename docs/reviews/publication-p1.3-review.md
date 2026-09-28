@@ -28,6 +28,24 @@ Reviewer 同时确认"已查无问题"方向:digest 回显链闭合、迟到/强
 - 修复后全量 `python -m pytest`:**1054 passed, 9 subtests**(review 前基线 1044;新增 B1/M1/M1b/M2/M3/m1/m2/m3/m4 回归 10 个)。
 - i3①(超时必须走 cancel)与 i3② 的 GUI 消费侧留 S6;Windows taskkill 分支维持 G4 真机门禁(P6 前)。
 
+## S4 slice review(2026-09-28,同日实现后即时派发)
+
+只读 review(独立于 S1–S3 gate):Verdict request-changes → **处置闭环**。
+
+| ID | 摘要 | 处置 |
+| --- | --- | --- |
+| M1 (Major) | 源 config bodyparts 自身重复项经集合比较放行 | CLOSED:parse 阶段拒绝 duplicates;负例测试 |
+| M2 (Major) | 同 basename 冲突分支无测试(plan 点名) | CLOSED:补 checkpoint↔extra 同名负例(注:config↔checkpoint 对互异源文件不可达,reviewer 前提修正)+ extra↔extra 用例 |
+| m1 | staging 残留在 session 路径永不清理 | CLOSED:导入开始统一清扫 `models/*.staging`(幂等);测试 |
+| m2 | engine 键缺失放行(旧 TF config) | CLOSED:显式 `engine == "pytorch"` 才接受;负例 |
+| m3 | 原 config provenance 只剩 SHA | CLOSED:extra_fields 增 original_project_path |
+| m4 | video_sets 不重写无显式决策记录 | CLOSED:代码注释 + extra_fields 决策记录 |
+| Info ×4 | 测试死代码/误导名等 | CLOSED:清理 |
+
+已确认无问题:发布原子性(staging 同卷兄弟目录+os.replace 末位)、路径安全(resolve+is_relative_to 全覆盖)、undo 后受管文件留存语义、Windows os.replace 同卷原子。
+
+**验证:全量 1077 passed(+23 S4 测试,含 5 个 review 回归)。**
+
 ## Verdict
 
 Reviewer:request-changes → **处置后闭环**(B1+M1–M3+m1–m7+Nit 全部修复并复测,含既有 mock 适配 3 处)。S1–S3 gate 通过,进入 S4(teacher import core)。

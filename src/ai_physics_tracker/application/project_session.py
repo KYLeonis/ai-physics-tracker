@@ -2224,6 +2224,52 @@ class ProjectSession:
             raise ProjectSessionError(str(error)) from error
         return self._commit_experiment_change(experiment_id, updated)
 
+    def import_teacher_model(
+        self,
+        source_root: Path,
+        config_relative: str,
+        checkpoint_relative: str,
+        bodypart_mapping: tuple[tuple[str, str], ...],
+        extra_files: tuple[str, ...] = (),
+    ) -> TeacherModelReference:
+        """导入外部 DLC 教师模型并登记 imported 引用(契约 §4,S4)。
+
+        copy+validate 委托 application/teacher_import(fail closed 清单、
+        staging 原子发布);登记是项目级事务,可 undo(undo 只移除引用,
+        受管文件按 §6 留存为可再引用产物)。
+        """
+
+        if self._project_root is None:
+            raise ProjectSessionError("project must be saved before importing models")
+        from ai_physics_tracker.application.teacher_import import (
+            TeacherImportError,
+            import_teacher_model as _import_model,
+        )
+
+        model_id = uuid4()
+        try:
+            reference = _import_model(
+                self._project_root,
+                source_root,
+                config_relative,
+                checkpoint_relative,
+                bodypart_mapping,
+                model_id,
+                extra_files,
+            )
+        except TeacherImportError as error:
+            raise ProjectSessionError(str(error)) from error
+        except OSError as error:
+            raise ProjectSessionError(
+                f"teacher import failed during the managed copy: {error}"
+            ) from error
+        updated = replace(
+            self._project,
+            model_references=(*self._project.model_references, reference),
+        )
+        self._commit_project(updated)
+        return reference
+
     def register_trained_model_reference(self, run_id: UUID) -> TeacherModelReference:
         """把 completed 联合训练 run 冻结为 TeacherModelReference(契约 §4)。
 

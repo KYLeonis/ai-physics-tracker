@@ -27,7 +27,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | Publication P0.4 | [publication-p0.4-review.md](publication-p0.4-review.md) | 合同PASS；用户已批准Windows延至P6前，P0关闭 | 2026-09-20 |
 | Publication P1.1 (S1–S6) | [publication-p1.1-review.md](publication-p1.1-review.md) | 三轮 review + 两轮 Human Review 全部通过(921 passed);已合并 | 2026-09-21 |
 | Publication P1.2 (S1–S6) | [publication-p1.2-review.md](publication-p1.2-review.md) | 三轮专项 review + HR 通过(F1/F4/F5 修复,F2 WONTFIX,F3 关闭;Q1–Q4 用户通过;987 passed;帧集 10/10 全 4/4);已合并 `5cad79c` | 2026-09-24 |
-| Publication P1.3 (S1–S3 gate) | [publication-p1.3-review.md](publication-p1.3-review.md) | request-changes → 处置闭环(B1 联合训练 bodypart 守卫+M1–M3+m1–m7+Nit 全修;1054 passed);gate 通过进 S4 | 2026-09-28 |
+| Publication P1.3 (S1–S3 gate + S4) | [publication-p1.3-review.md](publication-p1.3-review.md) | S1–S3 gate:request-changes → 处置闭环(B1+M1–M3+m1–m7);S4 slice review 同闭环(1077 passed);待 S5/S6 | 2026-09-28 |
 | Publication P0.1 | [publication-p0.1-review.md](publication-p0.1-review.md) | PASS；F1–F4闭环，13 contract tests、15 frozen files/83 external sources，只验证证据与契约 | 2026-09-20 |
 | 5.7 | [phase-5.7-review.md](phase-5.7-review.md) | R1/R2 findings 全闭环；HR1 与两轮补充实测修复完成；804 测试 + 最终 Human Review 通过 | 2026-09-18 |
 
