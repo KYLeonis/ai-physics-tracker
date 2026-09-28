@@ -1,7 +1,7 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-09-24。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.2-complete-frame-annotation`(未合并、未 push)。
+- 最后更新：2026-09-28。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.3-joint-training`(未合并、未 push)。
 - 当前：**P1.3 S1–S6 全部实现（2026-09-28）：四轮 review 闭环、1110 tests、真实 DLC 双路径 smoke PASS（联合训练→模型引用→自检 compatible；教师导入→源目录移走→compatible）。等待 Human Review（协议：plans/p1.3-human-review.md）后合并**。P1.1、P1.2 已合并；P2 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
