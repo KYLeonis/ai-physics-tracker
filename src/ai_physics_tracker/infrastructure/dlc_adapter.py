@@ -881,6 +881,42 @@ def _snapshot_stamp(path: Path) -> tuple[int, int]:
     return stat.st_mtime_ns, stat.st_size
 
 
+def run_model_selftest_inference(
+    pose_cfg_path: Path,
+    checkpoint_path: Path,
+    frame,
+    device: str,
+) -> tuple[dict, dict[str, str], str]:
+    """单动物模型的单帧真实推理(P1.3-S5 runtime self-test 专用)。
+
+    返回 (predictions, versions, actual_device):predictions 为 runner 的
+    原始单帧输出——**输出名 → ndarray**(bottom-up 模型即
+    ``{"bodyparts": ndarray(n_ind, n_bp, 3), ...}``,键不是 bodypart 名,
+    结构解释由 worker 侧承担)。不落盘、不进结果文件——仅供 worker 侧
+    selftest_model 判定"当前 runtime 能 load 该 checkpoint 并对合法输入
+    产出有限预测"。真实链路由 S6 smoke 验证。
+    """
+
+    import deeplabcut
+    import torch
+
+    from deeplabcut.pose_estimation_pytorch import get_pose_inference_runner
+
+    runner = get_pose_inference_runner(
+        model_config=Path(pose_cfg_path),
+        snapshot_path=Path(checkpoint_path),
+        device=device,
+    )
+    predictions = runner.inference([frame])
+    if not predictions or not isinstance(predictions[0], dict):
+        raise RuntimeError("self-test inference returned no predictions")
+    versions = {
+        "torch": str(getattr(torch, "__version__", "")),
+        "deeplabcut": str(deeplabcut.__version__),
+    }
+    return predictions[0], versions, str(device)
+
+
 def _model_snapshots(
     config_path: Path,
     shuffle: int,

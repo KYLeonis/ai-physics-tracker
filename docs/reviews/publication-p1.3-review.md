@@ -46,6 +46,20 @@ Reviewer 同时确认"已查无问题"方向:digest 回显链闭合、迟到/强
 
 **验证:全量 1077 passed(+23 S4 测试,含 5 个 review 回归)。**
 
+## S5 slice review(2026-09-28)
+
+只读 review(对照安装的 DLC 3.0.1 源码核验真实行为):Verdict request-changes → **处置闭环**。
+
+| ID | 摘要 | 处置 |
+| --- | --- | --- |
+| B1 (Blocker) | trained 模型 pose_cfg glob 用 TF 时代布局(`dlc-models/*/train/pose_cfg.yaml`),真实 PyTorch 引擎是 `dlc-models-pytorch/*/*/train/pytorch_config.yaml` → trained 半边 self-test 上线即死(Phase 4.3 同类教训重现) | CLOSED:glob 改真实 pytorch 布局(两级中间目录)+ mock 布局兼容保留;真实布局 fixture 测试;多匹配 warning |
+| B2 (Blocker) | worker 假设 runner 输出是 bodypart→ndarray;真实 bottom-up 输出是 `{"bodyparts": ndarray(n_ind, n_bp, 3)}`(输出名键)→ 成功推理也判 missing | CLOSED:按真实结构读 `found["bodyparts"]`,形状(n, 4, ≥2)+有限性校验;adapter docstring 更正;协议级测试(真实 worker 进程 + 假 deeplabcut/torch 注入)钉住契约 |
+| M1 (Major) | pose_cfg/pytorch_config 内容未冻结进证据(契约 §4 "换 config 内容撤销") | CLOSED:payload/worker 复核回显/verify/evidence 四处加 pose_cfg_sha256;组合入口对 trained 复哈希裁决 |
+| M2 (Major) | effective_compatibility_state 无生产调用方,失效裁决是死代码 | CLOSED:新增组合入口 `model_effective_state`(availability → 证据裁决 → trained pose_cfg 复哈希),GUI/导出侧唯一裁决入口;优先级测试(unavailable > unverified) |
+| m1–m4 | 多匹配静默、frame_index/VideoCapture 健壮性、状态机转移未声明未测、协议级测试缺口 | CLOSED:warning 日志;frame_index≥0 校验 + isOpened 检查;docstring 声明转移 + incompatible→compatible/mark-undo 测试;6 个回归测试 |
+
+**验证:全量 1097 passed(+20 S5,含 6 review 回归;协议级测试经真实 worker 进程)。真实 DLC 推理链路(DLCLoader→runner→单帧)仍待 S6 smoke 实测。**
+
 ## Verdict
 
 Reviewer:request-changes → **处置后闭环**(B1+M1–M3+m1–m7+Nit 全部修复并复测,含既有 mock 适配 3 处)。S1–S3 gate 通过,进入 S4(teacher import core)。

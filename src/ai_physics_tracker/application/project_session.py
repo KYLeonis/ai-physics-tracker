@@ -2224,6 +2224,89 @@ class ProjectSession:
             raise ProjectSessionError(str(error)) from error
         return self._commit_experiment_change(experiment_id, updated)
 
+    def apply_model_selftest(
+        self, model_id: UUID, result: dict[str, object]
+    ) -> TeacherModelReference:
+        """用已验证的 selftest_model result 把模型置为 compatible(S5)。
+
+        状态机:unverified/incompatible → compatible(新一次成功 self-test
+        可覆盖 incompatible——修复后重新验证是合法转移);compatible 重跑
+        仅刷新证据。前置:模型文件可用(availability fail closed);证据经
+        verify_model_selftest_result 构造(含 manifest/mapping/pose_cfg
+        冻结)。事务可 undo。运行 worker 与读取 result 由调用方(GUI)承担。
+        """
+
+        from ai_physics_tracker.application.teacher_models import (
+            teacher_model_availability,
+            verify_model_selftest_result,
+        )
+
+        model = self._model_reference_or_error(model_id)
+        state, reason = teacher_model_availability(self._project_root, model)
+        if state == "unavailable":
+            raise ProjectSessionError(
+                f"model files changed or disappeared; self-test result is not "
+                f"applicable: {reason}"
+            )
+        try:
+            evidence = verify_model_selftest_result(model, result)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        updated_model = replace(
+            model,
+            compatibility_state="compatible",
+            self_test_evidence=evidence,
+        )
+        updated = replace(
+            self._project,
+            model_references=tuple(
+                updated_model if m.model_id == model_id else m
+                for m in self._project.model_references
+            ),
+        )
+        self._commit_project(updated)
+        return updated_model
+
+    def mark_model_incompatible(
+        self, model_id: UUID, reason: str
+    ) -> TeacherModelReference:
+        """显式标记 incompatible(self-test 失败/证据作废的用户裁决)。
+
+        状态机:任意态 → incompatible;覆盖现有 self_test_evidence(标记
+        原因与时间);undo 可整体恢复先前状态与证据。
+        """
+
+        if not reason or not reason.strip():
+            raise ProjectSessionError("an incompatible marker requires a reason")
+        model = self._model_reference_or_error(model_id)
+        updated_model = replace(
+            model,
+            compatibility_state="incompatible",
+            self_test_evidence={
+                "kind": "marked-incompatible",
+                "reason": reason.strip(),
+                "marked_at": utc_now().isoformat(),
+            },
+        )
+        updated = replace(
+            self._project,
+            model_references=tuple(
+                updated_model if m.model_id == model_id else m
+                for m in self._project.model_references
+            ),
+        )
+        self._commit_project(updated)
+        return updated_model
+
+    def _model_reference_or_error(self, model_id: UUID) -> TeacherModelReference:
+        model = next(
+            (m for m in self._project.model_references if m.model_id == model_id),
+            None,
+        )
+        if model is None:
+            raise ProjectSessionError(f"unknown model_id: {model_id}")
+        return model
+
     def import_teacher_model(
         self,
         source_root: Path,

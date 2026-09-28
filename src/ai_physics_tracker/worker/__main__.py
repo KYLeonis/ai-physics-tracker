@@ -211,6 +211,98 @@ def _run_train_experiment(request: dict[str, Any], job_dir: Path, result: dict[s
     }
 
 
+SELFTEST_MODEL_SECTION = "model_selftest"
+
+
+def _run_selftest_model(request: dict[str, Any], job_dir: Path, result: dict[str, Any]) -> None:
+    """selftest_model:真实 load 指定 checkpoint 并对单帧合法输入推理(P1.3-S5)。
+
+    契约 §4:static parse 只是 unverified;当前 runtime 实际加载 + 一次合法
+    输入 infer 通过才 compatible。worker 侧:复核 config/checkpoint SHA
+    (TOCTOU)、解码单帧、经 DLC PyTorch runner 推理、断言四 bodypart 预测
+    有限。真实 DLC 链路由 S6 smoke 验证;无 torch/DLC 的环境按 failed 上报。
+    """
+
+    from ai_physics_tracker.infrastructure.dlc_adapter import (
+        detect_device,
+        run_model_selftest_inference,
+    )
+
+    config_path = Path(request["config_path"])
+    pose_cfg_path = Path(request["pose_cfg_path"])
+    checkpoint_path = Path(request["checkpoint_path"])
+    video_path = Path(request["video_path"])
+    for name, path in (("config", config_path), ("pose_cfg", pose_cfg_path),
+                       ("checkpoint", checkpoint_path), ("video", video_path)):
+        if not path.is_file():
+            raise RuntimeError(f"selftest {name} file is missing: {path}")
+    if _sha256_file(config_path) != request["config_sha256"]:
+        raise RuntimeError("config changed since the self-test request was prepared")
+    if _sha256_file(checkpoint_path) != request["checkpoint_sha256"]:
+        raise RuntimeError("checkpoint changed since the self-test request was prepared")
+
+    import cv2
+    import numpy as np
+
+    if not request.get("pose_cfg_sha256"):
+        raise RuntimeError("self-test request misses pose_cfg_sha256")
+    if _sha256_file(pose_cfg_path) != request["pose_cfg_sha256"]:
+        raise RuntimeError("pose config changed since the self-test request was prepared")
+    frame_index = int(request.get("frame_index", 0))
+    if frame_index < 0:
+        raise RuntimeError(f"frame_index must be non-negative, got {frame_index}")
+    capture = cv2.VideoCapture(str(video_path))
+    try:
+        if not capture.isOpened():
+            raise RuntimeError(f"cannot open the self-test input video: {video_path}")
+        capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+        ok, frame = capture.read()
+    finally:
+        capture.release()
+    if not ok or frame is None:
+        raise RuntimeError(
+            f"cannot decode frame {frame_index} of {video_path}; "
+            "index may exceed the video length"
+        )
+    ok2, encoded = cv2.imencode(".png", frame)
+    if not ok2:
+        raise RuntimeError("cannot encode the self-test frame")
+    frame_sha256 = hashlib.sha256(encoded.tobytes()).hexdigest()
+
+    requested_device = str(request.get("device", "cpu"))
+    resolved_device = detect_device() if requested_device == "auto" else requested_device
+    # DLC 依赖按 ADR-0011 只存在于 dlc_adapter;worker 经 adapter 完成推理
+    found, versions, _actual = run_model_selftest_inference(
+        pose_cfg_path, checkpoint_path, np.asarray(frame), resolved_device
+    )
+    expected = list(request["expected_bodyparts"])
+    # bottom-up runner 的输出键是输出名("bodyparts"),值形状 (n_ind, n_bp, 3);
+    # bodypart 身份由 pytorch_config 的元数据顺序保证,此处按形状校验覆盖数
+    if "bodyparts" not in found:
+        raise RuntimeError(
+            f"self-test predictions have no 'bodyparts' output; got keys {sorted(found)}"
+        )
+    array = np.asarray(found["bodyparts"], dtype=float)
+    if array.ndim < 2 or array.shape[-2] != len(expected):
+        raise RuntimeError(
+            f"self-test 'bodyparts' shape {array.shape} does not cover "
+            f"{len(expected)} expected bodyparts"
+        )
+    if array.size == 0 or not np.isfinite(array).all():
+        raise RuntimeError("self-test predictions are empty or non-finite")
+
+    result["actual_device"] = resolved_device
+    result[SELFTEST_MODEL_SECTION] = {
+        "config_sha256": request["config_sha256"],
+        "checkpoint_sha256": request["checkpoint_sha256"],
+        "pose_cfg_sha256": request["pose_cfg_sha256"],
+        "frame_sha256": frame_sha256,
+        "frame_index": frame_index,
+        "bodyparts_found": sorted(expected),
+        "versions": versions,
+    }
+
+
 class _Cancelled(Exception):
     """worker 内部:协作取消到达,转 cancelled 终态。"""
 
@@ -235,6 +327,8 @@ def _execute_operation(
             _run_train_experiment(request, job_dir, result)
         except _Cancelled:
             result["status"] = "cancelled"
+    elif operation == "selftest_model":
+        _run_selftest_model(request, job_dir, result)
     else:
         raise ValueError(f"Unsupported operation: {operation!r}")
 
