@@ -78,8 +78,9 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 - 执行 mini-plan:[p1.3-joint-training-execution.md](plans/p1.3-joint-training-execution.md)(S1 external runner → S2 joint request → S3 model reference+review gate → S4 teacher import → S5 self-test → S6 GUI/closure);分支 `feat/p1.3-joint-training` 自 `3f06de9` 切出。
 - 依赖就绪:join/digest/exporter/split(P1.2)、multi-member run 与 guard(P1.1)、spike Protocol v1 证据(P0.3);test1 帧集 10/10 全 4/4 可作真实 DLC smoke 输入。
-- 待用户决策:GitHub Actions 是否给 `publication/**` 分支也跑测试(改 CI 触发配置需用户批准;现状仅 main/feat/fix,feat/p1.3 分支自身 push 可触发)。
+- CI 触发已扩展到 `publication/**`(用户批准,`787b169`)。
+- **S1 完成(`a7dcd35`,2026-09-25)**:product external worker——`worker/__main__.py`(受信操作白名单 hello/wait/fail/selftest_runtime、源 SHA 自验、原子 result)+ `infrastructure/external_worker.py`(canonical digest 链、env 白名单、协作/强制整组取消、fail-closed read_result:身份/exit/时间戳/outputs containment+SHA、迟到结果拒绝)。Flash 实现 + 只读 review(request-changes)→ M1–M4/m1–m5 全部修复复测(取消路径 fail-open 收口、result 时间戳、负例补齐 10 个)。**1015 passed, 9 subtests**(基线 987 + 28)。i3–i6 交接项记入 mini-plan S2 节。
 
 ## Next Recommended Action
 
-**P1.3-S1(product external runner)**:按 [执行 mini-plan](plans/p1.3-joint-training-execution.md) 实施 S1——external worker 协议(host/worker/验证/取消)+ GUI handle 接线;负例测试先行。Windows G1–G4 仍是 P6 前门禁。
+**P1.3-S2(joint training request/result)**:按 mini-plan 实施——prepare(唯一路径 join→export→split_indices、digest 冻结、stale 拒绝)+ worker `train_experiment` 操作 + result verifier → completed multi-member run;注意 S1 交接项 i3–i6(超时必须走 cancel、elapsed_s、跨会话 lifecycle、G4 checklist)。Windows G1–G4 仍是 P6 前门禁。
