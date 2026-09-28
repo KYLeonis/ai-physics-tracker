@@ -14,6 +14,7 @@ from ai_physics_tracker.domain.derived import (
 )
 from ai_physics_tracker.domain.pendulum import PendulumExperiment
 from ai_physics_tracker.domain.scientific_result import ScientificResult, is_sha256_hex
+from ai_physics_tracker.domain.teacher_model import TeacherModelReference
 from ai_physics_tracker.domain.timeline import (
     Timeline,
     frame_to_time,
@@ -100,6 +101,7 @@ class Project:
     migration: MigrationRecord | None = None
     experiments: tuple[PendulumExperiment, ...] = ()
     scientific_results: tuple[ScientificResult, ...] = ()
+    model_references: tuple[TeacherModelReference, ...] = ()
     registries: Registries = field(default_factory=Registries)
     ui_state: JsonObject = field(default_factory=dict)
     extra_fields: JsonObject = field(default_factory=dict, repr=False)

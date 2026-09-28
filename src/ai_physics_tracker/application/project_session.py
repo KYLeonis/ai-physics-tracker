@@ -73,6 +73,11 @@ from ai_physics_tracker.domain.project import (
     replace_calibration as replace_domain_calibration,
     set_active_calibration as set_domain_active_calibration,
 )
+from ai_physics_tracker.domain.teacher_model import (
+    ModelManifestEntry,
+    TeacherModelReference,
+    build_manifest_hash,
+)
 from ai_physics_tracker.domain.scientific_result import ScientificResult
 from ai_physics_tracker.domain.derived import DerivedData, DerivedInput, mark_tracks_stale
 from ai_physics_tracker.domain.timeline import (
@@ -155,6 +160,7 @@ _SessionDataSnapshot = tuple[
     tuple[PendulumExperiment, ...],
     tuple[ScientificResult, ...],
     tuple[TrackingRun, ...],
+    tuple[TeacherModelReference, ...],
 ]
 _SNAPSHOT_DATA_FIELDS = 8
 
@@ -1193,7 +1199,7 @@ class ProjectSession:
           步骤覆盖，原子拒绝。
         """
 
-        tracks, observations, calibrations, active_map, derived, scoped_reviews, experiments, results, snapshot_runs = snapshot
+        tracks, observations, calibrations, active_map, derived, scoped_reviews, experiments, results, snapshot_runs, model_references = snapshot
         target_ids = {t.track_id for t in tracks}
         current_ids = {t.track_id for t in self._store.tracks}
         restored_ids = target_ids - current_ids
@@ -1260,6 +1266,7 @@ class ProjectSession:
             experiments=experiments,
             scientific_results=results,
             tracking_runs=updated_runs,
+            model_references=model_references,
         )
         self._check_validation_series_removal(candidate_project)
         return candidate_project, TrackStore(tracks, observations)
@@ -1278,6 +1285,7 @@ class ProjectSession:
             self._project.experiments,
             self._project.scientific_results,
             self._project.tracking_runs,
+            self._project.model_references,
         )
 
     def _push_undo_snapshot(
@@ -2214,6 +2222,95 @@ class ProjectSession:
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
         return self._commit_experiment_change(experiment_id, updated)
+
+    def register_trained_model_reference(self, run_id: UUID) -> TeacherModelReference:
+        """把 completed 联合训练 run 冻结为 TeacherModelReference(契约 §4)。
+
+        校验:run 属 experiment 联合训练(request_kind 标记)、状态 completed、
+        config/checkpoint 产物存在且位于 run 目录内;manifest 逐文件
+        size/SHA256 冻结,manifest_hash 同步记录。项目级事务,可 undo;
+        同一 run 重复注册拒绝(引用幂等,避免歧义)。
+        """
+
+        run = next(
+            (r for r in self._project.tracking_runs if r.run_id == run_id), None
+        )
+        if run is None:
+            raise ProjectSessionError(f"unknown tracking run_id: {run_id}")
+        if run.task_type != "train" or run.status != "completed":
+            raise ProjectSessionError(
+                "model reference requires a completed training run"
+            )
+        if run.config.get("request_kind") != "experiment-joint-training-v1":
+            raise ProjectSessionError(
+                "only experiment joint training runs can become trained models"
+            )
+        if run.experiment_id is None or run.model_snapshot is None:
+            raise ProjectSessionError(
+                "run misses experiment/model provenance required for the reference"
+            )
+        if any(
+            model.origin == "trained" and model.source_train_run_id == run_id
+            for model in self._project.model_references
+        ):
+            raise ProjectSessionError(
+                f"run {run_id} already has a trained model reference"
+            )
+        if self._project_root is None:
+            raise ProjectSessionError("project must be saved before registering models")
+
+        run_dir = (self._project_root / "data" / "engines" / str(run_id)).resolve()
+        config_relative = run.extra_fields.get("config_path")
+        if not isinstance(config_relative, str) or not config_relative:
+            raise ProjectSessionError("run config_path provenance is missing")
+        entries: list[ModelManifestEntry] = []
+        for name, relative in (
+            ("config_path", config_relative),
+            ("model_snapshot", run.model_snapshot),
+        ):
+            candidate = (run_dir / relative).resolve()
+            if not candidate.is_relative_to(run_dir):
+                raise ProjectSessionError(
+                    f"run {name} escapes the run directory: {relative!r}"
+                )
+            if not candidate.is_file():
+                raise ProjectSessionError(
+                    f"run {name} file is missing: {relative!r}"
+                )
+            from ai_physics_tracker.application.experiment_training_job import (
+                _file_sha256,
+            )
+
+            entries.append(
+                ModelManifestEntry(
+                    relative_path=f"data/engines/{run_id}/{relative}",
+                    size=candidate.stat().st_size,
+                    sha256=_file_sha256(candidate),
+                )
+            )
+        manifest = tuple(entries)
+        from ai_physics_tracker.domain.pendulum import ROLE_ORDER
+
+        reference = TeacherModelReference(
+            model_id=uuid4(),
+            origin="trained",
+            created_at=utc_now(),
+            source_train_run_id=run_id,
+            source_experiment_id=run.experiment_id,
+            engine_version=run.engine_version,
+            bodypart_mapping=tuple((role, role) for role in ROLE_ORDER),
+            config_path=entries[0].relative_path,
+            checkpoint_path=entries[1].relative_path,
+            manifest=manifest,
+            manifest_hash=build_manifest_hash(manifest),
+            compatibility_state="unverified",
+        )
+        updated = replace(
+            self._project,
+            model_references=(*self._project.model_references, reference),
+        )
+        self._commit_project(updated)
+        return reference
 
     def set_experiment_frame_set(
         self, experiment_id: UUID, frame_set: ExperimentFrameSet
