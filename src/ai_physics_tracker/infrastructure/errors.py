@@ -7,3 +7,7 @@ class ProjectFormatError(Exception):
 
 class UnsupportedSchemaVersionError(ProjectFormatError):
     """项目由更新版本的应用创建时抛出。"""
+
+
+class ExternalWorkerError(RuntimeError):
+    """外部 worker 协议违反或 job 目录状态不合法时的 host 侧错误。"""
