@@ -76,9 +76,16 @@ def _completed_training(tmp_path: Path, synthetic_video_path: Path):
     snapshot = job_dir / "dlc-project" / "snapshot.pt"
     snapshot.parent.mkdir(parents=True, exist_ok=True)
     snapshot.write_bytes(b"trained-weights-bytes")
+    def _output(relative: str) -> dict:
+        data = (job_dir / relative).read_bytes()
+        return {
+            "path": relative, "size": len(data),
+            "sha256": __import__("hashlib").sha256(data).hexdigest(),
+        }
     result = {
         "status": "success", "python": "3.12", "executable": "/usr/bin/python",
-        "platform": "test", "machine": "arm64", "outputs": [],
+        "platform": "test", "machine": "arm64", "actual_device": "cpu",
+        "outputs": [_output("config.yaml"), _output("dlc-project/snapshot.pt")],
         RESULT_SECTION: {
             "label_digest": request.label_digest,
             "video_sha256": request.video_sha256,
@@ -306,3 +313,66 @@ class TestAvailability:
         state, reason = teacher_model_availability(session.project_root, reference)
         assert state == "unavailable"
         assert "missing" in reason
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-28 S1–S3 review 回归(M3/m1/m2)
+# ---------------------------------------------------------------------------
+
+
+class TestReviewRegressions:
+    def test_m3_project_validation_rejects_dangling_reference(self):
+        from dataclasses import replace as _replace
+
+        from ai_physics_tracker.domain.project import Project
+
+        # 引用不存在的 run → 聚合校验拒绝(经 serialize/load 路径)
+        reference = _reference_fixture()
+        base = Project(project_id=uuid4(), name="m3", created_at=utc_now(),
+                       modified_at=utc_now())
+        # Project 构造期(__post_init__ → validate_project)即拒绝悬空引用
+        with pytest.raises(ValueError, match="registered train run"):
+            _replace(base, model_references=(reference,),
+                     required_capabilities=("pendulum-four-role-v1",
+                                            "scientific-results-v1"))
+
+    def test_m3_v1_project_rejects_model_references(self):
+        from dataclasses import replace as _replace
+
+        from ai_physics_tracker.domain.project import Project
+
+        reference = _reference_fixture(origin="imported",
+                                       source_train_run_id=None,
+                                       source_experiment_id=None)
+        base = Project(project_id=uuid4(), name="m3-v1", created_at=utc_now(),
+                       modified_at=utc_now())
+        with pytest.raises(ValueError, match="publication collections"):
+            _replace(base, model_references=(reference,)).validate()
+
+    def test_m1_serializer_rejects_non_object_manifest_entry(self):
+        from ai_physics_tracker.infrastructure.publication_serializer import (
+            teacher_model_from_payload,
+            teacher_model_to_payload,
+        )
+
+        payload = teacher_model_to_payload(_reference_fixture())
+        payload["manifest"] = ["not-an-object"] + payload["manifest"]
+        with pytest.raises(ValueError, match="manifest entries must be objects"):
+            teacher_model_from_payload(payload)
+
+    def test_m2_register_rejects_run_without_verified_digest(
+        self, tmp_path, synthetic_video_path
+    ):
+        session, completed = _completed_training(tmp_path, synthetic_video_path)
+        from dataclasses import replace as _replace
+
+        stripped = _replace(
+            completed,
+            extra_fields={
+                k: v for k, v in completed.extra_fields.items()
+                if k != "label_digest"
+            },
+        )
+        session.update_tracking_run(stripped)
+        with pytest.raises(ProjectSessionError, match="verified label digest"):
+            session.register_trained_model_reference(stripped.run_id)

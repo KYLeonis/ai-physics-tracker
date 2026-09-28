@@ -8,7 +8,6 @@ bodyparts 身份与 run-owned 输出一处不满足即拒绝登记 completed。
 """
 
 from dataclasses import dataclass, replace
-import hashlib
 import logging
 from pathlib import Path
 from typing import Any
@@ -40,15 +39,7 @@ logger = logging.getLogger(__name__)
 RESULT_SECTION = "experiment_training"
 
 
-def _file_sha256(path: Path, chunk_bytes: int = 1 << 20) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while True:
-            chunk = handle.read(chunk_bytes)
-            if not chunk:
-                break
-            digest.update(chunk)
-    return digest.hexdigest()
+from ai_physics_tracker.infrastructure.hashing import file_sha256 as _file_sha256
 
 
 @dataclass(frozen=True)
@@ -242,6 +233,11 @@ def verify_experiment_training_result(
         raise ProjectSessionError(
             f"run identity mismatch: verifier got run {run.run_id} for request {request.run_id}"
         )
+    if run.status not in {"pending", "running"}:
+        raise ProjectSessionError(
+            f"cannot complete a run in status {run.status!r}; "
+            "only pending/running runs accept training results"
+        )
     section = result.get(RESULT_SECTION)
     if not isinstance(section, dict):
         raise ProjectSessionError(
@@ -258,6 +254,12 @@ def verify_experiment_training_result(
         raise ProjectSessionError(
             "worker echoed a different video digest; the request and worker "
             "disagree on the training video"
+        )
+    video_file = Path(request.video_path)
+    if not video_file.is_file() or _file_sha256(video_file) != request.video_sha256:
+        raise ProjectSessionError(
+            "the training video changed or disappeared after the request was "
+            "prepared; the completed model's provenance is broken"
         )
     experiment = session.pendulum_experiment(UUID(request.experiment_id))
     current_digest = canonical_label_digest(
@@ -282,6 +284,17 @@ def verify_experiment_training_result(
             raise ProjectSessionError(
                 f"result {RESULT_SECTION}.{name} must be a non-empty relative path"
             )
+    declared = {
+        item.get("path")
+        for item in result.get("outputs", [])
+        if isinstance(item, dict)
+    }
+    for relative in (config_relative, snapshot_relative):
+        if relative not in declared:
+            raise ProjectSessionError(
+                f"declared training outputs do not cover {relative!r}; "
+                "the result's output integrity chain is broken"
+            )
     job_dir = Path(job_dir).resolve()
     config_file = (job_dir / config_relative).resolve()
     snapshot_file = (job_dir / snapshot_relative).resolve()
@@ -297,7 +310,7 @@ def verify_experiment_training_result(
     }
     extras = {
         **run.extra_fields,
-        "device": section.get("actual_device"),
+        "device": result.get("actual_device"),
         "requested_device": request.params_config.get("device"),
         "engine_version": section.get("engine_version"),
         "config_path": config_relative,
@@ -307,7 +320,10 @@ def verify_experiment_training_result(
         "runtime_identity": runtime_identity,
         "label_digest": request.label_digest,
     }
-    completed = mark_run_completed(run, model_snapshot=snapshot_relative)
+    try:
+        completed = mark_run_completed(run, model_snapshot=snapshot_relative)
+    except ValueError as error:
+        raise ProjectSessionError(f"cannot complete the training run: {error}") from error
     completed = replace(
         completed,
         engine_version=str(section.get("engine_version") or run.engine_version),

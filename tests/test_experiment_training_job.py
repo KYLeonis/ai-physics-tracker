@@ -96,13 +96,22 @@ def _fabricate_job_outputs(job_dir: Path) -> dict[str, str]:
 
 
 def _success_result(request: ExperimentTrainingRequest, paths: dict[str, str]) -> dict:
+    job_dir = Path(paths["job_dir"])
+    outputs = []
+    for key in ("config_path", "model_snapshot"):
+        data = (job_dir / paths[key]).read_bytes()
+        outputs.append({
+            "path": paths[key], "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+        })
     return {
         "status": "success",
         "python": "3.12",
         "executable": "/usr/bin/python",
         "platform": "test",
         "machine": "arm64",
-        "outputs": [],
+        "actual_device": "cpu",
+        "outputs": outputs,
         RESULT_SECTION: {
             "label_digest": request.label_digest,
             "video_sha256": request.video_sha256,
@@ -202,7 +211,7 @@ class TestVerifyResult:
         )
         job_dir = tmp_path / "engines" / str(run.run_id)
         paths = _fabricate_job_outputs(job_dir)
-        result = _success_result(request, paths)
+        result = _success_result(request, {**paths, "job_dir": str(job_dir)})
 
         completed = verify_experiment_training_result(
             session, run, request, result, job_dir
@@ -210,9 +219,7 @@ class TestVerifyResult:
         assert completed.status == "completed"
         assert completed.model_snapshot == paths["model_snapshot"]
         assert completed.engine_version == "3.0.1-test"
-        assert completed.extra_fields["device"] == result[RESULT_SECTION].get(
-            "actual_device"
-        )
+        assert completed.extra_fields["device"] == "cpu"
         assert completed.extra_fields["label_digest"] == request.label_digest
 
     def test_rejects_digest_echo_mismatch(self, tmp_path, synthetic_video_path):
@@ -220,7 +227,7 @@ class TestVerifyResult:
             tmp_path, synthetic_video_path
         )
         job_dir = tmp_path / "engines" / str(run.run_id)
-        result = _success_result(request, _fabricate_job_outputs(job_dir))
+        result = _success_result(request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)})
         result[RESULT_SECTION]["label_digest"] = "0" * 64
         with pytest.raises(ProjectSessionError, match="label digest"):
             verify_experiment_training_result(session, run, request, result, job_dir)
@@ -230,7 +237,7 @@ class TestVerifyResult:
             tmp_path, synthetic_video_path
         )
         job_dir = tmp_path / "engines" / str(run.run_id)
-        result = _success_result(request, _fabricate_job_outputs(job_dir))
+        result = _success_result(request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)})
         # prepare 之后又补了一个 complete 帧 → 当前 digest 与冻结值不一致
         for role in ROLE_ORDER:
             session.mark_point(experiment.roles.track_id_for(role), 6, 3.0, 4.0)
@@ -242,7 +249,7 @@ class TestVerifyResult:
             tmp_path, synthetic_video_path
         )
         job_dir = tmp_path / "engines" / str(run.run_id)
-        result = _success_result(request, _fabricate_job_outputs(job_dir))
+        result = _success_result(request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)})
         result[RESULT_SECTION]["bodyparts"] = ["target"]
         with pytest.raises(ProjectSessionError, match="bodyparts"):
             verify_experiment_training_result(session, run, request, result, job_dir)
@@ -252,9 +259,9 @@ class TestVerifyResult:
             tmp_path, synthetic_video_path
         )
         job_dir = tmp_path / "engines" / str(run.run_id)
-        result = _success_result(request, _fabricate_job_outputs(job_dir))
+        result = _success_result(request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)})
         (job_dir / "dlc-project" / "snapshot.pt").unlink()
-        with pytest.raises(ProjectSessionError, match="missing or escapes"):
+        with pytest.raises(ProjectSessionError, match="do not cover|missing or escapes"):
             verify_experiment_training_result(session, run, request, result, job_dir)
 
     def test_rejects_output_path_escape(self, tmp_path, synthetic_video_path):
@@ -262,9 +269,9 @@ class TestVerifyResult:
             tmp_path, synthetic_video_path
         )
         job_dir = tmp_path / "engines" / str(run.run_id)
-        result = _success_result(request, _fabricate_job_outputs(job_dir))
+        result = _success_result(request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)})
         result[RESULT_SECTION]["model_snapshot"] = "../../etc/passwd"
-        with pytest.raises(ProjectSessionError, match="missing or escapes"):
+        with pytest.raises(ProjectSessionError, match="do not cover|missing or escapes"):
             verify_experiment_training_result(session, run, request, result, job_dir)
 
     def test_rejects_run_identity_mismatch(self, tmp_path, synthetic_video_path):
@@ -272,7 +279,7 @@ class TestVerifyResult:
             tmp_path, synthetic_video_path
         )
         job_dir = tmp_path / "engines" / str(run.run_id)
-        result = _success_result(request, _fabricate_job_outputs(job_dir))
+        result = _success_result(request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)})
         other_run = create_tracking_run(
             video_id=run.video_id,
             member_track_ids=run.member_track_ids,
@@ -283,3 +290,69 @@ class TestVerifyResult:
             verify_experiment_training_result(
                 session, other_run, request, result, job_dir
             )
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-28 S1–S3 review 回归(B1/M1/M2/m3/m4)
+# ---------------------------------------------------------------------------
+
+
+class TestReviewRegressions:
+    def test_m4_verify_rejects_terminal_run(self, tmp_path, synthetic_video_path):
+        session, _video, _experiment, run, request = _prepared(
+            tmp_path, synthetic_video_path
+        )
+        from dataclasses import replace as _replace
+
+        failed_run = _replace(run, status="failed")
+        job_dir = tmp_path / "engines" / str(run.run_id)
+        result = _success_result(
+            request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)}
+        )
+        with pytest.raises(ProjectSessionError, match="status"):
+            verify_experiment_training_result(
+                session, failed_run, request, result, job_dir
+            )
+
+    def test_m3_verify_rejects_replaced_video(self, tmp_path, synthetic_video_path):
+        session, _video, _experiment, run, request = _prepared(
+            tmp_path, synthetic_video_path
+        )
+        job_dir = tmp_path / "engines" / str(run.run_id)
+        result = _success_result(
+            request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)}
+        )
+        # worker 完成后训练视频被替换 → 溯源断裂,拒绝 completed
+        Path(synthetic_video_path).write_bytes(b"replaced-video-bytes")
+        with pytest.raises(ProjectSessionError, match="video changed"):
+            verify_experiment_training_result(session, run, request, result, job_dir)
+
+    def test_m1b_verify_rejects_undeclared_outputs(
+        self, tmp_path, synthetic_video_path
+    ):
+        session, _video, _experiment, run, request = _prepared(
+            tmp_path, synthetic_video_path
+        )
+        job_dir = tmp_path / "engines" / str(run.run_id)
+        result = _success_result(
+            request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)}
+        )
+        result["outputs"] = []  # 文件在,但声明链断开
+        with pytest.raises(ProjectSessionError, match="do not cover"):
+            verify_experiment_training_result(session, run, request, result, job_dir)
+
+    def test_m2_actual_device_recorded_from_top_level(
+        self, tmp_path, synthetic_video_path
+    ):
+        session, _video, _experiment, run, request = _prepared(
+            tmp_path, synthetic_video_path
+        )
+        job_dir = tmp_path / "engines" / str(run.run_id)
+        result = _success_result(
+            request, {**_fabricate_job_outputs(job_dir), "job_dir": str(job_dir)}
+        )
+        result["actual_device"] = "mps"
+        completed = verify_experiment_training_result(
+            session, run, request, result, job_dir
+        )
+        assert completed.extra_fields["device"] == "mps"

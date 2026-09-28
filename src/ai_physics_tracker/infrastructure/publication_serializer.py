@@ -505,14 +505,17 @@ def teacher_model_from_payload(payload: dict[str, object]) -> TeacherModelRefere
         "checkpoint_path", "manifest", "manifest_hash",
         "compatibility_state", "self_test_evidence",
     }
+    manifest_items = _sequence(payload.get("manifest", []), "manifest")
+    for entry in manifest_items:
+        if not isinstance(entry, dict):
+            raise ValueError(f"manifest entries must be objects, got {entry!r}")
     manifest = tuple(
         ModelManifestEntry(
             relative_path=_string(entry, "relative_path"),
             size=_integer(entry, "size"),
             sha256=_string(entry, "sha256"),
         )
-        for entry in _sequence(payload.get("manifest", []), "manifest")
-        if isinstance(entry, dict)
+        for entry in manifest_items
     )
     mapping_raw = payload.get("bodypart_mapping", [])
     if not isinstance(mapping_raw, list) or any(

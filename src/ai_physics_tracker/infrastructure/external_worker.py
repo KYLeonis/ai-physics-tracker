@@ -5,6 +5,7 @@
 (S2 的 train_experiment)。
 """
 
+import time
 from datetime import datetime
 import hashlib
 import importlib.util
@@ -165,7 +166,7 @@ def build_request(
     if inputs is not None:
         request["inputs"] = dict(inputs)
     if extra is not None:
-        reserved = set(request) - {"inputs"}
+        reserved = set(request)
         overlap = sorted(set(extra) & reserved)
         if overlap:
             raise ValueError(f"extra must not override protocol fields: {overlap}")
@@ -294,6 +295,8 @@ class ExternalJobHandle:
         self._device = request.get("device")
         self._log_file = log_file
         self._cancel_requested = False
+        self._started_monotonic = time.monotonic()   # elapsed_s 记录(i3②)
+        self._finished_monotonic: float | None = None
         self._forced_termination = False
 
     @property
@@ -319,6 +322,16 @@ class ExternalJobHandle:
     @property
     def returncode(self) -> int | None:
         return self._process.returncode
+
+    @property
+    def elapsed_s(self) -> float:
+        """worker 启动至今的耗时(秒);进程退出后冻结(i3②,runtime-boundary)。"""
+
+        if self._process.returncode is None:
+            return time.monotonic() - self._started_monotonic
+        if self._finished_monotonic is None:
+            self._finished_monotonic = time.monotonic()
+        return self._finished_monotonic - self._started_monotonic
 
     def is_alive(self) -> bool:
         return self._process.poll() is None
@@ -566,7 +579,11 @@ class ExternalJobHandle:
         """
         outputs = result.get("outputs")
         if outputs is None:
-            return
+            # M1(2026-09-28 review):success 缺 outputs 键 = 输出完整性链旁路,
+            # fail closed(空输出也必须显式声明为空列表)
+            raise ExternalWorkerError(
+                f"success result misses the 'outputs' declaration (log: {self.worker_log_path})"
+            )
         if not isinstance(outputs, list):
             raise ExternalWorkerError(
                 f"declared outputs must be a list (log: {self.worker_log_path})"

@@ -148,8 +148,9 @@ TRACK_COLOR_PALETTE = (
 # TrackingRun 注册表与可选的审核事务作用域快照）。registry 参与快照使
 # Undo/Redo 能感知 Track↔run 结构依赖（P6R-01）；合并规则见
 # ProjectSession._history_transition。前 _SNAPSHOT_DATA_FIELDS 个元素是
-# "用户数据"；末位的 registry 仅用于历史转换，不参与
-# accept_saved_snapshot 的"保存期间产生新数据"判定（stabilization R1 F2）。
+# "用户数据"；末两位 registry（tracking_runs + model_references）仅用于
+# 历史转换，不参与 accept_saved_snapshot 的"保存期间产生新数据"判定
+# （stabilization R1 F2）。
 _SessionDataSnapshot = tuple[
     tuple[Track, ...],
     tuple[TrackPoint, ...],
@@ -2249,6 +2250,15 @@ class ProjectSession:
             raise ProjectSessionError(
                 "run misses experiment/model provenance required for the reference"
             )
+        # m2(2026-09-28 review):verifier 冻结的 label_digest 是"该 run 经
+        # verify_experiment_training_result 闭环"的标记;仅凭可被 update 的
+        # config 不铸引用。
+        verified_digest = run.extra_fields.get("label_digest")
+        if not isinstance(verified_digest, str) or not verified_digest:
+            raise ProjectSessionError(
+                "run carries no verified label digest; only runs that passed "
+                "result verification can become trained models"
+            )
         if any(
             model.origin == "trained" and model.source_train_run_id == run_id
             for model in self._project.model_references
@@ -2277,15 +2287,13 @@ class ProjectSession:
                 raise ProjectSessionError(
                     f"run {name} file is missing: {relative!r}"
                 )
-            from ai_physics_tracker.application.experiment_training_job import (
-                _file_sha256,
-            )
+            from ai_physics_tracker.infrastructure.hashing import file_sha256
 
             entries.append(
                 ModelManifestEntry(
                     relative_path=f"data/engines/{run_id}/{relative}",
                     size=candidate.stat().st_size,
-                    sha256=_file_sha256(candidate),
+                    sha256=file_sha256(candidate),
                 )
             )
         manifest = tuple(entries)

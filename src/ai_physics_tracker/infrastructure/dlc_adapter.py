@@ -495,7 +495,10 @@ class DLCAdapter:
         except ImportError as error:
             raise RuntimeError("DeepLabCut is required to evaluate a model") from error
 
-        snapshots = _model_snapshots(config_path, params.shuffle, params.trainingsetindex)
+        snapshots = _model_snapshots(
+            config_path, params.shuffle, params.trainingsetindex,
+            allowed_bodyparts=("target",),
+        )
         matches = [
             index
             for index, snapshot in enumerate(snapshots)
@@ -586,8 +589,11 @@ class DLCAdapter:
             raise CancelledError("Inference cancelled")
         if request.output_dir.exists():
             raise ValueError("Inference output directory must be new")
-        snapshots = _model_snapshots(request.config_path, request.shuffle,
-                                     request.trainingsetindex)
+        snapshots = _model_snapshots(
+            request.config_path, request.shuffle,
+            request.trainingsetindex,
+            allowed_bodyparts=("target",),
+        )
         matches = [i for i, snapshot in enumerate(snapshots)
                    if snapshot.path.resolve() == request.model_snapshot.resolve()]
         if len(matches) != 1 or not request.model_snapshot.is_file():
@@ -875,13 +881,31 @@ def _snapshot_stamp(path: Path) -> tuple[int, int]:
     return stat.st_mtime_ns, stat.st_size
 
 
-def _model_snapshots(config_path: Path, shuffle: int, trainingsetindex: int) -> list[Any]:
-    """通过 DLC 自身 loader 定位当前模型，避免硬编码 TF/PyTorch 目录名。"""
+def _model_snapshots(
+    config_path: Path,
+    shuffle: int,
+    trainingsetindex: int,
+    *,
+    allowed_bodyparts: tuple[str, ...] | None = None,
+) -> list[Any]:
+    """通过 DLC 自身 loader 定位当前模型，避免硬编码 TF/PyTorch 目录名。
+
+    ``allowed_bodyparts`` 只约束推理/评价路径(单点项目 = ("target",));
+    训练路径不限制 bodypart 集合——P1.3 联合训练项目即四规范 role
+    (B1,2026-09-28 review)。multi-animal 与 cropping 在两条路径都拒绝。
+    """
     from deeplabcut.pose_estimation_pytorch.data.dlcloader import DLCLoader
 
     loader = DLCLoader(config_path, shuffle=shuffle, trainset_index=trainingsetindex)
-    if loader.project_cfg["multianimalproject"] or list(loader.project_cfg["bodyparts"]) != ["target"]:
-        raise ValueError("Inference currently requires one bodypart named target")
+    if allowed_bodyparts is not None and (
+        loader.project_cfg["multianimalproject"]
+        or tuple(loader.project_cfg["bodyparts"]) != allowed_bodyparts
+    ):
+        raise ValueError(
+            "Inference currently requires one bodypart named target"
+        )
+    if loader.project_cfg["multianimalproject"]:
+        raise ValueError("Multi-animal DLC projects are not supported")
     if loader.project_cfg.get("cropping", False):
         raise ValueError("Cropped DLC projects are not supported; use full-frame coordinates")
     return loader.snapshots()

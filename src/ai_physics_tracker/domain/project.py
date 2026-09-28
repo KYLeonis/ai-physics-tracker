@@ -491,7 +491,7 @@ def _validate_format_mode(
     if not declared:
         if project.migration is not None:
             raise ValueError("v1 project must not carry a migration record")
-        if project.experiments or project.scientific_results:
+        if project.experiments or project.scientific_results or project.model_references:
             raise ValueError("v1 project must not carry publication collections")
         for run in project.tracking_runs:
             if len(run.member_track_ids) != 1 or run.experiment_id is not None:
@@ -564,6 +564,25 @@ def _validate_publication_collections(
         if result.experiment_id not in experiments_by_id:
             raise ValueError("every scientific result must reference a registered experiment")
     runs_by_id = {run.run_id: run for run in project.tracking_runs}
+    model_ids = [model.model_id for model in project.model_references]
+    if len(set(model_ids)) != len(model_ids):
+        raise ValueError("model_id values must be unique")
+    for model in project.model_references:
+        if model.origin != "trained":
+            continue
+        source_run = runs_by_id.get(model.source_train_run_id)
+        if source_run is None:
+            raise ValueError(
+                "trained model reference must point at a registered train run"
+            )
+        if source_run.task_type != "train" or source_run.status != "completed":
+            raise ValueError(
+                "trained model reference must point at a completed training run"
+            )
+        if model.source_experiment_id not in experiments_by_id:
+            raise ValueError(
+                "trained model reference must point at a registered experiment"
+            )
     for experiment in project.experiments:
         active_id = experiment.active_infer_run_id
         if active_id is None:

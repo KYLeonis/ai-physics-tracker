@@ -559,3 +559,73 @@ def test_polluted_host_environment_does_not_leak_to_worker(
     assert handle.join(timeout_s=JOIN_TIMEOUT_S)
     result = handle.read_result()
     assert result["status"] == "success"
+
+
+# --- 2026-09-28 S1–S3 review 回归(M1 host outputs 必填;B1 见下) -----------------
+
+
+def test_success_result_without_outputs_key_rejected(tmp_path: Path) -> None:
+    """M1:success result 缺 outputs 声明 → fail closed(空输出也须显式空列表)。"""
+
+    runner = ExternalWorkerRunner(RUNTIME_PYTHON)
+    job_id = uuid4()
+    request, _digest = build_request("hello", job_id=job_id)
+    handle = runner.start(tmp_path / f"job-{job_id.hex}", request)
+    try:
+        handle.join(timeout_s=10)
+        assert handle.returncode == 0
+        _mutate_result_file(handle, lambda result: result.pop("outputs"))
+        with pytest.raises(ExternalWorkerError, match="misses the 'outputs'"):
+            handle.read_result()
+    finally:
+        handle.cancel()
+        handle.join(timeout_s=5)
+
+
+def test_b1_model_snapshots_allows_four_bodyparts_for_training(monkeypatch) -> None:
+    """B1:训练路径定位快照不限制 bodypart 集合;推理路径保持单点守卫。"""
+
+    import types
+    from ai_physics_tracker.infrastructure.dlc_adapter import _model_snapshots
+
+    class _FakeSnapshot:
+        path = Path("/fake/snapshot.pt")
+
+    class _FakeLoader:
+        def __init__(self, *_args, **_kwargs) -> None:
+            pass
+
+        @property
+        def project_cfg(self):
+            return {
+                "multianimalproject": False,
+                "cropping": False,
+                "bodyparts": ["tip", "body_top", "body_bottom", "pivot"],
+            }
+
+        def snapshots(self):
+            return [_FakeSnapshot()]
+
+    fake_pkg = types.ModuleType("deeplabcut")
+    pose_pkg = types.ModuleType("deeplabcut.pose_estimation_pytorch")
+    data_pkg = types.ModuleType("deeplabcut.pose_estimation_pytorch.data")
+    loader_pkg = types.ModuleType("deeplabcut.pose_estimation_pytorch.data.dlcloader")
+    loader_pkg.DLCLoader = _FakeLoader
+    fake_pkg.pose_estimation_pytorch = pose_pkg
+    pose_pkg.data = data_pkg
+    data_pkg.dlcloader = loader_pkg
+    monkeypatch.setitem(sys.modules, "deeplabcut", fake_pkg)
+    monkeypatch.setitem(sys.modules, "deeplabcut.pose_estimation_pytorch", pose_pkg)
+    monkeypatch.setitem(sys.modules, "deeplabcut.pose_estimation_pytorch.data", data_pkg)
+    monkeypatch.setitem(
+        sys.modules, "deeplabcut.pose_estimation_pytorch.data.dlcloader", loader_pkg
+    )
+
+    # 训练路径(默认):四 bodypart 项目可定位快照(B1 修复前此处必 raise)
+    snapshots = _model_snapshots(Path("/fake/config.yaml"), 1, 0)
+    assert len(snapshots) == 1
+    # 推理路径:保持单点守卫
+    with pytest.raises(ValueError, match="Inference currently requires"):
+        _model_snapshots(
+            Path("/fake/config.yaml"), 1, 0, allowed_bodyparts=("target",)
+        )
