@@ -74,6 +74,12 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - **S2 完成**(`daf535a`):`application/annotation_join.py` 纯函数——同帧 4/4 join(complete/partial/superseded-only/AI-only/non-finite 分类,AI 永不补位,duplicate 防御)+ canonical label digest(坐标/point_id/frame 敏感,显示属性无关)。
 - **identity 专项 review PASS**(5 项 Low/Info:ID1 partial 帧坐标损坏诊断、ID2 ROLE_ORDER 复用、ID3 defense-in-depth 文档、ID5 补 role 重绑/残留测试)——已全部修复复测,最终全量 **948 passed**。S3(引导标注 UI,含 selection owner experiment 化)/S4(共享 fixed-check)/S5(四 bodypart exporter)/S6(DLC smoke)未开始。
 
+## P1.3 progress (2026-09-25)
+
+- 执行 mini-plan:[p1.3-joint-training-execution.md](plans/p1.3-joint-training-execution.md)(S1 external runner → S2 joint request → S3 model reference+review gate → S4 teacher import → S5 self-test → S6 GUI/closure);分支 `feat/p1.3-joint-training` 自 `3f06de9` 切出。
+- 依赖就绪:join/digest/exporter/split(P1.2)、multi-member run 与 guard(P1.1)、spike Protocol v1 证据(P0.3);test1 帧集 10/10 全 4/4 可作真实 DLC smoke 输入。
+- 待用户决策:GitHub Actions 是否给 `publication/**` 分支也跑测试(改 CI 触发配置需用户批准;现状仅 main/feat/fix,feat/p1.3 分支自身 push 可触发)。
+
 ## Next Recommended Action
 
-**等待用户指令：合并 P1.2**（HR 已通过：自动化 A–D 全 PASS + 用户 Q1–Q4 通过 + F1 修复重测；test1 帧集 10/10 全 4/4）。用户确认后：`--no-ff` 合并 `feat/p1.2-complete-frame-annotation` 回 `publication/ejp-damped-pendulum` → push（push 需用户另行确认）→ P1.3（joint training + teacher import）。独立待办：F4/F5（帧集进度与缺帧指引的 UX 改进）由用户裁定修或延后，不阻塞。P1–P5期间安排原生Windows x64 G1–G4取证；**进入P6之前必须完成**，不得以CI/mock/Mac代替。
+**P1.3-S1(product external runner)**:按 [执行 mini-plan](plans/p1.3-joint-training-execution.md) 实施 S1——external worker 协议(host/worker/验证/取消)+ GUI handle 接线;负例测试先行。Windows G1–G4 仍是 P6 前门禁。
