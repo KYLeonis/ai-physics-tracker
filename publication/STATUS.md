@@ -81,7 +81,8 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - CI 触发已扩展到 `publication/**`(用户批准,`787b169`)。
 - **S1 完成(`a7dcd35`,2026-09-25)**:product external worker——`worker/__main__.py`(受信操作白名单 hello/wait/fail/selftest_runtime、源 SHA 自验、原子 result)+ `infrastructure/external_worker.py`(canonical digest 链、env 白名单、协作/强制整组取消、fail-closed read_result:身份/exit/时间戳/outputs containment+SHA、迟到结果拒绝)。Flash 实现 + 只读 review(request-changes)→ M1–M4/m1–m5 全部修复复测(取消路径 fail-open 收口、result 时间戳、负例补齐 10 个)。**1015 passed, 9 subtests**(基线 987 + 28)。i3–i6 交接项记入 mini-plan S2 节。
 - **S2 完成(2026-09-28,主会话直实现)**:subagent 模型路由诊断结论=客户端启动时快照,需用户重启 ZCode 后生效(重启前不派 subagent,避免占用个人套餐 Flash);S2 由主会话实现——`application/experiment_training_job.py`(prepare 唯一路径 EX4+全量 digest 冻结+active-task 守卫;verifier digest 回显/stale 复核/bodyparts/输出 containment)+ worker `train_experiment` 操作(视频 sha 复核、DLC 项目在 job 目录内、协作取消、outputs 声明)。**1027 passed**(+12)。S2 只读 review 待用户重启后与 S3 一起派发。
+- **S3 完成(2026-09-28)**:`domain/teacher_model.py`(TeacherModelReference + ModelManifestEntry,构造期校验:origin/manifest 一致性/路径封堵/四 role mapping/compatible 需证据)+ Project `model_references` 集合(v2 serializer 双向,旧 payload 无键读空)+ session `register_trained_model_reference`(completed 联合 run 校验、逐文件 size/SHA 冻结、undoable、重复注册拒绝;快照/transition 扩第 10 元素)+ `application/teacher_models.teacher_model_availability`(missing/size/SHA → unavailable)。**1044 passed**(+17)。S1–S3 AI lifecycle Independent Review 按计划等待用户重启 ZCode 后派发(subagent 体验套餐路由生效)。
 
 ## Next Recommended Action
 
-**P1.3-S2(joint training request/result)**:按 mini-plan 实施——prepare(唯一路径 join→export→split_indices、digest 冻结、stale 拒绝)+ worker `train_experiment` 操作 + result verifier → completed multi-member run;注意 S1 交接项 i3–i6(超时必须走 cancel、elapsed_s、跨会话 lifecycle、G4 checklist)。Windows G1–G4 仍是 P6 前门禁。
+**用户重启 ZCode(体验套餐 subagent 生效)**→ 派发 S1–S3 Independent Review(AI lifecycle/protocol:worker 协议完备性、取消/迟到、唯一 request 路径、manifest);通过后进入 S4(teacher import core)。Windows G1–G4 仍是 P6 前门禁。
