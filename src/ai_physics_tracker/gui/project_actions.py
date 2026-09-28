@@ -138,6 +138,11 @@ class ProjectActions(QObject):
     def importDlcModel(self) -> None:
         if self.busy:
             return
+        models = getattr(self.window, "modelActions", None)
+        if models is not None and models.busy:
+            self.window.statusBar().showMessage(
+                "Cancel the running model task before importing")
+            return
         self.window.modelActions.openImportDialog()
 
     def openProject(self) -> None:

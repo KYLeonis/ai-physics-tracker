@@ -78,6 +78,30 @@ Reviewer 同时确认"已查无问题"方向:digest 回显链闭合、迟到/强
 
 **验证:全量 1110 passed(+13);真实 DLC 双路径 smoke PASS(A:训练→引用→自检 compatible;B:导入→源目录移走→compatible)。**
 
+## S6 后三路回归扫描(2026-09-28,用户指令:三个 subagent 扫库)
+
+三个并行只读扫描(worker/协议域、训练数据域、模型引用/导入/GUI 域),对照 3f06de9 全量 diff + 通读 + 只读实验。**结论:无 Blocker、无数据损坏级 Major。** 共 1 个 Major-low + 14 Minor,处置如下(全部闭环或记档):
+
+| ID | 域 | 摘要 | 处置 |
+| --- | --- | --- | --- |
+| W-F1 (Major-low) | worker | train_experiment 设备双源:GUI 宣称 CPU 但 params.device=auto → worker detect→MPS;host 不校验 train 的 actual_device | CLOSED:协议 device 为权威(worker auto 才自解析);host 对 train 的 actual_device 做 backend 匹配校验 |
+| W-F2/F3/F4 | worker | job 目录为文件时裸 NotADirectoryError;Windows taskkill FileNotFoundError 逃逸;outputs 整文件读入内存 | CLOSED:包 OSError;taskkill 日志化(已有);改流式 file_sha256 |
+| D-F1 (Minor) | 数据 | rebind_pendulum_roles 无 pending-run 守卫 + run 无删除 API → 潜在死锁(rebind 无 GUI 调用方,不可达) | 记档:rebind GUI 化时必须加 run 守卫;run 删除 API 列 P1.4 backlog |
+| D-F2 (Minor) | 数据 | split 身份不在 digest/config(fixed check 被重冻结后旧模型溯源断裂) | CLOSED:request/config/worker 回显/verify 四处携带 check_frames |
+| D-F3 (Minor) | 数据 | worker 丢 extra_params | CLOSED:改 TrainingParams.from_config(保留 extras) |
+| D-F4 (Minor) | 数据 | verify 不检查 run 仍在 registry | CLOSED:registry 成员检查 |
+| D-F5 (Minor) | 数据 | extras 的 engine_version 撞 canonical 键,save/reopen 后消失 | CLOSED:改名 worker_engine_version |
+| G-F1 (Minor) | GUI | 忙碌守卫不对称(frame selection 在途可发起联合训练,digest stale 白烧训练) | CLOSED:三入口对称检查 |
+| G-F2 (Minor) | GUI | importDlcModel 绕过 models.busy | CLOSED:补守卫 |
+| G-F3 (Minor) | 域 | manifest sha 大小写不归一 → availability 永久误报(仅手改文件可达) | CLOSED:构造期归一小写 |
+| G-F4 (Minor) | GUI | 导入向导只认 pose_cfg.yaml,真实 pytorch bundle(pytorch_config.yaml)无法自检 | CLOSED:向导双名接受;文案与 checkbox 联动更新 |
+| G-F5 (Minor) | GUI | 非 ModelWorkerError(OSError)启动失败留孤儿 run;verify/register 的 ValueError 穿透 | CLOSED:except 扩 (ModelWorkerError, OSError) / (ProjectSessionError, ValueError) |
+| G-F6 (Minor UX) | GUI | frame_set None 时禁用原因失真 | CLOSED:文案区分"先产帧集"与"先冻结检查帧" |
+
+同时修复用户 HR 前实测反馈:**"Run joint training" 可点但失败只写在一闪而过的状态栏,读作死按钮** → prepare 失败改模态提示;过期文案 "joint AI training arrives in a later phase (P1.3)" 更新。
+
+**验证:全量 1110 passed(净增 6:寄存器检查/check_frames 回显/守卫对称/冻结入口等)。已查无问题方向:digest 链、取消语义、行序三方一致、序列化 round-trip、导入原子性、DLC 3.0.1 真实布局与 runner 契约(对照安装源码)。**
+
 ## Verdict
 
 Reviewer:request-changes → **处置后闭环**(B1+M1–M3+m1–m7+Nit 全部修复并复测,含既有 mock 适配 3 处)。S1–S3 gate 通过,进入 S4(teacher import core)。

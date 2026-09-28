@@ -97,11 +97,28 @@ class ModelActions(QObject):
             self.window.statusBar().showMessage(
                 "A model task is already running")
             return
+        # F1(S6 review):与其他在途任务互斥(frame selection 改标注会使
+        # digest stale,白烧一次训练)
+        tracking = getattr(self.window, "trackingActions", None)
+        if tracking is not None and tracking.pending:
+            self.window.statusBar().showMessage(
+                "Cancel the active AI task before joint training")
+            return
+        frames = getattr(self.window, "frameSelectionActions", None)
+        if frames is not None and frames.busy:
+            self.window.statusBar().showMessage(
+                "Cancel frame selection before joint training")
+            return
         try:
             run, request = prepare_experiment_training(
                 session, experiment.experiment_id
             )
         except ProjectSessionError as error:
+            # HR 反馈(2026-09-28):状态栏消息一闪而过被读作"死按钮";
+            # 用户发起动作的失败用模态框,必须被看到
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(self.window, "Cannot start joint training", str(error))
             self.window.statusBar().showMessage(f"Cannot start: {error}")
             return
         params = dict(request.params_config)
@@ -112,9 +129,9 @@ class ModelActions(QObject):
             handle = self._runner_factory().start_training(
                 session.project_root, request, device=device
             )
-        except ModelWorkerError as error:
-            # M2(S6 review):prepare 已登记 pending run;启动失败必须回写
-            # failed,否则 active-run 守卫把该 experiment 永久锁死
+        except (ModelWorkerError, OSError) as error:
+            # M2/F5(a)(S6 review):prepare 已登记 pending run;启动失败必须
+            # 回写 failed,否则 active-run 守卫把该 experiment 永久锁死
             session.update_tracking_run(mark_run_failed(run, str(error)))
             self.window.statusBar().showMessage(f"Cannot start: {error}")
             self.window.projectActions.refresh()
@@ -306,7 +323,7 @@ class ModelActions(QObject):
             completed = verify_experiment_training_result(
                 session, run, request, result, self._job_dir
             )
-        except ProjectSessionError as error:
+        except (ProjectSessionError, ValueError) as error:
             self._finish_failure(f"verification rejected the result: {error}")
             return
         from dataclasses import replace
@@ -321,7 +338,7 @@ class ModelActions(QObject):
         session.update_tracking_run(completed)
         try:
             reference = session.register_trained_model_reference(run.run_id)
-        except ProjectSessionError as error:
+        except (ProjectSessionError, ValueError) as error:
             self.window.statusBar().showMessage(
                 f"Trained, but the model reference was rejected: {error}")
             self._reset()

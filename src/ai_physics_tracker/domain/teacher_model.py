@@ -42,6 +42,8 @@ class ModelManifestEntry:
         sha = self.sha256.strip().lower()
         if len(sha) != 64 or any(char not in "0123456789abcdef" for char in sha):
             raise ValueError(f"manifest sha256 must be a 64-char hex digest: {self.sha256!r}")
+        # 归一为小写:availability 与小写 hexdigest 精确比较,大写条目会永久误报
+        object.__setattr__(self, "sha256", sha)
 
 
 def build_manifest_hash(manifest: tuple[ModelManifestEntry, ...]) -> str:

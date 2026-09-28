@@ -89,6 +89,7 @@ def _completed_training(tmp_path: Path, synthetic_video_path: Path):
         RESULT_SECTION: {
             "label_digest": request.label_digest,
             "video_sha256": request.video_sha256,
+            "check_frames": list(request.check_frames),
             "bodyparts": list(ROLE_ORDER), "engine_version": "3.0.1-test",
             "config_path": "config.yaml",
             "model_snapshot": "dlc-project/snapshot.pt",

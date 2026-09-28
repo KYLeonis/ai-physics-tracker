@@ -55,6 +55,7 @@ class ExperimentTrainingRequest:
     train_indices: tuple[int, ...]
     test_indices: tuple[int, ...]
     label_digest: str
+    check_frames: tuple[int, ...]
     params_config: dict[str, Any]
 
     def to_payload(self) -> dict[str, Any]:
@@ -78,6 +79,7 @@ class ExperimentTrainingRequest:
             "train_indices": list(self.train_indices),
             "test_indices": list(self.test_indices),
             "label_digest": self.label_digest,
+            "check_frames": list(self.check_frames),
             "params": dict(self.params_config),
         }
 
@@ -102,6 +104,7 @@ class ExperimentTrainingRequest:
             train_indices=tuple(int(i) for i in payload["train_indices"]),
             test_indices=tuple(int(i) for i in payload["test_indices"]),
             label_digest=str(payload["label_digest"]),
+            check_frames=tuple(int(f) for f in payload.get("check_frames", ())),
             params_config=dict(payload["params"]),
         )
 
@@ -167,6 +170,7 @@ def prepare_experiment_training(
     )
     actual_params = params or TrainingParams()
     train_indices, test_indices = plan.split_indices()
+    check_frames = tuple(row.frame_index for row in plan.test_rows)
     resolved_run_id = run_id or uuid4()
     # 行序 = 帧号升序(split_indices 的行序约定);rows/train/test 三者同源同序
     ordered_rows = tuple(
@@ -182,6 +186,7 @@ def prepare_experiment_training(
         train_indices=train_indices,
         test_indices=test_indices,
         label_digest=label_digest,
+        check_frames=check_frames,
         params_config=actual_params.to_config(),
     )
 
@@ -190,6 +195,7 @@ def prepare_experiment_training(
         {
             "experiment_id": str(experiment_id),
             "label_digest": label_digest,
+            "check_frames": list(check_frames),
             "train_rows": len(plan.train_rows),
             "test_rows": len(plan.test_rows),
             "request_kind": "experiment-joint-training-v1",
@@ -238,6 +244,11 @@ def verify_experiment_training_result(
             f"cannot complete a run in status {run.status!r}; "
             "only pending/running runs accept training results"
         )
+    if all(r.run_id != run.run_id for r in session.tracking_runs()):
+        raise ProjectSessionError(
+            "the run is no longer registered in the project; "
+            "refusing to complete an unregistered run"
+        )
     section = result.get(RESULT_SECTION)
     if not isinstance(section, dict):
         raise ProjectSessionError(
@@ -254,6 +265,11 @@ def verify_experiment_training_result(
         raise ProjectSessionError(
             "worker echoed a different video digest; the request and worker "
             "disagree on the training video"
+        )
+    if list(section.get("check_frames") or []) != list(request.check_frames):
+        raise ProjectSessionError(
+            "worker echoed a different fixed-check split; the request and "
+            "worker disagree on the evaluation frames"
         )
     video_file = Path(request.video_path)
     if not video_file.is_file() or _file_sha256(video_file) != request.video_sha256:
@@ -312,7 +328,7 @@ def verify_experiment_training_result(
         **run.extra_fields,
         "device": result.get("actual_device"),
         "requested_device": request.params_config.get("device"),
-        "engine_version": section.get("engine_version"),
+        "worker_engine_version": section.get("engine_version"),
         "config_path": config_relative,
         "model_file_info": [
             snapshot_file.stat().st_size, snapshot_file.stat().st_mtime_ns

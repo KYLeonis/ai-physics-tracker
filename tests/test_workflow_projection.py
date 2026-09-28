@@ -33,6 +33,8 @@ from ai_physics_tracker.application.workflow_projection import (
     ACTION_VIEW_ANALYSIS,
     ACTION_CREATE_EXPERIMENT,
     ACTION_GUIDED_MARKING,
+    ACTION_RUN_JOINT_TRAINING,
+    ACTION_FREEZE_FIXED_CHECK,
     MODE_ANNOTATE,
     MODE_SETUP,
     ANALYSIS_LATEST,
@@ -864,6 +866,14 @@ class TestPendulumSetupProjection:
         assert card.title == "Current: pendulum measurement"
         assert card.primary.action_id == ACTION_GUIDED_MARKING
         assert "P1.3" in card.explanation[0]
+        # fixed check 未冻结 → 联合训练禁用且原因邻接(S6 HR 用户反馈)
+        training = next(
+            spec for spec in card.secondary
+            if spec.action_id == ACTION_RUN_JOINT_TRAINING
+        )
+        assert training.enabled is False
+        # 无帧集时的前置是引导标注产帧集;有帧集但检查未冻结才是 fixed-check 原因
+        assert "Suggest Frames" in (training.reason or "")
 
     def test_measurement_card_shows_frame_set_progress(self, tmp_path):
         from ai_physics_tracker.domain.pendulum import (

@@ -139,18 +139,15 @@ def _run_train_experiment(request: dict[str, Any], job_dir: Path, result: dict[s
     if not rows:
         raise RuntimeError("training request carries no annotation rows")
 
+    # 设备权威源 = 协议级 request["device"](host 校验它与 actual_device);
+    # params.device 仅在协议为 auto 时由 worker 解析(F1,S1–S3 review 扫描)
+    requested_device = str(request.get("device", "cpu"))
+    resolved_device = (
+        detect_device() if requested_device == "auto" else requested_device
+    )
     params_config = dict(request["params"])
-    requested_device = str(params_config.get("device", "auto"))
-    resolved_device = detect_device() if requested_device == "auto" else requested_device
     params_config["device"] = resolved_device
-    params = TrainingParams(**{
-        key: params_config[key]
-        for key in (
-            "epochs", "batch_size", "device", "display_iters", "save_iters",
-            "learning_rate", "shuffle", "trainingsetindex",
-        )
-        if key in params_config
-    })
+    params = TrainingParams.from_config(params_config)
 
     cancel_event = _MarkerCancelEvent(job_dir)
     queue = _ResultLogQueue()
@@ -210,6 +207,7 @@ def _run_train_experiment(request: dict[str, Any], job_dir: Path, result: dict[s
     result[RESULT_SECTION] = {
         "label_digest": request["label_digest"],
         "video_sha256": request["video_sha256"],
+        "check_frames": list(request.get("check_frames", ())),
         "bodyparts": list(ROLE_ORDER),
         "engine_version": adapter.engine_version(),
         "config_path": result["outputs"][0]["path"],

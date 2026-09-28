@@ -47,6 +47,7 @@ class TeacherImportDialog(QDialog):
         self.window = window
         self._bundle_root: Path | None = None
         self._config: dict | None = None
+        self._config_name: str = "config.yaml"
         self.setWindowTitle("Import DLC Model…")
 
         self.directory_edit = QLineEdit(self)
@@ -101,12 +102,19 @@ class TeacherImportDialog(QDialog):
 
     def load_bundle(self, bundle_root: Path) -> bool:
         self._bundle_root = None
-        self._config = None
+        self._config_name = "config.yaml"
         self._ok_button.setEnabled(False)
-        config_path = bundle_root / "config.yaml"
-        if not config_path.is_file():
-            self.status_label.setText("No config.yaml at the bundle root.")
+        # DLC 3.x pytorch 引擎的模型结构配置原生名是 pytorch_config.yaml;
+        # 向导同时接受两者,导入时统一落为 managed config.yaml
+        for name in ("config.yaml", "pytorch_config.yaml"):
+            if (bundle_root / name).is_file():
+                self._config_name = name
+                break
+        else:
+            self.status_label.setText(
+                "No config.yaml / pytorch_config.yaml at the bundle root.")
             return False
+        config_path = bundle_root / self._config_name
         try:
             config = parse_teacher_config(config_path)
         except TeacherImportError as error:
@@ -129,14 +137,17 @@ class TeacherImportDialog(QDialog):
         self.checkpoint_box.addItems(
             sorted(p.name for p in bundle_root.iterdir() if p.is_file() and p.suffix in {".pt", ".pth"})
         )
-        pose_found = (bundle_root / "pose_cfg.yaml").is_file()
+        pose_names = ("pose_cfg.yaml", "pytorch_config.yaml")
+        pose_found = any((bundle_root / n).is_file() for n in pose_names)
         self.pose_cfg_label.setText(
-            f"pose_cfg: {'detected' if pose_found else 'NOT found (self-test unavailable)'}"
+            f"model cfg for self-test: "
+            f"{'detected' if pose_found else 'NOT found (self-test unavailable)'}"
         )
         self.selftest_checkbox.setEnabled(pose_found)
         self.selftest_checkbox.setChecked(pose_found)
         self.status_label.setText(
-            f"Bundle loaded: {len(bodyparts)} bodyparts {bodyparts}. "
+            f"Bundle loaded ({self._config_name}): {len(bodyparts)} bodyparts "
+            f"{bodyparts}. "
             "Map every role explicitly, then Import."
         )
         self._ok_button.setEnabled(bool(self.checkpoint_box.count()))
@@ -171,7 +182,7 @@ class TeacherImportDialog(QDialog):
             extra_files = ("pose_cfg.yaml",)
         try:
             reference = session.import_teacher_model(
-                self._bundle_root, "config.yaml", checkpoint, mapping,
+                self._bundle_root, self._config_name, checkpoint, mapping,
                 extra_files=extra_files,
             )
         except (ProjectSessionError, TeacherImportError) as error:

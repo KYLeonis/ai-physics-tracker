@@ -238,7 +238,13 @@ class ExternalWorkerRunner:
         """在独占的 job 目录中落盘 request 并 spawn worker;非空目录视为 duplicate 拒绝。"""
         _validate_request(request)
         job_dir = Path(job_dir).resolve()
-        if job_dir.exists() and any(job_dir.iterdir()):
+        try:
+            occupied = job_dir.exists() and any(job_dir.iterdir())
+        except OSError as error:
+            raise ExternalWorkerError(
+                f"job directory is not usable: {job_dir}: {error}"
+            ) from error
+        if occupied:
             raise ExternalWorkerError(f"job directory is not empty (duplicate job): {job_dir}")
         job_dir.mkdir(parents=True, exist_ok=True)
         request_path = job_dir / REQUEST_FILE_NAME
@@ -531,6 +537,17 @@ class ExternalJobHandle:
             )
         if self._operation == "selftest_runtime":
             self._validate_selftest_payload(result)
+        if self._operation == "train_experiment" and result.get("actual_device"):
+            actual = str(result["actual_device"])
+            requested = str(self._device)
+            # auto 由 worker 解析后如实上报;显式 backend 必须匹配(带索引可)
+            if requested != "auto" and not re.fullmatch(
+                re.escape(requested) + r"(?::[0-9]+)?", actual
+            ):
+                raise ExternalWorkerError(
+                    f"train actual_device {actual!r} does not match the "
+                    f"requested backend {requested!r} (log: {self.worker_log_path})"
+                )
         self._validate_outputs(result)
 
     def _validate_timestamps(self, result: dict[str, Any]) -> None:
@@ -604,13 +621,16 @@ class ExternalJobHandle:
                     f"output path escapes job directory: {relative!r} (log: {self.worker_log_path})"
                 )
             try:
-                data = candidate.read_bytes()
+                from ai_physics_tracker.infrastructure.hashing import file_sha256
+
+                size = candidate.stat().st_size
+                sha256 = file_sha256(candidate)
             except OSError as error:
                 raise ExternalWorkerError(
                     f"declared output unreadable: {relative!r}: {error} "
                     f"(log: {self.worker_log_path})"
                 ) from error
-            if item.get("size") != len(data) or item.get("sha256") != hashlib.sha256(data).hexdigest():
+            if item.get("size") != size or item.get("sha256") != sha256:
                 raise ExternalWorkerError(
                     f"declared output size/sha256 mismatch: {relative!r} (log: {self.worker_log_path})"
                 )
