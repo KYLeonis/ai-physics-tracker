@@ -60,6 +60,24 @@ Reviewer 同时确认"已查无问题"方向:digest 回显链闭合、迟到/强
 
 **验证:全量 1097 passed(+20 S5,含 6 review 回归;协议级测试经真实 worker 进程)。真实 DLC 推理链路(DLCLoader→runner→单帧)仍待 S6 smoke 实测。**
 
+## S6 slice review(2026-09-28)
+
+只读 review:Verdict request-changes → **处置闭环**。
+
+| ID | 摘要 | 处置 |
+| --- | --- | --- |
+| B1 (major) | 完成回调无 session 上下文守卫;训练中可换项目 → 结果异常逃逸 Qt slot、UI 永久 busy | CLOSED:guarded/openVideo/AI _start 阻断 model busy;控制器捕获 session 身份,swap 即静默放弃+cancel;finish 路径 update_tracking_run 兜底 try |
+| M1 (major) | 真实训练取消(强杀路径)被标 failed 而非 cancelled | CLOSED:cancel() 置 `_user_cancel`,read_result 抛错且标志置位 → cancelled 语义 |
+| M2 (major) | prepare 成功但 start 失败留下孤儿 pending run,experiment 被 active-run 守卫永久锁死 | CLOSED:start 失败即 mark_run_failed + refresh;回归测试含"可再次 prepare" |
+| M3 (major) | QComboBox 自动选中第 0 项,漏选 role 静默获得未显式选择的映射 | CLOSED:setCurrentIndex(-1),collect 的未映射分支复活;负例测试 |
+| M4/m5/m6/m9 | 取消提示/`_job_dir` 状态/类型注解/启动即 running | CLOSED 逐一 |
+| 补充缺口 | fixed check 冻结无 GUI 入口(P1.2 S4 只交付 session 动作)——没有它联合训练无法从界面走通 | CLOSED:测量卡第三动作 "Freeze fixed-check frames"(C1 预选 + 确认框),accept/decline 测试 |
+| m7/m8 | 测试缺口(B1/M1/M2/关窗/映射负例)与 smoke 证据 | CLOSED:5+2 个回归;smoke 打印完整 runtime/versions 证据行 |
+
+已确认无问题:迟到 success 无旁路、job 目录唯一性、device 链、verify 链未弱化、RecursionError 修复方向、定时器生命周期。
+
+**验证:全量 1110 passed(+13);真实 DLC 双路径 smoke PASS(A:训练→引用→自检 compatible;B:导入→源目录移走→compatible)。**
+
 ## Verdict
 
 Reviewer:request-changes → **处置后闭环**(B1+M1–M3+m1–m7+Nit 全部修复并复测,含既有 mock 适配 3 处)。S1–S3 gate 通过,进入 S4(teacher import core)。

@@ -77,13 +77,20 @@ class _MarkerCancelEvent:
 
 
 class _ResultLogQueue:
-    """DLCAdapter.train 的 queue 形态:进度消息直接进 worker 日志(host 已重定向)。"""
+    """DLCAdapter.train 的 queue 形态:进度消息直写原始 stderr fd。
+
+    不能用 logging:DLC 训练把 sys.stderr 重定向回本队列(redirect_stderr),
+    logging→stderr→queue→logging 会无限递归(2026-09-28 真实 smoke 实测
+    RecursionError)。fd 2 是 host 打开的 worker.log,直写即落日志。
+    """
 
     def put(self, message: Any) -> None:
-        if hasattr(message, "message") and getattr(message, "message", None):
-            logging.getLogger("ai_physics_tracker.worker.train").info(
-                "%s", message.message
-            )
+        text = getattr(message, "message", None)
+        if text:
+            try:
+                os.write(2, (str(text).rstrip()[:4096] + "\n").encode("utf-8", "replace"))
+            except OSError:
+                pass  # 日志通道故障不影响训练主流程
 
 
 def _sha256_file(path: Path) -> str:

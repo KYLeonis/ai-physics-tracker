@@ -704,6 +704,12 @@ class TrackingActions(QObject):
         if action_id == "guided_marking":
             window.beginExperimentAnnotation()
             return
+        if action_id == "run_joint_training":
+            window.modelActions.runJointTraining()
+            return
+        if action_id == "freeze_fixed_check":
+            window.modelActions.freezeFixedCheck()
+            return
         if action_id == "setup_fixed_pivot":
             window.setWorkspace("setup")
             window.beginPivotPick()
@@ -981,6 +987,10 @@ class TrackingActions(QObject):
     def _start(self, parameters, training_run_id=None,
                training_mode: str = "restart", resume_from_run_id: UUID | None = None) -> None:
         if self.pending or self.window.projectActions.busy:
+            return
+        models = getattr(self.window, "modelActions", None)
+        if models is not None and models.busy:
+            self.panel.setActivity("Cannot start: a model task is running")
             return
         if self.window.frameSelectionActions.busy:
             self.panel.setActivity("Cannot start: frame selection is running")

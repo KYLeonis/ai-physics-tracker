@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-24。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。实施分支 `feat/p1.2-complete-frame-annotation`(未合并、未 push)。
-- 当前：**P1.2 已完成并合并（2026-09-24，merge `5cad79c`）：HR 通过（自动化 A–D + 用户 Q1–Q4），F1–F5 全部处置完毕（F1/F4/F5 修复，F2 WONTFIX，F3 关闭），987 tests，test1 帧集 10/10 全 4/4**。P1.1、P1.2 已合并；下一步 P1.3（external worker/joint training/teacher import）待用户授权立项。
+- 当前：**P1.3 S1–S6 全部实现（2026-09-28）：四轮 review 闭环、1110 tests、真实 DLC 双路径 smoke PASS（联合训练→模型引用→自检 compatible；教师导入→源目录移走→compatible）。等待 Human Review（协议：plans/p1.3-human-review.md）后合并**。P1.1、P1.2 已合并；P2 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -87,4 +87,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P1.3-S6(training/import GUI and closure)**:测量卡 Run joint training(external worker 接线:超时走 cancel、elapsed_s、i3 交接项)、File 菜单 Import DLC Model…(mapping 向导/compatibility 展示)、真实 DLC 双路径 smoke(test1 tiny 联合训练→reference→selftest compatible;最小教师 bundle 导入)、Human Review、re-review、集成合并。Windows G1–G4 仍是 P6 前门禁。
+**等待用户执行 [P1.3 Human Review](plans/p1.3-human-review.md)**（联合训练 GUI 全流程 + 教师导入向导 + 自检 + 取消；数据安全否决项：模型引用/训练产物/undo）。通过后：P1.3 合并关闭 → P2 立项待授权。Windows G1–G4 仍是 P6 前门禁。

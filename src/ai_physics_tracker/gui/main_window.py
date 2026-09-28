@@ -419,6 +419,10 @@ class MainWindow(QMainWindow):
         viewMenu = self.menuBar().addMenu("View")
         self.chartActions = ChartActions(self)
         self.trackingActions = TrackingActions(self)
+        from ai_physics_tracker.gui.model_actions import ModelActions
+        # dev 环境 runtime python = 当前解释器;frozen 发布由安装器合同注入
+        import sys as _sys
+        self.modelActions = ModelActions(self, _sys.executable)
         self.frameSelectionActions = FrameSelectionActions(
             self, self.trackingActions.panel
         )
@@ -839,6 +843,7 @@ class MainWindow(QMainWindow):
         self._delivery_generation = self._generation_counter
         self.stopPlayback()
         self.closing.emit()
+        self.modelActions.shutdown()
         self.timingActions.shutdown()
         self._async.close()
         self.projectActions.shutdown()

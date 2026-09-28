@@ -77,6 +77,8 @@ ACTION_SETUP_TRUE_VERTICAL = "setup_true_vertical"    # P1.1：top→bottom 两�
 ACTION_SETUP_PHYSICAL = "setup_physical"              # P1.1：录入 L/g 与来源
 ACTION_SET_RELEASE = "set_release_frame"              # P1.1：release = 当前帧
 ACTION_GUIDED_MARKING = "guided_marking"              # P1.2：四 role 引导标注入口
+ACTION_RUN_JOINT_TRAINING = "run_joint_training"       # P1.3：experiment 联合训练
+ACTION_FREEZE_FIXED_CHECK = "freeze_fixed_check"      # P1.3：冻结共享固定检查帧集
 
 # --- 分析可用性四态（设计 §11.1）---
 
@@ -690,6 +692,11 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             title="Current: pendulum measurement",
             explanation=tuple(explanation),
             primary=ActionSpec(ACTION_GUIDED_MARKING, "Mark landmark frames"),
+            secondary=(
+                ActionSpec(ACTION_RUN_JOINT_TRAINING, "Run joint training"),
+                ActionSpec(
+                    ACTION_FREEZE_FIXED_CHECK, "Freeze fixed-check frames"),
+            ),
             evidence=(f"Experiment setup: {setup_note}.",),
         )
 
