@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-29。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p1.4-joint-inference-activation`，自已推送的 P1.3 集成提交 `0546ff7` 切出。
-- 当前：**P1.4 S1–S3/S5 已实现，S3 四轨事务与 S5 P2 handoff 两道 Independent Review gate 已通过（2026-09-29，[review record](../docs/reviews/publication-p1.4-review.md)，approve、findings 全闭环、1137 passed）；S4 GUI 进行中；S6 导入模型真实短片生命周期 smoke 已部分通过**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。S1 自训/导入模型 Mac CPU 十帧结构 smoke 见[证据](evidence/runtime/p14-joint-inference-smoke.json)；S6 导入模型 host→review→activate→clear→undo→reopen 见[证据](evidence/runtime/p14-lifecycle-smoke.json)。全量回归 1137 passed, 9 subtests。P1.1–P1.3 已合并；P2 未开始。
+- 当前：**P1.4 S1–S5 已实现，S3/S5 两道 Independent Review gate 已通过（[review record](../docs/reviews/publication-p1.4-review.md)，1137 passed）；S4 workflow/UI 已实现且 offscreen 9 tests + 全量 1146 passed，等待用户 Human Review；S6 导入模型真实短片生命周期 smoke 已部分通过**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。S1 自训/导入模型 Mac CPU 十帧结构 smoke 见[证据](evidence/runtime/p14-joint-inference-smoke.json)；S6 导入模型 host→review→activate→clear→undo→reopen 见[证据](evidence/runtime/p14-lifecycle-smoke.json)。P1.1–P1.3 已合并；P2 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1–P1.3已完成，P1.4执行中；P2–P6未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -87,4 +87,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**进入 S4 experiment workflow/UI（S3/S5 两道 review gate 已通过，见 [review record](../docs/reviews/publication-p1.4-review.md)）：experiment 级 infer/progress/cancel/log、四点 overlay 与按帧/role 审核队列、candidate/active 状态明示、四轨 Activate/Replace/Clear 确认与 history；offscreen 测试通过后按 AGENTS.md 向用户发起 Human Review 并等待真人反馈。** 随后 S6 剩余：trained compatible 模型经普通 host request 的完整链路、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后 `--no-ff` 合并至 `publication/ejp-damped-pendulum` 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
+**等待用户对 S4 workflow/UI 做 Human Review(启动命令与测试步骤见交接消息)——通过后进入 S6 收尾：** trained compatible 模型经普通 host request 的完整链路、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后 `--no-ff` 合并至 `publication/ejp-damped-pendulum` 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
