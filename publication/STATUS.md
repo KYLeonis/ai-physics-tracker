@@ -87,4 +87,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**等待用户对 S4 workflow/UI 做 Human Review(启动命令与测试步骤见交接消息)——通过后进入 S6 收尾：** trained compatible 模型经普通 host request 的完整链路、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后 `--no-ff` 合并至 `publication/ejp-damped-pendulum` 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
+**按 [P1.4 handoff 2026-09-30](plans/p1.4-handoff-2026-09-30.md) 接手:S4 HR 第四轮「role 级连续标注」真机仍失败(offscreen 全过),用户交由外部 agent 调试(handoff 含四轮 HR 全过程、可疑点、代码地图)。** 修复并经用户复核后进入 S6 收尾： trained compatible 模型经普通 host request 的完整链路、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后 `--no-ff` 合并至 `publication/ejp-damped-pendulum` 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
