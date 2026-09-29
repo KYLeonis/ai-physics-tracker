@@ -170,6 +170,11 @@ def verify_experiment_inference_result(
 
     if run.run_id != UUID(request.run_id) or run.status not in {"pending", "running"}:
         raise ProjectSessionError("Joint inference run identity or lifecycle changed")
+    if (run.config.get("input_digest") != request.input_digest
+            or run.config.get("min_confidence") != request.min_confidence
+            or run.config.get("bodypart_mapping") !=
+            [list(pair) for pair in request.bodypart_mapping]):
+        raise ProjectSessionError("Joint inference run configuration changed")
     if not any(item.run_id == run.run_id for item in session.tracking_runs()):
         raise ProjectSessionError("Joint inference run is no longer registered")
     captured, experiment, model, video, config, checkpoint, pose_cfg = _capture_input(
@@ -230,6 +235,7 @@ def verify_experiment_inference_result(
             "prediction_sha256": declared["sha256"],
             "model_id": request.model_id,
             "input_digest": request.input_digest,
+            "verified_min_confidence": request.min_confidence,
             "scorer": section["scorer"],
             "complete_count": parsed.complete_count,
             "missing_by_role": dict(parsed.missing_by_role),
