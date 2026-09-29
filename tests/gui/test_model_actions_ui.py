@@ -497,3 +497,79 @@ class TestFreezeFixedCheck:
         )
         window.modelActions.freezeFixedCheck()
         assert session.pendulum_experiments()[0].fixed_check is None
+
+
+class TestHrFeedback:
+    """HR 2026-09-28 三条反馈的回归。"""
+
+    def test_model_task_drives_activity_and_cancel(
+        self, qtbot, tmp_path, long_video_path
+    ):
+        """反馈①:模型任务必须有 Activity 文案 + Cancel 可用。"""
+        window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+        window.modelActions.deleteLater()
+        from ai_physics_tracker.gui.model_actions import ModelActions
+
+        class _Runner:
+            def start_training(self, project_root, request, *, device="cpu"):
+                job_dir = Path(project_root) / "data" / "engines" / request.run_id
+                return _FakeHandle(_train_success_result(request, job_dir))
+
+            def start_selftest(self, *a, **k):
+                return _FakeHandle(None)
+
+        window.modelActions = ModelActions(window, runner_factory=_Runner)
+        window.modelActions.runJointTraining()
+        panel = window.trackingActions.panel
+        assert panel.stageLabel.text() == "Training (external worker)"
+        assert panel.cancelButton.isEnabled()
+        window.modelActions._poll()
+        assert panel.stageLabel.text() == "Completed"
+        assert not panel.cancelButton.isEnabled()
+
+    def test_cancel_button_routes_to_model(self, qtbot, tmp_path, long_video_path):
+        window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+        window.modelActions.deleteLater()
+        from ai_physics_tracker.gui.model_actions import ModelActions
+
+        class _Runner:
+            def start_training(self, project_root, request, *, device="cpu"):
+                return _FakeHandle(None, alive_first_polls=1000)
+
+            def start_selftest(self, *a, **k):
+                return _FakeHandle(None)
+
+        window.modelActions = ModelActions(window, runner_factory=_Runner)
+        window.modelActions.runJointTraining()
+        handle = window.modelActions._handle
+        handle._result = {"status": "cancelled"}
+        window.trackingActions.panel.cancelButton.click()   # → modelActions.cancel
+        assert handle.cancelled
+
+    def test_guided_context_not_no_track(self, qtbot, tmp_path, long_video_path, monkeypatch):
+        """反馈②:引导模式头部不得显示 "No track" 无提示。"""
+        window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+        window._guide_experiment_id = experiment.experiment_id
+        window.trackingActions.refresh()
+        context = window.trackingActions.panel.contextLabel.text()
+        assert "Guided marking" in context
+        assert "No track" not in context
+
+    def test_history_label_has_local_time(self, qtbot, tmp_path, long_video_path):
+        """反馈③:history 条目带本地时间。"""
+        from ai_physics_tracker.domain.tracking_run import create_tracking_run
+
+        window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+        free_track = session.add_track(window.activeVideoId, "free track")
+        session.record_tracking_run(create_tracking_run(
+            video_id=window.activeVideoId,
+            member_track_ids=free_track.track_id,
+            task_type="train",
+        ))
+        window.trackingActions.refresh()
+        labels = [window.trackingActions.panel.historyList.item(i).text()
+                  for i in range(window.trackingActions.panel.historyList.count())]
+        import re as _re
+        assert labels and all(
+            _re.match(r"^\d\d-\d\d \d\d:\d\d · ", label) for label in labels
+        ), labels[:3]

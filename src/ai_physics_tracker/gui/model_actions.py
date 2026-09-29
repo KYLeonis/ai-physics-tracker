@@ -55,6 +55,7 @@ class ModelActions(QObject):
         self._runner_factory = runner_factory or (
             lambda: ModelWorkerRunner(self._runtime_python)
         )
+        self._activity_text = "Idle"
         self._timer = QTimer(self)
         self._timer.setInterval(_POLL_INTERVAL_MS)
         self._timer.timeout.connect(self._poll)
@@ -66,6 +67,31 @@ class ModelActions(QObject):
         self._selftest_model_id: UUID | None = None
         self._session = None                 # B1:启动时的 session 身份
         self._user_cancel = False            # M1:取消语义(强杀→cancelled 而非 failed)
+        # HR 2026-09-28:模型任务接 Activity 区(Cancel 共用面板按钮)
+        panel = getattr(window, "trackingActions", None)
+        self._panel = panel.panel if panel is not None else None
+        if self._panel is not None:
+            self._panel.cancelRequested.connect(self._onCancelRequested)
+
+    def _onCancelRequested(self) -> None:
+        """面板 Cancel:tracking 在途时归 trackingActions(先连接者),
+        model 在途时归本控制器;两者都空闲则 no-op。"""
+
+        if self.busy:
+            self.cancel()
+
+    @property
+    def activity_text(self) -> str:
+        return self._activity_text
+
+    def _set_activity(self, text: str, *, running: bool | None = None) -> None:
+        self._activity_text = text
+        if self._panel is not None:
+            self._panel.setActivity(text)
+            # running 缺省跟随当前 busy;终态文案(Completed/Failed/Cancelled)
+            # 由调用方传 running=False,避免 reset 顺序把 Cancel 留在可用态
+            self._panel.cancelButton.setEnabled(
+                self.busy if running is None else running)
 
     # ------------------------------------------------------------------
     # busy / 查询
@@ -148,6 +174,7 @@ class ModelActions(QObject):
         )
         self._session = session
         self._timer.start()
+        self._set_activity("Training (external worker)")
         self.window.statusBar().showMessage(
             f"Joint training run {run.run_id} started on {device} "
             "(external worker; logs in the run directory)")
@@ -256,6 +283,7 @@ class ModelActions(QObject):
         self._job_dir = None   # selftest 无 job_dir 消费者(m5①);真实目录带 uuid 后缀
         self._session = session
         self._timer.start()
+        self._set_activity("Self-testing model")
         self.window.statusBar().showMessage(
             f"Compatibility self-test for model {model.model_id} running (cpu)")
         self.window.projectActions.refresh()
@@ -287,6 +315,7 @@ class ModelActions(QObject):
             # B1:项目已被替换,旧 job 的结果不适用新 session——静默放弃
             logger.warning("model job finished after session swap; discarding result")
             handle.cancel()
+            self._set_activity("Discarded (project changed)", running=False)
             self._reset()
             return
         try:
@@ -344,6 +373,7 @@ class ModelActions(QObject):
             self._reset()
             self.window.projectActions.refresh()
             return
+        self._set_activity("Completed", running=False)
         self._reset()
         self.window.statusBar().showMessage(
             f"Joint training complete: model {reference.model_id} registered "
@@ -364,6 +394,7 @@ class ModelActions(QObject):
                 f"Self-test result rejected: {error}")
             self._reset()
             return
+        self._set_activity("Completed")
         self._reset()
         self.window.statusBar().showMessage(
             f"Model {model_id} is {updated.compatibility_state} "
@@ -380,6 +411,7 @@ class ModelActions(QObject):
             except ProjectSessionError:
                 logger.warning("could not mark the training run failed (session changed)")
         logger.warning("model task failed: %s", message)
+        self._set_activity(f"Failed: {message[:60]}", running=False)
         self._reset()
         self.window.statusBar().showMessage(f"Model task failed: {message}")
         self.window.projectActions.refresh()
@@ -393,6 +425,7 @@ class ModelActions(QObject):
                 )
             except ProjectSessionError:
                 logger.warning("could not mark the training run cancelled (session changed)")
+        self._set_activity("Cancelled", running=False)
         self._reset()
         self.window.statusBar().showMessage("Model task cancelled")
         self.window.projectActions.refresh()
@@ -400,6 +433,7 @@ class ModelActions(QObject):
     def _reset(self) -> None:
         self._handle = None
         self._job_kind = None
+        self._activity_text = "Idle"
         self._session = None
         self._user_cancel = False
         self._train_run = None
