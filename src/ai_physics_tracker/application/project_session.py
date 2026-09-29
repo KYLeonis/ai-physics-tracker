@@ -106,6 +106,7 @@ from ai_physics_tracker.domain.track_store import (
 from ai_physics_tracker.domain.types import canonical_json_digest, utc_now
 from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.domain.video import Video
+from ai_physics_tracker.infrastructure.hashing import file_sha256
 
 logger = logging.getLogger(__name__)
 _SCOPED_REVIEW_KEYS = (SUGGESTED_FRAME_REVIEW_KEY, EXPERIMENT_REVIEW_KEY)
@@ -1633,13 +1634,18 @@ class ProjectSession:
             raise ProjectSessionError("experiment video or timeline is missing")
         try:
             raw = read_experiment_candidate(self.project_root, run, experiment, video.frame_count)
+            # 审核坐标展示对当前视频;推理后视频被替换则候选语义失效,拒绝建队列
+            video_path = self.video_path(video)
+            if (video_path is None or not video_path.is_file()
+                    or file_sha256(video_path) != run.extra_fields.get("video_sha256")):
+                raise ValueError("joint candidate video changed after inference")
             confidence_threshold = float(run.config["min_confidence"])
             candidates = build_experiment_review_queue(
                 raw, fps_nominal=timeline.fps_nominal,
                 confidence_threshold=confidence_threshold,
                 fixed_pivot_px=experiment.geometry.fixed_pivot_px, top_n=top_n,
             )
-        except (ValueError, KeyError) as error:
+        except (ValueError, KeyError, OSError) as error:
             raise ProjectSessionError(f"joint candidate cannot be reviewed: {error}") from error
         existing = self.get_experiment_review(run_id)
         prior_records = existing[1] if existing is not None else {}
@@ -1678,7 +1684,7 @@ class ProjectSession:
         *, role: str | None = None, pixel_x: float | None = None,
         pixel_y: float | None = None,
     ) -> TrackPoint | None:
-        """Commit one frame decision; Correct writes only the selected role's manual point."""
+        """提交一帧审核决定;Correct 只写所选 role 的 manual 点。"""
 
         run = self._validate_infer_run_for_review(run_id)
         state = self.get_experiment_review(run_id)
@@ -1701,6 +1707,11 @@ class ProjectSession:
             read_experiment_candidate(self.project_root, run, experiment, video.frame_count)
         except ValueError as error:
             raise ProjectSessionError(f"joint candidate changed before review: {error}") from error
+        # Correct 的 manual 点会成为测量真值;视频替换后旧候选坐标与新画面错位,必须拒绝
+        video_path = self.video_path(video)
+        if (video_path is None or not video_path.is_file()
+                or file_sha256(video_path) != run.extra_fields.get("video_sha256")):
+            raise ProjectSessionError("joint candidate video changed after inference")
         old_record = records.get(frame_index, {})
         manual_ids = review_record_ids(old_record) if old_record else {}
         point: TrackPoint | None = None
@@ -2619,8 +2630,6 @@ class ProjectSession:
                 raise ProjectSessionError(
                     f"run {name} file is missing: {relative!r}"
                 )
-            from ai_physics_tracker.infrastructure.hashing import file_sha256
-
             entries.append(
                 ModelManifestEntry(
                     relative_path=f"data/engines/{run_id}/{relative}",
@@ -2843,9 +2852,7 @@ class ProjectSession:
     def _commit_experiment_activation(
         self, experiment: PendulumExperiment, run_id: UUID | None, action: str,
     ) -> ExperimentActivationRecord:
-        """Build all four projections before one Project/Undo commit."""
-
-        from ai_physics_tracker.application.experiment_inference_job import _capture_input
+        """四轨投影全部构建完成后一次 Project/Undo 提交。"""
 
         members = set(experiment.roles.track_ids())
         if any(run.status in {"pending", "running"}
@@ -2866,55 +2873,56 @@ class ProjectSession:
             if target is None or self.project_root is None:
                 raise ProjectSessionError("joint candidate or saved project is unavailable")
             try:
-                model_id = UUID(target.config["model_id"])
-                captured, _experiment, model, _video, _config, _checkpoint, _pose = (
-                    _capture_input(self, experiment.experiment_id, model_id)
-                )
-                if (target.config.get("input_digest") != canonical_json_digest(captured)
-                        or target.extra_fields.get("input_digest") != target.config["input_digest"]
+                # 契约 §4:candidate 冻结后按自身 inputs 复核;模型文件 live 状态只门禁新
+                # infer,不阻断激活(推理后模型目录被移走时候选仍可激活,避免死端)
+                video_path = self.video_path(video)
+                if (video_path is None or not video_path.is_file()
+                        or file_sha256(video_path) != target.extra_fields.get("video_sha256")):
+                    raise ValueError("joint candidate video changed after inference")
+                if (target.extra_fields.get("input_digest") != target.config.get("input_digest")
                         or target.config.get("min_confidence") !=
-                        target.extra_fields.get("verified_min_confidence")
-                        or target.config.get("bodypart_mapping") !=
-                        [list(pair) for pair in model.bodypart_mapping]):
-                    raise ValueError("joint candidate inputs changed after inference")
+                        target.extra_fields.get("verified_min_confidence")):
+                    raise ValueError("joint candidate identity disagrees with its verified freeze")
                 raw = read_experiment_candidate(
                     self.project_root, target, experiment, video.frame_count,
                 )
                 threshold = float(target.config["min_confidence"])
                 if not isfinite(threshold) or not 0 <= threshold <= 1:
                     raise ValueError("candidate confidence threshold is invalid")
-            except (ValueError, KeyError, TypeError) as error:
+            except (ValueError, KeyError, TypeError, OSError) as error:
                 raise ProjectSessionError(f"joint candidate cannot be activated: {error}") from error
 
         store = TrackStore(self._store.tracks, self._store.observations)
         now = utc_now()
+        # replace_track_engine_points 不触碰 manual 点,激活前一次统计即可
+        manual_active = {
+            track_id: sum(point.track_id == track_id and point.source == "manual"
+                          and point.status == "active" for point in store.observations)
+            for track_id in experiment.roles.track_ids()
+        }
         role_counts: list[RoleAdoptionCount] = []
         for role, track_id in experiment.roles.by_role().items():
-            points: list[TrackPoint] = []
-            if raw is not None and target is not None:
-                rows = dict(raw.by_role)[role]
-                for row in rows:
-                    if (isnan(row.pixel_x) or isnan(row.pixel_y) or isnan(row.confidence)
-                            or row.confidence < threshold):
-                        continue
-                    points.append(TrackPoint(
-                        point_id=uuid4(), track_id=track_id,
-                        frame_index=row.frame_index,
-                        time_s=frame_to_time(row.frame_index, timeline),
-                        pixel_x=row.pixel_x, pixel_y=row.pixel_y,
-                        source=target.engine, source_detail=target.source_detail,
-                        confidence=row.confidence, visibility="unknown", status="active",
-                        created_at=now, modified_at=now,
-                    ))
             try:
+                points: list[TrackPoint] = []
+                if raw is not None and target is not None:
+                    rows = dict(raw.by_role)[role]
+                    for row in rows:
+                        if (isnan(row.pixel_x) or isnan(row.pixel_y) or isnan(row.confidence)
+                                or row.confidence < threshold):
+                            continue
+                        points.append(TrackPoint(
+                            point_id=uuid4(), track_id=track_id,
+                            frame_index=row.frame_index,
+                            time_s=frame_to_time(row.frame_index, timeline),
+                            pixel_x=row.pixel_x, pixel_y=row.pixel_y,
+                            source=target.engine, source_detail=target.source_detail,
+                            confidence=row.confidence, visibility="unknown", status="active",
+                            created_at=now, modified_at=now,
+                        ))
                 adopted, _superseded = store.replace_track_engine_points(track_id, points)
             except ValueError as error:
                 raise ProjectSessionError(f"joint activation failed for {role}: {error}") from error
-            manual_count = sum(
-                point.track_id == track_id and point.source == "manual"
-                and point.status == "active" for point in store.observations
-            )
-            role_counts.append(RoleAdoptionCount(role, adopted, manual_count))
+            role_counts.append(RoleAdoptionCount(role, adopted, manual_active[track_id]))
 
         revision = experiment.measurement_revision + 1
         signature = canonical_json_digest({

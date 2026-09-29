@@ -1,4 +1,4 @@
-"""Four-role inference screening and run-scoped review values (Qt-free)."""
+"""四 role 推理筛选与 run 级审核记录(application 层,Qt-free)。"""
 
 from __future__ import annotations
 
@@ -89,7 +89,7 @@ class ExperimentFrameCandidate:
 def read_experiment_candidate(
     project_root: Path, run: TrackingRun, experiment: PendulumExperiment, frame_count: int,
 ) -> JointRawPredictions:
-    """Recheck run binding and immutable raw artifact before review or adoption."""
+    """审核或激活前复核 run 绑定与不可变 raw artifact。"""
 
     if (run.status != "completed" or run.task_type != "infer"
             or run.config.get("request_kind") != "experiment-joint-inference-v1"
@@ -122,7 +122,7 @@ def frame_diagnostic(
     mined_reasons: dict[str, tuple[str, ...]] | None = None,
     screening_score: float = 0.0,
 ) -> ExperimentFrameCandidate:
-    """Describe measurement integrity; no scientific mask or pivot cutoff is applied."""
+    """描述测量完整性;不做科学 mask 或 pivot 截断。"""
 
     if not 0 <= frame_index < raw.frame_count:
         raise ValueError("review frame is outside candidate")
@@ -165,7 +165,7 @@ def build_experiment_review_queue(
     confidence_threshold: float, fixed_pivot_px: tuple[float, float] | None,
     top_n: int = 20,
 ) -> tuple[ExperimentFrameCandidate, ...]:
-    """Merge existing single-role screening signals into a frame-level queue."""
+    """把既有单 role 筛选信号合并为帧级审核队列。"""
 
     params = MiningParams(top_n=top_n, confidence_threshold=confidence_threshold)
     signals: dict[int, dict[str, tuple[str, ...]]] = {}
@@ -178,7 +178,7 @@ def build_experiment_review_queue(
         for item in outcome.shortlist:
             signals.setdefault(item.frame_index, {})[role] = item.reasons
             scores[item.frame_index] = max(scores.get(item.frame_index, 0.0), item.total_score)
-    # A geometrically degenerate frame can be missed by the per-role jump/confidence signals.
+    # 几何退化帧可能不被逐 role 的跳变/置信信号捕获,这里显式补扫
     geometry_extra = 0
     for frame_index in range(raw.frame_count):
         if frame_index in signals:
@@ -201,7 +201,7 @@ def build_experiment_review_queue(
 
 
 def review_record_ids(record: dict[str, object]) -> dict[str, UUID]:
-    """Validate one persisted frame review decision and return correction IDs."""
+    """校验一条持久化的帧审核决定并返回其修正点 ID。"""
 
     if record.get("disposition") not in {"accepted", "skipped", "corrected"}:
         raise ValueError("invalid experiment review disposition")

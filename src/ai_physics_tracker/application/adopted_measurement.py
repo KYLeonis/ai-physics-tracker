@@ -1,4 +1,4 @@
-"""Read-only four-landmark measurement handoff for the future P2 science core."""
+"""面向 P2 科学核心的只读四点测量交付(application 层,Qt-free)。"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from ai_physics_tracker.infrastructure.hashing import file_sha256
 
 @dataclass(frozen=True)
 class AdoptedMeasurementSnapshot:
-    """Payload keeps every source frame; null point has an explicit missing reason."""
+    """payload 保留全部源帧;空点带显式缺测原因。"""
 
     experiment_id: UUID
     active_run_id: UUID
@@ -55,7 +55,9 @@ def build_adopted_measurement(
         if point.track_id not in experiment.roles.track_ids() or point.source == "manual":
             continue
         if point.source != run.engine or point.source_detail != run.source_detail:
-            raise ProjectSessionError("adopted measurement contains mixed-run AI observations")
+            raise ProjectSessionError(
+                "adopted measurement contains AI observations not from the current active run"
+            )
 
     calibration = session.active_calibration(video.video_id)
     calibration_fact = None
@@ -158,9 +160,14 @@ def build_adopted_measurement(
 def assert_adopted_measurement_current(
     session: ProjectSession, snapshot: AdoptedMeasurementSnapshot,
 ) -> None:
-    """Fail closed when any dependency read by this handoff has changed."""
+    """任一依赖变化即 fail-closed;构建期错误也统一按 stale 报告。"""
 
-    current = build_adopted_measurement(session, snapshot.experiment_id)
+    try:
+        current = build_adopted_measurement(session, snapshot.experiment_id)
+    except ProjectSessionError as error:
+        raise ProjectSessionError(
+            f"adopted measurement snapshot is stale: {error}"
+        ) from error
     if (canonical_json_digest(snapshot.payload) != snapshot.digest
             or current.digest != snapshot.digest
             or current.active_run_id != snapshot.active_run_id):

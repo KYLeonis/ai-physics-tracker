@@ -1,6 +1,7 @@
 """P1.4 S1：联合候选与当前实验、模型和原始 artifact 身份绑定。"""
 
 import csv
+import shutil
 from dataclasses import replace
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -24,6 +25,7 @@ from ai_physics_tracker.domain.project import create_project
 from ai_physics_tracker.domain.teacher_model import (
     ModelManifestEntry, TeacherModelReference, build_manifest_hash,
 )
+from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.infrastructure.hashing import file_sha256
 from ai_physics_tracker.infrastructure.dlc_predictions import JointRawPredictions, RawPrediction
@@ -31,7 +33,7 @@ from ai_physics_tracker.infrastructure.project_repository import ProjectReposito
 from ai_physics_tracker.domain.track_store import TrackStore
 
 
-def _prepared(tmp_path, synthetic_video_path):
+def _prepared(tmp_path, synthetic_video_path, *, min_confidence: float = 0.0):
     session = ProjectSession(ProjectRepository(), create_project("joint infer"))
     video, _ = session.register_external_video(synthetic_video_path, VideoStreamInfo(
         width_px=64, height_px=48, fps_container=10.0, frame_count=12,
@@ -72,7 +74,7 @@ def _prepared(tmp_path, synthetic_video_path):
     session._project = replace(session.project, model_references=(model,))
     run, request = prepare_experiment_inference(
         session, experiment.experiment_id, model_id,
-        InferenceParams(min_confidence=0.0, device="cpu"),
+        InferenceParams(min_confidence=min_confidence, device="cpu"),
     )
     return session, experiment, run, request
 
@@ -331,6 +333,7 @@ def test_adopted_measurement_keeps_absolute_frames_fixed_pivot_and_sources(
     assert payload["frames"][frame]["points_by_role"]["tip"]["point_id"] == str(manual.point_id)
     assert payload["frames"][frame]["points_by_role"]["tip"]["confidence"] is None
     assert payload["frames"][frame]["points_by_role"]["pivot"]["source"] == "dlc"
+    assert payload["frames"][0]["points_by_role"]["pivot"]["confidence"] == 0.9
     assert "theta" not in str(payload).lower()
     assert_adopted_measurement_current(session, snapshot)
     session.set_fixed_pivot(experiment.experiment_id, (12.0, 11.0))
@@ -338,4 +341,180 @@ def test_adopted_measurement_keeps_absolute_frames_fixed_pivot_and_sources(
         assert_adopted_measurement_current(session, snapshot)
     Path(request.video_path).write_bytes(b"changed after adoption")
     with pytest.raises(ProjectSessionError, match="video changed"):
+        build_adopted_measurement(session, experiment.experiment_id)
+
+
+def test_joint_review_rejects_replaced_source_video(
+    tmp_path, synthetic_video_path,
+):
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    folder = session.project_root / "data" / "engines" / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(folder, request), folder,
+    ))
+    frame = session.create_experiment_review_queue(run.run_id, top_n=1)[0].frame_index
+    before = session.project
+    Path(request.video_path).write_bytes(b"replaced video")
+    # Correct 的 manual 点会成为测量真值；视频替换后旧候选坐标与新画面错位
+    with pytest.raises(ProjectSessionError, match="video changed"):
+        session.review_experiment_frame(
+            run.run_id, frame, "corrected", role="tip", pixel_x=1.0, pixel_y=2.0,
+        )
+    assert session.project == before
+    with pytest.raises(ProjectSessionError, match="video changed"):
+        session.create_experiment_review_queue(run.run_id, top_n=1)
+    assert session.project == before
+
+
+def test_joint_activation_survives_missing_model_files(
+    tmp_path, synthetic_video_path,
+):
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    folder = session.project_root / "data" / "engines" / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(folder, request), folder,
+    ))
+    # 契约 §4：模型文件缺失只门禁新 infer；已冻结 candidate 仍可激活（避免死端）
+    shutil.rmtree(session.project_root / "models")
+    record = session.activate_experiment_candidate(experiment.experiment_id, run.run_id)
+    assert record.to_run_id == run.run_id
+    assert len(session.project.observations) == 4 * request.frame_count
+    # 候选自身的输入复核保持：视频替换后激活被拒（与模型 live 状态无关）
+    assert session.undo()
+    Path(request.video_path).write_bytes(b"replaced video")
+    with pytest.raises(ProjectSessionError, match="video changed"):
+        session.activate_experiment_candidate(experiment.experiment_id, run.run_id)
+
+
+def test_joint_activation_rejects_invalid_state_matrix(
+    tmp_path, synthetic_video_path,
+):
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    folder = session.project_root / "data" / "engines" / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(folder, request), folder,
+    ))
+    with pytest.raises(ProjectSessionError, match="no active candidate; use Activate"):
+        session.replace_experiment_candidate(experiment.experiment_id, run.run_id)
+    with pytest.raises(ProjectSessionError, match="no active candidate to clear"):
+        session.clear_experiment_candidate(experiment.experiment_id)
+    session.activate_experiment_candidate(experiment.experiment_id, run.run_id)
+    with pytest.raises(ProjectSessionError, match="already has an active candidate"):
+        session.activate_experiment_candidate(experiment.experiment_id, run.run_id)
+    with pytest.raises(ProjectSessionError, match="already active"):
+        session.replace_experiment_candidate(experiment.experiment_id, run.run_id)
+    replacement, replacement_request = prepare_experiment_inference(
+        session, experiment.experiment_id, UUID(request.model_id),
+        InferenceParams(min_confidence=0.0, device="cpu"),
+    )
+    replacement_folder = session.project_root / "data" / "engines" / str(replacement.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, replacement, replacement_request,
+        _result(replacement_folder, replacement_request), replacement_folder,
+    ))
+    (replacement_folder / "predictions.csv").unlink()
+    before = session.project
+    with pytest.raises(ProjectSessionError, match="artifact is unavailable"):
+        session.replace_experiment_candidate(experiment.experiment_id, replacement.run_id)
+    assert session.project == before
+
+
+def test_joint_activation_failure_on_fourth_role_keeps_original_snapshot(
+    tmp_path, synthetic_video_path, monkeypatch,
+):
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    folder = session.project_root / "data" / "engines" / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(folder, request), folder,
+    ))
+    before = session.project
+    original = TrackStore.replace_track_engine_points
+
+    def fail_on_tip(store, track_id, points):
+        if track_id == experiment.roles.tip:
+            raise ValueError("injected fourth-role failure")
+        return original(store, track_id, points)
+
+    monkeypatch.setattr(TrackStore, "replace_track_engine_points", fail_on_tip)
+    with pytest.raises(ProjectSessionError, match="fourth-role failure"):
+        session.activate_experiment_candidate(experiment.experiment_id, run.run_id)
+    assert session.project == before
+    assert session.project.observations == ()
+
+
+def test_adopted_measurement_screens_roles_and_flags_dependency_stale(
+    tmp_path, synthetic_video_path,
+):
+    session, experiment, run, request = _prepared(
+        tmp_path, synthetic_video_path, min_confidence=0.95,
+    )
+    folder = session.project_root / "data" / "engines" / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(folder, request), folder,
+    ))
+    session.activate_experiment_candidate(experiment.experiment_id, run.run_id)
+    snapshot = build_adopted_measurement(session, experiment.experiment_id)
+    first = snapshot.payload["frames"][0]
+    # 推理置信 0.9 低于激活阈值 0.95：四 role 全部显式缺测而非静默丢帧
+    assert all(first["points_by_role"][role] is None for role in ROLE_ORDER)
+    assert all(first["missing_reasons_by_role"][role] == "no_adopted_point"
+               for role in ROLE_ORDER)
+    assert_adopted_measurement_current(session, snapshot)
+    session.set_physical(experiment.experiment_id, PhysicalParameters(
+        length_m=1.2, g_m_s2=9.8, length_source="measured", g_source="assumed",
+    ))
+    with pytest.raises(ProjectSessionError, match="stale"):
+        assert_adopted_measurement_current(session, snapshot)
+    session.undo()
+    assert_adopted_measurement_current(session, snapshot)
+    session.set_release_frame(experiment.experiment_id, 4)
+    with pytest.raises(ProjectSessionError, match="stale"):
+        assert_adopted_measurement_current(session, snapshot)
+    session.undo()
+    assert_adopted_measurement_current(session, snapshot)
+    session.add_calibration(
+        experiment.video_id, (0.0, 0.0), (10.0, 0.0), 2.0, "cm",
+    )
+    with pytest.raises(ProjectSessionError, match="stale"):
+        assert_adopted_measurement_current(session, snapshot)
+    session.undo()
+    assert_adopted_measurement_current(session, snapshot)
+    frame = session.create_experiment_review_queue(run.run_id, top_n=1)[0].frame_index
+    session.review_experiment_frame(
+        run.run_id, frame, "corrected", role="tip", pixel_x=6.0, pixel_y=7.0,
+    )
+    # manual 修正既改 frames 也提升 measurement_revision
+    with pytest.raises(ProjectSessionError, match="stale"):
+        assert_adopted_measurement_current(session, snapshot)
+    session.undo()
+    assert_adopted_measurement_current(session, snapshot)
+
+
+def test_adopted_measurement_rejects_foreign_ai_and_tampered_payload(
+    tmp_path, synthetic_video_path,
+):
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    folder = session.project_root / "data" / "engines" / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(folder, request), folder,
+    ))
+    session.activate_experiment_candidate(experiment.experiment_id, run.run_id)
+    snapshot = build_adopted_measurement(session, experiment.experiment_id)
+    pivot_point = snapshot.payload["frames"][0]["points_by_role"]["pivot"]
+    pivot_point["pixel_x"] = 999.0
+    with pytest.raises(ProjectSessionError, match="stale"):
+        assert_adopted_measurement_current(session, snapshot)
+    pivot_point["pixel_x"] = 1.0
+    assert_adopted_measurement_current(session, snapshot)
+    now = utc_now()
+    foreign = TrackPoint(
+        point_id=uuid4(), track_id=experiment.roles.pivot, frame_index=0,
+        time_s=0.0, pixel_x=5.0, pixel_y=5.0, source="dlc",
+        source_detail="foreign-run", confidence=0.5, visibility="unknown",
+        status="active", created_at=now, modified_at=now,
+    )
+    session._project = replace(
+        session.project, observations=(*session.project.observations, foreign),
+    )
+    with pytest.raises(ProjectSessionError, match="not from the current active run"):
         build_adopted_measurement(session, experiment.experiment_id)
