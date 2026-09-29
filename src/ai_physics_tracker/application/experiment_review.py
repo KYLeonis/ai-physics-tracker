@@ -190,13 +190,16 @@ def build_experiment_review_queue(
         if diagnostic.geometry_reasons and geometry_extra < top_n:
             signals[frame_index] = {}
             geometry_extra += 1
+    # HR 反馈(2026-09-29):逐 role 各取 top_n 合并可达 4×top_n+几何帧(实测
+    # 84 帧),审核量不现实——按帧级 screening score 排序后统一截断 top_n
+    ranked = sorted(signals, key=lambda index: (-scores.get(index, 0.0), index))
     return tuple(
         frame_diagnostic(
             raw, frame_index, confidence_threshold=confidence_threshold,
             fixed_pivot_px=fixed_pivot_px, mined_reasons=signals[frame_index],
             screening_score=scores.get(frame_index, 0.0),
         )
-        for frame_index in sorted(signals, key=lambda index: (-scores.get(index, 0.0), index))
+        for frame_index in ranked[:top_n]
     )
 
 

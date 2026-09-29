@@ -72,6 +72,14 @@ class JointInferenceDialog(QDialog):
         self.batchSpin.setValue(8)
         form.addRow("Batch size", self.batchSpin)
         layout.addLayout(form)
+        self.thresholdLabel = QLabel(
+            "Threshold meaning: predictions with confidence below this value "
+            "are flagged in review and are NOT written when you activate the "
+            "candidate (those frames become missing data). Lower it (e.g. 0.3) "
+            "if activation leaves too many gaps; raise it to keep only "
+            "confident predictions.", self)
+        self.thresholdLabel.setWordWrap(True)
+        layout.addWidget(self.thresholdLabel)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok

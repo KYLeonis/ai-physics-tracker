@@ -155,8 +155,9 @@ class JointReviewDialog(QDialog):
             1 for c in candidates if c.frame_index not in records)
         self.infoLabel.setText(
             f"{reviewed} of {total} queue frame(s) reviewed · {pending} "
-            f"pending. Correct writes one manual point for the chosen role "
-            f"only; Accept/Skip never write points."
+            f"pending.\nReviewing never retrains the model — Correct writes "
+            f"one manual point for the chosen role only; Accept/Skip write "
+            f"nothing."
             + (f"\nCorrecting role '{correcting_role}': click the position "
                f"in the video." if correcting_role else ""))
         has_current = current is not None

@@ -160,9 +160,23 @@ def test_joint_review_merges_roles_and_reports_geometry_without_pivot_cutoff():
     assert diagnostic.pivot_offset_px is None
     queue = build_experiment_review_queue(
         raw, fps_nominal=10.0, confidence_threshold=0.6,
-        fixed_pivot_px=(0.0, 0.0), top_n=2,
+        fixed_pivot_px=(0.0, 0.0), top_n=5,
     )
+    # 帧级截断(见下个测试)下,几何退化帧只要排进 top_n 就唯一入队
     assert sum(item.frame_index == 2 for item in queue) == 1
+
+
+def test_joint_review_queue_is_frame_level_capped(tmp_path, synthetic_video_path):
+    """HR 反馈(2026-09-29):四 role 各取 top_n 合并曾达 4×top_n+几何帧
+    (实测 84 帧)——队列必须按帧级 score 截断到 top_n。"""
+
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    job_dir = session.project_root / "data" / "engines" / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(job_dir, request), job_dir,
+    ))
+    queue = session.create_experiment_review_queue(run.run_id, top_n=5)
+    assert len(queue) <= 5
 
 
 def test_joint_review_correct_is_run_scoped_manual_and_undoable(

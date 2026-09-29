@@ -507,6 +507,9 @@ class ExperimentInferenceActions(QObject):
             f"Correct mode: click the '{role}' position in the video for "
             f"frame {self._review_current} (Esc to cancel)")
         self._sync_review(None)
+        # HR 反馈(2026-09-29):sync 内 seekFrame 会短暂关闭标注模式;确保
+        # 终态为十字光标可点击,不依赖中间时序
+        self.window.videoView.set_annotation_mode(True)
 
     def cancelCorrect(self) -> None:
         self._correcting_role = None
@@ -718,7 +721,10 @@ class ExperimentInferenceActions(QObject):
             manual_note = f"\nManual points on the four tracks: {manual_total}."
         return (
             f"Complete frames: {complete if complete is not None else '?'}. "
-            f"Missing by role — {missing_note}.{manual_note}"
+            f"Missing by role — {missing_note}."
+            f"\nScreening threshold {run.extra_fields.get('verified_min_confidence')}: "
+            "predictions below it are not written (missing frames)."
+            f"{manual_note}"
         )
 
     def _confirm(self, title: str, text: str, *, default_yes: bool = True) -> bool:

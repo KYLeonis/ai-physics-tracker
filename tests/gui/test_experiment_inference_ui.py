@@ -507,6 +507,34 @@ class TestReviewQueue:
         assert not controller.handleCorrectClick(1.0, 1.0)
         assert session.project.observations == ()
 
+    def test_correct_click_via_video_signal_without_selected_track(
+        self, qtbot, tmp_path, synthetic_video_path,
+    ):
+        """HR 反馈(2026-09-29):joint 审核不选 track 时点击被吞——钉住真实链路。"""
+
+        from PySide6.QtCore import QPoint
+
+        window, session, experiment, model = _experiment_window(
+            qtbot, tmp_path, synthetic_video_path)
+        controller = _install(window, _Runner())
+        run = _run_inference(controller, session, experiment, model)
+        controller.openReviewQueue(run.run_id)
+        frame = controller._review_current
+        _wait_presented(qtbot, window, frame)
+        # joint 审核是 experiment 级:track 列表无选中(甚至中途取消选中)
+        # 时,Correct 点击仍必须写点且不丢十字光标模式
+        window.trackList.clearSelection()
+        assert window.selectedTrackId is None
+        controller.startCorrect("tip")
+        assert window.videoView.is_annotation_mode()
+        # startCorrect 内的 seekFrame 会再触发一次帧请求,等它落地再点击
+        qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
+        window.videoView.mapScreenToPixel = lambda _pos: (6.5, 7.5)
+        window.videoView.annotationClicked.emit(QPoint(10, 10))
+        point = session.effective_point(experiment.roles.tip, frame)
+        assert point is not None and point.source == "manual"
+        assert point.pixel_x == 6.5 and point.pixel_y == 7.5
+
 
 # ---------------------------------------------------------------------------
 # GUI 控制器:四轨激活/替换/清除
