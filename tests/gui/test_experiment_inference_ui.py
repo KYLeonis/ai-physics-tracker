@@ -466,7 +466,8 @@ class TestReviewQueue:
         controller.skipCurrent()
         assert controller._records()[frame2]["disposition"] == "skipped"
 
-        # Correct:选 role → 视频点击落点 → manual 点写入所选 role(skip 已前进)
+        # Correct:选 role → 视频点击落点 → manual 点写入所选 role(skip 已前进);
+        # HR 第二轮反馈:写完保持 correcting 并跳到下一待审帧(连续标注流)
         frame3 = controller._review_current
         assert frame3 is not None and frame3 != frame2
         _wait_presented(qtbot, window, frame3)
@@ -474,13 +475,26 @@ class TestReviewQueue:
         assert controller.is_correcting
         assert window.videoView.is_annotation_mode()
         assert controller.handleCorrectClick(6.5, 7.5)
-        assert not controller.is_correcting
+        assert controller.is_correcting          # 连续流:不自动退出
+        assert window.videoView.is_annotation_mode()
         point = session.effective_point(experiment.roles.tip, frame3)
         assert point is not None and point.source == "manual"
         assert point.pixel_x == 6.5 and point.pixel_y == 7.5
         record = controller._records()[frame3]
         assert record["disposition"] == "corrected"
         assert "tip" in record["manual_point_ids"]
+
+        # 队列剩余待审帧可继续连点(等帧呈现后写下一帧)
+        if controller._review_current is not None and \
+                controller._review_current not in controller._records():
+            frame4 = controller._review_current
+            _wait_presented(qtbot, window, frame4)
+            assert controller.handleCorrectClick(7.0, 8.0)
+            point4 = session.effective_point(experiment.roles.tip, frame4)
+            assert point4 is not None and point4.source == "manual"
+
+        controller.cancelCorrect()
+        assert not controller.is_correcting
 
         controller.finishReviewing()
         assert not controller.review_open

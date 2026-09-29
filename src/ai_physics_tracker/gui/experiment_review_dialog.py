@@ -73,7 +73,7 @@ class JointReviewDialog(QDialog):
         correct_row = QHBoxLayout()
         self.roleCombo = QComboBox(self)
         self.correctButton = QPushButton("Correct selected role…", self)
-        self.cancelCorrectButton = QPushButton("Cancel correct (Esc)", self)
+        self.cancelCorrectButton = QPushButton("Stop correcting (Esc)", self)
         self.cancelCorrectButton.setVisible(False)
         correct_row.addWidget(self.roleCombo)
         correct_row.addWidget(self.correctButton)
@@ -83,7 +83,7 @@ class JointReviewDialog(QDialog):
         nav = QGridLayout()
         self.prevButton = QPushButton("◀ Previous", self)
         self.nextButton = QPushButton("Next ▶", self)
-        self.acceptButton = QPushButton("Accept frame", self)
+        self.acceptButton = QPushButton("Accept frame (all 4 roles)", self)
         self.skipButton = QPushButton("Skip frame", self)
         self.finishButton = QPushButton("Finish reviewing", self)
         nav.addWidget(self.prevButton, 0, 0)
@@ -155,11 +155,15 @@ class JointReviewDialog(QDialog):
             1 for c in candidates if c.frame_index not in records)
         self.infoLabel.setText(
             f"{reviewed} of {total} queue frame(s) reviewed · {pending} "
-            f"pending.\nReviewing never retrains the model — Correct writes "
-            f"one manual point for the chosen role only; Accept/Skip write "
-            f"nothing."
+            f"pending.\n"
+            "Decisions are per FRAME: Accept keeps all four AI positions of "
+            "this frame as-is; Skip leaves the frame undecided; Correct "
+            "writes a manual point for ONE chosen role only. Reviewing never "
+            "retrains the model."
             + (f"\nCorrecting role '{correcting_role}': click the position "
-               f"in the video." if correcting_role else ""))
+               f"in the video — after each click you jump to the next "
+               f"pending frame and keep correcting." if correcting_role
+               else ""))
         has_current = current is not None
         self.acceptButton.setEnabled(has_current)
         self.skipButton.setEnabled(has_current)

@@ -503,12 +503,15 @@ class ExperimentInferenceActions(QObject):
             return
         self._correcting_role = role
         self.window.videoView.set_annotation_mode(True)
+        # HR 反馈(2026-09-29):macOS 非活动窗口的第一次点击只用于激活
+        # 窗口(click-through 默认关闭)——主动激活主窗口,视频立即可点
+        self.window.raise_()
+        self.window.activateWindow()
         self.window.statusBar().showMessage(
             f"Correct mode: click the '{role}' position in the video for "
-            f"frame {self._review_current} (Esc to cancel)")
+            f"frame {self._review_current} (Esc to stop)")
         self._sync_review(None)
-        # HR 反馈(2026-09-29):sync 内 seekFrame 会短暂关闭标注模式;确保
-        # 终态为十字光标可点击,不依赖中间时序
+        # sync 内 seekFrame 会短暂关闭标注模式;确保终态为十字光标可点击
         self.window.videoView.set_annotation_mode(True)
 
     def cancelCorrect(self) -> None:
@@ -523,7 +526,11 @@ class ExperimentInferenceActions(QObject):
             self.window.videoView.set_annotation_mode(False)
 
     def handleCorrectClick(self, pixel_x: float, pixel_y: float) -> bool:
-        """主窗口视频点击回调;correcting 时写所选 role 的 manual 点。"""
+        """主窗口视频点击回调;correcting 时写所选 role 的 manual 点。
+
+        HR 反馈(2026-09-29 第二轮):写完一帧自动跳到下一待审帧并保持
+        十字/点击状态(连续标注流),直到队列审完或用户主动停止。
+        """
 
         if not self.is_correcting:
             return False
@@ -546,16 +553,28 @@ class ExperimentInferenceActions(QObject):
             logger.error("joint review correction failed: %s", error)
             self.window.statusBar().showMessage(f"Correction failed: {error}")
             return False
-        self._correcting_role = None
-        self.window.videoView.set_annotation_mode(False)
         records = self._records()
         self._advance(records)
-        self._sync_review(records)
+        remaining = [f for f in self._review_frames if f not in records]
+        if remaining:
+            # 连续标注流:保持 correcting,视频十字可点,直接标下一帧
+            self._sync_review(records)
+            self.window.videoView.set_annotation_mode(True)
+            self.window.statusBar().showMessage(
+                f"Frame {frame}: '{role}' corrected at "
+                f"({pixel_x:.1f}, {pixel_y:.1f}). Next pending: frame "
+                f"{self._review_current} — keep clicking the video.")
+        else:
+            # 队列审完:自动停止 correct(避免对已审帧叠加 manual 点)
+            self._correcting_role = None
+            self.window.videoView.set_annotation_mode(False)
+            self._sync_review(records)
+            self.window.statusBar().showMessage(
+                "Joint review queue completed. Activate the candidate next "
+                "(or keep it for later).")
+        # autosave 必须在 seekFrame 之后:它异步置 busy 会挡住帧请求
         self.window.projectActions.autosave("joint review correction")
         self.window._refreshMarkers()
-        self.window.statusBar().showMessage(
-            f"Frame {frame}: '{role}' corrected at "
-            f"({pixel_x:.1f}, {pixel_y:.1f})")
         self._notify_done(records)
         return True
 
