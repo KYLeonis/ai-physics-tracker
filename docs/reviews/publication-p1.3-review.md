@@ -102,6 +102,40 @@ Reviewer 同时确认"已查无问题"方向:digest 回显链闭合、迟到/强
 
 **验证:全量 1110 passed(净增 6:寄存器检查/check_frames 回显/守卫对称/冻结入口等)。已查无问题方向:digest 链、取消语义、行序三方一致、序列化 round-trip、导入原子性、DLC 3.0.1 真实布局与 runner 契约(对照安装源码)。**
 
+## Human Review(2026-09-29,用户真人两轮 + 自动化预执行)
+
+执行方式:agent 先以 GUI 自动化预执行 HR-A(联合训练主流程),用户本人随后真机完成两轮(标注补全、导入、训练、反馈)。协议:[p1.3-human-review.md](../../publication/plans/p1.3-human-review.md)。
+
+### 结果
+
+- **HR-A 联合训练:PASS**。用户经 Freeze fixed-check → Run joint training 在 test1 完成真实训练(外部 worker,result.json success,checkpoint-best-020.pt,DLC 日志含 test.mAR);数据链(prepare 唯一路径/digest 冻结/verify/register)全程闭环。
+- **HR-B 教师导入:PASS(两轮)**。第一轮暴露自检配置选错(见 F-HR5),修复后第二轮导入 test1 训练产物并自检通过——test2_pendulum 中 imported 引用状态 **compatible**,导入→自检链端到端打通。
+- **HR-C 持久化:PASS**(save/reopen 状态保留,自动化预验证 + 用户确认)。
+- **HR-D 单轨回归:PASS**。
+- **Q1–Q4:用户裁定通过**;数据安全否决项无(模型引用/训练产物/undo 均干净)。
+
+### 用户反馈项(全部已修复;修复 commit 见括号)
+
+| ID | 反馈 | 处置 |
+| --- | --- | --- |
+| F-HR1 | "Run joint training"点击无反应(失败只写状态栏 + 过期文案 "joint AI training arrives in a later phase") | CLOSED:prepare 失败改模态弹窗;按钮邻接禁用原因(fixed_check_valid);文案更新(`dbeb525`) |
+| F-HR2 | 引导模式头部显示 "No track" 无提示 | CLOSED:guided context 显示 "Guided marking — clicks land on the prompted role"(`231e4d8`) |
+| F-HR3 | Task history 无时间戳,多次 run 难区分 | CLOSED:条目前缀 "MM-DD HH:MM"(`231e4d8`) |
+| F-HR4 | 导入向导窗口不自适应、不可调整大小 | CLOSED:resize(760,560)+size grip+wordWrap+combo 自适应(`920f0db`) |
+| F-HR5 | 导入后自检失败 "11 validation errors for PoseConfig metadata" | CLOSED:根因=向导/resolve 把 test/pose_cfg.yaml 当模型配置;修复为 train/pytorch_config.yaml 优先(向导只收 pytorch_config;resolve 优先级重写);自检失败改模态弹窗(`1cdf615`) |
+| F-HR6 | checkpoint 下拉为空(DLC 训练产物在嵌套布局深处) | CLOSED:向导递归扫描 dlc-models-pytorch/**/train/(`920f0db`) |
+| F-HR7 | L source / g source 字段无解释,读作莫名其妙的必填项 | CLOSED:对话框顶部溯源说明 + tooltips + 窗口加宽(`ab8a8b7`);另确认 source 不参与计算,契约非空要求保留 |
+
+### 概念澄清记录(用户提问,入档备查)
+
+- **Calibration 标定长度 vs L**:前者是图像空间的 px↔mm 换算比率(换标定物即变);后者是摆的物理参数(悬点→质心),进周期/能量公式。数值巧合相等(用户沿摆长画 225mm 标定线)不代表语义相同。P2 两者都用:标定做几何换算(θ),L/g 进动力学模型。
+- **tracked pivot 只作 QC**:物理计算(θ 重建)只用 fixed_pivot_px + true vertical,P1 计划明文。
+- **推理按钮缺失是计划边界**:使用 compatible 模型做全视频推理→审核→四轨激活属 P1.4,非缺陷。
+
+### 结论
+
+用户裁定 HR 通过。P1.3 全部验收标准满足(S1–S6 + 四轮 review + 三路扫描 + 双路径真实 DLC smoke + HR)。**P1.3 关闭,合并 `feat/p1.3-joint-training` → `publication/ejp-damped-pendulum` 并 push。下一步 P1.4(joint inference/review/activation)待立项。**
+
 ## Verdict
 
 Reviewer:request-changes → **处置后闭环**(B1+M1–M3+m1–m7+Nit 全部修复并复测,含既有 mock 适配 3 处)。S1–S3 gate 通过,进入 S4(teacher import core)。
