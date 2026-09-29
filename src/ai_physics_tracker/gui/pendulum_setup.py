@@ -370,7 +370,19 @@ class PhysicalParametersDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Pendulum physical parameters")
+        self.resize(640, 320)
         form = QFormLayout(self)
+
+        # HR 2026-09-29:source 字段是论文溯源要求(契约 §2 非空),此前
+        # 无任何解释且编辑时预填文本被截断,用户读作"莫名其妙的必填项"
+        provenanceHint = QLabel(
+            'L / g values are saved together with a one-line provenance note '
+            'that ends up in the paper (e.g. "measured with a ruler", '
+            '"standard gravity"). Keep or edit the prefilled text — it is '
+            'not part of the computation.', self)
+        provenanceHint.setWordWrap(True)
+        provenanceHint.setStyleSheet("color: #666;")
+        form.addRow(provenanceHint)
 
         self.lengthSpin = QDoubleSpinBox(self)
         self.lengthSpin.setRange(1.0, 100000.0)
@@ -384,6 +396,10 @@ class PhysicalParametersDialog(QDialog):
 
         self.lengthSourceEdit = QLineEdit(self)
         self.lengthSourceEdit.setPlaceholderText("how L was measured, e.g. ruler")
+        self.lengthSourceEdit.setToolTip(
+            "One-line provenance note stored with L (e.g. \"measured with a "
+            "ruler\"). Required by the scientific contract; not used in "
+            "calculations.")
         form.addRow("L source:", self.lengthSourceEdit)
 
         self.gSpin = QDoubleSpinBox(self)
@@ -396,6 +412,10 @@ class PhysicalParametersDialog(QDialog):
         self.gSourceEdit = QLineEdit(self)
         self.gSourceEdit.setPlaceholderText("where g comes from, e.g. standard 9.81")
         self.gSourceEdit.setText("standard gravity 9.81 m/s²")
+        self.gSourceEdit.setToolTip(
+            "One-line provenance note stored with g (e.g. \"standard gravity "
+            "9.81 m/s²\"). Required by the scientific contract; not used in "
+            "calculations.")
         form.addRow("g source:", self.gSourceEdit)
 
         self.errorLabel = QLabel("", self)
