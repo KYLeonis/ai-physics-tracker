@@ -66,10 +66,25 @@ def resolve_pose_cfg_path(project_root: Path, model: TeacherModelReference) -> P
 
     root = Path(project_root).resolve()
     if model.origin == "imported":
+        # HR 2026-09-29:DLC bundle 里同时存在 test/pose_cfg.yaml(评价/TF
+        # 风格配置,喂给 PyTorch PoseConfig 会 pydantic 校验失败)与
+        # train/pytorch_config.yaml(真正的模型结构配置)——必须按优先级
+        # 选择,否则导入后的自检必然失败
+        pytorch_train: Path | None = None
+        pytorch_any: Path | None = None
+        pose_cfg: Path | None = None
         for entry in model.manifest:
-            if Path(entry.relative_path).name in ("pose_cfg.yaml", "pytorch_config.yaml"):
-                return root / entry.relative_path
-        return None
+            rel = entry.relative_path
+            name = Path(rel).name
+            if name == "pytorch_config.yaml":
+                if "/train/" in f"/{rel}":
+                    pytorch_train = pytorch_train or root / rel
+                pytorch_any = pytorch_any or root / rel
+            elif name == "pose_cfg.yaml":
+                pose_cfg = pose_cfg or root / rel
+        return pytorch_train or pytorch_any or pose_cfg
+        # pose_cfg.yaml 仅作旧 bundle 回退:worker 端 PoseConfig 校验会
+        # fail closed 并给出可读错误
     # DLC 3.x PyTorch 引擎真实布局在前(Engine.PYTORCH.model_folder_name =
     # "dlc-models-pytorch"、pose_cfg_name = "pytorch_config.yaml",已在
     # S5 review 对照安装源码核实);TF/mock 布局保留兼容既有测试资产

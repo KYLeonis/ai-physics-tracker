@@ -29,6 +29,7 @@ from ai_physics_tracker.application.teacher_models import (
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.domain.pendulum import ROLE_ORDER, PendulumRoles
 from ai_physics_tracker.domain.project import create_project
+from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
 IDENTITY = tuple((role, role) for role in ROLE_ORDER)
@@ -422,3 +423,45 @@ class TestNestedDlcBundle:
         assert "snapshot-best-020.pt" in names
         assert "pytorch_config.yaml" in names
         assert resolve_pose_cfg_path(session.project_root, reference) is not None
+
+    def test_resolve_prefers_train_pytorch_config_over_test_pose_cfg(self):
+        """HR 2026-09-29:bundle 同时含 test/pose_cfg.yaml 与
+        train/pytorch_config.yaml 时,自检必须选后者(此前按 manifest
+        顺序取第一个,把 TF 评价配置喂给 PyTorch runner → pydantic 11 错)。"""
+        from dataclasses import replace as _replace
+        from pathlib import Path as _P
+        from uuid import uuid4 as _u4
+
+        from ai_physics_tracker.domain.teacher_model import (
+            ModelManifestEntry,
+            TeacherModelReference,
+            build_manifest_hash,
+        )
+        from ai_physics_tracker.application.teacher_models import (
+            resolve_pose_cfg_path,
+        )
+
+        entries = (
+            ModelManifestEntry(
+                relative_path="models/m/config.yaml", size=1, sha256="a" * 64),
+            ModelManifestEntry(
+                relative_path="models/m/snapshot.pt", size=1, sha256="b" * 64),
+            ModelManifestEntry(
+                relative_path="models/m/test/pose_cfg.yaml", size=1,
+                sha256="c" * 64),
+            ModelManifestEntry(
+                relative_path="models/m/train/pytorch_config.yaml", size=1,
+                sha256="d" * 64),
+        )
+        model = TeacherModelReference(
+            model_id=_u4(), origin="imported", created_at=utc_now(),
+            bodypart_mapping=tuple((r, r) for r in ROLE_ORDER),
+            config_path="models/m/config.yaml",
+            checkpoint_path="models/m/snapshot.pt",
+            manifest=entries, manifest_hash=build_manifest_hash(entries),
+        )
+        root = _P("/nonexistent")   # resolve 只查 manifest,不触盘
+        resolved = resolve_pose_cfg_path(root, model)
+        assert resolved is not None
+        assert resolved.name == "pytorch_config.yaml"
+        assert "/train/" in resolved.as_posix()

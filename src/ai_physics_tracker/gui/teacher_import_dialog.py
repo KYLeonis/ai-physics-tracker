@@ -49,6 +49,8 @@ class TeacherImportDialog(QDialog):
         self._config: dict | None = None
         self._config_name: str = "config.yaml"
         self.setWindowTitle("Import DLC Model…")
+        self.resize(760, 560)
+        self.setSizeGripEnabled(True)
 
         self.directory_edit = QLineEdit(self)
         browse = QPushButton("Browse…", self)
@@ -64,8 +66,12 @@ class TeacherImportDialog(QDialog):
             form.addRow(f"{role} ←", box)
 
         self.checkpoint_box = QComboBox(self)
+        self.checkpoint_box.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.checkpoint_box.setMinimumContentsLength(48)
         form.addRow("Checkpoint", self.checkpoint_box)
         self.pose_cfg_label = QLabel("pose_cfg: —", self)
+        self.pose_cfg_label.setWordWrap(True)
         form.addRow("", self.pose_cfg_label)
 
         self.selftest_checkbox = QCheckBox(
@@ -195,16 +201,19 @@ class TeacherImportDialog(QDialog):
         if not checkpoint:
             return
         extra_files: tuple[str, ...] = ()
-        # 自检模型配置:递归探测到的 pytorch_config.yaml/pose_cfg.yaml 一并
-        # 入 manifest(imported 模型事后自检的必需文件)
-        for name in ("pose_cfg.yaml", "pytorch_config.yaml"):
-            matches = sorted(
-                p.relative_to(self._bundle_root).as_posix()
-                for p in self._bundle_root.rglob(name)
-                if p.is_file() and ".staging" not in p.parts
-            )
-            if matches:
-                extra_files = extra_files + (matches[0],)
+        # 自检模型配置:只收 train/pytorch_config.yaml(HR 2026-09-29:此前
+        # 把 test/pose_cfg.yaml 误当模型配置,worker 的 PoseConfig 校验必炸);
+        # 多 shuffle 时取含 train/ 的第一个
+        candidates = sorted(
+            p.relative_to(self._bundle_root).as_posix()
+            for p in self._bundle_root.rglob("pytorch_config.yaml")
+            if p.is_file() and ".staging" not in p.parts
+        )
+        train_matches = [c for c in candidates if "/train/" in f"/{c}"]
+        if train_matches:
+            extra_files = (train_matches[0],)
+        elif candidates:
+            extra_files = (candidates[0],)
         try:
             reference = session.import_teacher_model(
                 self._bundle_root, self._config_name, checkpoint, mapping,
