@@ -133,15 +133,32 @@ class TeacherImportDialog(QDialog):
             default = proposed[role]
             if default is not None:
                 box.setCurrentText(default)
+        # HR 2026-09-29:真实 DLC 训练产物是嵌套布局(checkpoint 与
+        # pytorch_config 在 dlc-models-pytorch/**/train/ 深处),根目录扫描
+        # 会得到空 checkpoint 下拉——改为递归搜索,显示相对路径
         self.checkpoint_box.clear()
-        self.checkpoint_box.addItems(
-            sorted(p.name for p in bundle_root.iterdir() if p.is_file() and p.suffix in {".pt", ".pth"})
+        checkpoints = sorted(
+            p.relative_to(bundle_root).as_posix()
+            for p in bundle_root.rglob("*")
+            if p.is_file() and p.suffix in {".pt", ".pth"}
+            and ".staging" not in p.parts
         )
-        pose_names = ("pose_cfg.yaml", "pytorch_config.yaml")
-        pose_found = any((bundle_root / n).is_file() for n in pose_names)
+        self.checkpoint_box.addItems(checkpoints)
+        pose_candidates = sorted(
+            p.relative_to(bundle_root).as_posix()
+            for p in bundle_root.rglob("*")
+            if p.is_file()
+            and p.name in ("pose_cfg.yaml", "pytorch_config.yaml")
+            and p.parent != bundle_root
+            and ".staging" not in p.parts
+        )
+        pose_found = bool(pose_candidates) or (bundle_root / "pose_cfg.yaml").is_file()
         self.pose_cfg_label.setText(
             f"model cfg for self-test: "
-            f"{'detected' if pose_found else 'NOT found (self-test unavailable)'}"
+            + (f"detected ({', '.join(pose_candidates[:2])})"
+               if pose_candidates
+               else ('detected (pose_cfg.yaml)' if pose_found
+                     else "NOT found (self-test unavailable)"))
         )
         self.selftest_checkbox.setEnabled(pose_found)
         self.selftest_checkbox.setChecked(pose_found)
@@ -178,8 +195,16 @@ class TeacherImportDialog(QDialog):
         if not checkpoint:
             return
         extra_files: tuple[str, ...] = ()
-        if (self._bundle_root / "pose_cfg.yaml").is_file():
-            extra_files = ("pose_cfg.yaml",)
+        # 自检模型配置:递归探测到的 pytorch_config.yaml/pose_cfg.yaml 一并
+        # 入 manifest(imported 模型事后自检的必需文件)
+        for name in ("pose_cfg.yaml", "pytorch_config.yaml"):
+            matches = sorted(
+                p.relative_to(self._bundle_root).as_posix()
+                for p in self._bundle_root.rglob(name)
+                if p.is_file() and ".staging" not in p.parts
+            )
+            if matches:
+                extra_files = extra_files + (matches[0],)
         try:
             reference = session.import_teacher_model(
                 self._bundle_root, self._config_name, checkpoint, mapping,

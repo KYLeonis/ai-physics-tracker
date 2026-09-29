@@ -22,7 +22,10 @@ from ai_physics_tracker.application.teacher_import import (
     TeacherImportError,
     parse_teacher_config,
 )
-from ai_physics_tracker.application.teacher_models import teacher_model_availability
+from ai_physics_tracker.application.teacher_models import (
+    resolve_pose_cfg_path,
+    teacher_model_availability,
+)
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.domain.pendulum import ROLE_ORDER, PendulumRoles
 from ai_physics_tracker.domain.project import create_project
@@ -358,3 +361,64 @@ class TestReviewRegressions:
         )
         assert not stale.exists()
         assert (models / str(reference.model_id) / "config.yaml").is_file()
+
+
+class TestNestedDlcBundle:
+    """HR 2026-09-29:用户直接选 DLC 项目目录(config.yaml 在根,checkpoint
+    与 pytorch_config.yaml 在 dlc-models-pytorch/**/train/ 深层)。"""
+
+    def _nested_bundle(self, root: Path) -> Path:
+        bundle = root / "dlc-project"
+        train_dir = (
+            bundle / "dlc-models-pytorch" / "iteration-0"
+            / "dlc-projectSep29-trainset83shuffle1" / "train"
+        )
+        train_dir.mkdir(parents=True)
+        import yaml
+
+        (bundle / "config.yaml").write_text(yaml.safe_dump({
+            "Task": "t", "multianimalproject": False, "identity": False,
+            "project_path": str(bundle), "bodyparts": list(ROLE_ORDER),
+            "cropping": False, "engine": "pytorch",
+        }), encoding="utf-8")
+        (train_dir / "snapshot-best-020.pt").write_bytes(b"nested-weights")
+        (train_dir / "pytorch_config.yaml").write_text(
+            "net_type: resnet_50\n", encoding="utf-8")
+        return bundle
+
+    def test_wizard_finds_nested_checkpoint(self, qtbot, tmp_path):
+        from ai_physics_tracker.gui.teacher_import_dialog import TeacherImportDialog
+
+        bundle = self._nested_bundle(tmp_path)
+
+        class _Win:
+            statusBar = lambda self: None
+
+        dialog = TeacherImportDialog(_Win())
+        qtbot.addWidget(dialog)
+        assert dialog.load_bundle(bundle)
+        # checkpoint 下拉含深层相对路径,默认选中第一项
+        assert dialog.checkpoint_box.count() == 1
+        assert dialog.checkpoint_box.currentText() == (
+            "dlc-models-pytorch/iteration-0/dlc-projectSep29-trainset83shuffle1/"
+            "train/snapshot-best-020.pt"
+        )
+        assert "detected" in dialog.pose_cfg_label.text()
+
+    def test_session_imports_nested_bundle(self, tmp_path, synthetic_video_path):
+        session = _session(tmp_path, synthetic_video_path)
+        bundle = self._nested_bundle(tmp_path)
+        reference = session.import_teacher_model(
+            bundle, "config.yaml",
+            "dlc-models-pytorch/iteration-0/dlc-projectSep29-trainset83shuffle1/"
+            "train/snapshot-best-020.pt",
+            IDENTITY, extra_files=(
+                "dlc-models-pytorch/iteration-0/dlc-projectSep29-trainset83shuffle1/"
+                "train/pytorch_config.yaml",
+            ),
+        )
+        # managed 副本保留 basename;pytorch_config 在 manifest 里供自检
+        names = [Path(e.relative_path).name for e in reference.manifest]
+        assert "snapshot-best-020.pt" in names
+        assert "pytorch_config.yaml" in names
+        assert resolve_pose_cfg_path(session.project_root, reference) is not None
