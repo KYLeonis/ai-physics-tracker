@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-29。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p1.4-joint-inference-activation`，自已推送的 P1.3 集成提交 `0546ff7` 切出。
-- 当前：**P1.4 S1/S2 core 已实现；S3 四轨事务和 S5 P2 handoff 已编码并测试，但两道 Independent Review gate 尚未通过；S4 GUI/S6 全链验收未开始**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。S1 自训/导入模型 Mac CPU 十帧真实 DLC smoke 见[证据](evidence/runtime/p14-joint-inference-smoke.json)；全量回归 1131 passed, 9 subtests。P1.1–P1.3 已合并；P2 未开始。
+- 当前：**P1.4 S1/S2 core 已实现；S3 四轨事务和 S5 P2 handoff 已编码并测试，但两道 Independent Review gate 尚未通过；S4 GUI 未开始；S6 导入模型真实短片生命周期 smoke 已部分通过**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。S1 自训/导入模型 Mac CPU 十帧结构 smoke 见[证据](evidence/runtime/p14-joint-inference-smoke.json)；S6 导入模型 host→review→activate→clear→undo→reopen 见[证据](evidence/runtime/p14-lifecycle-smoke.json)。全量回归 1131 passed, 9 subtests。P1.1–P1.3 已合并；P2 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1–P1.3已完成，P1.4执行中；P2–P6未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning

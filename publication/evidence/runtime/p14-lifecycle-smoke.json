@@ -1,0 +1,26 @@
+{
+  "source_project": "/Users/leonis/Documents/ai-physics-tracker-ejp/test2_pendulum",
+  "model_id": "683edfea-3a59-4d55-bd5b-fc19c6c59356",
+  "model_origin": "imported",
+  "video_frame_count": 10,
+  "timing_status": "cfr",
+  "cancelled_result": "ExternalWorkerError",
+  "cancel_marker_present": true,
+  "cancelled_process_exit_code": -9,
+  "cancelled_run_status": "cancelled",
+  "successful_run_id": "3cde1215-ab11-49ba-94db-3e3facc9709f",
+  "worker_status": "success",
+  "complete_count": 10,
+  "missing_by_role": {
+    "tip": 0,
+    "body_top": 0,
+    "body_bottom": 0,
+    "pivot": 0
+  },
+  "prediction_sha256": "3433c1dddb36a854c90a53f8ff36172402d22c131d51092026100a642fe1c72d",
+  "review_frame_index": 1,
+  "manual_point_id": "875beb8d-e12e-4f92-bcc0-e0c70ecdab14",
+  "activation_input_digest": "f543f3e179d601e7cc6e2e33904f1a0a70775e0eef1c0d4de7fb5f7ef42e8518",
+  "adopted_point_count_before_clear": 41,
+  "clear_undo_reopen": "pass"
+}
