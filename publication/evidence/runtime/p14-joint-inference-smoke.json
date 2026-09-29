@@ -1,0 +1,65 @@
+{
+  "python": "3.12.13",
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "deeplabcut": "3.0.1",
+  "source_video_sha256": "f280b77cc3c003436e85f596444ffd12535820b683580059e41637941f037467",
+  "short_video_sha256": "15a7419c94c7af08ce6cec7337ab43b7466b5b19a688bf568d07f2b56e63556e",
+  "results": [
+    {
+      "origin": "trained",
+      "model_id": "f7569ea6-e8df-447e-b5e2-bb9b30529f56",
+      "model_manifest_hash": "829a3e7434dbe1bd778f26a1e2d9bad8f68c4cd634ced9b589a71d697394ca87",
+      "source_file_hashes": {
+        "video": "15a7419c94c7af08ce6cec7337ab43b7466b5b19a688bf568d07f2b56e63556e",
+        "config": "dfe1b6e1c5e902c63a2b01eae371ef88e9a20a7082e75a692973ada0a117dee4",
+        "checkpoint": "a14c260c50c8bccd729322b450970822a075e5c5742294af7b79fafe564bb524",
+        "pose_cfg": "26a250851affdfc11ecfeed758dfa4104337eadc95ec78a0bfa170a54e08f209"
+      },
+      "status": "success",
+      "device": "cpu",
+      "engine_version": "3.0.1",
+      "runtime_versions": {
+        "deeplabcut": "3.0.1",
+        "torch": "2.13.0"
+      },
+      "frame_count": 10,
+      "complete_count": 10,
+      "missing_by_role": {
+        "tip": 0,
+        "body_top": 0,
+        "body_bottom": 0,
+        "pivot": 0
+      },
+      "prediction_sha256": "e524201e41d4c61b7fd267623b60493ca68540709e2a59cc0c2d23862b053fac",
+      "worker_log": "p14-trained-worker.txt"
+    },
+    {
+      "origin": "imported",
+      "model_id": "683edfea-3a59-4d55-bd5b-fc19c6c59356",
+      "model_manifest_hash": "b958c2f71bdcceb48d3d6e6c35189ac659a6007eff231715443c8a19aa21f4c5",
+      "source_file_hashes": {
+        "video": "15a7419c94c7af08ce6cec7337ab43b7466b5b19a688bf568d07f2b56e63556e",
+        "config": "41ebf74efecd4835f59c95187dd24c209c6c47920de41fc9262a25adc161a013",
+        "checkpoint": "a14c260c50c8bccd729322b450970822a075e5c5742294af7b79fafe564bb524",
+        "pose_cfg": "26a250851affdfc11ecfeed758dfa4104337eadc95ec78a0bfa170a54e08f209"
+      },
+      "status": "success",
+      "device": "cpu",
+      "engine_version": "3.0.1",
+      "runtime_versions": {
+        "deeplabcut": "3.0.1",
+        "torch": "2.13.0"
+      },
+      "frame_count": 10,
+      "complete_count": 10,
+      "missing_by_role": {
+        "tip": 0,
+        "body_top": 0,
+        "body_bottom": 0,
+        "pivot": 0
+      },
+      "prediction_sha256": "393dec17fb82a87c086cc08402b34f30836b6948b439acb58e837a6a6c44dfcb",
+      "worker_log": "p14-imported-worker.txt"
+    }
+  ]
+}

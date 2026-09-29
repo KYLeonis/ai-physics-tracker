@@ -537,7 +537,11 @@ class ExternalJobHandle:
             )
         if self._operation == "selftest_runtime":
             self._validate_selftest_payload(result)
-        if self._operation == "train_experiment" and result.get("actual_device"):
+        if self._operation == "infer_experiment" and not result.get("actual_device"):
+            raise ExternalWorkerError(
+                f"joint inference result misses actual_device (log: {self.worker_log_path})"
+            )
+        if self._operation in {"train_experiment", "infer_experiment"} and result.get("actual_device"):
             actual = str(result["actual_device"])
             requested = str(self._device)
             # auto 由 worker 解析后如实上报;显式 backend 必须匹配(带索引可)
@@ -545,7 +549,7 @@ class ExternalJobHandle:
                 re.escape(requested) + r"(?::[0-9]+)?", actual
             ):
                 raise ExternalWorkerError(
-                    f"train actual_device {actual!r} does not match the "
+                    f"worker actual_device {actual!r} does not match the "
                     f"requested backend {requested!r} (log: {self.worker_log_path})"
                 )
         self._validate_outputs(result)

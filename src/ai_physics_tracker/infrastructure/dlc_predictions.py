@@ -92,6 +92,123 @@ def read_raw_predictions(
 
 
 @dataclass(frozen=True)
+class JointRawPredictions:
+    """一次联合推理的完整原始行；每个 role 均覆盖同一组源帧。"""
+
+    by_role: tuple[tuple[str, tuple[RawPrediction, ...]], ...]
+    frame_count: int
+    complete_count: int
+    missing_by_role: tuple[tuple[str, int], ...]
+
+
+def read_joint_raw_predictions(
+    prediction_data: Any,
+    bodypart_mapping: tuple[tuple[str, str], ...],
+    *,
+    frame_count: int,
+    expected_scorer: str | None = None,
+) -> JointRawPredictions:
+    """整体校验四 role DLC 结果，保留 NaN 缺测与低置信度原值。
+
+    不经单点 ``read_raw_predictions`` 的宽松列选择：输入只能含一个
+    scorer 和映射指定的四个 bodypart，每个恰有 x/y/likelihood。任何一列
+    或一帧非法都拒绝整批，不能把四次单点推理拼成联合结果。
+    """
+
+    from ai_physics_tracker.domain.pendulum import ROLE_ORDER
+
+    count = _validate_frame_count(frame_count)
+    if count is None:
+        raise ValueError("joint prediction frame_count is required")
+    if tuple(role for role, _ in bodypart_mapping) != ROLE_ORDER:
+        raise ValueError("joint prediction mapping must follow four canonical roles")
+    bodyparts = tuple(bodypart for _, bodypart in bodypart_mapping)
+    if any(not isinstance(part, str) or not part for part in bodyparts) or len(set(bodyparts)) != 4:
+        raise ValueError("joint prediction bodyparts must be four distinct names")
+    if expected_scorer is not None and (not isinstance(expected_scorer, str) or not expected_scorer):
+        raise ValueError("expected_scorer must be a non-empty string")
+
+    if isinstance(prediction_data, (str, os.PathLike)):
+        path = Path(prediction_data)
+        if path.suffix.lower() in _PATH_SUFFIXES:
+            try:
+                import pandas as pd
+                data = pd.read_hdf(path, key="df_with_missing")
+            except Exception as exc:
+                raise ValueError(f"failed to read joint HDF5 predictions: {path}") from exc
+            columns = list(data.columns)
+            _validate_joint_columns(columns, bodyparts, expected_scorer)
+            rows_by_role = tuple(_load_dataframe(data, part) for part in bodyparts)
+        elif path.suffix.lower() == ".csv":
+            with path.open("r", newline="", encoding="utf-8") as stream:
+                headers = list(csv.reader(stream))[:3]
+            if len(headers) != 3 or any(len(row) != len(headers[0]) for row in headers):
+                raise ValueError("joint prediction CSV headers are incomplete")
+            if [row[0] for row in headers] != ["scorer", "bodyparts", "coords"]:
+                raise ValueError("joint prediction CSV must use scorer/bodyparts/coords headers")
+            columns = list(zip(headers[0][1:], headers[1][1:], headers[2][1:]))
+            _validate_joint_columns(columns, bodyparts, expected_scorer)
+            rows_by_role = tuple(_load_csv(path, part) for part in bodyparts)
+        else:
+            raise ValueError("joint prediction artifact must be CSV or HDF5")
+    elif hasattr(prediction_data, "columns") and hasattr(prediction_data, "iterrows"):
+        columns = list(prediction_data.columns)
+        _validate_joint_columns(columns, bodyparts, expected_scorer)
+        rows_by_role = tuple(_load_dataframe(prediction_data, part) for part in bodyparts)
+    else:
+        raise ValueError("joint prediction data must be a DataFrame, CSV, or HDF5")
+
+    parsed_by_role: list[tuple[str, tuple[RawPrediction, ...]]] = []
+    missing_by_role: list[tuple[str, int]] = []
+    for (role, _), rows in zip(bodypart_mapping, rows_by_role, strict=True):
+        _validate_rows(rows, count)
+        rows = sorted(rows, key=lambda row: row.frame_index)
+        raw = tuple(
+            RawPrediction(row.frame_index, row.pixel_x, row.pixel_y, row.likelihood)
+            for row in rows
+        )
+        parsed_by_role.append((role, raw))
+        missing_by_role.append((role, sum(
+            isnan(row.pixel_x) or isnan(row.pixel_y) or isnan(row.likelihood)
+            for row in rows
+        )))
+    complete = sum(
+        all(
+            not (isnan(rows[index].pixel_x) or isnan(rows[index].pixel_y)
+                 or isnan(rows[index].confidence))
+            for _, rows in parsed_by_role
+        )
+        for index in range(count)
+    )
+    return JointRawPredictions(tuple(parsed_by_role), count, complete, tuple(missing_by_role))
+
+
+def _validate_joint_columns(
+    columns: list[Any], bodyparts: tuple[str, ...], expected_scorer: str | None
+) -> None:
+    if len(columns) != 3 * len(bodyparts):
+        raise ValueError("joint prediction columns must contain exactly four bodyparts")
+    seen: set[tuple[str, str, str]] = set()
+    scorers: set[str] = set()
+    for column in columns:
+        if not isinstance(column, tuple) or len(column) != 3:
+            raise ValueError("joint prediction columns must have three levels")
+        scorer, bodypart, coord = column
+        if not all(isinstance(value, str) and value for value in column):
+            raise ValueError("joint prediction column labels must be non-empty strings")
+        if bodypart not in bodyparts or coord not in _REQUIRED_COORDS:
+            raise ValueError("joint prediction contains an unexpected bodypart or coord")
+        if column in seen:
+            raise ValueError("joint prediction contains a duplicate column")
+        seen.add(column)
+        scorers.add(scorer)
+    if len(scorers) != 1 or (expected_scorer is not None and scorers != {expected_scorer}):
+        raise ValueError("joint prediction scorer does not match the expected scorer")
+    if {part for _, part, _ in seen} != set(bodyparts):
+        raise ValueError("joint prediction misses a mapped bodypart")
+
+
+@dataclass(frozen=True)
 class _PredictionRow:
     frame_index: int
     pixel_x: float

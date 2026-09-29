@@ -1,0 +1,23 @@
+2026-09-29 19:01:01,321 INFO ai_physics_tracker.worker worker operation=infer_experiment job_id=4e5202fb-d313-4242-ab7d-c3a0ee91e44c
+2026-09-29 19:01:02,273 INFO numexpr.utils NumExpr defaulting to 8 threads.
+Loading four-bodypart model
+2026-09-29 19:01:07,520 WARNING root Could not read shuffle metadata for trainingsetindex=0, shuffle=1: Could not find a shuffle with train_fraction=0.83 and index=1. Known shuffles (fraction, index): none.. Falling back to detecting the engine from model folders.
+Analyzing videos with /private/var/folders/6d/h8srnmg94dg4g9kgkw1np9fm0000gn/T/p14-joint-smoke-5z8r85gz/trained/model-stage/dlc-models-pytorch/iteration-0/dlc-projectSep29-trainset83shuffle1/train/snapshot-1.pt
+Using scorer: DLC_Resnet50_dlc-projectSep29shuffle1_snapshot_1
+Starting to analyze /var/folders/6d/h8srnmg94dg4g9kgkw1np9fm0000gn/T/p14-joint-smoke-5z8r85gz/short.mp4
+Video metadata:
+  Overall # of frames:    10
+  Duration of video [s]:  0.33
+  fps:                    30.0
+  resolution:             w=320, h=180
+Running pose prediction with batch size 4
+  0%|          | 0/10 [00:00<?, ?it/s]
+100%|##########| 10/10 [00:00<00:00, 216.72it/s]
+Frames predicted
+Frames predicted
+Frames predicted
+Saving results in /private/var/folders/6d/h8srnmg94dg4g9kgkw1np9fm0000gn/T/p14-joint-smoke-5z8r85gz/trained/predictions/shortDLC_Resnet50_dlc-projectSep29shuffle1_snapshot_1.h5 and /private/var/folders/6d/h8srnmg94dg4g9kgkw1np9fm0000gn/T/p14-joint-smoke-5z8r85gz/trained/predictions/shortDLC_Resnet50_dlc-projectSep29shuffle1_snapshot_1_full.pickle
+The videos are analyzed. Now your research can truly start!
+You can create labeled videos with 'create_labeled_video'.
+If the tracking is not satisfactory for some videos, consider expanding the training set. You can use the function 'extract_outlier_frames' to extract a few representative outlier frames.
+2026-09-29 19:01:08,672 INFO ai_physics_tracker.worker worker finished status=success exit_code=0
