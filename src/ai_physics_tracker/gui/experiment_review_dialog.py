@@ -42,6 +42,8 @@ class JointReviewDialog(QDialog):
     nextRequested = Signal()
     finishRequested = Signal()
     frameJumped = Signal(int)             # 队列列表双击
+    acceptAllRequested = Signal()         # 一键接受全部 pending 帧
+    addCorrectedToTrainingRequested = Signal()   # corrected 帧并入训练帧集
 
     def __init__(self, run_id: UUID, parent=None) -> None:
         super().__init__(parent)
@@ -85,18 +87,25 @@ class JointReviewDialog(QDialog):
         self.nextButton = QPushButton("Next ▶", self)
         self.acceptButton = QPushButton("Accept frame (all 4 roles)", self)
         self.skipButton = QPushButton("Skip frame", self)
+        self.acceptAllButton = QPushButton("Accept ALL pending frames", self)
+        self.trainButton = QPushButton(
+            "Add corrected frames to training set", self)
         self.finishButton = QPushButton("Finish reviewing", self)
         nav.addWidget(self.prevButton, 0, 0)
         nav.addWidget(self.acceptButton, 0, 1)
         nav.addWidget(self.skipButton, 0, 2)
         nav.addWidget(self.nextButton, 0, 3)
-        nav.addWidget(self.finishButton, 1, 0, 1, 4)
+        nav.addWidget(self.acceptAllButton, 1, 0, 1, 2)
+        nav.addWidget(self.trainButton, 1, 2, 1, 2)
+        nav.addWidget(self.finishButton, 2, 0, 1, 4)
         root.addLayout(nav)
 
         self.prevButton.clicked.connect(self.previousRequested)
         self.nextButton.clicked.connect(self.nextRequested)
         self.acceptButton.clicked.connect(self.acceptRequested)
         self.skipButton.clicked.connect(self.skipRequested)
+        self.acceptAllButton.clicked.connect(self.acceptAllRequested)
+        self.trainButton.clicked.connect(self.addCorrectedToTrainingRequested)
         self.finishButton.clicked.connect(self.finishRequested)
         self.correctButton.clicked.connect(self._on_correct_clicked)
         self.cancelCorrectButton.clicked.connect(self.cancelCorrectRequested)

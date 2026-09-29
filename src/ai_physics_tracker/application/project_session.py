@@ -1771,6 +1771,91 @@ class ProjectSession:
         self._commit_project(project, store, {run_id: self._review_snapshot(run)})
         return point
 
+    def accept_remaining_experiment_frames(self, run_id: UUID) -> int:
+        """一键接受 joint 审核队列中全部 pending 帧(单事务);返回接受帧数。
+
+        已处置帧(含 corrected)不动。这是「模型大面积低置信但抽查位置
+        可信」场景的出口,避免逐帧点击(HR 反馈 2026-09-30)。
+        """
+
+        run = self._validate_infer_run_for_review(run_id)
+        state = self.get_experiment_review(run_id)
+        if state is None:
+            raise ProjectSessionError("create a joint review queue first")
+        candidates, records = state
+        pending = [item.frame_index for item in candidates
+                   if item.frame_index not in records]
+        if not pending:
+            return 0
+        if run.experiment_id is None:
+            raise ProjectSessionError("joint review run has no experiment")
+        experiment = self.pendulum_experiment(run.experiment_id)
+        if run.role_bindings != experiment.roles:
+            raise ProjectSessionError("experiment role binding changed after inference")
+        video = next((item for item in self._project.videos
+                      if item.video_id == experiment.video_id), None)
+        if video is None or self.project_root is None:
+            raise ProjectSessionError("joint candidate video or project is unavailable")
+        try:
+            read_experiment_candidate(self.project_root, run, experiment, video.frame_count)
+        except ValueError as error:
+            raise ProjectSessionError(f"joint candidate changed before review: {error}") from error
+        video_path = self.video_path(video)
+        if (video_path is None or not video_path.is_file()
+                or file_sha256(video_path) != run.extra_fields.get("video_sha256")):
+            raise ProjectSessionError("joint candidate video changed after inference")
+        now_iso = utc_now().isoformat()
+        for frame in pending:
+            records[frame] = {
+                "disposition": "accepted", "reviewed_at": now_iso,
+                "manual_point_ids": {},
+            }
+        data = dict(run.extra_fields[EXPERIMENT_REVIEW_KEY])
+        data["records"] = {str(frame): record for frame, record in records.items()}
+        updated_run = replace(
+            run, extra_fields={**run.extra_fields, EXPERIMENT_REVIEW_KEY: data})
+        project = replace(
+            self._project,
+            tracking_runs=tuple(updated_run if item.run_id == run_id else item
+                                for item in self._project.tracking_runs),
+        )
+        self._commit_project(project, self._store, {run_id: self._review_snapshot(run)})
+        return len(pending)
+
+    def extend_experiment_frame_set(
+        self, experiment_id: UUID, frames: Iterable[int],
+    ) -> tuple[int, ...]:
+        """把帧并入共享帧集(并集,undoable);帧集变化会使 fixed-check 失效。
+
+        用户批准的闭环(2026-09-30):joint 审核 corrected 帧进入下一轮
+        训练帧集——refine 循环的最后一环。
+        """
+
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        experiment = self.pendulum_experiment(experiment_id)
+        existing_set = experiment.frame_set
+        existing = existing_set.frames if existing_set is not None else ()
+        added = sorted({int(frame) for frame in frames} - set(existing))
+        merged = tuple(sorted(set(existing) | {int(frame) for frame in frames}))
+        if not added:
+            return existing
+        updated_set = ExperimentFrameSet(
+            frames=merged,
+            algorithm=existing_set.algorithm if existing_set is not None
+            else "joint-review-merge",
+            created_at=utc_now(),
+            source_video_sha256=(existing_set.source_video_sha256
+                                 if existing_set is not None else None),
+            extra_fields={
+                **(existing_set.extra_fields if existing_set is not None else {}),
+                "joint_review_merge": True,
+                "added_frames": added,
+            },
+        )
+        self.set_experiment_frame_set(experiment_id, updated_set)
+        return merged
+
     def delete_active_manual_point(self, track_id: UUID, frame_index: int) -> TrackPoint:
         """删除当前 Track 在当前帧的 active manual 点，恢复被它遮蔽的 AI 点。
 

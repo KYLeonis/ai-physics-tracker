@@ -521,6 +521,73 @@ class TestReviewQueue:
         assert not controller.handleCorrectClick(1.0, 1.0)
         assert session.project.observations == ()
 
+    def test_role_switch_continues_correct_flow_after_queue_fully_reviewed(
+        self, qtbot, tmp_path, synthetic_video_path,
+    ):
+        """HR 反馈(2026-09-30):标完一个 role 换下一个 role 必须能从头
+        连续标注——推进条件是 role 级 pending,不是帧级。"""
+
+        window, session, experiment, model = _experiment_window(
+            qtbot, tmp_path, synthetic_video_path)
+        controller = _install(window, _Runner())
+        run = _run_inference(controller, session, experiment, model)
+        controller.openReviewQueue(run.run_id)
+        frames = controller._review_frames
+        assert len(frames) >= 2
+        # role A(pivot):逐帧 correct 完整队列
+        controller.startCorrect("pivot")
+        assert controller.is_correcting
+        for frame in frames:
+            _wait_presented(qtbot, window, frame)
+            qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
+            assert controller.handleCorrectClick(1.0, 1.0), frame
+        assert not controller.is_correcting          # role A 完成,自动停
+        # role B(body_top):换 role 后从该 role 第一个未标帧继续
+        controller.startCorrect("body_top")
+        assert controller.is_correcting
+        first_body_top = controller._review_current
+        assert first_body_top == frames[0]           # body_top 全部未标
+        _wait_presented(qtbot, window, first_body_top)
+        qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
+        assert controller.handleCorrectClick(2.0, 2.0)
+        assert controller.is_correcting              # 连续流保持
+        point = session.effective_point(
+            experiment.roles.body_top, first_body_top)
+        assert point is not None and point.source == "manual"
+
+    def test_accept_all_and_training_set_merge(
+        self, qtbot, tmp_path, synthetic_video_path,
+    ):
+        window, session, experiment, model = _experiment_window(
+            qtbot, tmp_path, synthetic_video_path)
+        controller = _install(window, _Runner())
+        run = _run_inference(controller, session, experiment, model)
+        controller.openReviewQueue(run.run_id)
+        # 先 correct 一帧,再一键接受剩余
+        frame = controller._review_current
+        _wait_presented(qtbot, window, frame)
+        controller.startCorrect("tip")
+        qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
+        assert controller.handleCorrectClick(6.5, 7.5)
+        controller.cancelCorrect()
+        undo_depth = len(session._undo_stack)
+        controller.acceptAllPending()
+        records = controller._records()
+        assert all(f in records for f in controller._review_frames)
+        assert records[frame]["disposition"] == "corrected"   # corrected 不动
+        assert len(session._undo_stack) == undo_depth + 1     # 单事务
+        # corrected 帧并入训练帧集
+        from PySide6.QtWidgets import QMessageBox
+
+        QMessageBox.question = staticmethod(
+            lambda *a, **k: QMessageBox.StandardButton.Yes)
+        before = (experiment.frame_set.frames
+                  if experiment.frame_set is not None else ())
+        controller.addCorrectedFramesToTrainingSet()
+        merged = session.pendulum_experiment(
+            experiment.experiment_id).frame_set.frames
+        assert frame in merged and set(before) <= set(merged)
+
     def test_correct_click_via_video_signal_without_selected_track(
         self, qtbot, tmp_path, synthetic_video_path,
     ):
