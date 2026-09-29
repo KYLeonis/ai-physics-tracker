@@ -1,16 +1,16 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
 - 最后更新：2026-09-29。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P1.3 已合并并 push。
-- 当前：**P1.3 已完成并合并（2026-09-29，HR 通过）：联合训练/教师导入/模型兼容性自检生产化，外部 worker 协议落地；1117 tests；test2_pendulum 导入 test1 训练模型并自检 compatible。下一步 P1.4（joint inference/review/activation）待立项**。P1.1、P1.2、P1.3 已合并；P2 未开始。
-- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p1.4-joint-inference-activation`，自已推送的 P1.3 集成提交 `0546ff7` 切出。
+- 当前：**P1.4 S1 联合推理 core 已实现，S2 审核/QC 待执行**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。四 role parser、请求冻结、external worker 和 host candidate 验证已落地；自训/导入模型分别完成 Mac CPU 十帧真实 DLC smoke（见 [证据](evidence/runtime/p14-joint-inference-smoke.json)）。P1.3 已完成并合并（2026-09-29，HR 通过；1117 tests）。P1.1–P1.3 已合并；P2 未开始。
+- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1–P1.3已完成，P1.4执行中；P2–P6未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
 
 - [P1 complete mini-plan](plans/p1-four-landmark-measurement.md)：保留P1.1–P1.4边界，按schema/setup → complete-frame annotation/export → external worker/joint training/teacher import → joint inference/review/atomic activation实施。
 - 计划明确每个Subphase的Context Pack、scope、slice依赖、AC、自动化与真实DLC验证、增量Human Review、risk-based Independent Review及失败恢复。
 - 关键实现顺序：先v1/v2双格式与Save As事务，再共享4/4标注；AI阶段先收敛P0.3 external worker边界，再训练/导入/推理；最后才做四轨activation和P2 adopted-measurement handoff。
-- 本轮未修改`src/`、schema、GUI或runtime；合同与计划不代表功能已实现。
+- 以上为P1初始规划边界；实际实施进度以本状态页开头和各Subphase执行mini-plan为准。
 
 ## P0.2–P0.4 deliverables / current gate
 
@@ -87,4 +87,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**等待用户执行 [P1.3 Human Review](plans/p1.3-human-review.md)**（联合训练 GUI 全流程 + 教师导入向导 + 自检 + 取消；数据安全否决项：模型引用/训练产物/undo）。通过后：P1.3 合并关闭 → P2 立项待授权。Windows G1–G4 仍是 P6 前门禁。
+**执行 [P1.4 mini-plan](plans/p1.4-joint-inference-activation-execution.md) S2：experiment 级逐帧/逐 role 审核与 measurement-integrity QC；随后 S3 四轨原子事务与 Independent Review。** S4/S6 GUI Human Review 和 S5 科学语义 review 按计划执行；P1 完成后停止，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
