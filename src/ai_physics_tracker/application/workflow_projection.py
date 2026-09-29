@@ -77,6 +77,8 @@ ACTION_SETUP_TRUE_VERTICAL = "setup_true_vertical"    # P1.1：top→bottom 两�
 ACTION_SETUP_PHYSICAL = "setup_physical"              # P1.1：录入 L/g 与来源
 ACTION_SET_RELEASE = "set_release_frame"              # P1.1：release = 当前帧
 ACTION_GUIDED_MARKING = "guided_marking"              # P1.2：四 role 引导标注入口
+ACTION_RUN_JOINT_TRAINING = "run_joint_training"       # P1.3：experiment 联合训练
+ACTION_FREEZE_FIXED_CHECK = "freeze_fixed_check"      # P1.3：冻结共享固定检查帧集
 
 # --- 分析可用性四态（设计 §11.1）---
 
@@ -189,6 +191,7 @@ class FrameSetProgress:
     total: int
     next_frame: int | None = None
     next_role: str | None = None
+    fixed_check_valid: bool = True   # False 时联合训练禁用(邻接原因)
 
 
 @dataclass(frozen=True)
@@ -444,9 +447,17 @@ def project_workflow_state(
                 ).current_role
                 if next_frame is not None else None
             )
+            from ai_physics_tracker.application.annotation_join import (
+                fixed_check_status,
+            )
+
+            check_ok, _reason = fixed_check_status(
+                session.project, experiment
+            )
             frame_set = FrameSetProgress(
                 done=done, total=len(frames),
-                next_frame=next_frame, next_role=next_role)
+                next_frame=next_frame, next_role=next_role,
+                fixed_check_valid=check_ok)
 
     pendulum = None
     if track_id is not None:
@@ -678,18 +689,42 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                     f"({progress.next_role}). Marking resumes there.")
         explanation = [
             "All four landmark roles are bound to this track. Single-track "
-            "learning is disabled for experiment tracks; joint AI training "
-            "arrives in a later phase (P1.3).",
+            "learning is disabled for experiment tracks; joint training "
+            "trains all four roles together (P1.3).",
         ]
         if frame_set_line is not None:
             explanation.append(frame_set_line)
         explanation.append(
             "Continue marking landmark frames to improve the labels.")
+
+        # 联合训练前置:fixed check 必须有效(HR 用户反馈:按钮可点但失败
+        # 只写在一闪而过的状态栏,等于死按钮)——改为邻接禁用原因;有效性
+        # 由 project_workflow_state 计算(select_task_card 不持有 session)
+        if state.frame_set is not None:
+            check_ok = state.frame_set.fixed_check_valid
+            disable_reason = (
+                None if check_ok else
+                "Freeze the fixed-check frames first (button below)")
+        else:
+            # F6(S6 review):无帧集时的真实前置是引导标注产出帧集
+            check_ok = False
+            disable_reason = "Create a frame set (Suggest Frames) and mark it first"
+        training_spec = ActionSpec(
+            ACTION_RUN_JOINT_TRAINING,
+            "Run joint training",
+            enabled=check_ok,
+            reason=disable_reason,
+        )
         return TaskCard(
             mode=MODE_SETUP,
             title="Current: pendulum measurement",
             explanation=tuple(explanation),
             primary=ActionSpec(ACTION_GUIDED_MARKING, "Mark landmark frames"),
+            secondary=(
+                training_spec,
+                ActionSpec(
+                    ACTION_FREEZE_FIXED_CHECK, "Freeze fixed-check frames"),
+            ),
             evidence=(f"Experiment setup: {setup_note}.",),
         )
 

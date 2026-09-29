@@ -32,6 +32,10 @@ from ai_physics_tracker.domain.scientific_result import (
     ResultPayload,
     ScientificResult,
 )
+from ai_physics_tracker.domain.teacher_model import (
+    ModelManifestEntry,
+    TeacherModelReference,
+)
 from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.infrastructure.payload_helpers import (
@@ -55,7 +59,8 @@ from ai_physics_tracker.infrastructure.payload_helpers import (
 
 # v2 payload 顶层新增键；project 级 unknown 键保留需排除这些。
 V2_TOP_LEVEL_KEYS = frozenset(
-    {"required_capabilities", "experiments", "scientific_results", "migration"}
+    {"required_capabilities", "experiments", "scientific_results",
+     "model_references", "migration"}
 )
 
 
@@ -452,6 +457,95 @@ def scientific_result_from_payload(payload: dict[str, object]) -> ScientificResu
         payload=None
         if payload.get("payload") is None
         else result_payload_from_payload(_object(payload.get("payload"), "payload")),
+        extra_fields=cast(JsonObject, _unknown(payload, known)),
+    )
+
+
+def teacher_model_to_payload(model: TeacherModelReference) -> dict[str, object]:
+    return _merge_publication_extra(
+        model.extra_fields,
+        {
+            "model_id": str(model.model_id),
+            "origin": model.origin,
+            "created_at": _format_datetime(model.created_at),
+            "source_train_run_id": None
+            if model.source_train_run_id is None
+            else str(model.source_train_run_id),
+            "source_experiment_id": None
+            if model.source_experiment_id is None
+            else str(model.source_experiment_id),
+            "engine": model.engine,
+            "engine_version": model.engine_version,
+            "architecture_version": model.architecture_version,
+            "bodypart_mapping": [
+                [role, target] for role, target in model.bodypart_mapping
+            ],
+            "config_path": model.config_path,
+            "checkpoint_path": model.checkpoint_path,
+            "manifest": [
+                {
+                    "relative_path": entry.relative_path,
+                    "size": entry.size,
+                    "sha256": entry.sha256,
+                }
+                for entry in model.manifest
+            ],
+            "manifest_hash": model.manifest_hash,
+            "compatibility_state": model.compatibility_state,
+            "self_test_evidence": model.self_test_evidence,
+        },
+    )
+
+
+def teacher_model_from_payload(payload: dict[str, object]) -> TeacherModelReference:
+    known = {
+        "model_id", "origin", "created_at", "source_train_run_id",
+        "source_experiment_id", "engine", "engine_version",
+        "architecture_version", "bodypart_mapping", "config_path",
+        "checkpoint_path", "manifest", "manifest_hash",
+        "compatibility_state", "self_test_evidence",
+    }
+    manifest_items = _sequence(payload.get("manifest", []), "manifest")
+    for entry in manifest_items:
+        if not isinstance(entry, dict):
+            raise ValueError(f"manifest entries must be objects, got {entry!r}")
+    manifest = tuple(
+        ModelManifestEntry(
+            relative_path=_string(entry, "relative_path"),
+            size=_integer(entry, "size"),
+            sha256=_string(entry, "sha256"),
+        )
+        for entry in manifest_items
+    )
+    mapping_raw = payload.get("bodypart_mapping", [])
+    if not isinstance(mapping_raw, list) or any(
+        not isinstance(pair, (list, tuple)) or len(pair) != 2
+        for pair in mapping_raw
+    ):
+        raise ValueError("bodypart_mapping must be a list of [role, target] pairs")
+    source_run = payload.get("source_train_run_id")
+    source_experiment = payload.get("source_experiment_id")
+    evidence = payload.get("self_test_evidence")
+    return TeacherModelReference(
+        model_id=UUID(_string(payload, "model_id")),
+        origin=_string(payload, "origin"),
+        created_at=_parse_datetime(_string(payload, "created_at")),
+        source_train_run_id=None if source_run is None else UUID(_string(payload, "source_train_run_id")),
+        source_experiment_id=None
+        if source_experiment is None
+        else UUID(_string(payload, "source_experiment_id")),
+        engine=_string(payload, "engine"),
+        engine_version=_string(payload, "engine_version"),
+        architecture_version=_string(payload, "architecture_version"),
+        bodypart_mapping=tuple(
+            (str(pair[0]), str(pair[1])) for pair in mapping_raw
+        ),
+        config_path=_string(payload, "config_path"),
+        checkpoint_path=_string(payload, "checkpoint_path"),
+        manifest=manifest,
+        manifest_hash=_string(payload, "manifest_hash"),
+        compatibility_state=_string(payload, "compatibility_state"),
+        self_test_evidence=None if evidence is None else _object(evidence, "self_test_evidence"),
         extra_fields=cast(JsonObject, _unknown(payload, known)),
     )
 

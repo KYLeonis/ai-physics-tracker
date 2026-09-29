@@ -46,6 +46,7 @@ class ProjectActions(QObject):
             ("Open project…", QKeySequence.StandardKey.Open, self.openProject),
             ("Open video (new session)…", None, self.openVideo),
             ("Create Pendulum experiment…", None, self.createPendulumExperiment),
+            ("Import DLC Model…", None, self.importDlcModel),
             ("Save", QKeySequence.StandardKey.Save, self.save),
             ("Save as…", QKeySequence.StandardKey.SaveAs, self.saveAs),
             ("Relink video…", None, self.relinkVideo),
@@ -77,6 +78,13 @@ class ProjectActions(QObject):
 
     def guarded(self, continuation: Callable[[], None]) -> None:
         if self.busy:
+            return
+        models = getattr(self.window, "modelActions", None)
+        if models is not None and models.busy:
+            # B1(S6 review):训练/自检在途时换项目/视频会让完成回调失去
+            # 上下文——直接阻断,用户先取消模型任务
+            self.window.statusBar().showMessage(
+                "Cancel the running model task before switching project or video")
             return
         session = self.window._annotation_session
         tracking = getattr(self.window, "trackingActions", None)
@@ -126,6 +134,16 @@ class ProjectActions(QObject):
             "Video files (*.mp4 *.avi *.mov *.mkv *.m4v);;All files (*)")
         if selected:
             self.guarded(lambda: self._load(lambda service, cancel: service.open_video(Path(selected), cancel)))
+
+    def importDlcModel(self) -> None:
+        if self.busy:
+            return
+        models = getattr(self.window, "modelActions", None)
+        if models is not None and models.busy:
+            self.window.statusBar().showMessage(
+                "Cancel the running model task before importing")
+            return
+        self.window.modelActions.openImportDialog()
 
     def openProject(self) -> None:
         if self.busy:

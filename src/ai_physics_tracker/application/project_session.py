@@ -73,6 +73,11 @@ from ai_physics_tracker.domain.project import (
     replace_calibration as replace_domain_calibration,
     set_active_calibration as set_domain_active_calibration,
 )
+from ai_physics_tracker.domain.teacher_model import (
+    ModelManifestEntry,
+    TeacherModelReference,
+    build_manifest_hash,
+)
 from ai_physics_tracker.domain.scientific_result import ScientificResult
 from ai_physics_tracker.domain.derived import DerivedData, DerivedInput, mark_tracks_stale
 from ai_physics_tracker.domain.timeline import (
@@ -143,8 +148,9 @@ TRACK_COLOR_PALETTE = (
 # TrackingRun 注册表与可选的审核事务作用域快照）。registry 参与快照使
 # Undo/Redo 能感知 Track↔run 结构依赖（P6R-01）；合并规则见
 # ProjectSession._history_transition。前 _SNAPSHOT_DATA_FIELDS 个元素是
-# "用户数据"；末位的 registry 仅用于历史转换，不参与
-# accept_saved_snapshot 的"保存期间产生新数据"判定（stabilization R1 F2）。
+# "用户数据"；末两位 registry（tracking_runs + model_references）仅用于
+# 历史转换，不参与 accept_saved_snapshot 的"保存期间产生新数据"判定
+# （stabilization R1 F2）。
 _SessionDataSnapshot = tuple[
     tuple[Track, ...],
     tuple[TrackPoint, ...],
@@ -155,6 +161,7 @@ _SessionDataSnapshot = tuple[
     tuple[PendulumExperiment, ...],
     tuple[ScientificResult, ...],
     tuple[TrackingRun, ...],
+    tuple[TeacherModelReference, ...],
 ]
 _SNAPSHOT_DATA_FIELDS = 8
 
@@ -1193,7 +1200,7 @@ class ProjectSession:
           步骤覆盖，原子拒绝。
         """
 
-        tracks, observations, calibrations, active_map, derived, scoped_reviews, experiments, results, snapshot_runs = snapshot
+        tracks, observations, calibrations, active_map, derived, scoped_reviews, experiments, results, snapshot_runs, model_references = snapshot
         target_ids = {t.track_id for t in tracks}
         current_ids = {t.track_id for t in self._store.tracks}
         restored_ids = target_ids - current_ids
@@ -1260,6 +1267,7 @@ class ProjectSession:
             experiments=experiments,
             scientific_results=results,
             tracking_runs=updated_runs,
+            model_references=model_references,
         )
         self._check_validation_series_removal(candidate_project)
         return candidate_project, TrackStore(tracks, observations)
@@ -1278,6 +1286,7 @@ class ProjectSession:
             self._project.experiments,
             self._project.scientific_results,
             self._project.tracking_runs,
+            self._project.model_references,
         )
 
     def _push_undo_snapshot(
@@ -2214,6 +2223,231 @@ class ProjectSession:
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
         return self._commit_experiment_change(experiment_id, updated)
+
+    def apply_model_selftest(
+        self, model_id: UUID, result: dict[str, object]
+    ) -> TeacherModelReference:
+        """用已验证的 selftest_model result 把模型置为 compatible(S5)。
+
+        状态机:unverified/incompatible → compatible(新一次成功 self-test
+        可覆盖 incompatible——修复后重新验证是合法转移);compatible 重跑
+        仅刷新证据。前置:模型文件可用(availability fail closed);证据经
+        verify_model_selftest_result 构造(含 manifest/mapping/pose_cfg
+        冻结)。事务可 undo。运行 worker 与读取 result 由调用方(GUI)承担。
+        """
+
+        from ai_physics_tracker.application.teacher_models import (
+            teacher_model_availability,
+            verify_model_selftest_result,
+        )
+
+        model = self._model_reference_or_error(model_id)
+        state, reason = teacher_model_availability(self._project_root, model)
+        if state == "unavailable":
+            raise ProjectSessionError(
+                f"model files changed or disappeared; self-test result is not "
+                f"applicable: {reason}"
+            )
+        try:
+            evidence = verify_model_selftest_result(model, result)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        updated_model = replace(
+            model,
+            compatibility_state="compatible",
+            self_test_evidence=evidence,
+        )
+        updated = replace(
+            self._project,
+            model_references=tuple(
+                updated_model if m.model_id == model_id else m
+                for m in self._project.model_references
+            ),
+        )
+        self._commit_project(updated)
+        return updated_model
+
+    def mark_model_incompatible(
+        self, model_id: UUID, reason: str
+    ) -> TeacherModelReference:
+        """显式标记 incompatible(self-test 失败/证据作废的用户裁决)。
+
+        状态机:任意态 → incompatible;覆盖现有 self_test_evidence(标记
+        原因与时间);undo 可整体恢复先前状态与证据。
+        """
+
+        if not reason or not reason.strip():
+            raise ProjectSessionError("an incompatible marker requires a reason")
+        model = self._model_reference_or_error(model_id)
+        updated_model = replace(
+            model,
+            compatibility_state="incompatible",
+            self_test_evidence={
+                "kind": "marked-incompatible",
+                "reason": reason.strip(),
+                "marked_at": utc_now().isoformat(),
+            },
+        )
+        updated = replace(
+            self._project,
+            model_references=tuple(
+                updated_model if m.model_id == model_id else m
+                for m in self._project.model_references
+            ),
+        )
+        self._commit_project(updated)
+        return updated_model
+
+    def _model_reference_or_error(self, model_id: UUID) -> TeacherModelReference:
+        model = next(
+            (m for m in self._project.model_references if m.model_id == model_id),
+            None,
+        )
+        if model is None:
+            raise ProjectSessionError(f"unknown model_id: {model_id}")
+        return model
+
+    def import_teacher_model(
+        self,
+        source_root: Path,
+        config_relative: str,
+        checkpoint_relative: str,
+        bodypart_mapping: tuple[tuple[str, str], ...],
+        extra_files: tuple[str, ...] = (),
+    ) -> TeacherModelReference:
+        """导入外部 DLC 教师模型并登记 imported 引用(契约 §4,S4)。
+
+        copy+validate 委托 application/teacher_import(fail closed 清单、
+        staging 原子发布);登记是项目级事务,可 undo(undo 只移除引用,
+        受管文件按 §6 留存为可再引用产物)。
+        """
+
+        if self._project_root is None:
+            raise ProjectSessionError("project must be saved before importing models")
+        from ai_physics_tracker.application.teacher_import import (
+            TeacherImportError,
+            import_teacher_model as _import_model,
+        )
+
+        model_id = uuid4()
+        try:
+            reference = _import_model(
+                self._project_root,
+                source_root,
+                config_relative,
+                checkpoint_relative,
+                bodypart_mapping,
+                model_id,
+                extra_files,
+            )
+        except TeacherImportError as error:
+            raise ProjectSessionError(str(error)) from error
+        except OSError as error:
+            raise ProjectSessionError(
+                f"teacher import failed during the managed copy: {error}"
+            ) from error
+        updated = replace(
+            self._project,
+            model_references=(*self._project.model_references, reference),
+        )
+        self._commit_project(updated)
+        return reference
+
+    def register_trained_model_reference(self, run_id: UUID) -> TeacherModelReference:
+        """把 completed 联合训练 run 冻结为 TeacherModelReference(契约 §4)。
+
+        校验:run 属 experiment 联合训练(request_kind 标记)、状态 completed、
+        config/checkpoint 产物存在且位于 run 目录内;manifest 逐文件
+        size/SHA256 冻结,manifest_hash 同步记录。项目级事务,可 undo;
+        同一 run 重复注册拒绝(引用幂等,避免歧义)。
+        """
+
+        run = next(
+            (r for r in self._project.tracking_runs if r.run_id == run_id), None
+        )
+        if run is None:
+            raise ProjectSessionError(f"unknown tracking run_id: {run_id}")
+        if run.task_type != "train" or run.status != "completed":
+            raise ProjectSessionError(
+                "model reference requires a completed training run"
+            )
+        if run.config.get("request_kind") != "experiment-joint-training-v1":
+            raise ProjectSessionError(
+                "only experiment joint training runs can become trained models"
+            )
+        if run.experiment_id is None or run.model_snapshot is None:
+            raise ProjectSessionError(
+                "run misses experiment/model provenance required for the reference"
+            )
+        # m2(2026-09-28 review):verifier 冻结的 label_digest 是"该 run 经
+        # verify_experiment_training_result 闭环"的标记;仅凭可被 update 的
+        # config 不铸引用。
+        verified_digest = run.extra_fields.get("label_digest")
+        if not isinstance(verified_digest, str) or not verified_digest:
+            raise ProjectSessionError(
+                "run carries no verified label digest; only runs that passed "
+                "result verification can become trained models"
+            )
+        if any(
+            model.origin == "trained" and model.source_train_run_id == run_id
+            for model in self._project.model_references
+        ):
+            raise ProjectSessionError(
+                f"run {run_id} already has a trained model reference"
+            )
+        if self._project_root is None:
+            raise ProjectSessionError("project must be saved before registering models")
+
+        run_dir = (self._project_root / "data" / "engines" / str(run_id)).resolve()
+        config_relative = run.extra_fields.get("config_path")
+        if not isinstance(config_relative, str) or not config_relative:
+            raise ProjectSessionError("run config_path provenance is missing")
+        entries: list[ModelManifestEntry] = []
+        for name, relative in (
+            ("config_path", config_relative),
+            ("model_snapshot", run.model_snapshot),
+        ):
+            candidate = (run_dir / relative).resolve()
+            if not candidate.is_relative_to(run_dir):
+                raise ProjectSessionError(
+                    f"run {name} escapes the run directory: {relative!r}"
+                )
+            if not candidate.is_file():
+                raise ProjectSessionError(
+                    f"run {name} file is missing: {relative!r}"
+                )
+            from ai_physics_tracker.infrastructure.hashing import file_sha256
+
+            entries.append(
+                ModelManifestEntry(
+                    relative_path=f"data/engines/{run_id}/{relative}",
+                    size=candidate.stat().st_size,
+                    sha256=file_sha256(candidate),
+                )
+            )
+        manifest = tuple(entries)
+        from ai_physics_tracker.domain.pendulum import ROLE_ORDER
+
+        reference = TeacherModelReference(
+            model_id=uuid4(),
+            origin="trained",
+            created_at=utc_now(),
+            source_train_run_id=run_id,
+            source_experiment_id=run.experiment_id,
+            engine_version=run.engine_version,
+            bodypart_mapping=tuple((role, role) for role in ROLE_ORDER),
+            config_path=entries[0].relative_path,
+            checkpoint_path=entries[1].relative_path,
+            manifest=manifest,
+            manifest_hash=build_manifest_hash(manifest),
+            compatibility_state="unverified",
+        )
+        updated = replace(
+            self._project,
+            model_references=(*self._project.model_references, reference),
+        )
+        self._commit_project(updated)
+        return reference
 
     def set_experiment_frame_set(
         self, experiment_id: UUID, frame_set: ExperimentFrameSet

@@ -47,6 +47,8 @@ from ai_physics_tracker.infrastructure.publication_serializer import (
     migration_to_payload,
     scientific_result_from_payload,
     scientific_result_to_payload,
+    teacher_model_from_payload,
+    teacher_model_to_payload,
     tracking_run_from_payload_v2,
     tracking_run_to_payload_v2,
     validate_required_capabilities,
@@ -140,6 +142,10 @@ def _project_to_payload_v2(project: Project) -> dict[str, object]:
     payload["scientific_results"] = {
         str(result.result_id): scientific_result_to_payload(result)
         for result in project.scientific_results
+    }
+    payload["model_references"] = {
+        str(model.model_id): teacher_model_to_payload(model)
+        for model in project.model_references
     }
     if project.migration is not None:
         payload["migration"] = migration_to_payload(project.migration)
@@ -290,6 +296,14 @@ def _project_from_payload_v2(payload: dict[str, object]) -> Project:
                 payload.get("scientific_results", {}),
                 "scientific_results",
                 "result_id",
+            )
+        ),
+        model_references=tuple(
+            teacher_model_from_payload(item)
+            for item in keyed_object_map(
+                payload.get("model_references", {}),
+                "model_references",
+                "model_id",
             )
         ),
         registries=_registries_from_payload(

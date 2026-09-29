@@ -71,7 +71,7 @@ def test_infer_passes_selected_snapshot_and_all_dlc_parameters(
     monkeypatch.setattr(
         dlc_adapter,
         "_model_snapshots",
-        lambda config, shuffle, trainingsetindex: [
+        lambda config, shuffle, trainingsetindex, **kwargs: [
             SimpleNamespace(path=selected), SimpleNamespace(path=latest)
         ],
     )
@@ -131,7 +131,7 @@ def test_infer_rejects_missing_or_foreign_snapshot(
     monkeypatch.setattr(
         dlc_adapter,
         "_model_snapshots",
-        lambda config, shuffle, trainingsetindex: (
+        lambda config, shuffle, trainingsetindex, **kwargs: (
             [SimpleNamespace(path=current)] if belongs else [SimpleNamespace(path=current)]
         ),
     )
@@ -228,7 +228,7 @@ def test_dlc_train_worker_selects_snapshot_created_by_this_training(
         "deeplabcut",
         _fake_deeplabcut(train_network=train_network),
     )
-    monkeypatch.setattr(dlc_adapter, "_model_snapshots", lambda *args: snapshots.pop(0))
+    monkeypatch.setattr(dlc_adapter, "_model_snapshots", lambda *args, **kwargs: snapshots.pop(0))
 
     result = dlc_train_worker(
         uuid4(), Queue(), Event(), str(config_path), max_epochs=2, device="cpu"
@@ -257,7 +257,7 @@ def test_dlc_train_worker_fails_when_training_creates_no_snapshot(
     monkeypatch.setattr(
         dlc_adapter,
         "_model_snapshots",
-        lambda *args: [SimpleNamespace(path=existing)],
+        lambda *args, **kwargs: [SimpleNamespace(path=existing)],
     )
 
     result = dlc_train_worker(

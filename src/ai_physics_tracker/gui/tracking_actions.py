@@ -222,9 +222,20 @@ class TrackingActions(QObject):
                 if extract_refinement_state(t).active_infer_run_id is not None
             }
         self.panel.setRuns(runs, track_id, active_run_ids_by_track=active_by_track)
-        self.panel.setContext(video.display_name if video else "No video", track.name if track else "No track",
+        # HR 2026-09-28:引导模式清空 track 选择后头部显示 "No track" 无提示——
+        # 引导激活时明确告知点击落点由引导条控制
+        guided = getattr(self.window, "_guide_experiment_id", None) is not None
+        track_display = (
+            "Guided marking — clicks land on the prompted role"
+            if guided
+            else (track.name if track else "No track")
+        )
+        models = getattr(self.window, "modelActions", None)
+        model_busy = models is not None and models.busy
+        self.panel.setContext(video.display_name if video else "No video", track_display,
                               train_reason, infer_reason, self.pending,
-                              project_busy=self.window.projectActions.busy)
+                              project_busy=self.window.projectActions.busy,
+                              model_busy=model_busy)
         self._refresh_workflow_ui(session, track_id, runs, video, track)
         if session and track_id:
             recommendation = self._advisor_recommendation(session, track_id, runs)
@@ -704,6 +715,12 @@ class TrackingActions(QObject):
         if action_id == "guided_marking":
             window.beginExperimentAnnotation()
             return
+        if action_id == "run_joint_training":
+            window.modelActions.runJointTraining()
+            return
+        if action_id == "freeze_fixed_check":
+            window.modelActions.freezeFixedCheck()
+            return
         if action_id == "setup_fixed_pivot":
             window.setWorkspace("setup")
             window.beginPivotPick()
@@ -981,6 +998,10 @@ class TrackingActions(QObject):
     def _start(self, parameters, training_run_id=None,
                training_mode: str = "restart", resume_from_run_id: UUID | None = None) -> None:
         if self.pending or self.window.projectActions.busy:
+            return
+        models = getattr(self.window, "modelActions", None)
+        if models is not None and models.busy:
+            self.panel.setActivity("Cannot start: a model task is running")
             return
         if self.window.frameSelectionActions.busy:
             self.panel.setActivity("Cannot start: frame selection is running")

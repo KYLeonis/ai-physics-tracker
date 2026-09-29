@@ -636,11 +636,14 @@ class TaskPanel(QDockWidget):
         infer_reason: str | None,
         busy: bool,
         project_busy: bool = False,
+        model_busy: bool = False,
     ) -> None:
         """更新当前目标及训练/推理按钮的可用状态和禁用原因。
 
         project_busy 表示项目级操作（含静默自动保存）进行中：激活/替换/清除
         按钮随之禁用，避免"可点击但被静默忽略"（review F-3）。
+        model_busy 表示 P1.3 模型任务（联合训练/自检）在途：Cancel 保持可用
+        并路由到 modelActions（HR 2026-09-28：模型任务此前无任何可见反馈）。
         """
 
         video = video_name.strip() or "No video selected"
@@ -650,7 +653,7 @@ class TaskPanel(QDockWidget):
         self._project_busy = project_busy
         self._setReason(self.trainButton, self.trainReasonLabel, train_reason, busy)
         self._setReason(self.inferButton, self.inferReasonLabel, infer_reason, busy)
-        self.cancelButton.setEnabled(busy)
+        self.cancelButton.setEnabled(busy or model_busy)
         self._updateActivationButtonStates()
 
     def setRuns(
@@ -950,7 +953,9 @@ class TaskPanel(QDockWidget):
         else:
             status_str = run.status.capitalize()
 
-        label = f"{run.task_type} · {status_str} · {str(run.run_id)[:8]}{iter_suffix}"
+        # HR 2026-09-28:history 条目加本地时间,便于区分多次 run
+        created = run.created_at.astimezone().strftime("%m-%d %H:%M")
+        label = f"{created} · {run.task_type} · {status_str} · {str(run.run_id)[:8]}{iter_suffix}"
         if run.model_snapshot:
             label += f" · {run.model_snapshot.replace(chr(92), chr(47)).rsplit(chr(47), 1)[-1]}"
         return label
