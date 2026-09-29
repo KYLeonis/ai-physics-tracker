@@ -28,6 +28,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | Publication P1.1 (S1–S6) | [publication-p1.1-review.md](publication-p1.1-review.md) | 三轮 review + 两轮 Human Review 全部通过(921 passed);已合并 | 2026-09-21 |
 | Publication P1.2 (S1–S6) | [publication-p1.2-review.md](publication-p1.2-review.md) | 三轮专项 review + HR 通过(F1/F4/F5 修复,F2 WONTFIX,F3 关闭;Q1–Q4 用户通过;987 passed;帧集 10/10 全 4/4);已合并 `5cad79c` | 2026-09-24 |
 | Publication P1.3 (S1–S6) | [publication-p1.3-review.md](publication-p1.3-review.md) | 四轮 review+三路扫描全闭环;真实 DLC 双路径 smoke;HR 通过(用户两轮,7 项反馈全修,导入→自检 compatible 实测);1117 passed;已合并 | 2026-09-29 |
+| Publication P1.4 (S3/S5 gates) | [publication-p1.4-review.md](publication-p1.4-review.md) | S3 事务/数据丢失与 S5 科学语义两道 gate 均 approve、findings 全闭环(+6 回归);1137 passed;S6 终审后更新本记录 | 2026-09-29 |
 | Publication P0.1 | [publication-p0.1-review.md](publication-p0.1-review.md) | PASS；F1–F4闭环，13 contract tests、15 frozen files/83 external sources，只验证证据与契约 | 2026-09-20 |
 | 5.7 | [phase-5.7-review.md](phase-5.7-review.md) | R1/R2 findings 全闭环；HR1 与两轮补充实测修复完成；804 测试 + 最终 Human Review 通过 | 2026-09-18 |
 
