@@ -87,4 +87,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**先对 [P1.4 mini-plan](plans/p1.4-joint-inference-activation-execution.md) 已实现的 S3 四轨事务做 fresh-context read-only Independent Review，处置 blocking findings；并完成 S5 P2 handoff 科学语义 review。** 通过后进入 S4 experiment workflow/UI，执行 offscreen 与真人 Human Review；随后 S6 真实全链、终审、集成推送。P1 完成后停止，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
+**按 [P1.4 handoff](plans/p1.4-handoff-2026-09-29.md) 接手：先对 [P1.4 mini-plan](plans/p1.4-joint-inference-activation-execution.md) 已实现的 S3 四轨事务做 fresh-context read-only Independent Review，处置 blocking findings；并完成 S5 P2 handoff 科学语义 review。** 通过后进入 S4 experiment workflow/UI，执行 offscreen 与真人 Human Review；随后 S6 剩余真实全链、终审、集成推送。P1 完成后停止，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
