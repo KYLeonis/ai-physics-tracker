@@ -336,3 +336,6 @@ def test_adopted_measurement_keeps_absolute_frames_fixed_pivot_and_sources(
     session.set_fixed_pivot(experiment.experiment_id, (12.0, 11.0))
     with pytest.raises(ProjectSessionError, match="stale"):
         assert_adopted_measurement_current(session, snapshot)
+    Path(request.video_path).write_bytes(b"changed after adoption")
+    with pytest.raises(ProjectSessionError, match="video changed"):
+        build_adopted_measurement(session, experiment.experiment_id)

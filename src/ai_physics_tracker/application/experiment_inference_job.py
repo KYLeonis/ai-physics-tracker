@@ -235,6 +235,7 @@ def verify_experiment_inference_result(
             "prediction_sha256": declared["sha256"],
             "model_id": request.model_id,
             "input_digest": request.input_digest,
+            "video_sha256": request.video_sha256,
             "verified_min_confidence": request.min_confidence,
             "scorer": section["scorer"],
             "complete_count": parsed.complete_count,

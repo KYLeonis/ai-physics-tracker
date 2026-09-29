@@ -48,6 +48,9 @@ def build_adopted_measurement(
     video_path = session.video_path(video)
     if video_path is None or not video_path.is_file():
         raise ProjectSessionError("adopted measurement video file is unavailable")
+    video_sha256 = file_sha256(video_path)
+    if video_sha256 != run.extra_fields.get("video_sha256"):
+        raise ProjectSessionError("adopted measurement video changed after inference")
     for point in session.project.observations:
         if point.track_id not in experiment.roles.track_ids() or point.source == "manual":
             continue
@@ -134,7 +137,7 @@ def build_adopted_measurement(
         "role_bindings": {role: str(track_id)
                           for role, track_id in experiment.roles.by_role().items()},
         "video": {
-            "video_id": str(video.video_id), "sha256": file_sha256(video_path),
+            "video_id": str(video.video_id), "sha256": video_sha256,
             "frame_count": video.frame_count, "width_px": video.width_px,
             "height_px": video.height_px, "fps_nominal": timeline.fps_nominal,
             "frame_indexing": timeline.frame_indexing,
