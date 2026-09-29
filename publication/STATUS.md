@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-29。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p1.4-joint-inference-activation`，自已推送的 P1.3 集成提交 `0546ff7` 切出。
-- 当前：**P1.4 S1 联合推理 core 已实现，S2 审核/QC 待执行**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。四 role parser、请求冻结、external worker 和 host candidate 验证已落地；自训/导入模型分别完成 Mac CPU 十帧真实 DLC smoke（见 [证据](evidence/runtime/p14-joint-inference-smoke.json)）。P1.3 已完成并合并（2026-09-29，HR 通过；1117 tests）。P1.1–P1.3 已合并；P2 未开始。
+- 当前：**P1.4 S1/S2 core 已实现；S3 四轨事务和 S5 P2 handoff 已编码并测试，但两道 Independent Review gate 尚未通过；S4 GUI/S6 全链验收未开始**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。S1 自训/导入模型 Mac CPU 十帧真实 DLC smoke 见[证据](evidence/runtime/p14-joint-inference-smoke.json)；全量回归 1131 passed, 9 subtests。P1.1–P1.3 已合并；P2 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1–P1.3已完成，P1.4执行中；P2–P6未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -87,4 +87,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**执行 [P1.4 mini-plan](plans/p1.4-joint-inference-activation-execution.md) S2：experiment 级逐帧/逐 role 审核与 measurement-integrity QC；随后 S3 四轨原子事务与 Independent Review。** S4/S6 GUI Human Review 和 S5 科学语义 review 按计划执行；P1 完成后停止，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
+**先对 [P1.4 mini-plan](plans/p1.4-joint-inference-activation-execution.md) 已实现的 S3 四轨事务做 fresh-context read-only Independent Review，处置 blocking findings；并完成 S5 P2 handoff 科学语义 review。** 通过后进入 S4 experiment workflow/UI，执行 offscreen 与真人 Human Review；随后 S6 真实全链、终审、集成推送。P1 完成后停止，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
