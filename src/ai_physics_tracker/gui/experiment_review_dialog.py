@@ -24,32 +24,22 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-_DISPOSITION_MARKS = {
-    "accepted": "✓ accepted",
-    "skipped": "– skipped",
-    "corrected": "✎ corrected",
-}
-
-
 class JointReviewDialog(QDialog):
-    """experiment 四 role 候选审核队列窗口(非模态)。"""
+    """experiment 四 role 推荐帧窗口(非模态)。"""
 
-    acceptRequested = Signal()
-    skipRequested = Signal()
     correctRequested = Signal(str)        # 选定 role
     cancelCorrectRequested = Signal()
     previousRequested = Signal()
     nextRequested = Signal()
     finishRequested = Signal()
     frameJumped = Signal(int)             # 队列列表双击
-    acceptAllRequested = Signal()         # 一键接受全部 pending 帧
-    addCorrectedToTrainingRequested = Signal()   # corrected 帧并入训练帧集
+    addFrameToTrainingRequested = Signal()
 
     def __init__(self, run_id: UUID, parent=None) -> None:
         super().__init__(parent)
         self.run_id = run_id
         self.setWindowTitle(
-            f"Joint candidate review — run {str(run_id)[:8]} (not active)")
+            f"Suggested frames — run {str(run_id)[:8]}")
         self.setMinimumSize(520, 420)
         self.setModal(False)
 
@@ -85,27 +75,17 @@ class JointReviewDialog(QDialog):
         nav = QGridLayout()
         self.prevButton = QPushButton("◀ Previous", self)
         self.nextButton = QPushButton("Next ▶", self)
-        self.acceptButton = QPushButton("Accept frame (all 4 roles)", self)
-        self.skipButton = QPushButton("Skip frame", self)
-        self.acceptAllButton = QPushButton("Accept ALL pending frames", self)
-        self.trainButton = QPushButton(
-            "Add corrected frames to training set", self)
-        self.finishButton = QPushButton("Finish reviewing", self)
+        self.trainButton = QPushButton("Add this frame and mark 4 roles…", self)
+        self.finishButton = QPushButton("Close suggestions", self)
         nav.addWidget(self.prevButton, 0, 0)
-        nav.addWidget(self.acceptButton, 0, 1)
-        nav.addWidget(self.skipButton, 0, 2)
-        nav.addWidget(self.nextButton, 0, 3)
-        nav.addWidget(self.acceptAllButton, 1, 0, 1, 2)
-        nav.addWidget(self.trainButton, 1, 2, 1, 2)
-        nav.addWidget(self.finishButton, 2, 0, 1, 4)
+        nav.addWidget(self.nextButton, 0, 1)
+        nav.addWidget(self.trainButton, 1, 0, 1, 2)
+        nav.addWidget(self.finishButton, 2, 0, 1, 2)
         root.addLayout(nav)
 
         self.prevButton.clicked.connect(self.previousRequested)
         self.nextButton.clicked.connect(self.nextRequested)
-        self.acceptButton.clicked.connect(self.acceptRequested)
-        self.skipButton.clicked.connect(self.skipRequested)
-        self.acceptAllButton.clicked.connect(self.acceptAllRequested)
-        self.trainButton.clicked.connect(self.addCorrectedToTrainingRequested)
+        self.trainButton.clicked.connect(self.addFrameToTrainingRequested)
         self.finishButton.clicked.connect(self.finishRequested)
         self.correctButton.clicked.connect(self._on_correct_clicked)
         self.cancelCorrectButton.clicked.connect(self.cancelCorrectRequested)
@@ -121,15 +101,22 @@ class JointReviewDialog(QDialog):
         self.roleCombo.clear()
         self.roleCombo.addItems(list(roles))
 
-    def sync(self, candidates, records, current_index, correcting_role) -> None:
+    def sync(self, candidates, records, current_index, correcting_role,
+             training_frames, frame_ready: bool) -> None:
         """candidates: ExperimentFrameCandidate 序列;records: frame→record。"""
 
         self.frameList.clear()
         for candidate in candidates:
-            mark = _DISPOSITION_MARKS.get(
-                (records.get(candidate.frame_index) or {}).get("disposition", ""),
-                "pending")
-            item = QListWidgetItem(f"Frame {candidate.frame_index} — {mark}")
+            mark = ("✓ in training set" if candidate.frame_index in training_frames
+                    else "✎ corrected" if (records.get(candidate.frame_index) or {}).get(
+                        "disposition") == "corrected" else "suggested")
+            reason = next(
+                (f"{role}: {reasons[0]}" for role, reasons in
+                 candidate.role_reasons.items() if reasons),
+                candidate.geometry_reasons[0] if candidate.geometry_reasons
+                else "screening signal")
+            item = QListWidgetItem(
+                f"Frame {candidate.frame_index} — {reason} · {mark}")
             item.setData(0x0100, candidate.frame_index)
             self.frameList.addItem(item)
             if current_index is not None and candidate.frame_index == current_index:
@@ -158,24 +145,21 @@ class JointReviewDialog(QDialog):
                     self.roleTable.setItem(row, column, QTableWidgetItem(text))
         self.roleTable.resizeColumnsToContents()
 
-        reviewed = len(records)
         total = len(candidates)
-        pending = sum(
-            1 for c in candidates if c.frame_index not in records)
+        selected = sum(c.frame_index in training_frames for c in candidates)
         self.infoLabel.setText(
-            f"{reviewed} of {total} queue frame(s) reviewed · {pending} "
-            f"pending.\n"
-            "Decisions are per FRAME: Accept keeps all four AI positions of "
-            "this frame as-is; Skip leaves the frame undecided; Correct "
-            "writes a manual point for ONE chosen role only. Reviewing never "
-            "retrains the model."
-            + (f"\nCorrecting role '{correcting_role}': click the position "
-               f"in the video — after each click you jump to the next "
-               f"pending frame and keep correcting." if correcting_role
-               else ""))
+            f"{total} suggested frame(s) · {selected} already in training set.\n"
+            "These are optional suggestions, not frames you must accept. "
+            "Add one to the shared training set, then mark all four roles "
+            "manually for retraining. Correct one role only if its measurement "
+            "position is wrong."
+            + (f"\nCorrecting '{correcting_role}': "
+               + ("click once in the video (Esc to cancel)." if frame_ready
+                  else f"waiting for frame {current_index} to appear in the video…")
+               if correcting_role else ""))
         has_current = current is not None
-        self.acceptButton.setEnabled(has_current)
-        self.skipButton.setEnabled(has_current)
+        self.trainButton.setEnabled(
+            has_current and current_index not in training_frames and not correcting_role)
         self.correctButton.setEnabled(has_current and not correcting_role)
         self.cancelCorrectButton.setVisible(bool(correcting_role))
         self.roleCombo.setEnabled(not correcting_role)

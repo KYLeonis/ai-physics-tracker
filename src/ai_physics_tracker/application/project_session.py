@@ -1644,6 +1644,9 @@ class ProjectSession:
                 raw, fps_nominal=timeline.fps_nominal,
                 confidence_threshold=confidence_threshold,
                 fixed_pivot_px=experiment.geometry.fixed_pivot_px, top_n=top_n,
+                working_zone=timeline.working_zone,
+                excluded_frames=frozenset(
+                    experiment.frame_set.frames if experiment.frame_set else ()),
             )
         except (ValueError, KeyError, OSError) as error:
             raise ProjectSessionError(f"joint candidate cannot be reviewed: {error}") from error
@@ -1663,8 +1666,12 @@ class ProjectSession:
                 "confidence_threshold": confidence_threshold,
                 "confidence_source": "inference_request.min_confidence",
                 "mining_params": MiningParams(
-                    top_n=top_n, confidence_threshold=confidence_threshold,
+                    top_n=min(timeline.working_zone[1] - timeline.working_zone[0] + 1,
+                              top_n + len(experiment.frame_set.frames
+                                          if experiment.frame_set else ())),
+                    confidence_threshold=confidence_threshold,
                 ).to_snapshot(),
+                "suggestion_limit": top_n,
                 "pivot_cutoff_px": None,
             },
             "candidates": [item.to_dict() for item in candidates],
@@ -1770,57 +1777,6 @@ class ProjectSession:
         )
         self._commit_project(project, store, {run_id: self._review_snapshot(run)})
         return point
-
-    def accept_remaining_experiment_frames(self, run_id: UUID) -> int:
-        """一键接受 joint 审核队列中全部 pending 帧(单事务);返回接受帧数。
-
-        已处置帧(含 corrected)不动。这是「模型大面积低置信但抽查位置
-        可信」场景的出口,避免逐帧点击(HR 反馈 2026-09-30)。
-        """
-
-        run = self._validate_infer_run_for_review(run_id)
-        state = self.get_experiment_review(run_id)
-        if state is None:
-            raise ProjectSessionError("create a joint review queue first")
-        candidates, records = state
-        pending = [item.frame_index for item in candidates
-                   if item.frame_index not in records]
-        if not pending:
-            return 0
-        if run.experiment_id is None:
-            raise ProjectSessionError("joint review run has no experiment")
-        experiment = self.pendulum_experiment(run.experiment_id)
-        if run.role_bindings != experiment.roles:
-            raise ProjectSessionError("experiment role binding changed after inference")
-        video = next((item for item in self._project.videos
-                      if item.video_id == experiment.video_id), None)
-        if video is None or self.project_root is None:
-            raise ProjectSessionError("joint candidate video or project is unavailable")
-        try:
-            read_experiment_candidate(self.project_root, run, experiment, video.frame_count)
-        except ValueError as error:
-            raise ProjectSessionError(f"joint candidate changed before review: {error}") from error
-        video_path = self.video_path(video)
-        if (video_path is None or not video_path.is_file()
-                or file_sha256(video_path) != run.extra_fields.get("video_sha256")):
-            raise ProjectSessionError("joint candidate video changed after inference")
-        now_iso = utc_now().isoformat()
-        for frame in pending:
-            records[frame] = {
-                "disposition": "accepted", "reviewed_at": now_iso,
-                "manual_point_ids": {},
-            }
-        data = dict(run.extra_fields[EXPERIMENT_REVIEW_KEY])
-        data["records"] = {str(frame): record for frame, record in records.items()}
-        updated_run = replace(
-            run, extra_fields={**run.extra_fields, EXPERIMENT_REVIEW_KEY: data})
-        project = replace(
-            self._project,
-            tracking_runs=tuple(updated_run if item.run_id == run_id else item
-                                for item in self._project.tracking_runs),
-        )
-        self._commit_project(project, self._store, {run_id: self._review_snapshot(run)})
-        return len(pending)
 
     def extend_experiment_frame_set(
         self, experiment_id: UUID, frames: Iterable[int],

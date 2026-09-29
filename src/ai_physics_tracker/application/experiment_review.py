@@ -163,16 +163,23 @@ def frame_diagnostic(
 def build_experiment_review_queue(
     raw: JointRawPredictions, *, fps_nominal: float,
     confidence_threshold: float, fixed_pivot_px: tuple[float, float] | None,
-    top_n: int = 20,
+    top_n: int = 20, working_zone: tuple[int, int] | None = None,
+    excluded_frames: frozenset[int] = frozenset(),
 ) -> tuple[ExperimentFrameCandidate, ...]:
-    """把既有单 role 筛选信号合并为帧级审核队列。"""
+    """把既有单 role 筛选信号合并为训练候选帧建议。"""
 
-    params = MiningParams(top_n=top_n, confidence_threshold=confidence_threshold)
+    if type(top_n) is not int or top_n <= 0:
+        raise ValueError("top_n must be a positive integer")
+    zone_start, zone_end = working_zone or (0, raw.frame_count - 1)
+    params = MiningParams(
+        top_n=min(zone_end - zone_start + 1, top_n + len(excluded_frames)),
+        confidence_threshold=confidence_threshold,
+    )
     signals: dict[int, dict[str, tuple[str, ...]]] = {}
     scores: dict[int, float] = {}
     for role, rows in raw.by_role:
         outcome = mine_difficult_frames(
-            rows, zone_start=0, zone_end=raw.frame_count - 1,
+            rows, zone_start=zone_start, zone_end=zone_end,
             fps_nominal=fps_nominal, params=params,
         )
         for item in outcome.shortlist:
@@ -180,8 +187,8 @@ def build_experiment_review_queue(
             scores[item.frame_index] = max(scores.get(item.frame_index, 0.0), item.total_score)
     # 几何退化帧可能不被逐 role 的跳变/置信信号捕获,这里显式补扫
     geometry_extra = 0
-    for frame_index in range(raw.frame_count):
-        if frame_index in signals:
+    for frame_index in range(zone_start, zone_end + 1):
+        if frame_index in signals or frame_index in excluded_frames:
             continue
         diagnostic = frame_diagnostic(
             raw, frame_index, confidence_threshold=confidence_threshold,
@@ -192,7 +199,9 @@ def build_experiment_review_queue(
             geometry_extra += 1
     # HR 反馈(2026-09-29):逐 role 各取 top_n 合并可达 4×top_n+几何帧(实测
     # 84 帧),审核量不现实——按帧级 screening score 排序后统一截断 top_n
-    ranked = sorted(signals, key=lambda index: (-scores.get(index, 0.0), index))
+    ranked = sorted(
+        (index for index in signals if index not in excluded_frames),
+        key=lambda index: (-scores.get(index, 0.0), index))
     return tuple(
         frame_diagnostic(
             raw, frame_index, confidence_threshold=confidence_threshold,

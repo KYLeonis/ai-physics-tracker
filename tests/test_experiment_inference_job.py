@@ -164,6 +164,12 @@ def test_joint_review_merges_roles_and_reports_geometry_without_pivot_cutoff():
     )
     # 帧级截断(见下个测试)下,几何退化帧只要排进 top_n 就唯一入队
     assert sum(item.frame_index == 2 for item in queue) == 1
+    suggested = build_experiment_review_queue(
+        raw, fps_nominal=10.0, confidence_threshold=0.6,
+        fixed_pivot_px=(0.0, 0.0), top_n=5,
+        working_zone=(1, 3), excluded_frames=frozenset({2}),
+    )
+    assert suggested and all(item.frame_index in {1, 3} for item in suggested)
 
 
 def test_joint_review_queue_is_frame_level_capped(tmp_path, synthetic_video_path):

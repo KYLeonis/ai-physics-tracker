@@ -77,9 +77,9 @@ class ExperimentInferenceActions(QObject):
         self._review_frames: tuple[int, ...] = ()
         self._review_current: int | None = None
         self._correcting_role: str | None = None
-        self._correct_autosave_counter = 0
 
         window.projectChanged.connect(self._on_project_changed)
+        window.presentedFrameChanged.connect(self._on_review_frame_presented)
         window.closing.connect(self.shutdown)
 
         # HR 2026-09-28 同款模式:面板 Cancel 归在途控制器;空闲时 no-op
@@ -310,21 +310,22 @@ class ExperimentInferenceActions(QObject):
                 "Joint review needs the experiment on the current video")
             return
         if run_id is None:
-            # 卡片入口:取最新 completed candidate(非 active)
+            # 有新 candidate 时优先推荐它;否则允许从已激活 run 继续选训练帧
             runs = sorted(
                 (r for r in session.tracking_runs()
                  if r.task_type == "infer"
                  and r.config.get("request_kind") == "experiment-joint-inference-v1"
                  and r.experiment_id == experiment.experiment_id
-                 and r.status == "completed"
-                 and r.run_id != experiment.active_infer_run_id),
+                 and r.status == "completed"),
                 key=lambda r: r.created_at,
             )
             if not runs:
                 self.window.statusBar().showMessage(
-                    "No joint candidate to review — run joint inference first")
+                    "No joint run to inspect — run joint inference first")
                 return
-            run_id = runs[-1].run_id
+            candidates = [r for r in runs
+                          if r.run_id != experiment.active_infer_run_id]
+            run_id = (candidates or runs)[-1].run_id
         try:
             state = session.get_experiment_review(run_id)
             if state is None:
@@ -345,7 +346,7 @@ class ExperimentInferenceActions(QObject):
         records = session.get_experiment_review(run_id)[1]
         self._review_run_id = run_id
         self._review_frames = tuple(c.frame_index for c in candidates)
-        self._review_current = self._first_pending_frame(records)
+        self._review_current = self._review_frames[0] if self._review_frames else None
         self._dialog.set_roles(self._role_order())
         self._dialog.show()
         self._dialog.raise_()
@@ -356,24 +357,14 @@ class ExperimentInferenceActions(QObject):
 
         return ROLE_ORDER
 
-    def _first_pending_frame(self, records: dict) -> int | None:
-        for frame in self._review_frames:
-            if frame not in records:
-                return frame
-        return self._review_frames[-1] if self._review_frames else None
-
     def _connect_dialog(self, dialog) -> None:
-        dialog.acceptRequested.connect(self.acceptCurrent)
-        dialog.skipRequested.connect(self.skipCurrent)
         dialog.correctRequested.connect(self.startCorrect)
         dialog.cancelCorrectRequested.connect(self.cancelCorrect)
         dialog.previousRequested.connect(self.previousFrame)
         dialog.nextRequested.connect(self.nextFrame)
         dialog.finishRequested.connect(self.finishReviewing)
         dialog.frameJumped.connect(self.jumpToFrame)
-        dialog.acceptAllRequested.connect(self.acceptAllPending)
-        dialog.addCorrectedToTrainingRequested.connect(
-            self.addCorrectedFramesToTrainingSet)
+        dialog.addFrameToTrainingRequested.connect(self.addCurrentToTrainingSet)
         dialog.finished.connect(self._on_dialog_closed)
 
     def _on_dialog_closed(self, *_args) -> None:
@@ -394,7 +385,7 @@ class ExperimentInferenceActions(QObject):
         state = session.get_experiment_review(self._review_run_id)
         return state[0] if state is not None else ()
 
-    def _sync_review(self, records: dict) -> None:
+    def _sync_review(self, records: dict, *, seek: bool = True) -> None:
         """把队列/记录/当前帧推给对话框、视频与 overlay。"""
 
         if self._dialog is None:
@@ -402,16 +393,25 @@ class ExperimentInferenceActions(QObject):
         candidates = self._candidates()
         records = records if records is not None else self._records()
         index = self._index_of(self._review_current)
+        experiment = self.window.currentPendulumExperiment()
+        training_frames = (frozenset(experiment.frame_set.frames)
+                           if experiment and experiment.frame_set else frozenset())
+        frame_ready = self.window.presented_frame_index == self._review_current
         self._dialog.sync(candidates, records, self._review_current,
-                          self._correcting_role)
+                          self._correcting_role, training_frames, frame_ready)
         self._dialog.set_navigation(
             index is not None and index > 0,
             index is not None and index < len(self._review_frames) - 1)
-        if self._review_current is not None:
+        if seek and self._review_current is not None:
             self._schedule_seek()
+        if self._review_current is not None:
             self._refresh_preview(candidates)
         if self._correcting_role:
-            self.window.videoView.set_annotation_mode(True)
+            self.window.videoView.set_annotation_mode(frame_ready)
+
+    def _on_review_frame_presented(self, *_args) -> None:
+        if self._dialog is not None and self._correcting_role is not None:
+            self._sync_review(None, seek=False)
 
     def _schedule_seek(self, attempts: int = 8) -> None:
         """呈现当前审核帧;被异步保存等短暂 busy 拒绝时延迟重试。"""
@@ -451,30 +451,6 @@ class ExperimentInferenceActions(QObject):
         self.window.videoView.set_preview_markers(
             markers, "joint candidate preview")
 
-    def _advance(self, records: dict) -> None:
-        """跳到下一待办帧:帧级 pending 优先,correcting 时再看 role 级。
-
-        HR 反馈(2026-09-30):标完一个 role 后换下一个 role,必须能从该
-        role 的第一个未标帧继续,而不是「队列已审完」卡死。
-        """
-
-        for frame in self._review_frames:
-            if frame not in records:
-                self._review_current = frame
-                return
-        role = self._correcting_role
-        if role is not None:
-            for frame in self._review_frames:
-                if role not in self._role_ids(records.get(frame)):
-                    self._review_current = frame
-                    return
-        self._review_current = self._review_frames[-1] if self._review_frames else None
-
-    @staticmethod
-    def _role_ids(record: dict | None) -> dict:
-        ids = (record or {}).get("manual_point_ids")
-        return ids if isinstance(ids, dict) else {}
-
     def previousFrame(self) -> None:
         index = self._index_of(self._review_current)
         if index is None or index <= 0:
@@ -498,38 +474,10 @@ class ExperimentInferenceActions(QObject):
         self._review_current = frame
         self._sync_review(None)
 
-    def acceptCurrent(self) -> None:
-        self._decide("accepted")
-
-    def skipCurrent(self) -> None:
-        self._decide("skipped")
-
-    def _decide(self, disposition: str) -> None:
-        session = self.window.analysisSession
-        if session is None or self._review_run_id is None:
-            return
-        if self._review_current is None:
-            return
-        self._cancel_correct_quietly()
-        try:
-            session.review_experiment_frame(
-                self._review_run_id, self._review_current, disposition,
-            )
-        except (ProjectSessionError, ValueError) as error:
-            logger.error("joint review %s failed: %s", disposition, error)
-            self.window.statusBar().showMessage(f"{disposition.title()} failed: {error}")
-            return
-        records = self._records()
-        self._advance(records)
-        self._sync_review(records)
-        self._notify_done(records)
-
     def startCorrect(self, role: str) -> None:
         if self._dialog is None or self._review_current is None:
             return
         self._correcting_role = role
-        # 换 role 时跳到该 role 的第一个未标帧(role 级连续流)
-        self._advance(self._records())
         self.window.videoView.set_annotation_mode(True)
         # HR 反馈(2026-09-29):macOS 非活动窗口的第一次点击只用于激活
         # 窗口(click-through 默认关闭)——主动激活主窗口,视频立即可点
@@ -539,13 +487,10 @@ class ExperimentInferenceActions(QObject):
             f"Correct mode: click the '{role}' position in the video for "
             f"frame {self._review_current} (Esc to stop)")
         self._sync_review(None)
-        # sync 内 seekFrame 会短暂关闭标注模式;确保终态为十字光标可点击
-        self.window.videoView.set_annotation_mode(True)
 
     def cancelCorrect(self) -> None:
         self._correcting_role = None
-        self._correct_autosave_counter = 0
-        self.window.projectActions.autosave("joint review corrections")
+        self.window.videoView.set_annotation_mode(False)
         if self._dialog is not None:
             self._sync_review(None)
         self.window.statusBar().showMessage("Correct mode cancelled")
@@ -556,11 +501,7 @@ class ExperimentInferenceActions(QObject):
             self.window.videoView.set_annotation_mode(False)
 
     def handleCorrectClick(self, pixel_x: float, pixel_y: float) -> bool:
-        """主窗口视频点击回调;correcting 时写所选 role 的 manual 点。
-
-        HR 反馈(2026-09-29 第二轮):写完一帧自动跳到下一待审帧并保持
-        十字/点击状态(连续标注流),直到队列审完或用户主动停止。
-        """
+        """主窗口视频点击回调;只修正当前推荐帧的一个 role。"""
 
         if not self.is_correcting:
             return False
@@ -583,113 +524,48 @@ class ExperimentInferenceActions(QObject):
             logger.error("joint review correction failed: %s", error)
             self.window.statusBar().showMessage(f"Correction failed: {error}")
             return False
+        self._correcting_role = None
+        self.window.videoView.set_annotation_mode(False)
         records = self._records()
-        self._advance(records)
-        remaining = [f for f in self._review_frames
-                     if f not in records or role not in self._role_ids(records[f])]
-        if remaining:
-            # 连续标注流:保持 correcting,视频十字可点,直接标下一帧
-            self._sync_review(records)
-            self.window.videoView.set_annotation_mode(True)
-            self.window.statusBar().showMessage(
-                f"Frame {frame}: '{role}' corrected at "
-                f"({pixel_x:.1f}, {pixel_y:.1f}). Next pending: frame "
-                f"{self._review_current} — keep clicking the video.")
-        else:
-            # 队列审完:自动停止 correct(避免对已审帧叠加 manual 点)
-            self._correcting_role = None
-            self.window.videoView.set_annotation_mode(False)
-            self._sync_review(records)
-            self.window.statusBar().showMessage(
-                "Joint review queue completed. Activate the candidate next "
-                "(or keep it for later).")
-        # 节流保存(HR 反馈 2026-09-30):每次 correct 都 autosave 会以异步
-        # busy 窗口挡住下一次跳帧;连续流中每 10 次存一次,停止时必存
-        self._correct_autosave_counter += 1
-        if self._correct_autosave_counter >= 10:
-            self._correct_autosave_counter = 0
-            self.window.projectActions.autosave("joint review corrections")
+        self._sync_review(records)
+        self.window.statusBar().showMessage(
+            f"Frame {frame}: '{role}' corrected. Choose another suggestion "
+            "or activate the candidate when ready.")
+        self.window.projectActions.autosave("joint review correction")
         self.window._refreshMarkers()
-        self._notify_done(records)
+        self._refresh_workflow()
         return True
 
-    def _notify_done(self, records: dict) -> None:
-        pending = sum(1 for frame in self._review_frames if frame not in records)
-        if pending == 0:
-            self.window.projectActions.autosave("joint review completed")
-            self.window.statusBar().showMessage(
-                "Joint review queue completed. Activate the candidate next "
-                "(or keep it for later).")
-        self._refresh_workflow()
-
-    def acceptAllPending(self) -> None:
-        """一键接受全部 pending 帧(单事务);corrected 帧不动。"""
-
-        session = self.window.analysisSession
-        if session is None or self._review_run_id is None:
-            return
-        try:
-            count = session.accept_remaining_experiment_frames(self._review_run_id)
-        except (ProjectSessionError, ValueError) as error:
-            self.window.statusBar().showMessage(f"Accept-all failed: {error}")
-            return
-        if count == 0:
-            self.window.statusBar().showMessage("No pending frames to accept")
-            return
-        records = self._records()
-        self._advance(records)
-        self._sync_review(records)
-        self.window.projectActions.autosave("joint review accept-all")
-        self.window.statusBar().showMessage(
-            f"Accepted {count} pending frame(s); corrected frames unchanged.")
-        self._notify_done(records)
-
-    def addCorrectedFramesToTrainingSet(self) -> None:
-        """把审核 corrected 帧并入训练帧集(refine 循环闭环,用户批准)。"""
+    def addCurrentToTrainingSet(self) -> None:
+        """把当前推荐帧加入共享帧集，并进入既有四点标注引导。"""
 
         session = self.window.analysisSession
         experiment = self.window.currentPendulumExperiment()
         if session is None or experiment is None or self._review_run_id is None:
             return
-        records = self._records()
-        corrected = sorted(
-            frame for frame, record in records.items()
-            if (record or {}).get("disposition") == "corrected")
-        if not corrected:
-            self.window.statusBar().showMessage(
-                "No corrected frames yet — Correct writes frames worth retraining")
-            return
-        from PySide6.QtWidgets import QMessageBox
-
-        reply = QMessageBox.question(
-            self.window, "Add corrected frames to training set",
-            f"Add {len(corrected)} corrected frame(s) to the shared training "
-            f"frame set?\n\nThey keep their manual points and will be used by "
-            f"the next joint training. The fixed-check set becomes invalid "
-            f"until you re-freeze it.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
+        frame = self._review_current
+        if frame is None:
             return
         try:
             merged = session.extend_experiment_frame_set(
-                experiment.experiment_id, corrected)
+                experiment.experiment_id, (frame,))
         except (ProjectSessionError, ValueError) as error:
+            from PySide6.QtWidgets import QMessageBox
+
             QMessageBox.critical(self.window, "Cannot extend frame set", str(error))
             return
-        self.window.projectActions.autosave("training frame set extended")
+        self.finishReviewing()
+        self.window.beginExperimentAnnotation(start_frame=frame)
+        self.window.projectActions.autosave("recommended training frame added")
         self.window.statusBar().showMessage(
-            f"Training frame set now has {len(merged)} frame(s); re-freeze the "
-            f"fixed-check set before the next joint training.")
+            f"Frame {frame} added to training set ({len(merged)} total). "
+            "Mark all four roles; re-freeze fixed-check before retraining.")
         self._refresh_workflow()
 
     def finishReviewing(self) -> None:
-        """退出审核;未处置帧与已写 manual 点全部保留(run-scoped 持久化)。"""
+        """关闭推荐列表;保留候选和已写 manual 点。"""
 
         self._cancel_correct_quietly()
-        records = self._records()
-        pending = sum(1 for frame in self._review_frames if frame not in records)
         if self._dialog is not None:
             dialog, self._dialog = self._dialog, None
             dialog.finished.disconnect(self._on_dialog_closed)
@@ -698,9 +574,7 @@ class ExperimentInferenceActions(QObject):
         self._review_frames = ()
         self._review_current = None
         self.window.videoView.set_preview_markers([], "")
-        if pending:
-            self.window.statusBar().showMessage(
-                f"Review finished; {pending} frame(s) kept for later.")
+        self.window.statusBar().showMessage("Suggestions closed; candidate kept for later")
         self._refresh_workflow()
 
     # ------------------------------------------------------------------

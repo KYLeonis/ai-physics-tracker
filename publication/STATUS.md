@@ -1,8 +1,8 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-09-29。
+- 最后更新：2026-09-30。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p1.4-joint-inference-activation`，自已推送的 P1.3 集成提交 `0546ff7` 切出。
-- 当前：**P1.4 S1–S5 已实现，S3/S5 两道 Independent Review gate 已通过（[review record](../docs/reviews/publication-p1.4-review.md)，1137 passed）；S4 workflow/UI 已实现且 offscreen 9 tests + 全量 1146 passed，等待用户 Human Review；S6 导入模型真实短片生命周期 smoke 已部分通过**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。S1 自训/导入模型 Mac CPU 十帧结构 smoke 见[证据](evidence/runtime/p14-joint-inference-smoke.json)；S6 导入模型 host→review→activate→clear→undo→reopen 见[证据](evidence/runtime/p14-lifecycle-smoke.json)。P1.1–P1.3 已合并；P2 未开始。
+- 当前：**P1.4 S1–S5 已实现，S3/S5 两道 Independent Review gate 已通过；S4 推荐帧交互按 2026-09-30 用户反馈修订，等待新一轮真人 Human Review；S6 导入模型真实短片生命周期 smoke 已部分通过**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。推理后给出可选的困难帧推荐，选择一帧加入共享训练集后进入既有四点标注引导；一键 Accept 与强制连续标注已移除。修订后的定向 offscreen **26 passed**；完整回归在最后一轮帧呈现提示微调前 **1149 passed, 9 subtests passed**，其后 GUI 定向 11 passed。S1 自训/导入模型 Mac CPU 十帧结构 smoke 见[证据](evidence/runtime/p14-joint-inference-smoke.json)；S6 导入模型 host→review→activate→clear→undo→reopen 见[证据](evidence/runtime/p14-lifecycle-smoke.json)。P1.1–P1.3 已合并；P2 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1–P1.3已完成，P1.4执行中；P2–P6未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -87,4 +87,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**按 [P1.4 handoff 2026-09-30](plans/p1.4-handoff-2026-09-30.md) 接手:S4 HR 第四轮「role 级连续标注」真机仍失败(offscreen 全过),用户交由外部 agent 调试(handoff 含四轮 HR 全过程、可疑点、代码地图)。** 修复并经用户复核后进入 S6 收尾： trained compatible 模型经普通 host request 的完整链路、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后 `--no-ff` 合并至 `publication/ejp-damped-pendulum` 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
+**请用户从本 worktree 重启 GUI，真人验证新的「推理→推荐帧→选帧加入训练集→四点标注」路径及单点 Correct。** 通过后进入 S6 收尾：trained compatible 模型经普通 host request 的完整链路、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后 `--no-ff` 合并至 `publication/ejp-damped-pendulum` 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。

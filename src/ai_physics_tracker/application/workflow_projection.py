@@ -695,10 +695,8 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                           if count)
                 if any(missing.values()) else "none")
             review_state = (
-                f"{joint.candidate_reviewed} of {joint.candidate_total} "
-                "queue frame(s) reviewed"
-                if joint.candidate_total
-                else "review queue not created yet")
+                f"{joint.candidate_total} frame suggestion(s) available"
+                if joint.candidate_total else "suggestions not generated yet")
             secondary: tuple[ActionSpec, ...] = ()
             if joint.active_run_id is not None:
                 secondary = (
@@ -716,19 +714,20 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 mode=MODE_ADOPT,
                 title="Current: joint candidate ready (not active)",
                 explanation=(
-                    "Joint inference produced a four-role candidate. Review "
-                    "the flagged frames first; Correct writes a manual point "
-                    "for one chosen role.",
+                    "Joint inference produced a four-role candidate. Inspect "
+                    "suggested difficult frames; add useful ones to the shared "
+                    "training set and mark all four roles for retraining. "
+                    "Correct changes one measurement point only.",
                     "Activate replaces the AI observations of all four tracks "
                     "in one transaction; manual points always win."),
                 primary=ActionSpec(
-                    ACTION_REVIEW_JOINT_CANDIDATE, "Review candidate frames"),
+                    ACTION_REVIEW_JOINT_CANDIDATE, "View suggested frames"),
                 secondary=secondary,
                 evidence=(
                     f"Candidate run {str(joint.candidate_run_id)[:8]}: "
                     f"complete frames {complete if complete is not None else '?'}, "
                     f"missing by role — {missing_note}.",
-                    f"Review: {review_state}."
+                    f"Suggestions: {review_state}."
                     + (f" Active measurement: revision "
                        f"{joint.measurement_revision}." if joint.active_run_id
                        else ""),
@@ -754,6 +753,8 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                     ACTION_VIEW_ANALYSIS, "View current analysis",
                     enabled=traj.has_effective_input),
                 secondary=(
+                    ActionSpec(ACTION_REVIEW_JOINT_CANDIDATE,
+                               "View suggested frames"),
                     inference_spec,
                     ActionSpec(ACTION_CLEAR_EXPERIMENT, "Clear active measurement"),
                 ),

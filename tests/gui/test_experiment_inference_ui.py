@@ -385,7 +385,8 @@ class TestJointLadderCards:
         assert card.mode == "analyze"
         assert card.title.startswith("Current: experiment measurement active")
         ids = [a.action_id for a in card.secondary]
-        assert "run_joint_inference" in ids and "clear_experiment" in ids
+        assert {"review_joint_candidate", "run_joint_inference",
+                "clear_experiment"} <= set(ids)
 
 
 # ---------------------------------------------------------------------------
@@ -446,55 +447,33 @@ class TestInferenceController:
 
 
 class TestReviewQueue:
-    def test_accept_skip_correct_and_finish(self, qtbot, tmp_path, synthetic_video_path):
+    def test_suggestions_allow_one_point_correction_without_forced_progress(
+        self, qtbot, tmp_path, synthetic_video_path,
+    ):
         window, session, experiment, model = _experiment_window(
             qtbot, tmp_path, synthetic_video_path)
         controller = _install(window, _Runner())
         run = _run_inference(controller, session, experiment, model)
         controller.openReviewQueue(run.run_id)
         assert controller.review_open
-        assert controller._review_frames   # frame2 tip 低置信进队列
+        assert controller._review_frames
+        assert not hasattr(controller._dialog, "acceptAllButton")
+        assert "optional suggestions" in controller._dialog.infoLabel.text()
         _wait_presented(qtbot, window, controller._review_current)
 
         current = controller._review_current
-        controller.acceptCurrent()
-        records = controller._records()
-        assert records[current]["disposition"] == "accepted"
-        assert controller._review_current != current   # 自动前进
-
-        frame2 = controller._review_current
-        controller.skipCurrent()
-        assert controller._records()[frame2]["disposition"] == "skipped"
-
-        # Correct:选 role → 视频点击落点 → manual 点写入所选 role(skip 已前进);
-        # HR 第二轮反馈:写完保持 correcting 并跳到下一待审帧(连续标注流)
-        frame3 = controller._review_current
-        assert frame3 is not None and frame3 != frame2
-        _wait_presented(qtbot, window, frame3)
         controller.startCorrect("tip")
         assert controller.is_correcting
         assert window.videoView.is_annotation_mode()
         assert controller.handleCorrectClick(6.5, 7.5)
-        assert controller.is_correcting          # 连续流:不自动退出
-        assert window.videoView.is_annotation_mode()
-        point = session.effective_point(experiment.roles.tip, frame3)
+        assert not controller.is_correcting
+        assert controller._review_current == current
+        point = session.effective_point(experiment.roles.tip, current)
         assert point is not None and point.source == "manual"
         assert point.pixel_x == 6.5 and point.pixel_y == 7.5
-        record = controller._records()[frame3]
+        record = controller._records()[current]
         assert record["disposition"] == "corrected"
         assert "tip" in record["manual_point_ids"]
-
-        # 队列剩余待审帧可继续连点(等帧呈现后写下一帧)
-        if controller._review_current is not None and \
-                controller._review_current not in controller._records():
-            frame4 = controller._review_current
-            _wait_presented(qtbot, window, frame4)
-            assert controller.handleCorrectClick(7.0, 8.0)
-            point4 = session.effective_point(experiment.roles.tip, frame4)
-            assert point4 is not None and point4.source == "manual"
-
-        controller.cancelCorrect()
-        assert not controller.is_correcting
 
         controller.finishReviewing()
         assert not controller.review_open
@@ -502,8 +481,7 @@ class TestReviewQueue:
         # 重开恢复进度
         controller.openReviewQueue(run.run_id)
         assert controller.review_open
-        assert all(frame in controller._records()
-                   for frame in (current, frame2))
+        assert controller._records()[current]["disposition"] == "corrected"
 
     def test_correct_click_rejected_on_frame_mismatch(
         self, qtbot, tmp_path, synthetic_video_path,
@@ -518,44 +496,12 @@ class TestReviewQueue:
         away = 0 if controller._review_current != 0 else 1
         window.seekFrame(away)
         _wait_presented(qtbot, window, away)
+        assert "waiting for frame" in controller._dialog.infoLabel.text()
+        assert not window.videoView.is_annotation_mode()
         assert not controller.handleCorrectClick(1.0, 1.0)
         assert session.project.observations == ()
 
-    def test_role_switch_continues_correct_flow_after_queue_fully_reviewed(
-        self, qtbot, tmp_path, synthetic_video_path,
-    ):
-        """HR 反馈(2026-09-30):标完一个 role 换下一个 role 必须能从头
-        连续标注——推进条件是 role 级 pending,不是帧级。"""
-
-        window, session, experiment, model = _experiment_window(
-            qtbot, tmp_path, synthetic_video_path)
-        controller = _install(window, _Runner())
-        run = _run_inference(controller, session, experiment, model)
-        controller.openReviewQueue(run.run_id)
-        frames = controller._review_frames
-        assert len(frames) >= 2
-        # role A(pivot):逐帧 correct 完整队列
-        controller.startCorrect("pivot")
-        assert controller.is_correcting
-        for frame in frames:
-            _wait_presented(qtbot, window, frame)
-            qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
-            assert controller.handleCorrectClick(1.0, 1.0), frame
-        assert not controller.is_correcting          # role A 完成,自动停
-        # role B(body_top):换 role 后从该 role 第一个未标帧继续
-        controller.startCorrect("body_top")
-        assert controller.is_correcting
-        first_body_top = controller._review_current
-        assert first_body_top == frames[0]           # body_top 全部未标
-        _wait_presented(qtbot, window, first_body_top)
-        qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
-        assert controller.handleCorrectClick(2.0, 2.0)
-        assert controller.is_correcting              # 连续流保持
-        point = session.effective_point(
-            experiment.roles.body_top, first_body_top)
-        assert point is not None and point.source == "manual"
-
-    def test_accept_all_and_training_set_merge(
+    def test_selected_suggestion_starts_four_role_marking(
         self, qtbot, tmp_path, synthetic_video_path,
     ):
         window, session, experiment, model = _experiment_window(
@@ -563,30 +509,17 @@ class TestReviewQueue:
         controller = _install(window, _Runner())
         run = _run_inference(controller, session, experiment, model)
         controller.openReviewQueue(run.run_id)
-        # 先 correct 一帧,再一键接受剩余
         frame = controller._review_current
-        _wait_presented(qtbot, window, frame)
-        controller.startCorrect("tip")
-        qtbot.waitUntil(lambda: not window._has_pending_request, timeout=3000)
-        assert controller.handleCorrectClick(6.5, 7.5)
-        controller.cancelCorrect()
-        undo_depth = len(session._undo_stack)
-        controller.acceptAllPending()
-        records = controller._records()
-        assert all(f in records for f in controller._review_frames)
-        assert records[frame]["disposition"] == "corrected"   # corrected 不动
-        assert len(session._undo_stack) == undo_depth + 1     # 单事务
-        # corrected 帧并入训练帧集
-        from PySide6.QtWidgets import QMessageBox
-
-        QMessageBox.question = staticmethod(
-            lambda *a, **k: QMessageBox.StandardButton.Yes)
         before = (experiment.frame_set.frames
                   if experiment.frame_set is not None else ())
-        controller.addCorrectedFramesToTrainingSet()
+        controller._dialog.trainButton.click()
         merged = session.pendulum_experiment(
             experiment.experiment_id).frame_set.frames
         assert frame in merged and set(before) <= set(merged)
+        assert window.experiment_guide_active
+        _wait_presented(qtbot, window, frame)
+        assert not controller.review_open
+        assert session.project.observations == ()
 
     def test_correct_click_via_video_signal_without_selected_track(
         self, qtbot, tmp_path, synthetic_video_path,
@@ -639,6 +572,9 @@ class TestActivation:
             experiment.experiment_id).active_infer_run_id == first.run_id
         # 4 role × 5 帧 − 1:frame2 tip 置信 0.2 低于阈值 0.6 被激活筛选剔除
         assert len(session.project.observations) == 4 * 5 - 1
+        controller.openReviewQueue()
+        assert controller.review_open and controller._review_run_id == first.run_id
+        controller.finishReviewing()
 
         second = _run_inference(controller, session, experiment, model)
         card, _state = _current_card(window, session)
