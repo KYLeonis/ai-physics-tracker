@@ -429,6 +429,14 @@ class MainWindow(QMainWindow):
         self.reviewActions = DifficultFrameReviewActions(
             self, self.trackingActions.panel
         )
+        # P1.4-S4:experiment 联合推理/审核/激活控制器(External worker 同款模式)
+        from ai_physics_tracker.gui.experiment_inference_actions import (
+            ExperimentInferenceActions,
+        )
+
+        self.experimentInferenceActions = ExperimentInferenceActions(
+            self, _sys.executable
+        )
         self._installChartPanel(self.chartActions.panel)
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         self.setWorkspace(WORKSPACE_ACQUIRE)
@@ -1097,6 +1105,11 @@ class MainWindow(QMainWindow):
     def _exitAnnotationMode(self) -> None:
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             self.reviewActions.cancelCorrectMode()
+            self.statusBar().showMessage("Correct mode cancelled")
+            return
+        joint = getattr(self, "experimentInferenceActions", None)
+        if joint is not None and joint.is_correcting:
+            joint.cancelCorrect()
             self.statusBar().showMessage("Correct mode cancelled")
             return
         if self._selected_track_id is not None:
@@ -1992,6 +2005,14 @@ class MainWindow(QMainWindow):
             return  # 点击落在图像外（data-model.md §6.1：不钳位、不造值）
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             handled = self.reviewActions.handleCorrectClick(pixel[0], pixel[1])
+            if handled:
+                self._refreshMarkers()
+                self._refreshHistoryButtons()
+            return
+        # P1.4 joint 审核:Correct 点击写所选 role 的 manual 点(run-scoped)
+        joint = getattr(self, "experimentInferenceActions", None)
+        if joint is not None and joint.is_correcting:
+            handled = joint.handleCorrectClick(pixel[0], pixel[1])
             if handled:
                 self._refreshMarkers()
                 self._refreshHistoryButtons()

@@ -721,6 +721,43 @@ class TrackingActions(QObject):
         if action_id == "freeze_fixed_check":
             window.modelActions.freezeFixedCheck()
             return
+        if action_id == "run_joint_inference":
+            window.setWorkspace("acquire")
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is None:
+                return
+            from ai_physics_tracker.gui.joint_inference_dialog import (
+                run_joint_inference_dialog,
+            )
+
+            chosen = run_joint_inference_dialog(
+                window, window.analysisSession.project.model_references
+                if window.analysisSession else ())
+            if chosen is not None:
+                model_id, params = chosen
+                joint.runJointInference(model_id, params)
+            return
+        if action_id == "review_joint_candidate":
+            window.setWorkspace("acquire")
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None:
+                joint.openReviewQueue()
+            return
+        if action_id == "activate_experiment":
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None:
+                joint.activateCandidate()
+            return
+        if action_id == "replace_experiment":
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None:
+                joint.replaceCandidate()
+            return
+        if action_id == "clear_experiment":
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None:
+                joint.clearMeasurement()
+            return
         if action_id == "setup_fixed_pivot":
             window.setWorkspace("setup")
             window.beginPivotPick()

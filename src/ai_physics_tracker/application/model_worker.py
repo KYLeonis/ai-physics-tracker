@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
+from ai_physics_tracker.application.experiment_inference_job import (
+    ExperimentInferenceRequest,
+)
 from ai_physics_tracker.application.experiment_training_job import (
     ExperimentTrainingRequest,
 )
@@ -22,7 +25,7 @@ ModelWorkerError = ExternalWorkerError
 
 
 class ModelWorkerRunner:
-    """联合训练/模型自检的 external worker 启动器(依赖注入 runtime python)。"""
+    """联合训练/自检/联合推理的 external worker 启动器(依赖注入 runtime python)。"""
 
     def __init__(self, runtime_python: str | Path) -> None:
         self._runner = ExternalWorkerRunner(runtime_python)
@@ -38,6 +41,24 @@ class ModelWorkerRunner:
 
         payload, _digest = build_request(
             "train_experiment",
+            job_id=UUID(request.run_id),
+            device=device,
+            extra=request.to_payload(),
+        )
+        job_dir = project_root / "data" / "engines" / request.run_id
+        return self._runner.start(job_dir, payload)
+
+    def start_inference(
+        self,
+        project_root: Path,
+        request: ExperimentInferenceRequest,
+        *,
+        device: str = "cpu",
+    ) -> Any:
+        """启动 infer_experiment job(P1.4 一次四 bodypart analyze);目录 = run 目录。"""
+
+        payload, _digest = build_request(
+            "infer_experiment",
             job_id=UUID(request.run_id),
             device=device,
             extra=request.to_payload(),
