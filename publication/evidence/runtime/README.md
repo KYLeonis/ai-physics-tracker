@@ -48,6 +48,7 @@ python3.12 -m venv /tmp/ejp-p03-build-env
 
 - [S1 双模型结构 smoke](p14-joint-inference-smoke.json)：自训与导入模型各一次 10 帧四 role DLC 推理；相应 worker 日志 `p14-trained-worker.txt`、`p14-imported-worker.txt`。只验证结构与协议，不代表跟踪准确度。
 - [S6 trained 模型全链 smoke](p14-lifecycle-smoke-trained.json)：`test1` 自训模型经 external worker 真实自检(cpu)→compatible→宿主普通路径推理→审核→激活→清除→undo→重开；日志 [p14-lifecycle-worker-trained.txt](p14-lifecycle-worker-trained.txt)。
+- [S6 trained 模型全链 smoke](p14-lifecycle-smoke-trained.json)：`test1` 自训模型经 external worker 真实自检(cpu)→compatible→宿主普通路径推理→审核→激活→清除→undo→重开；日志 [p14-lifecycle-worker-trained.txt](p14-lifecycle-worker-trained.txt)。
 - [S6 导入模型生命周期 smoke](p14-lifecycle-smoke.json)：临时项目副本内的 10 帧真实视频，取消一次 worker，再经 host 结果校验→审核修正→四轨 Activate/Clear/Undo/save-reopen；日志 [p14-lifecycle-worker.txt](p14-lifecycle-worker.txt)。148 帧全视频 Mac CPU 尝试因耗时主动停止，未记作通过。
 
 ## Windows handoff（用户批准延期，进入P6前必须完成）
