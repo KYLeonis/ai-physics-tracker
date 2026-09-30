@@ -1,6 +1,6 @@
 # EJP Publication Platform — Master Phase Plan
 
-- 2026-09-19规划，2026-09-20文档收尾；状态（2026-09-30）：**P0/P1 完成并集成；P2.1 θ/QC core 完成；P2.2–P6 未启动；Windows验证经用户明确批准延期，进入P6前必过**。
+- 2026-09-19规划，2026-09-20文档收尾；状态（2026-09-30）：**P0/P1 完成并集成；P2.1 θ/QC core 完成；P2.2 完成；P2.3–P6 未完成；Windows验证经用户明确批准延期，进入P6前必过**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -107,7 +107,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P2 — Pendulum Reconstruction and Core Analysis
 
-用户于 2026-09-30 授权进入；实施计划见 [P2 plan](plans/p2-pendulum-analysis.md)，P2.1 已完成。
+用户于 2026-09-30 授权进入；实施计划见 [P2 plan](plans/p2-pendulum-analysis.md)，P2.1/P2.2 已完成；P2.3 计划见 [mini-plan](plans/p2.3-energy-analysis-ui.md)。
 
 - **Goal**：从已采用四点观测得到可信、可解释的θ/phase/period/energy。
 - **Scope**：角度与时间、QC masks、SG9/3、extrema/period/tail、能量基础表示、scalar/phase图表与多输入失效。

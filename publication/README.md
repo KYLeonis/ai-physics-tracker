@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前：P1 完成；[P2 analysis plan](plans/p2-pendulum-analysis.md) 已立项，P2.1 θ/QC core 完成。
+当前：P1 完成；[P2 analysis plan](plans/p2-pendulum-analysis.md) 已立项，P2.1 θ/QC core 与 P2.2 导数/周期 core 完成；P2.3 energy/UI mini-plan 已建立。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
