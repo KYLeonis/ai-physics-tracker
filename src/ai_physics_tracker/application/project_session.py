@@ -1653,6 +1653,16 @@ class ProjectSession:
                 working_zone=timeline.working_zone,
                 excluded_frames=complete_frames,
             )
+            from ai_physics_tracker.application.experiment_review import (
+                experiment_difficulty_pool,
+            )
+
+            difficulty_pool = experiment_difficulty_pool(
+                raw, fps_nominal=timeline.fps_nominal,
+                confidence_threshold=confidence_threshold,
+                working_zone=timeline.working_zone,
+                excluded_frames=complete_frames,
+            )
         except (ValueError, KeyError, OSError) as error:
             raise ProjectSessionError(f"joint candidate cannot be reviewed: {error}") from error
         existing = self.get_experiment_review(run_id)
@@ -1678,6 +1688,7 @@ class ProjectSession:
                 "excluded_complete_frames": sorted(complete_frames),
                 "suggestion_frames": [item.frame_index for item in candidates],
                 "suggestion_limit": top_n,
+                "difficulty_pool": len(difficulty_pool),
                 "pivot_cutoff_px": None,
             },
             "candidates": [item.to_dict() for item in stored_candidates],

@@ -7,7 +7,7 @@ from uuid import UUID
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-    QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout,
 )
 
 
@@ -21,23 +21,40 @@ class JointReviewDialog(QDialog):
     nextRequested = Signal()
     finishRequested = Signal()
     frameJumped = Signal(int)
+    refreshRequested = Signal(int)          # 用户调整 Suggest N 后重算推荐
+    trainRequested = Signal()               # 结束标注,直接进入训练准备
 
     def __init__(self, run_id: UUID, parent=None) -> None:
         super().__init__(parent)
         self.run_id = run_id
         self.setWindowTitle(f"Relabel suggested frames — run {str(run_id)[:8]}")
-        self.setMinimumSize(620, 480)
+        self.setMinimumSize(620, 520)
         self.setModal(False)
         self._batch_pending = False
+        self._pool_count: int | None = None
 
         root = QVBoxLayout(self)
         self.infoLabel = QLabel(
-            "Choose a few frames to relabel (first 5 checked). Click Start once, "
-            "then mark tip → body_top → body_bottom → pivot in the video. "
-            "After four clicks, the next selected frame opens automatically. "
-            "Existing manual labels on selected frames will be replaced as you click.", self)
+            "Label in small batches. Check frames, click Start once, then mark "
+            "tip → body_top → body_bottom → pivot in the video; the next "
+            "checked frame opens automatically. You can go train at any time — "
+            "labeling every difficult frame is NOT required.", self)
         self.infoLabel.setWordWrap(True)
         root.addWidget(self.infoLabel)
+
+        controls = QHBoxLayout()
+        self.poolLabel = QLabel(self)
+        self.poolLabel.setWordWrap(True)
+        controls.addWidget(self.poolLabel, stretch=1)
+        controls.addWidget(QLabel("Suggest frames per batch:", self))
+        self.suggestSpin = QSpinBox(self)
+        self.suggestSpin.setRange(1, 40)
+        self.suggestSpin.setValue(15)
+        self.refreshButton = QPushButton("Refresh suggestions", self)
+        controls.addWidget(self.suggestSpin)
+        controls.addWidget(self.refreshButton)
+        root.addLayout(controls)
+
         self.progressLabel = QLabel(self)
         self.progressLabel.setWordWrap(True)
         root.addWidget(self.progressLabel)
@@ -69,7 +86,10 @@ class JointReviewDialog(QDialog):
         for button in (self.trainButton, self.cancelCorrectButton, self.skipButton):
             actions.addWidget(button)
         root.addLayout(actions)
+        self.doneTrainButton = QPushButton(
+            "Done labeling — train with these labels", self)
         self.finishButton = QPushButton("Close — keep saved labels", self)
+        root.addWidget(self.doneTrainButton)
         root.addWidget(self.finishButton)
 
         self.prevButton.clicked.connect(self.previousRequested)
@@ -78,6 +98,30 @@ class JointReviewDialog(QDialog):
         self.cancelCorrectButton.clicked.connect(self.cancelCorrectRequested)
         self.skipButton.clicked.connect(self.skipFrameRequested)
         self.finishButton.clicked.connect(self.finishRequested)
+        self.doneTrainButton.clicked.connect(self.trainRequested)
+        self.refreshButton.clicked.connect(self._on_refresh_clicked)
+
+    def _on_refresh_clicked(self) -> None:
+        self.refreshRequested.emit(int(self.suggestSpin.value()))
+
+    def suggestion_count(self) -> int:
+        return int(self.suggestSpin.value())
+
+    def set_suggestion_count(self, count: int) -> None:
+        self.suggestSpin.setValue(max(1, min(40, int(count))))
+
+    def set_pool(self, count: int | None) -> None:
+        """总困难池:信息展示(还有多少弱检测帧),不是待标任务量。"""
+
+        self._pool_count = count
+        if count is None:
+            self.poolLabel.setText("")
+        elif count == 0:
+            self.poolLabel.setText("No difficult frames remain in this run.")
+        else:
+            self.poolLabel.setText(
+                f"Difficulty pool: {count} frame(s) with weak detections "
+                "(information — you label small batches and can train anytime).")
 
     def checkedFrames(self) -> tuple[int, ...]:
         return tuple(
@@ -97,22 +141,30 @@ class JointReviewDialog(QDialog):
             if item.data(Qt.ItemDataRole.UserRole) in frames:
                 item.setCheckState(Qt.CheckState.Unchecked)
 
+    def reset_suggestions(self, candidates) -> None:
+        """换一批推荐(Refresh/下一批):重建列表并默认全选。"""
+
+        self.frameList.blockSignals(True)
+        self.frameList.clear()
+        for candidate in candidates:
+            item = QListWidgetItem()
+            item.setData(Qt.ItemDataRole.UserRole, candidate.frame_index)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked)
+            self.frameList.addItem(item)
+        self.frameList.blockSignals(False)
+        self._update_selection()
+
     def sync(self, candidates, records, current_index, correcting_role,
              training_frames, frame_ready: bool, *, progress: str = "",
              batch_pending: bool = False) -> None:
-        """刷新诊断与进度；勾选状态只在首次打开时初始化。"""
+        """刷新诊断与进度；列表项只在 reset_suggestions 或首开时创建。"""
 
         self._batch_pending = batch_pending
-        initial = self.frameList.count() == 0
         self.frameList.blockSignals(True)
         for row, candidate in enumerate(candidates):
-            if initial:
-                item = QListWidgetItem()
-                item.setData(Qt.ItemDataRole.UserRole, candidate.frame_index)
-                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                item.setCheckState(Qt.CheckState.Checked if row < 5
-                                   else Qt.CheckState.Unchecked)
-                self.frameList.addItem(item)
+            if row >= self.frameList.count():
+                break
             item = self.frameList.item(row)
             reason = "; ".join(
                 f"{role}: {', '.join(reasons)}"
@@ -142,7 +194,7 @@ class JointReviewDialog(QDialog):
                     self.roleTable.setItem(row, column, QTableWidgetItem(value))
         self.roleTable.resizeColumnsToContents()
         self.progressLabel.setText(progress or (
-            f"{len(candidates)} suggestions from this inference run. "
+            f"{len(candidates)} suggestions in this batch. "
             "Preview buttons only browse; Start begins labeling."
             if candidates else "No remaining difficult frames need new labels."))
         self.cancelCorrectButton.setVisible(bool(correcting_role))

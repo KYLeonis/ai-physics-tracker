@@ -684,7 +684,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             "Train with updated labels" if ready_to_train else "Prepare labels for training",
             enabled=state.frame_set is not None and state.frame_set.done > 1,
             reason=None if state.frame_set is not None and state.frame_set.done > 1
-            else "Relabel a few recommended frames first",
+            else "Open 'View suggested frames' and label a few batches first",
         )
         if joint.pending_run_id is not None:
             return TaskCard(

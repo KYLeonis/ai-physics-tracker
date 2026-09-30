@@ -166,34 +166,18 @@ def build_experiment_review_queue(
     top_n: int = 20, working_zone: tuple[int, int] | None = None,
     excluded_frames: frozenset[int] = frozenset(),
 ) -> tuple[ExperimentFrameCandidate, ...]:
-    """把既有单 role 筛选信号合并为训练候选帧建议。"""
+    """把既有单 role 筛选信号合并为训练候选帧建议(每批 top_n 帧)。"""
 
     if type(top_n) is not int or top_n <= 0:
         raise ValueError("top_n must be a positive integer")
-    zone_start, zone_end = working_zone or (0, raw.frame_count - 1)
+    zone = working_zone or (0, raw.frame_count - 1)
     params = MiningParams(top_n=top_n, confidence_threshold=confidence_threshold)
-    signals: dict[int, dict[str, tuple[str, ...]]] = {}
-    scores: dict[int, float] = {}
-    for role, rows in raw.by_role:
-        outcome = mine_difficult_frames(
-            rows, zone_start=zone_start, zone_end=zone_end,
-            fps_nominal=fps_nominal, params=params, manual_frames=excluded_frames,
-        )
-        for item in outcome.shortlist:
-            signals.setdefault(item.frame_index, {})[role] = item.reasons
-            scores[item.frame_index] = max(scores.get(item.frame_index, 0.0), item.total_score)
-    # 几何退化帧可能不被逐 role 的跳变/置信信号捕获,这里显式补扫
-    geometry_extra = 0
-    for frame_index in range(zone_start, zone_end + 1):
-        if frame_index in signals or frame_index in excluded_frames:
-            continue
-        diagnostic = frame_diagnostic(
-            raw, frame_index, confidence_threshold=confidence_threshold,
-            fixed_pivot_px=fixed_pivot_px,
-        )
-        if diagnostic.geometry_reasons and geometry_extra < top_n:
-            signals[frame_index] = {}
-            geometry_extra += 1
+    signals, scores = _difficulty_signals(
+        raw, fps_nominal=fps_nominal,
+        confidence_threshold=confidence_threshold,
+        fixed_pivot_px=fixed_pivot_px, zone=zone, params=params,
+        excluded_frames=excluded_frames, geometry_limit=top_n,
+    )
     # HR 反馈(2026-09-29):逐 role 各取 top_n 合并可达 4×top_n+几何帧(实测
     # 84 帧),审核量不现实——按帧级 screening score 排序后统一截断 top_n
     ranked = sorted(
@@ -219,6 +203,69 @@ def build_experiment_review_queue(
         )
         for frame_index in selected
     )
+
+
+def experiment_difficulty_pool(
+    raw: JointRawPredictions, *, fps_nominal: float,
+    confidence_threshold: float,
+    working_zone: tuple[int, int] | None = None,
+    excluded_frames: frozenset[int] = frozenset(),
+) -> tuple[int, ...]:
+    """返回全部困难信号帧(升序):推荐 UI 的总池,信息展示而非任务量。
+
+    用户决策(2026-09-30):84 帧这类总数应作为「还有多少弱检测帧」的
+    信息告知,分批推荐(每批 10–20 帧)由用户决定标多少、何时去训练。
+    """
+
+    zone = working_zone or (0, raw.frame_count - 1)
+    params = MiningParams(
+        top_n=raw.frame_count, confidence_threshold=confidence_threshold)
+    signals, _scores = _difficulty_signals(
+        raw, fps_nominal=fps_nominal,
+        confidence_threshold=confidence_threshold,
+        fixed_pivot_px=None, zone=zone, params=params,
+        excluded_frames=excluded_frames, geometry_limit=None,
+    )
+    return tuple(sorted(signals))
+
+
+def _difficulty_signals(
+    raw: JointRawPredictions, *, fps_nominal: float,
+    confidence_threshold: float,
+    fixed_pivot_px: tuple[float, float] | None,
+    zone: tuple[int, int], params: MiningParams,
+    excluded_frames: frozenset[int],
+    geometry_limit: int | None,
+) -> tuple[dict[int, dict[str, tuple[str, ...]]], dict[int, float]]:
+    """逐 role mining 信号 + 几何退化补扫;geometry_limit 限制补扫数量。"""
+
+    zone_start, zone_end = zone
+    signals: dict[int, dict[str, tuple[str, ...]]] = {}
+    scores: dict[int, float] = {}
+    for role, rows in raw.by_role:
+        outcome = mine_difficult_frames(
+            rows, zone_start=zone_start, zone_end=zone_end,
+            fps_nominal=fps_nominal, params=params,
+            manual_frames=excluded_frames,
+        )
+        for item in outcome.shortlist:
+            signals.setdefault(item.frame_index, {})[role] = item.reasons
+            scores[item.frame_index] = max(
+                scores.get(item.frame_index, 0.0), item.total_score)
+    # 几何退化帧可能不被逐 role 的跳变/置信信号捕获,这里显式补扫
+    geometry_extra = 0
+    for frame_index in range(zone_start, zone_end + 1):
+        if frame_index in signals or frame_index in excluded_frames:
+            continue
+        diagnostic = frame_diagnostic(
+            raw, frame_index, confidence_threshold=confidence_threshold,
+            fixed_pivot_px=fixed_pivot_px,
+        )
+        if diagnostic.geometry_reasons and (
+                geometry_limit is None or geometry_extra < geometry_limit):
+            signals[frame_index] = {}
+            geometry_extra += 1
+    return signals, scores
 
 
 def review_record_ids(record: dict[str, object]) -> dict[str, UUID]:

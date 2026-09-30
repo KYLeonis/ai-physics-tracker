@@ -172,6 +172,39 @@ def test_joint_review_merges_roles_and_reports_geometry_without_pivot_cutoff():
     assert suggested and all(item.frame_index in {1, 3} for item in suggested)
 
 
+def test_difficulty_pool_counts_all_signals_and_policy_records_it(
+    tmp_path, synthetic_video_path,
+):
+    """总困难池(2026-09-30 用户决策):全量信号帧作信息展示,不截断。"""
+
+    from ai_physics_tracker.infrastructure.dlc_predictions import read_joint_raw_predictions
+
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    job_dir = session.project_root / "data" / "engines" / str(run.run_id)
+    completed = verify_experiment_inference_result(
+        session, run, request, _result(job_dir, request), job_dir)
+    session.update_tracking_run(completed)
+    artifact = session.project_root / completed.extra_fields["prediction_path"]
+    raw = read_joint_raw_predictions(
+        artifact,
+        tuple(tuple(pair) for pair in run.config["bodypart_mapping"]),
+        frame_count=request.frame_count, expected_scorer=completed.extra_fields["scorer"],
+    )
+    from ai_physics_tracker.application.experiment_review import experiment_difficulty_pool
+
+    pool = experiment_difficulty_pool(
+        raw, fps_nominal=10.0, confidence_threshold=0.6)
+    suggestions = session.create_experiment_review_queue(run.run_id, top_n=2)
+    assert len(pool) >= len(suggestions)
+    stored = session.get_experiment_review(run.run_id)
+    assert stored is not None
+    policy = run.extra_fields  # create 已持久化;重新读 run
+    updated = next(r for r in session.tracking_runs() if r.run_id == run.run_id)
+    review_data = updated.extra_fields["experiment_frame_review_v1"]
+    assert review_data["policy"]["difficulty_pool"] == len(pool)
+    assert review_data["policy"]["suggestion_limit"] == 2
+
+
 def test_joint_review_queue_is_frame_level_capped(tmp_path, synthetic_video_path):
     """HR 反馈(2026-09-29):四 role 各取 top_n 合并曾达 4×top_n+几何帧
     (实测 84 帧)——队列必须按帧级 score 截断到 top_n。"""

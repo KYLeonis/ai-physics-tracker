@@ -15,6 +15,9 @@ from uuid import UUID
 
 from PySide6.QtCore import QObject, QTimer
 
+from ai_physics_tracker.application.experiment_review import (
+    EXPERIMENT_REVIEW_KEY,
+)
 from ai_physics_tracker.application.experiment_inference_job import (
     prepare_experiment_inference,
     verify_experiment_inference_result,
@@ -82,6 +85,9 @@ class ExperimentInferenceActions(QObject):
         self._relabel_completed: set[int] = set()
         self._relabel_skipped: set[int] = set()
         self._relabel_message = ""
+        self._suggest_count = 15     # 每批推荐帧数(用户可调,1–40)
+        self._batch_index = 0
+        self._total_relabeled = 0
 
         window.projectChanged.connect(self._on_project_changed)
         window.presentedFrameChanged.connect(self._on_review_frame_presented)
@@ -329,8 +335,10 @@ class ExperimentInferenceActions(QObject):
                     "No joint run to inspect — run joint inference first")
                 return
             run_id = runs[-1].run_id
+        self._batch_index = 1
+        self._total_relabeled = 0
         try:
-            candidates = session.create_experiment_review_queue(run_id)
+            candidates = self._create_suggestions(session, run_id)
         except (ProjectSessionError, ValueError) as error:
             from PySide6.QtWidgets import QMessageBox
 
@@ -343,8 +351,11 @@ class ExperimentInferenceActions(QObject):
             self.finishReviewing()
         self._dialog = JointReviewDialog(run_id, self.window)
         self._connect_dialog(self._dialog)
+        self._dialog.reset_suggestions(candidates)
+        self._dialog.set_suggestion_count(self._suggest_count)
         records = session.get_experiment_review(run_id)[1]
         self._review_run_id = run_id
+        self._sync_pool()
         self._review_frames = tuple(c.frame_index for c in candidates)
         self._review_current = self._review_frames[0] if self._review_frames else None
         self._dialog.show()
@@ -365,6 +376,8 @@ class ExperimentInferenceActions(QObject):
         dialog.finishRequested.connect(self.finishReviewing)
         dialog.frameJumped.connect(self.jumpToFrame)
         dialog.labelSelectedRequested.connect(self.startRelabelSelected)
+        dialog.refreshRequested.connect(self.refreshSuggestions)
+        dialog.trainRequested.connect(self.doneLabelingTrain)
         dialog.finished.connect(self._on_dialog_closed)
 
     def _on_dialog_closed(self, *_args) -> None:
@@ -576,6 +589,83 @@ class ExperimentInferenceActions(QObject):
         self._refresh_workflow()
         return True
 
+    def _create_suggestions(self, session, run_id):
+        """按当前 Suggest N 重算推荐(排除已 complete 帧);持久化进 run。"""
+
+        return session.create_experiment_review_queue(
+            run_id, top_n=self._suggest_count)
+
+    def _sync_pool(self) -> None:
+        """把 run policy 里的总困难池推给对话框(信息,非任务量)。"""
+
+        if self._dialog is None or self._review_run_id is None:
+            return
+        session = self.window.analysisSession
+        pool = None
+        if session is not None:
+            run = next((r for r in session.tracking_runs()
+                        if r.run_id == self._review_run_id), None)
+            if run is not None:
+                policy = run.extra_fields.get(EXPERIMENT_REVIEW_KEY)
+                if isinstance(policy, dict):
+                    raw_pool = policy.get("policy", {}).get("difficulty_pool")
+                    pool = raw_pool if isinstance(raw_pool, int) else None
+        self._dialog.set_pool(pool)
+
+    def refreshSuggestions(self, count: int | None = None) -> None:
+        """按新 N 重算推荐并全选;批量进行中拒绝刷新。"""
+
+        if count is not None:
+            self._suggest_count = max(1, min(40, int(count)))
+        session = self.window.analysisSession
+        if session is None or self._review_run_id is None or self._dialog is None:
+            return
+        if self._relabel_index < len(self._relabel_tasks):
+            self.window.statusBar().showMessage(
+                "Finish or pause the current batch before refreshing")
+            return
+        try:
+            candidates = self._create_suggestions(session, self._review_run_id)
+        except (ProjectSessionError, ValueError) as error:
+            self.window.statusBar().showMessage(f"Cannot refresh: {error}")
+            return
+        self._review_frames = tuple(c.frame_index for c in candidates)
+        self._review_current = self._review_frames[0] if self._review_frames else None
+        self._dialog.reset_suggestions(candidates)
+        self._dialog.set_suggestion_count(self._suggest_count)
+        self._sync_pool()
+        self._sync_review(None)
+        self.window.statusBar().showMessage(
+            f"{len(self._review_frames)} suggested frame(s) for this batch "
+            f"(pool shown in the window).")
+
+    def doneLabelingTrain(self) -> None:
+        """结束标注,直接进入训练准备:先冻结 fixed-check(若失效)再指向训练。"""
+
+        self._relabel_tasks = ()
+        self._relabel_index = 0
+        self.finishReviewing()
+        self._launch_training_flow()
+
+    def _launch_training_flow(self) -> None:
+        session = self.window.analysisSession
+        experiment = self.window.currentPendulumExperiment()
+        models = getattr(self.window, "modelActions", None)
+        if session is None or experiment is None or models is None:
+            return
+        from ai_physics_tracker.application.annotation_join import fixed_check_status
+
+        ok, _reason = fixed_check_status(session.project, experiment)
+        if ok:
+            self.window.statusBar().showMessage(
+                "Labels ready — starting joint training")
+            models.runJointTraining()
+        else:
+            self.window.statusBar().showMessage(
+                "New labels invalidate the fixed-check set — confirm the "
+                "preselection first, then press 'Train with updated labels'")
+            models.freezeFixedCheck()
+
     def startRelabelSelected(self) -> None:
         """冻结勾选帧为本次任务；每帧四次点击，不进入另一套帧导航。"""
 
@@ -592,6 +682,9 @@ class ExperimentInferenceActions(QObject):
             return
         frames = self._dialog.checkedFrames()
         if not frames:
+            self.window.statusBar().showMessage(
+                "Check at least one suggested frame, or press Refresh for "
+                "new suggestions")
             return
         try:
             session.extend_experiment_frame_set(experiment.experiment_id, frames)
@@ -617,14 +710,43 @@ class ExperimentInferenceActions(QObject):
         else:
             self._correcting_role = None
             self.window.videoView.set_annotation_mode(False)
+            self._total_relabeled += len(self._relabel_completed)
             self._relabel_message = (
-                f"Batch finished: {len(self._relabel_completed)} frame(s) relabeled, "
-                f"{len(self._relabel_skipped)} skipped. Next: freeze fixed-check, "
-                "train with these labels, then run inference with the new model.")
-            if self._dialog is not None:
-                self._dialog.uncheckFrames(self._relabel_completed | self._relabel_skipped)
+                f"Batch {self._batch_index} finished: "
+                f"{len(self._relabel_completed)} relabeled, "
+                f"{len(self._relabel_skipped)} skipped.")
+            # 保存落盘后自动推荐下一批(排除刚标完的帧);随时可改去训练
             self.window.projectActions.autosave(
-                "recommended frames relabeled", after=lambda: self._sync_review(None))
+                "recommended frames relabeled", after=self._advance_batch)
+        self._sync_review(None)
+
+    def _advance_batch(self) -> None:
+        """一批标完:自动推荐下一批;池耗尽时明确指向训练(用户决策 2026-09-30)。"""
+
+        session = self.window.analysisSession
+        if session is None or self._review_run_id is None or self._dialog is None:
+            return
+        self._batch_index += 1
+        try:
+            candidates = self._create_suggestions(session, self._review_run_id)
+        except (ProjectSessionError, ValueError) as error:
+            self.window.statusBar().showMessage(f"Cannot suggest next batch: {error}")
+            return
+        self._review_frames = tuple(c.frame_index for c in candidates)
+        self._review_current = self._review_frames[0] if self._review_frames else None
+        self._dialog.reset_suggestions(candidates)
+        self._sync_pool()
+        if self._review_frames:
+            self._relabel_message = (
+                f"Next batch ready: {len(self._review_frames)} more suggested "
+                f"frame(s) (batch {self._batch_index}, {self._total_relabeled} "
+                f"relabeled so far). Start to continue, or press "
+                f"'Done labeling — train with these labels' anytime.")
+        else:
+            self._relabel_message = (
+                f"No more difficult frames worth labeling "
+                f"({self._total_relabeled} relabeled in total). Freeze the "
+                f"fixed-check set and train with the updated labels next.")
         self._sync_review(None)
 
     def skipRelabelFrame(self) -> None:
@@ -642,6 +764,8 @@ class ExperimentInferenceActions(QObject):
         self._relabel_tasks = ()
         self._relabel_index = 0
         self._relabel_message = ""
+        self._suggest_count = self._dialog.suggestion_count() \
+            if self._dialog is not None else self._suggest_count
         self.window._hidePendulumGuide()
         if self._dialog is not None:
             dialog, self._dialog = self._dialog, None

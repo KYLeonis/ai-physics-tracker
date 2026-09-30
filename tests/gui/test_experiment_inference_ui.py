@@ -458,7 +458,7 @@ class TestReviewQueue:
         assert controller.review_open
         assert controller._review_frames
         assert not hasattr(controller._dialog, "acceptAllButton")
-        assert "four clicks" in controller._dialog.infoLabel.text()
+        assert "small batches" in controller._dialog.infoLabel.text()
         _wait_presented(qtbot, window, controller._review_current)
 
         current = controller._review_current
@@ -541,11 +541,83 @@ class TestReviewQueue:
                     assert any(p.source == "manual" and p.pixel_x == 6.0 + index
                                for p in window.videoView.preview_marker_views())
         assert not controller.is_correcting
-        assert "2 frame(s) relabeled" in controller._dialog.progressLabel.text()
+        assert "2 relabeled" in controller._dialog.progressLabel.text()
         assert {p.frame_index for p in session.project.observations} == set(frames)
         qtbot.waitUntil(lambda: not window.projectActions.busy)
         reopened = ProjectSession.load(ProjectRepository(), session.project_root)
         assert len(reopened.project.observations) == 8
+
+    def test_batch_loop_refresh_and_pool(
+        self, qtbot, tmp_path, synthetic_video_path,
+    ):
+        """用户决策(2026-09-30):总困难池作为信息展示;每批 Suggest N 帧,
+        标完自动推荐下一批;随时可 Done-labeling 直接走训练准备。"""
+
+        window, session, experiment, model = _experiment_window(
+            qtbot, tmp_path, synthetic_video_path)
+        controller = _install(window, _Runner())
+        run = _run_inference(controller, session, experiment, model)
+        controller.openReviewQueue(run.run_id)
+        dialog = controller._dialog
+        # 池信息 + 默认每批 15(≤ 视频帧数时全部推荐且默认全选)
+        assert "Difficulty pool" in dialog.poolLabel.text()
+        assert dialog.suggestSpin.value() == 15
+        assert dialog.checkedFrames() == controller._review_frames
+        # Refresh 用新 N 重算并保持全选
+        controller.refreshSuggestions(3)
+        assert controller._suggest_count == 3
+        assert dialog.suggestion_count() == 3
+        assert len(controller._review_frames) <= 3
+        assert dialog.checkedFrames() == controller._review_frames
+        # 无勾选 Start 有提示,不静默
+        controller._dialog.frameList.item(0).setCheckState(
+            __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.CheckState.Unchecked)
+        for row in range(1, controller._dialog.frameList.count()):
+            controller._dialog.frameList.item(row).setCheckState(
+                __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.CheckState.Unchecked)
+        controller.startRelabelSelected()
+        assert "Check at least one" in window.statusBar().currentMessage()
+        for row in range(controller._dialog.frameList.count()):
+            item = controller._dialog.frameList.item(row)
+            item.setCheckState(
+                __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.CheckState.Checked
+                if row == 0 else
+                __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.CheckState.Unchecked)
+        # 标完第一批(1 帧)后自动推荐下一批(排除已 complete 帧)
+        from PySide6.QtCore import QPoint, Qt
+
+        first = controller._dialog.checkedFrames()
+        assert len(first) == 1
+        controller.startRelabelSelected()
+        _wait_presented(qtbot, window, first[0])
+        qtbot.waitUntil(lambda: not window._has_pending_request)
+        for index, role in enumerate(ROLE_ORDER):
+            window.videoView.mapScreenToPixel = lambda _pos, i=index: (6.0 + i, 7.0)
+            window.videoView.annotationClicked.emit(QPoint(10, 10))
+        assert not controller.is_correcting
+        qtbot.waitUntil(
+            lambda: controller._relabel_message.startswith("Next batch")
+            or controller._relabel_message.startswith("No more"),
+            timeout=4000)
+        message = controller._relabel_message
+        if controller._review_frames:
+            assert message.startswith("Next batch")
+            # 已标帧被排除:新一批不含 first
+            assert first[0] not in controller._review_frames
+            assert dialog.checkedFrames() == controller._review_frames
+        else:
+            assert message.startswith("No more")
+        # Done labeling → fixed-check 失效 → freeze 流程
+        frozen = []
+        models = window.modelActions
+        original_freeze = models.freezeFixedCheck
+        models.freezeFixedCheck = lambda: frozen.append(True)
+        try:
+            controller.doneLabelingTrain()
+        finally:
+            models.freezeFixedCheck = original_freeze
+        assert frozen == [True]
+        assert not controller.review_open
 
     def test_pause_resumes_same_role_and_skip_moves_to_next_selected_frame(
         self, qtbot, tmp_path, synthetic_video_path,
