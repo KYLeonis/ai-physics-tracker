@@ -1,12 +1,13 @@
 """单摆 scalar 分析页与后台编排；复用主窗口的视频/项目生命周期。"""
 
 from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
+from collections import Counter
 from math import isfinite, pi
 from threading import Event
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, QTimer, Signal, Qt
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QSpinBox,
                               QTabWidget, QVBoxLayout, QWidget)
 
@@ -15,6 +16,7 @@ from ai_physics_tracker.application.pendulum_analysis import (
     prepare_analysis_job, run_analysis_job,
 )
 from ai_physics_tracker.application.pendulum_setup import pendulum_setup_status
+from ai_physics_tracker.domain.angular_analysis import AngularSeries, SG_WINDOW, valid_segments
 from ai_physics_tracker.application.project_session import ProjectSessionError
 
 
@@ -61,6 +63,7 @@ class PendulumAnalysisPanel(QWidget):
         self.items = {}
         self.cursors = {}
         self.highlights = {}
+        self.chartMessages = {}
         for kind, title, x_label, x_unit, y_label, y_unit in (
             ("theta", "Angle", "Time from release", "s", "θ", "rad"),
             ("omega", "Angular velocity", "Time from release", "s", "ω", "rad/s"),
@@ -85,14 +88,27 @@ class PendulumAnalysisPanel(QWidget):
             self.items[kind] = plot.plot(pen=pg.mkPen("#2c8cc1", width=2),
                                          symbol="o", symbolSize=5)
             self.items[kind].sigPointsClicked.connect(self._pointClicked)
-            self.tabs.addTab(plot, title)
+            page = QWidget(self.tabs)
+            message = QLabel("No analysis yet — compute from the adopted trajectory", page)
+            message.setWordWrap(True)
+            message.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            page_layout = QVBoxLayout(page)
+            page_layout.setContentsMargins(0, 0, 0, 0)
+            page_layout.addWidget(message)
+            page_layout.addWidget(plot, 1)
+            plot.hide()
+            self.chartMessages[kind] = message
+            self.tabs.addTab(page, title)
+        self.excludedAngles = pg.ScatterPlotItem(symbol="x", size=7, pen=pg.mkPen("#aaaaaa"), brush=None)
+        self.plots["theta"].addItem(self.excludedAngles)
+        self.excludedAngles.sigClicked.connect(self._pointClicked)
         layout = QVBoxLayout(self)
         layout.addWidget(self.statusLabel)
         layout.addLayout(controls)
         layout.addWidget(self.summaryLabel)
         layout.addWidget(self.tabs, 1)
         layout.addWidget(self.frameLabel)
-        note = QLabel("Gaps stay missing. SG9/3 uses no presmoothing; first/last 4 points of each segment are edge windows. Click a point → inspect video; return to Acquire to relabel, then recompute.", self)
+        note = QLabel("Analysis uses the adopted run + manual corrections; a new candidate preview is not included. SG9/3 needs at least 9 consecutive QC-valid frames. Click a blue point or gray cross → inspect its source frame; return to Acquire to complete/correct four landmarks, then recompute. Gaps stay missing; first/last 4 points of each segment are edge windows.", self)
         note.setWordWrap(True)
         layout.addWidget(note)
 
@@ -106,6 +122,10 @@ class PendulumAnalysisPanel(QWidget):
             item.setData([], [])
             self.highlights[kind].setData([], [])
             self.cursors[kind].hide()
+            self.plots[kind].hide()
+            self.chartMessages[kind].setText("No analysis yet — compute from the adopted trajectory")
+            self.chartMessages[kind].setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.excludedAngles.setData([], [])
         self.summaryLabel.clear()
         self.frameLabel.setText("Click a plotted point to inspect its source frame")
 
@@ -114,6 +134,33 @@ class PendulumAnalysisPanel(QWidget):
         rows = payload["rows"]
         end = payload["config"]["end_frame_index"]
         usable = [r["is_qc_valid"] and 0 <= r["time_release_relative_s"] and r["frame_index"] <= end for r in rows]
+        selected = [0 <= r["time_release_relative_s"] and r["frame_index"] <= end for r in rows]
+        series = AngularSeries(payload["reconstruction_digest"],
+            tuple(r["frame_index"] for r in rows),
+            tuple(r["time_release_relative_s"] for r in rows),
+            tuple(r["theta_rad"] for r in rows), tuple(r["is_qc_valid"] for r in rows),
+            payload["measurement"]["video"]["fps_nominal"])
+        longest = max((b-a for a, b in valid_segments(series, tuple(selected))), default=0)
+        excluded = [r for r, inside, ok in zip(rows, selected, usable)
+                    if inside and not ok and r["theta_rad"] is not None]
+        self.excludedAngles.setData(
+            [r["time_release_relative_s"] for r in excluded],
+            [r["theta_rad"] for r in excluded], data=[r["frame_index"] for r in excluded])
+        omega_reasons = Counter(r["omega_reason"] for r, inside in zip(rows, selected)
+                                if inside and r["omega_reason"])
+        unavailable = (f"SG9/3 needs {SG_WINDOW} consecutive QC-valid frames; longest block: {longest}. "
+                       "Return to Acquire and complete/correct all four landmarks in a consecutive block, then recompute."
+                       if longest < SG_WINDOW else
+                       "No usable derivative: " + ", ".join(f"{reason} ({count} frames)" for reason, count in omega_reasons.items()))
+        if longest < SG_WINDOW:
+            start = min((i for i in range(len(rows)-SG_WINDOW+1)
+                         if all(selected[i:i+SG_WINDOW]) and not all(usable[i:i+SG_WINDOW])),
+                        key=lambda i: sum(not ok for ok in usable[i:i+SG_WINDOW]), default=None)
+            if start is not None:
+                repair = rows[start:start+SG_WINDOW]
+                gaps = ", ".join(str(r["frame_index"]) for r, ok in zip(repair, usable[start:start+SG_WINDOW]) if not ok)
+                unavailable += (f"\nRepair example: source block {repair[0]['frame_index']}–{repair[-1]['frame_index']}; "
+                                f"inspect/correct the four landmarks at QC-excluded frames {gaps}.")
         for kind, item in self.items.items():
             x_key = "theta_rad" if kind == "phase" else "time_release_relative_s"
             y_key = {"theta": "theta_rad", "omega": "omega_rad_s", "phase": "omega_rad_s", "energy": "energy_s_inv2"}[kind]
@@ -125,15 +172,45 @@ class PendulumAnalysisPanel(QWidget):
                     and rows[i+1]["frame_index"] == rows[i]["frame_index"]+1
                     and rows[i]["theta_rad"] is not None and rows[i+1]["theta_rad"] is not None
                     and abs(rows[i+1]["theta_rad"]-rows[i]["theta_rad"]) <= pi)
-            item.setData(x, y, connect=connect, data=[r["frame_index"] for r in rows])
-            self.plots[kind].autoRange()
+            has_values = bool(np.any(np.isfinite(x) & np.isfinite(y)))
+            if has_values:
+                item.setData(x, y, connect=connect, data=[r["frame_index"] for r in rows])
+            else:
+                # 全NaN散点的bounds会把pyqtgraph空图范围放大到异常数量级。
+                item.setData([], [])
+            visible = has_values or (kind == "theta" and bool(excluded))
+            self.plots[kind].setVisible(visible)
+            message = self.chartMessages[kind]
+            message.setAlignment(Qt.AlignmentFlag.AlignLeft if visible else Qt.AlignmentFlag.AlignCenter)
+            if kind == "theta":
+                message.setText(f"Blue: {sum(usable)} QC-valid angles. Gray crosses: {len(excluded)} geometry-only previews, excluded from derivatives/energy/fitting. "
+                               + ("" if visible else "No adopted tip positions in this interval."))
+            elif has_values:
+                message.setText("Computed from continuous QC-valid segments; gaps remain missing.")
+            else:
+                message.setText({"omega": "Angular velocity", "phase": "Phase portrait", "energy": "Reference energy"}[kind]
+                                + " unavailable.\n" + (
+                                    "Energy calculation unavailable: " + ", ".join(sorted({r["energy_reason"] for r, ok in zip(rows, usable)
+                                        if ok and r["energy_reason"]}))
+                                    if kind == "energy" and any(r["omega_rad_s"] is not None for r, ok in zip(rows, usable) if ok)
+                                    else unavailable))
+            if visible:
+                self.plots[kind].autoRange()
         periods, tail = payload["periods"], payload["tail"]
         q = payload["q_reference_s_inv2"]
         tail_text = (f"q_tail = {tail['omega2_mean_s_inv2']:.6g} s⁻²" if tail["omega2_mean_s_inv2"] is not None
                      else "unavailable: " + str(tail["reason"]))
-        omega_count = sum(r["omega_rad_s"] is not None for r in rows)
-        energy_count = sum(r["energy_s_inv2"] is not None for r in rows)
-        self.summaryLabel.setText(f"QC-valid in selected interval: {sum(usable)}/{sum(0 <= r['time_release_relative_s'] and r['frame_index'] <= end for r in rows)} · ω available: {omega_count} · reference energy available: {energy_count}" + (" (unavailable: no usable SG segment)" if not energy_count else "") + "\n"
+        omega_count = sum(ok and r["omega_rad_s"] is not None for r, ok in zip(rows, usable))
+        energy_count = sum(ok and r["energy_s_inv2"] is not None for r, ok in zip(rows, usable))
+        qc_counts = Counter(reason for r, inside in zip(rows, selected) if inside for reason in r["qc_reasons"])
+        labels = {"radius_out_of_tolerance": "tip radius outside tolerance", "body_length_out_of_tolerance": "body length outside tolerance"}
+        qc_text = "; ".join(f"{labels.get(reason, reason.replace(':no_adopted_point', ' missing adopted points'))}: {count}"
+                            for reason, count in qc_counts.most_common()
+                            if reason.endswith(":no_adopted_point") or reason in labels or reason.startswith("user_excluded:"))
+        if not qc_text and qc_counts:
+            qc_text = "; ".join(f"{reason}: {count}" for reason, count in qc_counts.items())
+        self.summaryLabel.setText(f"QC-valid in selected interval: {sum(usable)}/{sum(0 <= r['time_release_relative_s'] and r['frame_index'] <= end for r in rows)} · ω available: {omega_count} · reference energy available: {energy_count}" + (" (unavailable: no usable SG segment)" if not omega_count else " (energy unavailable; inspect its reasons)" if not energy_count else "") + "\n"
+            + f"Longest QC-valid block: {longest} frames (SG needs {SG_WINDOW}). Main exclusions (counts may overlap): {qc_text or 'none'}.\n"
             + f"Reference energy = ω²/2 + q(1−cos θ), q=g/L={q:.6g} s⁻² (proxy; not fitted energy or joules).\n"
             f"Complete periods: {len(periods['periods'])} · Tail t>{tail['start_s']:.4g} s: {len(tail['periods'])} periods; {tail_text}")
         self.statusLabel.setText(("Current — adopted four landmarks + manual corrections" if valid else "Historical / STALE — " + (reason or "inputs changed"))

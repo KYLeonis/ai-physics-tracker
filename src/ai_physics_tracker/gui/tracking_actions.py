@@ -36,11 +36,11 @@ if TYPE_CHECKING:
     from ai_physics_tracker.gui.main_window import MainWindow
 
 
-def _read_raw_candidate_preview(adapter, path: Path, frame_count: int):
+def _read_raw_candidate_preview(adapter, path: Path, frame_count: int, bodypart: str = "target"):
     """后台读取全帧原始预测；低置信度点也必须可见、可修正。"""
     return tuple(
         point for point in adapter.read_raw_predictions(
-            path, frame_count=frame_count)
+            path, bodypart, frame_count=frame_count)
         if isfinite(point.pixel_x) and isfinite(point.pixel_y)
         and isfinite(point.confidence)
     )
@@ -404,8 +404,20 @@ class TrackingActions(QObject):
         threshold = float(threshold)
         if not isfinite(threshold) or not 0.0 <= threshold <= 1.0:
             threshold = 0.0
+        bodypart = "target"
+        if raw_preview and run.role_bindings is not None:
+            role = next((r for r, track_id in run.role_bindings.by_role().items()
+                         if track_id == track.track_id), None)
+            bodypart = next((pair[1] for pair in run.config.get("bodypart_mapping", [])
+                             if isinstance(pair, (tuple, list)) and len(pair) == 2
+                             and pair[0] == role), None)
+            if not isinstance(bodypart, str) or not bodypart:
+                self._clear_candidate_preview()
+                self.window.videoView.set_preview_markers(
+                    [], f"Preview: {candidate.label} · bodypart mapping unavailable")
+                return
         key = (id(session), candidate.run_id, ref, stat.st_size, stat.st_mtime_ns,
-               raw_preview, threshold)
+               raw_preview, threshold, bodypart)
         self._preview_expected_key = key
         if key == self._preview_loaded_key:
             return
@@ -415,7 +427,7 @@ class TrackingActions(QObject):
         if raw_preview:
             future = self._executor.submit(
                 _read_raw_candidate_preview, self.adapter, path,
-                video.frame_count)
+                video.frame_count, bodypart)
         else:
             future = self._executor.submit(
                 _read_legacy_candidate_preview, path, track.track_id,

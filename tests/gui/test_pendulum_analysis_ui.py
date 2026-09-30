@@ -111,3 +111,54 @@ def test_cancel_late_generation_and_input_change_never_commit(qtbot, tmp_path, s
         assert session.project.scientific_results == ()
     finally:
         actions.shutdown()
+
+
+def test_sparse_qc_previews_and_empty_charts_recover(qtbot, tmp_path, synthetic_video_path):
+    from copy import deepcopy
+    from math import sin
+
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    complete = run_analysis_job(prepare_analysis_job(session, experiment.experiment_id, 11), Event()).payload
+    sparse = deepcopy(complete)
+    sparse['config']['end_frame_index'] = 147
+    sparse['measurement']['video']['fps_nominal'] = 30.
+    valid_frames = {block * 15 + offset for block in range(8) for offset in range(5)} | {120, 121}
+    sparse['rows'] = []
+    for frame in range(148):
+        row = deepcopy(complete['rows'][0])
+        row.update(frame_index=frame, time_release_relative_s=frame/30.,
+                   theta_rad=.2*sin(frame/10.) if frame < 133 else None,
+                   is_qc_valid=frame in valid_frames,
+                   qc_reasons=[] if frame in valid_frames else ['body_top:no_adopted_point'],
+                   omega_rad_s=None, omega_reason='short_segment' if frame in valid_frames else 'qc_excluded',
+                   energy_s_inv2=None)
+        sparse['rows'].append(row)
+    panel = PendulumAnalysisPanel()
+    qtbot.addWidget(panel)
+    panel.setPayload(sparse, True)
+    assert '42/148' in panel.summaryLabel.text()
+    assert 'Longest QC-valid block: 5 frames' in panel.summaryLabel.text()
+    assert len(panel.excludedAngles.points()) == 91  # 133 geometrical angles minus 42 valid
+    with qtbot.waitSignal(panel.frameRequested) as signal:
+        point = panel.excludedAngles.points()[0]
+        panel._pointClicked(panel.excludedAngles, [point])
+    assert signal.args == [point.data()]
+    for kind in ('omega', 'phase', 'energy'):
+        assert panel.plots[kind].isHidden()
+        x, y = panel.items[kind].getData()
+        assert x is None or len(x) == 0
+        assert y is None or len(y) == 0  # 不把全NaN交给autorange
+        assert '9 consecutive QC-valid frames' in panel.chartMessages[kind].text()
+        assert 'longest block: 5' in panel.chartMessages[kind].text()
+        assert 'source block 0–8' in panel.chartMessages[kind].text()
+        assert 'frames 5, 6, 7, 8' in panel.chartMessages[kind].text()
+    panel.setPayload(complete, True)
+    for kind in ('omega', 'phase', 'energy'):
+        assert not panel.plots[kind].isHidden()
+        assert 'unavailable' not in panel.chartMessages[kind].text()
+    assert len(panel.excludedAngles.points()) == 0
+    panel.setPayload(sparse, True)
+    assert panel.plots['omega'].isHidden()
+    panel.clearData()
+    assert len(panel.excludedAngles.points()) == 0
+    assert all(plot.isHidden() for plot in panel.plots.values())

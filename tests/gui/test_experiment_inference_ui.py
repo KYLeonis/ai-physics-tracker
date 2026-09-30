@@ -786,3 +786,27 @@ def test_model_chooser_dates_and_verify_action(qtbot, tmp_path, synthetic_video_
     assert dialog._ok_button.isEnabled() and dialog._ok_button.text() == "Verify & run"
     dialog.modelList.setCurrentRow(1)
     assert dialog._ok_button.text() == "Run inference"
+
+
+def test_joint_candidate_preview_uses_role_and_refreshes_when_role_changes(qtbot, tmp_path, synthetic_video_path):
+    from PySide6.QtCore import Qt
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    _run_inference(controller, session, experiment, model)
+    window._refreshTrackList()
+    for role in ('body_bottom', 'tip', 'body_top'):
+        target = experiment.roles.track_id_for(role)
+        window.trackList.clearSelection()
+        row = next(i for i in range(window.trackList.count())
+                   if window.trackList.item(i).data(Qt.ItemDataRole.UserRole) == target)
+        window.trackList.setCurrentRow(row)
+        window.trackingActions._context_key = None
+        window.trackingActions.refresh()
+        qtbot.waitUntil(lambda: window.trackingActions._preview_loaded_key is not None
+                        and window.trackingActions._preview_loaded_key[-1] == role, timeout=5000)
+        markers = window.videoView.preview_marker_views()
+        assert len(markers) == session.project.videos[0].frame_count
+        assert sum(marker.color == '#ff6b6b' for marker in markers) == (1 if role == 'tip' else 0)
+        assert 'positions unavailable' not in window.videoView._preview_legend.text()
+    assert experiment.active_infer_run_id is None  # 预览不采用候选
