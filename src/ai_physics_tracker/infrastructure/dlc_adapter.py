@@ -7,6 +7,7 @@ from io import TextIOBase
 from datetime import UTC, datetime
 from math import isfinite
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -629,6 +630,63 @@ class DLCAdapter:
                                 parsed.missing_count, parsed.low_confidence_count,
                                 request.model_snapshot, str(deeplabcut.__version__), actual_device)
 
+    def infer_joint_artifact(
+        self, run_id: UUID, queue: Any, cancel_event: Any, *,
+        config_path: Path, video_path: Path, checkpoint_path: Path,
+        pose_cfg_path: Path, output_dir: Path, frame_count: int,
+        bodypart_mapping: tuple[tuple[str, str], ...],
+        batch_size: int, device: str,
+    ) -> tuple[Path, str, str, str, Any]:
+        """一次 DLC analyze 输出四 role 原始 artifact；不构建或提交 TrackPoint。"""
+
+        import deeplabcut
+        from ai_physics_tracker.infrastructure.dlc_predictions import read_joint_raw_predictions
+
+        if cancel_event.is_set():
+            raise CancelledError("Joint inference cancelled")
+        if output_dir.exists():
+            raise ValueError("Joint inference output directory must be new")
+        targets = tuple(target for _role, target in bodypart_mapping)
+        stage_root = output_dir.parent / "model-stage"
+        try:
+            staged_config, staged_checkpoint = _stage_joint_model(
+                config_path, pose_cfg_path, checkpoint_path, stage_root
+            )
+            snapshots = _model_snapshots(staged_config, 1, 0, allowed_bodyparts=targets)
+            matches = [index for index, snapshot in enumerate(snapshots)
+                       if snapshot.path.resolve() == staged_checkpoint.resolve()]
+            if len(matches) != 1:
+                raise ValueError("Selected joint checkpoint was not staged for this DLC config")
+            actual_device = detect_device() if device == "auto" else device
+            output_dir.mkdir(parents=True, exist_ok=False)
+            stream = QueueLogStream(queue, run_id)
+            send_progress(queue, run_id, 0, frame_count, message="Loading four-bodypart model")
+            with redirect_stdout(stream), redirect_stderr(stream), _selected_snapshot(staged_checkpoint), _prediction_progress(
+                queue, run_id, cancel_event, frame_count
+            ) as progress:
+                scorer = deeplabcut.analyze_videos(
+                    str(staged_config), [str(video_path)],
+                    shuffle=1, trainingsetindex=0, snapshot_index=matches[0],
+                    device=actual_device, destfolder=str(output_dir),
+                    batch_size=batch_size, save_as_csv=True, auto_track=False,
+                    cropping=None, dynamic=(False, 0.5, 10),
+                )
+            stream.flush()
+            if cancel_event.is_set():
+                raise CancelledError("Joint inference cancelled")
+            if progress[0] != frame_count:
+                raise ValueError(f"Joint inference processed {progress[0]}/{frame_count} frames")
+            if not isinstance(scorer, str) or Path(scorer).name != scorer:
+                raise ValueError("DLC returned an invalid scorer")
+            artifact = output_dir / f"{video_path.stem}{scorer}.h5"
+            parsed = read_joint_raw_predictions(
+                artifact, bodypart_mapping, frame_count=frame_count,
+                expected_scorer=scorer,
+            )
+            return artifact, scorer, str(deeplabcut.__version__), actual_device, parsed
+        finally:
+            shutil.rmtree(stage_root, ignore_errors=True)
+
     def read_raw_predictions(
         self,
         prediction_path: Path,
@@ -917,6 +975,65 @@ def run_model_selftest_inference(
     return predictions[0], versions, str(device)
 
 
+def _stage_joint_model(
+    config_path: Path, pose_cfg_path: Path, checkpoint_path: Path, stage_root: Path,
+) -> tuple[Path, Path]:
+    """将 trained/imported 引用统一布置成一次 DLC analyze 可加载的临时项目。
+
+    imported bundle 的 checkpoint 是扁平 managed 副本，不在 DLC loader 的
+    ``dlc-models-pytorch`` 目录。只在本 job 内复制并改写 project_path；
+    原模型/配置不变，清理由调用方 finally 完成。
+    """
+
+    import yaml
+    from deeplabcut.core.engine import Engine
+    from deeplabcut.utils import auxiliaryfunctions as af
+
+    if stage_root.exists():
+        raise ValueError("joint model staging directory already exists")
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or data.get("engine") != "pytorch":
+        raise ValueError("joint inference requires a PyTorch DLC project config")
+    fractions = data.get("TrainingFraction")
+    if not isinstance(fractions, list) or not fractions:
+        raise ValueError("DLC project config has no TrainingFraction")
+    rewritten = dict(data)
+    rewritten["project_path"] = str(stage_root)
+    model_folder = stage_root / af.get_model_folder(
+        fractions[0], 1, rewritten, engine=Engine.PYTORCH
+    )
+    model_folder.mkdir(parents=True, exist_ok=False)
+    train_folder = model_folder / "train"
+    train_folder.mkdir()
+    shutil.copyfile(pose_cfg_path, train_folder / Engine.PYTORCH.pose_cfg_name)
+    test_folder = model_folder / "test"
+    test_folder.mkdir()
+    bodyparts = rewritten.get("bodyparts")
+    if not isinstance(bodyparts, list) or len(bodyparts) != 4:
+        raise ValueError("joint DLC config must contain exactly four bodyparts")
+    test_cfg = {
+        "dataset": str(stage_root),
+        "num_joints": len(bodyparts),
+        "all_joints": [[index] for index in range(len(bodyparts))],
+        "all_joints_names": bodyparts,
+        "net_type": rewritten.get("default_net_type", "resnet_50"),
+        "dataset_type": "multi-animal-imgaug",
+        "global_scale": 1.0,
+        "scoremap_dir": "test",
+    }
+    (test_folder / "pose_cfg.yaml").write_text(
+        yaml.safe_dump(test_cfg, sort_keys=False), encoding="utf-8"
+    )
+    staged_checkpoint = train_folder / "snapshot-1.pt"
+    shutil.copyfile(checkpoint_path, staged_checkpoint)
+    staged_config = stage_root / "config.yaml"
+    staged_config.write_text(
+        yaml.safe_dump(rewritten, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return staged_config, staged_checkpoint
+
+
 def _model_snapshots(
     config_path: Path,
     shuffle: int,
@@ -935,10 +1052,13 @@ def _model_snapshots(
     loader = DLCLoader(config_path, shuffle=shuffle, trainset_index=trainingsetindex)
     if allowed_bodyparts is not None and (
         loader.project_cfg["multianimalproject"]
-        or tuple(loader.project_cfg["bodyparts"]) != allowed_bodyparts
+        or len(loader.project_cfg["bodyparts"]) != len(allowed_bodyparts)
+        or set(loader.project_cfg["bodyparts"]) != set(allowed_bodyparts)
     ):
         raise ValueError(
             "Inference currently requires one bodypart named target"
+            if allowed_bodyparts == ("target",) else
+            "DLC model bodyparts do not match the inference request"
         )
     if loader.project_cfg["multianimalproject"]:
         raise ValueError("Multi-animal DLC projects are not supported")

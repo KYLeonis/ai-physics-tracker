@@ -429,6 +429,14 @@ class MainWindow(QMainWindow):
         self.reviewActions = DifficultFrameReviewActions(
             self, self.trackingActions.panel
         )
+        # P1.4-S4:experiment 联合推理/审核/激活控制器(External worker 同款模式)
+        from ai_physics_tracker.gui.experiment_inference_actions import (
+            ExperimentInferenceActions,
+        )
+
+        self.experimentInferenceActions = ExperimentInferenceActions(
+            self, _sys.executable
+        )
         self._installChartPanel(self.chartActions.panel)
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         self.setWorkspace(WORKSPACE_ACQUIRE)
@@ -1084,7 +1092,11 @@ class MainWindow(QMainWindow):
                 "list area to exit"
             )
         else:
-            self.videoView.set_annotation_mode(False)
+            # HR 反馈(2026-09-29):joint 审核 Correct 等待点击时不因 track
+            # 取消选中而丢失标注模式(光标/点击会失效)
+            joint_review = getattr(self, "experimentInferenceActions", None)
+            if not (joint_review is not None and joint_review.is_correcting):
+                self.videoView.set_annotation_mode(False)
             if (
                 self._annotation_session is not None
                 and not self.drawScaleButton.isChecked()
@@ -1097,6 +1109,11 @@ class MainWindow(QMainWindow):
     def _exitAnnotationMode(self) -> None:
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             self.reviewActions.cancelCorrectMode()
+            self.statusBar().showMessage("Correct mode cancelled")
+            return
+        joint = getattr(self, "experimentInferenceActions", None)
+        if joint is not None and joint.is_correcting:
+            joint.cancelCorrect()
             self.statusBar().showMessage("Correct mode cancelled")
             return
         if self._selected_track_id is not None:
@@ -1411,17 +1428,12 @@ class MainWindow(QMainWindow):
             return
         worklist = frame_set_worklist(experiment)
         if worklist:
-            start_frame = next(
-                (
-                    frame
-                    for frame in worklist
-                    if not annotation_guide_state(
-                        session.project, experiment, frame
-                    ).frame_complete
-                ),
+            target = next(
+                (frame for frame in worklist if not annotation_guide_state(
+                    session.project, experiment, frame).frame_complete),
                 worklist[-1],
             )
-            self._beginGuideJump(start_frame)
+            self._beginGuideJump(target)
         self._guide_experiment_id = experiment.experiment_id
         self.trackList.clearSelection()
         self.videoView.set_annotation_mode(True)
@@ -1977,9 +1989,6 @@ class MainWindow(QMainWindow):
             return
         if self._annotation_session is None:
             return
-        guided = self._guide_experiment_id is not None
-        if not guided and self._selected_track_id is None:
-            return
         if self._presented_frame_index is None:
             return
         if self._has_pending_request:
@@ -1990,6 +1999,18 @@ class MainWindow(QMainWindow):
         pixel = self.videoView.mapScreenToPixel(view_pos)
         if pixel is None:
             return  # 点击落在图像外（data-model.md §6.1：不钳位、不造值）
+        # P1.4 joint 审核:Correct 点击写所选 role 的 manual 点——experiment
+        # 级状态,不依赖 track 选中(必须在"无选中 track 即 return"之前)
+        joint = getattr(self, "experimentInferenceActions", None)
+        if joint is not None and joint.is_correcting:
+            handled = joint.handleCorrectClick(pixel[0], pixel[1])
+            if handled:
+                self._refreshMarkers()
+                self._refreshHistoryButtons()
+            return
+        guided = self._guide_experiment_id is not None
+        if not guided and self._selected_track_id is None:
+            return
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             handled = self.reviewActions.handleCorrectClick(pixel[0], pixel[1])
             if handled:

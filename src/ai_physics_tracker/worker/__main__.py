@@ -217,6 +217,66 @@ def _run_train_experiment(request: dict[str, Any], job_dir: Path, result: dict[s
 
 
 SELFTEST_MODEL_SECTION = "model_selftest"
+INFERENCE_SECTION = "experiment_inference"
+
+
+def _run_infer_experiment(request: dict[str, Any], job_dir: Path, result: dict[str, Any]) -> None:
+    """一次四 bodypart DLC analyze；raw artifact 留在 job 内，绝不写项目清单。"""
+
+    from concurrent.futures import CancelledError
+    from uuid import UUID
+
+    from ai_physics_tracker.domain.pendulum import ROLE_ORDER
+    from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter
+
+    paths = {
+        "video": (Path(request["video_path"]), request["video_sha256"]),
+        "config": (Path(request["config_path"]), request["config_sha256"]),
+        "checkpoint": (Path(request["checkpoint_path"]), request["checkpoint_sha256"]),
+        "pose_cfg": (Path(request["pose_cfg_path"]), request["pose_cfg_sha256"]),
+    }
+    for name, (path, digest) in paths.items():
+        if not path.is_file() or _sha256_file(path) != digest:
+            raise RuntimeError(f"joint inference {name} changed or is missing")
+    mapping = tuple(tuple(pair) for pair in request["bodypart_mapping"])
+    if tuple(role for role, _part in mapping) != ROLE_ORDER:
+        raise RuntimeError("joint inference role mapping is not canonical")
+    adapter = DLCAdapter()
+    try:
+        artifact, scorer, engine_version, device, parsed = adapter.infer_joint_artifact(
+            UUID(request["run_id"]), _ResultLogQueue(), _MarkerCancelEvent(job_dir),
+            config_path=paths["config"][0], video_path=paths["video"][0],
+            checkpoint_path=paths["checkpoint"][0], pose_cfg_path=paths["pose_cfg"][0],
+            output_dir=job_dir / "predictions", frame_count=int(request["frame_count"]),
+            bodypart_mapping=mapping, batch_size=int(request["batch_size"]),
+            device=str(request["device"]),
+        )
+    except CancelledError as error:
+        raise _Cancelled() from error
+    for name, (path, digest) in paths.items():
+        if _sha256_file(path) != digest:
+            raise RuntimeError(f"joint inference {name} changed during execution")
+    relative = artifact.resolve().relative_to(job_dir).as_posix()
+    result["outputs"] = [{
+        "path": relative, "size": artifact.stat().st_size,
+        "sha256": _sha256_file(artifact),
+    }]
+    result["actual_device"] = device
+    import torch
+
+    result[INFERENCE_SECTION] = {
+        "input_digest": request["input_digest"],
+        "video_sha256": request["video_sha256"],
+        "model_manifest_hash": request["model_manifest_hash"],
+        "bodypart_mapping": [list(pair) for pair in mapping],
+        "frame_count": parsed.frame_count,
+        "prediction_path": relative,
+        "scorer": scorer,
+        "engine_version": engine_version,
+        "versions": {"deeplabcut": engine_version, "torch": str(torch.__version__)},
+        "complete_count": parsed.complete_count,
+        "missing_by_role": dict(parsed.missing_by_role),
+    }
 
 
 def _run_selftest_model(request: dict[str, Any], job_dir: Path, result: dict[str, Any]) -> None:
@@ -334,6 +394,11 @@ def _execute_operation(
             result["status"] = "cancelled"
     elif operation == "selftest_model":
         _run_selftest_model(request, job_dir, result)
+    elif operation == "infer_experiment":
+        try:
+            _run_infer_experiment(request, job_dir, result)
+        except _Cancelled:
+            result["status"] = "cancelled"
     else:
         raise ValueError(f"Unsupported operation: {operation!r}")
 

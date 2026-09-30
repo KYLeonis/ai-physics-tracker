@@ -44,6 +44,11 @@ python3.12 -m venv /tmp/ejp-p03-build-env
 
 取消：`--operation wait --cancel-after 0.3`与`--operation stubborn --cancel-after 1`（后者启动固定sleep子进程验证tree kill）；错误：`--operation fail`预期退出1、failed及traceback；真实DLC取消可对dlc_smoke加cancel-after并记录取消时所处实际阶段。所有命令返回host-result.json、request.json、worker.log；协作worker另有result.json。没有用截图或mock替代科学结果。
 
+## P1.4 joint inference / lifecycle（2026-09-29）
+
+- [S1 双模型结构 smoke](p14-joint-inference-smoke.json)：自训与导入模型各一次 10 帧四 role DLC 推理；相应 worker 日志 `p14-trained-worker.txt`、`p14-imported-worker.txt`。只验证结构与协议，不代表跟踪准确度。
+- [S6 导入模型生命周期 smoke](p14-lifecycle-smoke.json)：临时项目副本内的 10 帧真实视频，取消一次 worker，再经 host 结果校验→审核修正→四轨 Activate/Clear/Undo/save-reopen；日志 [p14-lifecycle-worker.txt](p14-lifecycle-worker.txt)。148 帧全视频 Mac CPU 尝试因耗时主动停止，未记作通过。
+
 ## Windows handoff（用户批准延期，进入P6前必须完成）
 
 在原生Windows x64 checkout本分支，已有DLC Python环境记为`$RuntimePython`；build环境与AI环境分开。以下PowerShell只构建探针，不安装完整产品：

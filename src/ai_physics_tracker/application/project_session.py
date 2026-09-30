@@ -10,7 +10,7 @@ import logging
 import json
 from copy import deepcopy
 from dataclasses import replace
-from math import isfinite
+from math import isfinite, isnan
 from pathlib import Path
 from typing import Any, Iterable, Protocol, TYPE_CHECKING, runtime_checkable
 from uuid import UUID, uuid4
@@ -41,6 +41,14 @@ from ai_physics_tracker.application.suggested_frame_review import (
     extract_review_state,
 )
 from ai_physics_tracker.application.video import VideoStreamInfo
+from ai_physics_tracker.application.experiment_review import (
+    EXPERIMENT_REVIEW_KEY,
+    ExperimentFrameCandidate,
+    build_experiment_review_queue,
+    read_experiment_candidate,
+    review_record_ids,
+)
+from ai_physics_tracker.application.difficult_frames import MiningParams
 from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
 from ai_physics_tracker.domain.calibration import Calibration, CalibrationTransform
 from ai_physics_tracker.domain.kinematics import (
@@ -52,11 +60,13 @@ from ai_physics_tracker.domain.kinematics import (
     smooth_savgol,
 )
 from ai_physics_tracker.domain.pendulum import (
+    ExperimentActivationRecord,
     ExperimentFrameSet,
     PendulumExperiment,
     PendulumRoles,
     PhysicalParameters,
     RoleBindingEditRecord,
+    RoleAdoptionCount,
     TrueVertical,
     create_pendulum_experiment,
 )
@@ -93,11 +103,13 @@ from ai_physics_tracker.domain.track_store import (
     resolve_effective_point,
     resolve_effective_points,
 )
-from ai_physics_tracker.domain.types import utc_now
+from ai_physics_tracker.domain.types import canonical_json_digest, utc_now
 from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.domain.video import Video
+from ai_physics_tracker.infrastructure.hashing import file_sha256
 
 logger = logging.getLogger(__name__)
+_SCOPED_REVIEW_KEYS = (SUGGESTED_FRAME_REVIEW_KEY, EXPERIMENT_REVIEW_KEY)
 
 if TYPE_CHECKING:
     from ai_physics_tracker.application.kinematics_job import KinematicsResult
@@ -1179,11 +1191,14 @@ class ProjectSession:
         for run_id in scoped_reviews:
             run = next((r for r in self._project.tracking_runs if r.run_id == run_id), None)
             if run is not None:
-                rev_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
-                current_scoped[run_id] = deepcopy(rev_dict) if isinstance(rev_dict, dict) else None
+                current_scoped[run_id] = self._review_snapshot(run)
             else:
                 current_scoped[run_id] = None
         return current_scoped
+
+    @staticmethod
+    def _review_snapshot(run: TrackingRun) -> dict[str, Any]:
+        return {key: deepcopy(run.extra_fields.get(key)) for key in _SCOPED_REVIEW_KEYS}
 
     def _history_transition(
         self, snapshot: _SessionDataSnapshot, *, is_undo: bool
@@ -1245,12 +1260,13 @@ class ProjectSession:
             runs_list: list[TrackingRun] = []
             for existing in updated_runs:
                 if existing.run_id in scoped_reviews:
-                    old_rev = scoped_reviews[existing.run_id]
+                    old_rev = scoped_reviews[existing.run_id] or {}
                     extras = dict(existing.extra_fields)
-                    if old_rev is None:
-                        extras.pop(SUGGESTED_FRAME_REVIEW_KEY, None)
-                    else:
-                        extras[SUGGESTED_FRAME_REVIEW_KEY] = deepcopy(old_rev)
+                    for key in _SCOPED_REVIEW_KEYS:
+                        if old_rev.get(key) is None:
+                            extras.pop(key, None)
+                        else:
+                            extras[key] = deepcopy(old_rev[key])
                     runs_list.append(replace(existing, extra_fields=extras))
                 else:
                     runs_list.append(existing)
@@ -1369,10 +1385,7 @@ class ProjectSession:
     def _commit_review_transaction(
         self, run: TrackingRun, new_state: SuggestedFrameReviewState
     ) -> None:
-        old_review_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
-        scoped_reviews = {
-            run.run_id: deepcopy(old_review_dict) if isinstance(old_review_dict, dict) else None
-        }
+        scoped_reviews = {run.run_id: self._review_snapshot(run)}
         updated_run = attach_review_state(run, new_state)
         runs = tuple(updated_run if r.run_id == run.run_id else r for r in self._project.tracking_runs)
         updated_project = replace(self._project, tracking_runs=runs)
@@ -1552,10 +1565,7 @@ class ProjectSession:
             reviewed_frames=new_reviewed,
         )
 
-        old_review_dict = run.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
-        scoped_reviews = {
-            run.run_id: deepcopy(old_review_dict) if isinstance(old_review_dict, dict) else None
-        }
+        scoped_reviews = {run.run_id: self._review_snapshot(run)}
 
         updated_run = attach_review_state(run, new_state)
         runs = tuple(updated_run if r.run_id == run.run_id else r for r in self._project.tracking_runs)
@@ -1581,6 +1591,244 @@ class ProjectSession:
             pixel_y,
         )
         return point
+
+    # Joint experiment review (publication P1.4). Decisions belong to the candidate run.
+
+    def get_experiment_review(
+        self, run_id: UUID,
+    ) -> tuple[tuple[ExperimentFrameCandidate, ...], dict[int, dict[str, Any]]] | None:
+        run = next((item for item in self.tracking_runs() if item.run_id == run_id), None)
+        if run is None or EXPERIMENT_REVIEW_KEY not in run.extra_fields:
+            return None
+        data = run.extra_fields[EXPERIMENT_REVIEW_KEY]
+        if not isinstance(data, dict) or data.get("version") != 1:
+            raise ProjectSessionError("experiment review state is malformed")
+        if data.get("artifact_sha256") != run.extra_fields.get("prediction_sha256"):
+            raise ProjectSessionError("experiment review references another candidate artifact")
+        try:
+            candidates = tuple(ExperimentFrameCandidate.from_dict(item)
+                               for item in data["candidates"])
+            records = {int(frame): record for frame, record in data["records"].items()}
+            if len({item.frame_index for item in candidates}) != len(candidates):
+                raise ValueError("duplicate experiment review candidate")
+            for frame, record in records.items():
+                if frame not in {item.frame_index for item in candidates}:
+                    raise ValueError("review record is outside candidate queue")
+                review_record_ids(record)
+        except (KeyError, TypeError, ValueError) as error:
+            raise ProjectSessionError(f"experiment review state is malformed: {error}") from error
+        return candidates, records
+
+    def create_experiment_review_queue(
+        self, run_id: UUID, *, top_n: int = 20,
+    ) -> tuple[ExperimentFrameCandidate, ...]:
+        """返回当前推荐帧；历史 corrected 记录保留在 run 中，不混入新推荐。"""
+
+        from ai_physics_tracker.application.annotation_join import join_complete_frames
+
+        run = self._validate_infer_run_for_review(run_id)
+        if run.experiment_id is None or self.project_root is None:
+            raise ProjectSessionError("joint review requires a saved experiment candidate")
+        experiment = self.pendulum_experiment(run.experiment_id)
+        video = next((item for item in self._project.videos
+                      if item.video_id == experiment.video_id), None)
+        timeline = next((item for item in self._project.timelines
+                         if item.video_id == experiment.video_id), None)
+        if video is None or timeline is None:
+            raise ProjectSessionError("experiment video or timeline is missing")
+        complete_frames = frozenset(join_complete_frames(
+            self.project, experiment).complete_frame_indices)
+        try:
+            raw = read_experiment_candidate(self.project_root, run, experiment, video.frame_count)
+            # 审核坐标展示对当前视频;推理后视频被替换则候选语义失效,拒绝建队列
+            video_path = self.video_path(video)
+            if (video_path is None or not video_path.is_file()
+                    or file_sha256(video_path) != run.extra_fields.get("video_sha256")):
+                raise ValueError("joint candidate video changed after inference")
+            confidence_threshold = float(run.config["min_confidence"])
+            candidates = build_experiment_review_queue(
+                raw, fps_nominal=timeline.fps_nominal,
+                confidence_threshold=confidence_threshold,
+                fixed_pivot_px=experiment.geometry.fixed_pivot_px, top_n=top_n,
+                working_zone=timeline.working_zone,
+                excluded_frames=complete_frames,
+            )
+            from ai_physics_tracker.application.experiment_review import (
+                experiment_difficulty_pool,
+            )
+
+            difficulty_pool = experiment_difficulty_pool(
+                raw, fps_nominal=timeline.fps_nominal,
+                confidence_threshold=confidence_threshold,
+                fixed_pivot_px=experiment.geometry.fixed_pivot_px,
+                working_zone=timeline.working_zone,
+                excluded_frames=complete_frames,
+            )
+        except (ValueError, KeyError, OSError) as error:
+            raise ProjectSessionError(f"joint candidate cannot be reviewed: {error}") from error
+        existing = self.get_experiment_review(run_id)
+        prior_records = existing[1] if existing is not None else {}
+        stored_candidates = candidates
+        if existing is not None:
+            selected = {item.frame_index: item for item in candidates}
+            for item in existing[0]:
+                if item.frame_index in prior_records:
+                    selected.setdefault(item.frame_index, item)
+            stored_candidates = tuple(selected.values())
+        data = {
+            "version": 1,
+            "artifact_sha256": run.extra_fields["prediction_sha256"],
+            "policy": {
+                "kind": "screening_only",
+                "confidence_threshold": confidence_threshold,
+                "confidence_source": "inference_request.min_confidence",
+                "mining_params": MiningParams(
+                    top_n=top_n,
+                    confidence_threshold=confidence_threshold,
+                ).to_snapshot(),
+                "excluded_complete_frames": sorted(complete_frames),
+                "suggestion_frames": [item.frame_index for item in candidates],
+                "suggestion_limit": top_n,
+                "difficulty_pool": len(difficulty_pool),
+                "pivot_cutoff_px": None,
+            },
+            "candidates": [item.to_dict() for item in stored_candidates],
+            "records": {str(frame): record for frame, record in prior_records.items()},
+        }
+        updated_run = replace(run, extra_fields={**run.extra_fields, EXPERIMENT_REVIEW_KEY: data})
+        runs = tuple(updated_run if item.run_id == run_id else item
+                     for item in self.tracking_runs())
+        self._commit_project(
+            replace(self._project, tracking_runs=runs), self._store,
+            {run_id: self._review_snapshot(run)},
+        )
+        return candidates
+
+    def review_experiment_frame(
+        self, run_id: UUID, frame_index: int, disposition: str,
+        *, role: str | None = None, pixel_x: float | None = None,
+        pixel_y: float | None = None,
+    ) -> TrackPoint | None:
+        """提交一帧审核决定;Correct 只写所选 role 的 manual 点。"""
+
+        run = self._validate_infer_run_for_review(run_id)
+        state = self.get_experiment_review(run_id)
+        if state is None:
+            raise ProjectSessionError("create a joint review queue first")
+        candidates, records = state
+        candidate = next((item for item in candidates if item.frame_index == frame_index), None)
+        if candidate is None:
+            raise ProjectSessionError("frame is not in the joint review queue")
+        if run.experiment_id is None:
+            raise ProjectSessionError("joint review run has no experiment")
+        experiment = self.pendulum_experiment(run.experiment_id)
+        if run.role_bindings != experiment.roles:
+            raise ProjectSessionError("experiment role binding changed after inference")
+        video = next((item for item in self._project.videos
+                      if item.video_id == experiment.video_id), None)
+        if video is None or self.project_root is None:
+            raise ProjectSessionError("joint candidate video or project is unavailable")
+        try:
+            read_experiment_candidate(self.project_root, run, experiment, video.frame_count)
+        except ValueError as error:
+            raise ProjectSessionError(f"joint candidate changed before review: {error}") from error
+        # Correct 的 manual 点会成为测量真值;视频替换后旧候选坐标与新画面错位,必须拒绝
+        video_path = self.video_path(video)
+        if (video_path is None or not video_path.is_file()
+                or file_sha256(video_path) != run.extra_fields.get("video_sha256")):
+            raise ProjectSessionError("joint candidate video changed after inference")
+        old_record = records.get(frame_index, {})
+        manual_ids = review_record_ids(old_record) if old_record else {}
+        point: TrackPoint | None = None
+        store = self._store
+        project = self._project
+        if disposition == "corrected":
+            if role not in experiment.roles.by_role():
+                raise ProjectSessionError("Correct requires one of the four experiment roles")
+            if (isinstance(pixel_x, bool) or not isinstance(pixel_x, (int, float))
+                    or isinstance(pixel_y, bool) or not isinstance(pixel_y, (int, float))
+                    or not isfinite(pixel_x) or not isfinite(pixel_y)):
+                raise ProjectSessionError("Correct requires finite pixel coordinates")
+            if not self.can_measure(experiment.video_id):
+                raise ProjectSessionError("video timing is not verified; correction disabled")
+            timeline = next((item for item in self._project.timelines
+                             if item.video_id == experiment.video_id), None)
+            if timeline is None or not (timeline.working_zone[0] <= frame_index
+                                        <= timeline.working_zone[1]):
+                raise ProjectSessionError("review correction frame is outside working zone")
+            now = utc_now()
+            track_id = experiment.roles.track_id_for(role)
+            point = TrackPoint(
+                point_id=uuid4(), track_id=track_id, frame_index=frame_index,
+                time_s=frame_to_time(frame_index, timeline),
+                pixel_x=float(pixel_x), pixel_y=float(pixel_y), source="manual",
+                source_detail=self._approximate_timing.get(experiment.video_id),
+                visibility="visible", status="active", created_at=now, modified_at=now,
+            )
+            store = TrackStore(self._store.tracks, self._store.observations)
+            store.add_manual_point(point)
+            manual_ids[role] = point.point_id
+            project = replace(
+                project, observations=store.observations,
+                derived=mark_tracks_stale(project.derived, {track_id}),
+            )
+            project = self._with_manual_edit_experiment_state(project, track_id)
+        elif disposition in {"accepted", "skipped"}:
+            if manual_ids:
+                raise ProjectSessionError("delete corrected manual points before changing disposition")
+            if role is not None or pixel_x is not None or pixel_y is not None:
+                raise ProjectSessionError("Accept/Skip must not specify a role or coordinates")
+        else:
+            raise ProjectSessionError("invalid joint review disposition")
+        now_iso = utc_now().isoformat()
+        records[frame_index] = {
+            "disposition": disposition, "reviewed_at": now_iso,
+            "manual_point_ids": {name: str(value) for name, value in manual_ids.items()},
+        }
+        data = dict(run.extra_fields[EXPERIMENT_REVIEW_KEY])
+        data["records"] = {str(frame): record for frame, record in records.items()}
+        updated_run = replace(run, extra_fields={**run.extra_fields, EXPERIMENT_REVIEW_KEY: data})
+        project = replace(
+            project,
+            tracking_runs=tuple(updated_run if item.run_id == run_id else item
+                                for item in project.tracking_runs),
+        )
+        self._commit_project(project, store, {run_id: self._review_snapshot(run)})
+        return point
+
+    def extend_experiment_frame_set(
+        self, experiment_id: UUID, frames: Iterable[int],
+    ) -> tuple[int, ...]:
+        """把帧并入共享帧集(并集,undoable);帧集变化会使 fixed-check 失效。
+
+        用户批准的闭环(2026-09-30):joint 审核 corrected 帧进入下一轮
+        训练帧集——refine 循环的最后一环。
+        """
+
+        from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+
+        experiment = self.pendulum_experiment(experiment_id)
+        existing_set = experiment.frame_set
+        existing = existing_set.frames if existing_set is not None else ()
+        added = sorted({int(frame) for frame in frames} - set(existing))
+        merged = tuple(sorted(set(existing) | {int(frame) for frame in frames}))
+        if not added:
+            return existing
+        updated_set = ExperimentFrameSet(
+            frames=merged,
+            algorithm=existing_set.algorithm if existing_set is not None
+            else "joint-review-merge",
+            created_at=utc_now(),
+            source_video_sha256=(existing_set.source_video_sha256
+                                 if existing_set is not None else None),
+            extra_fields={
+                **(existing_set.extra_fields if existing_set is not None else {}),
+                "joint_review_merge": True,
+                "added_frames": added,
+            },
+        )
+        self.set_experiment_frame_set(experiment_id, updated_set)
+        return merged
 
     def delete_active_manual_point(self, track_id: UUID, frame_index: int) -> TrackPoint:
         """删除当前 Track 在当前帧的 active manual 点，恢复被它遮蔽的 AI 点。
@@ -1619,8 +1867,7 @@ class ProjectSession:
             if rev_state is not None and frame_index in rev_state.reviewed_frames:
                 rec = rev_state.reviewed_frames[frame_index]
                 if rec.manual_point_id == target.point_id:
-                    old_dict = r.extra_fields.get(SUGGESTED_FRAME_REVIEW_KEY)
-                    scoped_reviews[r.run_id] = deepcopy(old_dict) if isinstance(old_dict, dict) else None
+                    scoped_reviews[r.run_id] = self._review_snapshot(r)
 
                     new_reviewed = dict(rev_state.reviewed_frames)
                     del new_reviewed[frame_index]
@@ -1629,6 +1876,32 @@ class ProjectSession:
                         reviewed_frames=new_reviewed,
                     )
                     updated_runs_list.append(attach_review_state(r, new_state))
+                    continue
+            joint_state = self.get_experiment_review(r.run_id)
+            if joint_state is not None and frame_index in joint_state[1]:
+                record = joint_state[1][frame_index]
+                ids = review_record_ids(record)
+                corrected_role = next(
+                    (role for role, point_id in ids.items() if point_id == target.point_id),
+                    None,
+                )
+                if corrected_role is not None:
+                    scoped_reviews[r.run_id] = self._review_snapshot(r)
+                    remaining = {role: str(point_id) for role, point_id in ids.items()
+                                 if role != corrected_role}
+                    records = dict(r.extra_fields[EXPERIMENT_REVIEW_KEY]["records"])
+                    if remaining:
+                        records[str(frame_index)] = {
+                            **record, "manual_point_ids": remaining,
+                        }
+                    else:
+                        records.pop(str(frame_index), None)
+                    review_data = {
+                        **r.extra_fields[EXPERIMENT_REVIEW_KEY], "records": records,
+                    }
+                    updated_runs_list.append(replace(
+                        r, extra_fields={**r.extra_fields, EXPERIMENT_REVIEW_KEY: review_data},
+                    ))
                     continue
             updated_runs_list.append(r)
 
@@ -2416,8 +2689,6 @@ class ProjectSession:
                 raise ProjectSessionError(
                     f"run {name} file is missing: {relative!r}"
                 )
-            from ai_physics_tracker.infrastructure.hashing import file_sha256
-
             entries.append(
                 ModelManifestEntry(
                     relative_path=f"data/engines/{run_id}/{relative}",
@@ -2608,6 +2879,146 @@ class ProjectSession:
             return track
         cleared = replace(state, active_infer_run_id=None)
         return attach_refinement_state(track, cleared)
+
+    # ------------------------------------------------------------------
+    # Four-role experiment activation (publication P1.4)
+    # ------------------------------------------------------------------
+
+    def activate_experiment_candidate(
+        self, experiment_id: UUID, run_id: UUID,
+    ) -> ExperimentActivationRecord:
+        experiment = self.pendulum_experiment(experiment_id)
+        if experiment.active_infer_run_id is not None:
+            raise ProjectSessionError("experiment already has an active candidate; use Replace")
+        return self._commit_experiment_activation(experiment, run_id, "activate")
+
+    def replace_experiment_candidate(
+        self, experiment_id: UUID, run_id: UUID,
+    ) -> ExperimentActivationRecord:
+        experiment = self.pendulum_experiment(experiment_id)
+        if experiment.active_infer_run_id is None:
+            raise ProjectSessionError("experiment has no active candidate; use Activate")
+        if experiment.active_infer_run_id == run_id:
+            raise ProjectSessionError("replacement candidate is already active")
+        return self._commit_experiment_activation(experiment, run_id, "replace")
+
+    def clear_experiment_candidate(self, experiment_id: UUID) -> ExperimentActivationRecord:
+        experiment = self.pendulum_experiment(experiment_id)
+        if experiment.active_infer_run_id is None:
+            raise ProjectSessionError("experiment has no active candidate to clear")
+        return self._commit_experiment_activation(experiment, None, "clear")
+
+    def _commit_experiment_activation(
+        self, experiment: PendulumExperiment, run_id: UUID | None, action: str,
+    ) -> ExperimentActivationRecord:
+        """四轨投影全部构建完成后一次 Project/Undo 提交。"""
+
+        members = set(experiment.roles.track_ids())
+        if any(run.status in {"pending", "running"}
+               and members.intersection(run.member_track_ids)
+               for run in self.tracking_runs()):
+            raise ProjectSessionError("experiment has an unfinished engine task")
+        timeline = next((item for item in self._project.timelines
+                         if item.video_id == experiment.video_id), None)
+        video = next((item for item in self._project.videos
+                      if item.video_id == experiment.video_id), None)
+        if timeline is None or video is None or not self.can_measure(experiment.video_id):
+            raise ProjectSessionError("experiment video timing is unavailable or unconfirmed")
+        target = None
+        raw = None
+        threshold = 0.0
+        if run_id is not None:
+            target = next((item for item in self.tracking_runs() if item.run_id == run_id), None)
+            if target is None or self.project_root is None:
+                raise ProjectSessionError("joint candidate or saved project is unavailable")
+            try:
+                # 契约 §4:candidate 冻结后按自身 inputs 复核;模型文件 live 状态只门禁新
+                # infer,不阻断激活(推理后模型目录被移走时候选仍可激活,避免死端)
+                video_path = self.video_path(video)
+                if (video_path is None or not video_path.is_file()
+                        or file_sha256(video_path) != target.extra_fields.get("video_sha256")):
+                    raise ValueError("joint candidate video changed after inference")
+                if (target.extra_fields.get("input_digest") != target.config.get("input_digest")
+                        or target.config.get("min_confidence") !=
+                        target.extra_fields.get("verified_min_confidence")):
+                    raise ValueError("joint candidate identity disagrees with its verified freeze")
+                raw = read_experiment_candidate(
+                    self.project_root, target, experiment, video.frame_count,
+                )
+                threshold = float(target.config["min_confidence"])
+                if not isfinite(threshold) or not 0 <= threshold <= 1:
+                    raise ValueError("candidate confidence threshold is invalid")
+            except (ValueError, KeyError, TypeError, OSError) as error:
+                raise ProjectSessionError(f"joint candidate cannot be activated: {error}") from error
+
+        store = TrackStore(self._store.tracks, self._store.observations)
+        now = utc_now()
+        # replace_track_engine_points 不触碰 manual 点,激活前一次统计即可
+        manual_active = {
+            track_id: sum(point.track_id == track_id and point.source == "manual"
+                          and point.status == "active" for point in store.observations)
+            for track_id in experiment.roles.track_ids()
+        }
+        role_counts: list[RoleAdoptionCount] = []
+        for role, track_id in experiment.roles.by_role().items():
+            try:
+                points: list[TrackPoint] = []
+                if raw is not None and target is not None:
+                    rows = dict(raw.by_role)[role]
+                    for row in rows:
+                        if (isnan(row.pixel_x) or isnan(row.pixel_y) or isnan(row.confidence)
+                                or row.confidence < threshold):
+                            continue
+                        points.append(TrackPoint(
+                            point_id=uuid4(), track_id=track_id,
+                            frame_index=row.frame_index,
+                            time_s=frame_to_time(row.frame_index, timeline),
+                            pixel_x=row.pixel_x, pixel_y=row.pixel_y,
+                            source=target.engine, source_detail=target.source_detail,
+                            confidence=row.confidence, visibility="unknown", status="active",
+                            created_at=now, modified_at=now,
+                        ))
+                adopted, _superseded = store.replace_track_engine_points(track_id, points)
+            except ValueError as error:
+                raise ProjectSessionError(f"joint activation failed for {role}: {error}") from error
+            role_counts.append(RoleAdoptionCount(role, adopted, manual_active[track_id]))
+
+        revision = experiment.measurement_revision + 1
+        signature = canonical_json_digest({
+            "experiment_id": str(experiment.experiment_id),
+            "from_run_id": str(experiment.active_infer_run_id)
+            if experiment.active_infer_run_id else None,
+            "to_run_id": str(run_id) if run_id else None,
+            "revision": revision,
+            "role_bindings": {role: str(track_id)
+                              for role, track_id in experiment.roles.by_role().items()},
+            "observations": [
+                [str(point.track_id), point.frame_index, point.time_s,
+                 point.pixel_x, point.pixel_y, point.source, point.source_detail,
+                 point.confidence, point.status,
+                 str(point.superseded_by) if point.superseded_by else None]
+                for point in store.observations if point.track_id in members
+            ],
+        })
+        record = ExperimentActivationRecord(
+            record_id=uuid4(), timestamp=now, action=action,
+            from_run_id=experiment.active_infer_run_id, to_run_id=run_id,
+            role_counts=tuple(role_counts), input_digest=signature,
+        )
+        updated = replace(
+            experiment, active_infer_run_id=run_id,
+            activation_history=(*experiment.activation_history, record),
+            measurement_revision=revision,
+        )
+        project = replace(
+            self._project, observations=store.observations,
+            derived=mark_tracks_stale(self._project.derived, members),
+            experiments=tuple(updated if item.experiment_id == experiment.experiment_id
+                              else item for item in self._project.experiments),
+        )
+        project = self._with_stale_results_for_experiment(project, experiment.experiment_id)
+        self._commit_project(project, store)
+        return record
 
     # ------------------------------------------------------------------
     # Inference Result Activation & Replacement (Phase 5.4 ADR-0014)
@@ -2851,4 +3262,3 @@ class ProjectSession:
         )
         self._commit_project(updated_project, candidate_store)
         return record
-

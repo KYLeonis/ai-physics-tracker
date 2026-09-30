@@ -1,16 +1,18 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-09-29。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P1.3 已合并并 push。
-- 当前：**P1.3 已完成并合并（2026-09-29，HR 通过）：联合训练/教师导入/模型兼容性自检生产化，外部 worker 协议落地；1117 tests；test2_pendulum 导入 test1 训练模型并自检 compatible。下一步 P1.4（joint inference/review/activation）待立项**。P1.1、P1.2、P1.3 已合并；P2 未开始。
-- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1已完成**；P1.2–P6未开始；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+- 最后更新：2026-09-30。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p1.4-joint-inference-activation`，自已推送的 P1.3 集成提交 `0546ff7` 切出。
+- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并;P2 未开始。
+- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1–P1.3已完成，P1.4执行中；P2–P6未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
+
+本轮验证（2026-09-30）：连续推荐帧重标定向 **36 passed**，全量 **1151 passed, 9 subtests passed**。Human Review 尚待用户反馈，未合并 P1.4。
 
 - [P1 complete mini-plan](plans/p1-four-landmark-measurement.md)：保留P1.1–P1.4边界，按schema/setup → complete-frame annotation/export → external worker/joint training/teacher import → joint inference/review/atomic activation实施。
 - 计划明确每个Subphase的Context Pack、scope、slice依赖、AC、自动化与真实DLC验证、增量Human Review、risk-based Independent Review及失败恢复。
 - 关键实现顺序：先v1/v2双格式与Save As事务，再共享4/4标注；AI阶段先收敛P0.3 external worker边界，再训练/导入/推理；最后才做四轨activation和P2 adopted-measurement handoff。
-- 本轮未修改`src/`、schema、GUI或runtime；合同与计划不代表功能已实现。
+- 以上为P1初始规划边界；实际实施进度以本状态页开头和各Subphase执行mini-plan为准。
 
 ## P0.2–P0.4 deliverables / current gate
 
@@ -87,4 +89,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**等待用户执行 [P1.3 Human Review](plans/p1.3-human-review.md)**（联合训练 GUI 全流程 + 教师导入向导 + 自检 + 取消；数据安全否决项：模型引用/训练产物/undo）。通过后：P1.3 合并关闭 → P2 立项待授权。Windows G1–G4 仍是 P6 前门禁。
+**P1 收尾完成:等待用户启动 P2(reaction/physics analysis)的立项指令。** 下一次开发会话按会话进入协议读本文件 → P2 相关 spec(experiment-run-derived-contracts.md §7、scientific-profiles.md)→ 写 P2 mini-plan(含 Agent Context Pack 与 Review Gate)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。

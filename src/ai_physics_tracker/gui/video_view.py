@@ -354,6 +354,10 @@ class VideoView(QGraphicsView):
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
         else:
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        # viewport 级光标兜底:scene 边缘(黑边)与 item hover 空隙也显示
+        # 当前交互状态的光标(HR 反馈 2026-09-29:鼠标移入视频区即见十字,
+        # 不依赖先点击主窗口;item hover 时 item cursor 优先生效,同形不冲突)
+        self.viewport().setCursor(shape)
         if self._pixmap_item is not None:
             self._pixmap_item.setCursor(shape)
         for item in self._marker_items:

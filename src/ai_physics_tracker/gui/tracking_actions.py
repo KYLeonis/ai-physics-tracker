@@ -356,6 +356,11 @@ class TrackingActions(QObject):
             self.panel.setTaskCard(None)
 
     def _sync_candidate_preview(self, session, runs, state, track, video) -> None:
+        joint = getattr(self.window, "experimentInferenceActions", None)
+        if joint is not None and joint.review_open:
+            self._preview_expected_key = None
+            self._preview_loaded_key = None
+            return
         candidate = state.trajectory.candidate
         if (candidate is None or track is None or video is None
                 or session.project_root is None):
@@ -720,6 +725,43 @@ class TrackingActions(QObject):
             return
         if action_id == "freeze_fixed_check":
             window.modelActions.freezeFixedCheck()
+            return
+        if action_id == "run_joint_inference":
+            window.setWorkspace("acquire")
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is None:
+                return
+            from ai_physics_tracker.gui.joint_inference_dialog import (
+                run_joint_inference_dialog,
+            )
+
+            chosen = run_joint_inference_dialog(
+                window, window.analysisSession.project.model_references
+                if window.analysisSession else ())
+            if chosen is not None:
+                model_id, params = chosen
+                joint.runJointInference(model_id, params)
+            return
+        if action_id == "review_joint_candidate":
+            window.setWorkspace("acquire")
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None:
+                joint.openReviewQueue()
+            return
+        if action_id == "activate_experiment":
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None:
+                joint.activateCandidate()
+            return
+        if action_id == "replace_experiment":
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None:
+                joint.replaceCandidate()
+            return
+        if action_id == "clear_experiment":
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None:
+                joint.clearMeasurement()
             return
         if action_id == "setup_fixed_pivot":
             window.setWorkspace("setup")

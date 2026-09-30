@@ -1,12 +1,12 @@
 # P1 Mini-plan — Four-Landmark Pendulum Measurement
 
 - 日期：2026-09-20
-- 状态：**Planned；implementation not started**
+- 状态：**P1.1–P1.3 已完成；P1.4 执行中**（当前入口见 [P1.4 执行 mini-plan](p1.4-joint-inference-activation-execution.md)）
 - 集成分支：`publication/ejp-damped-pendulum`
 - 实施分支：每个 Subphase 单独使用 `feat/p1.<n>-<topic>`，完成 review 后 `--no-ff` 合并回 publication 集成分支
 - 前置基线：P0 已完成；ADR-0017 已接受；Windows runtime G1–G4 经用户批准延期，但进入 P6 前必须完成
 
-本计划只定义 P1 的实施顺序、验收和 review gate，不表示 schema v2、PendulumExperiment、多 bodypart DLC 或四轨事务已经存在。当前产品实现仍是 schema v1、单 Track `TrackingRun.track_id`、单 bodypart `target` 与单轨 activation。
+本计划定义 P1 的实施顺序、验收和 review gate。P1.1–P1.3 已交付 schema v2、PendulumExperiment、多成员 run、四 bodypart 训练与教师模型；P1.4 的联合推理、审核和四轨事务按执行 mini-plan 推进，未通过验收前不视为完成。
 
 ## 1. Goal and completion boundary
 
@@ -452,17 +452,17 @@ S1→S2→S3 是硬依赖；S4 依赖 S3；S5 只消费 S2–S4 的 application 
 
 ### Acceptance Criteria
 
-- [ ] 一次DLC analyze call返回四个bodyparts；run恰好绑定当前experiment四members和role snapshot，不能由四个独立infer run拼接。
-- [ ] bodypart mapping missing/duplicate/extra、错误scorer/coords、frame重复/越界/不完整batch、nonfinite非法值均整体fail closed；合法missing按role保留。
-- [ ] completed inference只成为candidate；在用户Activate前experiment active pointer和四tracks effective AI observations不变。
-- [ ] review显示四role prediction/confidence/missing/reason；Correct产生manual provenance，Accept/Skip不伪造manual label。
-- [ ] tracked pivot仅出现在QC与adopted measurement中；fixed pivot不被逐帧prediction覆盖，P2 handoff明确区分两者。
-- [ ] Activate/Replace/Clear对四tracks、experiment pointer/history/revision/stale为单次原子更新；任何一个role/artifact校验失败时零变化。
-- [ ] manual corrections在四轨替换后仍优先，旧AI保留合理superseded provenance；Clear只清active AI projection，不删manual/run/raw artifacts。
-- [ ] Undo/Redo完整恢复四tracks和experiment状态，不产生mixed-run；save/reopen后一致。
-- [ ] stale input、context switch、cancel、timeout、late success、modified artifact均不能污染当前active result。
-- [ ] bound Track所有legacy single-track AI写入口不能绕过；generic unbound Track完整回归通过。
-- [ ] P2 snapshot builder只在当前四role binding与active run一致时返回，包含absolute source frame/time和release事实，不压缩gap、不计算θ。
+- [x] 一次DLC analyze call返回四个bodyparts；run恰好绑定当前experiment四members和role snapshot，不能由四个独立infer run拼接。
+- [x] bodypart mapping missing/duplicate/extra、错误scorer/coords、frame重复/越界/不完整batch、nonfinite非法值均整体fail closed；合法missing按role保留。
+- [x] completed inference只成为candidate；在用户Activate前experiment active pointer和四tracks effective AI observations不变。
+- [x] review显示四role prediction/confidence/missing/reason；Correct产生manual provenance，Accept/Skip不伪造manual label。
+- [x] tracked pivot仅出现在QC与adopted measurement中；fixed pivot不被逐帧prediction覆盖，P2 handoff明确区分两者。
+- [x] Activate/Replace/Clear对四tracks、experiment pointer/history/revision/stale为单次原子更新；任何一个role/artifact校验失败时零变化。
+- [x] manual corrections在四轨替换后仍优先，旧AI保留合理superseded provenance；Clear只清active AI projection，不删manual/run/raw artifacts。
+- [x] Undo/Redo完整恢复四tracks和experiment状态，不产生mixed-run；save/reopen后一致。
+- [x] stale input、context switch、cancel、timeout、late success、modified artifact均不能污染当前active result。
+- [x] bound Track所有legacy single-track AI写入口不能绕过；generic unbound Track完整回归通过。
+- [x] P2 snapshot builder只在当前四role binding与active run一致时返回，包含absolute source frame/time和release事实，不压缩gap、不计算θ。
 
 ### Automated tests
 
@@ -576,4 +576,5 @@ GUI使用`QT_QPA_PLATFORM=offscreen`自动化；体验只由Human Review判定�
 ## 13. Result
 
 - **P1.1（2026-09-21，`feat/p1.1-pendulum-setup` 已合并）**：S1–S6 全部完成。schema v1/v2 双格式读写（required_capabilities 分派、keyed publication 集合、capability fail-closed）、v1→v2 显式 Save As 迁移（source manifest SHA、源零改动经故障注入）、rootless v2 首存、`PendulumExperiment`/四 role/几何（true vertical 端点 digest 确认）/物理/release、多成员 `TrackingRun`（单成员兼容访问器 fail-closed）、experiment 事务与全部旧单轨 AI 入口 guard、geometry/release 动作（revision/stale/undo）、setup GUI（向导/侧栏 checklist/视频 pivot 与 vertical 有序点选/持久 overlay/L·g mm 输入/release 当前帧）、workflow 投影 experiment 事实卡、scientific result envelope 验证与无损保存（无 producer）。三轮 independent review（guard/schema/S5-S6 终审）与两轮 Human Review 全部通过；最终 921 tests。已知中间态：bound track 无 AI 训练路径（joint 属 P1.3）；migration 后旧 generic run 保留为历史记录。Real DLC smoke：不适用（P1.1 无 AI 验收）。
-- P1.2–P1.4 未开始。
+- **P1.2、P1.3（2026-09-29 前）**：均已通过各自 review、真实 DLC smoke 和 Human Review，合并至 publication 集成分支；详细结果见 `publication/STATUS.md`、各执行 mini-plan 与 Review Record。
+- **P1.4（2026-09-29 起，`feat/p1.4-joint-inference-activation`）**：已立项，执行入口为 [P1.4 mini-plan](p1.4-joint-inference-activation-execution.md)。S1 已开始；四轨 activation、P2 handoff 与 P1 总体验收尚未完成。

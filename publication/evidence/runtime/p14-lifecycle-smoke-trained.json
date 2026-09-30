@@ -1,0 +1,28 @@
+{
+  "source_project": "/Users/leonis/Documents/ai-physics-tracker-ejp/test1",
+  "model_id": "f7569ea6-e8df-447e-b5e2-bb9b30529f56",
+  "model_origin": "trained",
+  "selftest_before": true,
+  "selftest_device": "cpu",
+  "video_frame_count": 10,
+  "timing_status": "cfr",
+  "cancelled_result": "ExternalWorkerError",
+  "cancel_marker_present": true,
+  "cancelled_process_exit_code": -9,
+  "cancelled_run_status": "cancelled",
+  "successful_run_id": "28640f04-5fce-4720-8a9e-2ac6e4d993dc",
+  "worker_status": "success",
+  "complete_count": 10,
+  "missing_by_role": {
+    "tip": 0,
+    "body_top": 0,
+    "body_bottom": 0,
+    "pivot": 0
+  },
+  "prediction_sha256": "b7c6177bb1b46b6578f13f17c1f8cb904f63177ba7be99c1256aa9ef4cfa6f97",
+  "review_frame_index": 1,
+  "manual_point_id": "6c3f4b92-66f1-46ef-8210-b09fb60d7883",
+  "activation_input_digest": "4fbfe760392c557bfb4bca3c23e1503472984282dcef485333a1544cb2e7ae3f",
+  "adopted_point_count_before_clear": 41,
+  "clear_undo_reopen": "pass"
+}

@@ -14,7 +14,7 @@ GUI 侧的瞬时事实（哪个任务在跑、取消中）由调用方作为显�
 高级用户经 Results & history 可达全部 run）。
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Sequence
 from uuid import UUID
 
@@ -79,6 +79,11 @@ ACTION_SET_RELEASE = "set_release_frame"              # P1.1：release = 当前�
 ACTION_GUIDED_MARKING = "guided_marking"              # P1.2：四 role 引导标注入口
 ACTION_RUN_JOINT_TRAINING = "run_joint_training"       # P1.3：experiment 联合训练
 ACTION_FREEZE_FIXED_CHECK = "freeze_fixed_check"      # P1.3：冻结共享固定检查帧集
+ACTION_RUN_JOINT_INFERENCE = "run_joint_inference"    # P1.4：一次四 role 联合推理
+ACTION_REVIEW_JOINT_CANDIDATE = "review_joint_candidate"  # P1.4：四 role 候选审核队列
+ACTION_ACTIVATE_EXPERIMENT = "activate_experiment"    # P1.4：四轨激活候选
+ACTION_REPLACE_EXPERIMENT = "replace_experiment"      # P1.4：四轨替换激活
+ACTION_CLEAR_EXPERIMENT = "clear_experiment"          # P1.4：清除激活测量
 
 # --- 分析可用性四态（设计 §11.1）---
 
@@ -195,6 +200,27 @@ class FrameSetProgress:
 
 
 @dataclass(frozen=True)
+class JointInferenceFacts:
+    """experiment 四 role 推理推进度（P1.4）：pending → candidate → active。
+
+    candidate 是最新 completed 且未被激活的 joint run；审核进度来自其
+    持久化 review 队列（records/candidates 计数）。has_compatible_model
+    是静态字段的快查，启动推理时 prepare 仍会做 live 复核。
+    """
+
+    pending_run_id: UUID | None = None
+    candidate_run_id: UUID | None = None
+    candidate_reviewed: int = 0
+    candidate_total: int = 0            # 0 = 尚未建立审核队列
+    candidate_complete: int | None = None    # complete_count（四 role 齐全帧数）
+    candidate_missing_by_role: dict = field(default_factory=dict)
+    active_run_id: UUID | None = None
+    measurement_revision: int = 0
+    activation_history_len: int = 0
+    has_compatible_model: bool = False
+
+
+@dataclass(frozen=True)
 class WorkflowState:
     """三维修量投影 + 组装卡片/状态头所需的全部摘要。"""
 
@@ -214,6 +240,7 @@ class WorkflowState:
     candidate_comparison: "ComparisonFacts | None" = None
     pendulum: PendulumSetupFacts | None = None        # 当前 track 所属 experiment
     pendulum_creation_available: bool = False         # 无 experiment 且具备创建前置
+    joint: JointInferenceFacts | None = None          # 当前视频 experiment 的 P1.4 推理阶梯
 
 
 @dataclass(frozen=True)
@@ -459,6 +486,61 @@ def project_workflow_state(
                 next_frame=next_frame, next_role=next_role,
                 fixed_check_valid=check_ok)
 
+    # P1.4 joint 阶梯须用当前视频的 experiment(下面 pendulum 段会重绑 experiment)
+    joint = None
+    if experiment is not None:
+        from ai_physics_tracker.application.experiment_review import (
+            EXPERIMENT_REVIEW_KEY,
+        )
+
+        joint_runs = sorted(
+            (r for r in runs
+             if r.task_type == "infer"
+             and r.config.get("request_kind") == "experiment-joint-inference-v1"
+             and r.experiment_id == experiment.experiment_id),
+            key=lambda r: r.created_at,
+        )
+        pending = next(
+            (r for r in joint_runs if r.status in {"pending", "running"}), None)
+        active_id = experiment.active_infer_run_id
+        candidate = next(
+            (r for r in reversed(joint_runs)
+             if r.status == "completed"), None)
+        if candidate is not None and candidate.run_id == active_id:
+            candidate = None
+        reviewed = total = 0
+        if candidate is not None:
+            review_data = candidate.extra_fields.get(EXPERIMENT_REVIEW_KEY)
+            if isinstance(review_data, dict):
+                # S6 终审 F2:分母是当前批 suggestion_frames;分子只数该批内
+                # 已有 record 的帧——records 跨批累计,直接计数会 reviewed>total
+                suggestion_field = review_data.get("policy", {}).get(
+                    "suggestion_frames", review_data.get("candidates"))
+                records_field = review_data.get("records")
+                if isinstance(suggestion_field, list):
+                    total = len(suggestion_field)
+                    if isinstance(records_field, dict):
+                        reviewed = sum(
+                            1 for frame in suggestion_field
+                            if str(frame) in records_field or frame in records_field)
+        missing = candidate.extra_fields.get("missing_by_role") if candidate else None
+        joint = JointInferenceFacts(
+            pending_run_id=pending.run_id if pending is not None else None,
+            candidate_run_id=candidate.run_id if candidate is not None else None,
+            candidate_reviewed=reviewed, candidate_total=total,
+            candidate_complete=(
+                candidate.extra_fields.get("complete_count")
+                if candidate is not None else None),
+            candidate_missing_by_role=(
+                dict(missing) if isinstance(missing, dict) else {}),
+            active_run_id=active_id,
+            measurement_revision=experiment.measurement_revision,
+            activation_history_len=len(experiment.activation_history),
+            has_compatible_model=any(
+                m.compatibility_state == "compatible"
+                for m in session.project.model_references),
+        )
+
     pendulum = None
     if track_id is not None:
         experiment = session.experiment_for_track(track_id)
@@ -558,6 +640,7 @@ def project_workflow_state(
         candidate_comparison=comparison,
         pendulum=pendulum,
         pendulum_creation_available=pendulum_creation_available,
+        joint=joint,
     )
 
 
@@ -596,6 +679,109 @@ def preselect_fixed_check_frames(frames: Sequence[int]) -> tuple[int, ...]:
 def select_task_card(state: WorkflowState) -> TaskCard:
     """按固定优先级返回当前上下文任务卡；纯函数、同状态同卡。"""
     traj = state.trajectory
+
+    # 0.5 P1.4 joint 推理阶梯：experiment 级状态,与 track 选择无关——
+    # 推理在途 → candidate 待审/待激活 → 已激活测量。无三态时落到通用阶梯。
+    if state.joint is not None:
+        joint = state.joint
+        ready_to_train = state.frame_set is not None and state.frame_set.fixed_check_valid
+        refinement_action = ActionSpec(
+            ACTION_RUN_JOINT_TRAINING if ready_to_train else ACTION_FREEZE_FIXED_CHECK,
+            "Train with updated labels" if ready_to_train else "Prepare labels for training",
+            enabled=state.frame_set is not None and state.frame_set.done > 1,
+            reason=None if state.frame_set is not None and state.frame_set.done > 1
+            else "Open 'View suggested frames' and label a few batches first",
+        )
+        if joint.pending_run_id is not None:
+            return TaskCard(
+                mode=MODE_BLOCKED,
+                title="Current: joint inference running",
+                explanation=(
+                    "The model is tracking all four landmark roles in the "
+                    "external worker. Nothing reaches the tracks until you "
+                    "review and activate the candidate.",
+                    "Cancel keeps every existing observation unchanged."),
+                primary=None,
+                evidence=("Logs are written under data/engines/<run id>.",),
+            )
+        if joint.candidate_run_id is not None:
+            complete = joint.candidate_complete
+            missing = joint.candidate_missing_by_role
+            missing_note = (
+                ", ".join(f"{role} {count}" for role, count in missing.items()
+                          if count)
+                if any(missing.values()) else "none")
+            review_state = (
+                f"{joint.candidate_total} frame suggestion(s) available"
+                if joint.candidate_total else "suggestions not generated yet")
+            secondary: tuple[ActionSpec, ...] = ()
+            if joint.active_run_id is not None:
+                secondary = (
+                    ActionSpec(
+                        ACTION_REPLACE_EXPERIMENT,
+                        "Replace active measurement with this candidate"),
+                    ActionSpec(
+                        ACTION_CLEAR_EXPERIMENT, "Clear active measurement"),
+                )
+            else:
+                secondary = (
+                    ActionSpec(ACTION_ACTIVATE_EXPERIMENT, "Activate candidate"),
+                )
+            return TaskCard(
+                mode=MODE_ADOPT,
+                title="Current: joint candidate ready (not active)",
+                explanation=(
+                    "Joint inference produced a four-role candidate. Inspect "
+                    "suggested difficult frames, select a small batch and "
+                    "continuously mark four roles per frame. Train with the "
+                    "updated labels, then infer with the new model.",
+                    "Activate replaces the AI observations of all four tracks "
+                    "in one transaction; manual points always win."),
+                primary=ActionSpec(
+                    ACTION_REVIEW_JOINT_CANDIDATE, "View suggested frames"),
+                secondary=secondary + (refinement_action,),
+                evidence=(
+                    f"Candidate run {str(joint.candidate_run_id)[:8]}: "
+                    f"complete frames {complete if complete is not None else '?'}, "
+                    f"missing by role — {missing_note}.",
+                    f"Suggestions: {review_state}."
+                    + (f" Active measurement: revision "
+                       f"{joint.measurement_revision}." if joint.active_run_id
+                       else ""),
+                ),
+            )
+        if joint.active_run_id is not None:
+            inference_spec = ActionSpec(
+                ACTION_RUN_JOINT_INFERENCE, "Run joint inference",
+                enabled=joint.has_compatible_model,
+                reason=None if joint.has_compatible_model else
+                "No compatible model — run joint training or import, "
+                "then self-test",
+            )
+            return TaskCard(
+                mode=MODE_ANALYZE,
+                title="Current: experiment measurement active",
+                explanation=(
+                    "An activated four-role measurement is in effect. A new "
+                    "joint inference would only create a candidate; replacing "
+                    "the measurement stays an explicit reviewed step.",
+                    "Undo/Redo covers activation changes before saving."),
+                primary=ActionSpec(
+                    ACTION_VIEW_ANALYSIS, "View current analysis",
+                    enabled=traj.has_effective_input),
+                secondary=(
+                    ActionSpec(ACTION_REVIEW_JOINT_CANDIDATE,
+                               "View suggested frames"),
+                    inference_spec,
+                    ActionSpec(ACTION_CLEAR_EXPERIMENT, "Clear active measurement"),
+                    refinement_action,
+                ),
+                evidence=(
+                    f"Active run {str(joint.active_run_id)[:8]}, measurement "
+                    f"revision {joint.measurement_revision}, "
+                    f"{joint.activation_history_len} activation(s) recorded.",
+                ),
+            )
 
     # 1. 必要前置缺失（无视频/无目标/未保存）
     if state.prerequisites:
@@ -673,6 +859,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             if state.pendulum.setup_complete
             else "setup incomplete: " + ", ".join(state.pendulum.missing)
         )
+        joint = state.joint
         # F5（2026-09-24 HR）：卡片直接给出帧集进度与下一缺帧——主行动作
         # 本身就会跳到该帧，用户不必逐帧寻找还差什么
         frame_set_line = None
@@ -715,6 +902,15 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             enabled=check_ok,
             reason=disable_reason,
         )
+        # P1.4:训练完成后的推理入口(静态 compatible 快查;prepare 复核 live 状态)
+        inference_spec = ActionSpec(
+            ACTION_RUN_JOINT_INFERENCE,
+            "Run joint inference",
+            enabled=bool(joint is not None and joint.has_compatible_model),
+            reason=None if (joint is not None and joint.has_compatible_model)
+            else "No compatible model — run joint training or import, "
+                 "then self-test",
+        )
         return TaskCard(
             mode=MODE_SETUP,
             title="Current: pendulum measurement",
@@ -722,6 +918,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             primary=ActionSpec(ACTION_GUIDED_MARKING, "Mark landmark frames"),
             secondary=(
                 training_spec,
+                inference_spec,
                 ActionSpec(
                     ACTION_FREEZE_FIXED_CHECK, "Freeze fixed-check frames"),
             ),
