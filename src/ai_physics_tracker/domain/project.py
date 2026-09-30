@@ -530,6 +530,8 @@ def _validate_publication_collections(
         video = videos_by_id.get(experiment.video_id)
         if video is None:
             raise ValueError("every experiment must reference a registered video")
+        if any(item.frame_index >= video.frame_count for item in experiment.qc_overrides):
+            raise ValueError("QC exclusion frame is outside the source video")
         if experiment.video_id in experiments_by_video:
             raise ValueError("a video must have at most one pendulum experiment")
         experiments_by_video[experiment.video_id] = experiment

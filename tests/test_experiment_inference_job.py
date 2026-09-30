@@ -627,3 +627,81 @@ def test_adopted_measurement_rejects_foreign_ai_and_tampered_payload(
     )
     with pytest.raises(ProjectSessionError, match="not from the current active run"):
         build_adopted_measurement(session, experiment.experiment_id)
+
+
+def test_p2_reconstruction_consumes_verified_snapshot_and_qc_transaction(
+    tmp_path, synthetic_video_path,
+):
+    from ai_physics_tracker.application.pendulum_analysis import prepare_pendulum_reconstruction
+    from ai_physics_tracker.domain.pendulum import QCExclusion
+    from ai_physics_tracker.domain.pendulum_reconstruction import reconstruct_pendulum
+    from ai_physics_tracker.domain.scientific_result import ScientificResult
+
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    folder = session.project_root / 'data' / 'engines' / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(folder, request), folder))
+    session.activate_experiment_candidate(experiment.experiment_id, run.run_id)
+    session.set_fixed_pivot(experiment.experiment_id, (0., 0.))
+    session.set_true_vertical(experiment.experiment_id, (0, 0), (0, 1))
+    session.confirm_true_vertical(experiment.experiment_id)
+    session.set_tip_radius_reference(experiment.experiment_id, 100.)
+    session.set_physical(experiment.experiment_id, PhysicalParameters(.5, 9.80665, 'measured', 'profile'))
+    session.set_release_frame(experiment.experiment_id, 5)
+    session.add_calibration(experiment.video_id, (0., 0.), (0., 20.), 100., 'mm')
+    roles = experiment.roles.by_role()
+    for frame_index in range(request.frame_count):
+        for role, (x, y) in zip(ROLE_ORDER, ((0, 100), (0, 10), (0, 20), (0, 0))):
+            session.mark_point(roles[role], frame_index, x, y)
+    snapshot = build_adopted_measurement(session, experiment.experiment_id)
+    result = reconstruct_pendulum(prepare_pendulum_reconstruction(session, snapshot))
+    assert all(row.is_qc_valid for row in result.frames)
+    assert result.frames[5].time_release_relative_s == 0
+    assert result.frames[4].relative_weight == 1
+    record = ScientificResult(uuid4(), experiment.experiment_id, 'theta', utc_now(),
+                              result.input_digest, 'test', 'success')
+    # 既有 immutable project 事务注入一条结果，以验证通用 stale 路径。
+    session._commit_project(replace(session.project, scientific_results=(record,)))
+    before = session.project
+    exclusions = (QCExclusion(6, 'occlusion'),)
+    session.set_qc_exclusions(experiment.experiment_id, exclusions)
+    assert session.project.scientific_results[0].freshness == 'stale'
+    assert session.pendulum_experiment(experiment.experiment_id).measurement_revision == before.experiments[0].measurement_revision + 1
+    with pytest.raises(ProjectSessionError, match='stale'):
+        prepare_pendulum_reconstruction(session, snapshot)
+    current = build_adopted_measurement(session, experiment.experiment_id)
+    result = reconstruct_pendulum(prepare_pendulum_reconstruction(session, current))
+    assert not result.frames[6].is_qc_valid
+    assert result.frames[6].theta_rad == 0
+    assert 6 not in result.body_reference_frames
+    assert session.undo() and session.project == before
+    assert prepare_pendulum_reconstruction(session, snapshot).measurement_digest == snapshot.digest
+    assert session.redo()
+    session.save()
+    reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+    assert reopened.pendulum_experiment(experiment.experiment_id).qc_overrides == exclusions
+    assert build_adopted_measurement(reopened, experiment.experiment_id).digest == current.digest
+    old = session.project
+    with pytest.raises(ProjectSessionError, match='outside'):
+        session.set_qc_exclusions(experiment.experiment_id, (QCExclusion(12, 'bad'),))
+    assert session.project == old
+    current.payload['frames'][0]['points_by_role']['tip']['pixel_x'] = 99
+    with pytest.raises(ProjectSessionError, match='stale'):
+        prepare_pendulum_reconstruction(session, current)
+
+
+def test_qc_exclusion_codec_accepts_old_v2_and_rejects_malformed_new_field(
+    tmp_path, synthetic_video_path,
+):
+    from ai_physics_tracker.infrastructure.project_serializer import project_to_payload, project_from_payload
+    session, experiment, _, _ = _prepared(tmp_path, synthetic_video_path)
+    payload = project_to_payload(session.project)
+    fact = payload['experiments'][str(experiment.experiment_id)]
+    fact.pop('qc_overrides')
+    assert project_from_payload(payload).experiments[0].qc_overrides == ()
+    for bad in [None, 'false', [{'frame_index': True, 'reason': 'bad'}],
+                [{'frame_index': 12, 'reason': 'outside'}],
+                [{'frame_index': 1, 'reason': ''}]]:
+        fact['qc_overrides'] = bad
+        with pytest.raises(ValueError):
+            project_from_payload(payload)

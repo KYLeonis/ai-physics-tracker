@@ -19,6 +19,7 @@ from ai_physics_tracker.domain.pendulum import (
     PendulumGeometry,
     PendulumRoles,
     PhysicalParameters,
+    QCExclusion,
     RoleAdoptionCount,
     RoleBindingEditRecord,
     TrueVertical,
@@ -142,6 +143,10 @@ def experiment_to_payload(experiment: PendulumExperiment) -> dict[str, object]:
             "contract_version": experiment.contract_version,
             "roles": roles_to_payload(experiment.roles),
             "measurement_revision": experiment.measurement_revision,
+            "qc_overrides": [
+                {"frame_index": item.frame_index, "reason": item.reason}
+                for item in experiment.qc_overrides
+            ],
             "geometry": geometry_payload,
             "physical": None
             if experiment.physical is None
@@ -173,6 +178,7 @@ def experiment_from_payload(payload: dict[str, object]) -> PendulumExperiment:
         "contract_version",
         "roles",
         "measurement_revision",
+        "qc_overrides",
         "geometry",
         "physical",
         "release_frame_index",
@@ -189,6 +195,10 @@ def experiment_from_payload(payload: dict[str, object]) -> PendulumExperiment:
         roles=roles_from_payload(payload.get("roles"), "roles"),
         created_at=_parse_datetime(_string(payload, "created_at")),
         measurement_revision=_integer(payload, "measurement_revision"),
+        qc_overrides=tuple(
+            QCExclusion(_integer(item, "frame_index"), _string(item, "reason"))
+            for item in _object_sequence(payload.get("qc_overrides", []), "qc_overrides")
+        ),
         geometry=geometry_from_payload(_object(payload.get("geometry", {}), "geometry")),
         physical=None
         if payload.get("physical") is None

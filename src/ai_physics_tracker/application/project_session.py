@@ -65,6 +65,7 @@ from ai_physics_tracker.domain.pendulum import (
     PendulumExperiment,
     PendulumRoles,
     PhysicalParameters,
+    QCExclusion,
     RoleBindingEditRecord,
     RoleAdoptionCount,
     TrueVertical,
@@ -2401,6 +2402,19 @@ class ProjectSession:
             raise ProjectSessionError(str(error)) from error
         return self._commit_experiment_change(experiment_id, updated)
 
+    def set_tip_radius_reference(
+        self, experiment_id: UUID, radius_px: float | None,
+    ) -> PendulumExperiment:
+        """保存几何 tip 半径参考；与物理 pivot-to-COM 长度分离。"""
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        try:
+            geometry = replace(experiment.geometry, tip_radius_reference_px=radius_px)
+            updated = replace(experiment, geometry=geometry, measurement_revision=revision)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
     def confirm_true_vertical(self, experiment_id: UUID) -> PendulumExperiment:
         """确认当前端点的 top→bottom 即重力向下方向（绑定端点 digest）。"""
 
@@ -2434,6 +2448,19 @@ class ProjectSession:
             updated = replace(
                 experiment, physical=physical, measurement_revision=revision
             )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+        return self._commit_experiment_change(experiment_id, updated)
+
+    def set_qc_exclusions(
+        self, experiment_id: UUID, exclusions: tuple[QCExclusion, ...],
+    ) -> PendulumExperiment:
+        """整体替换人工 QC 排除集，沿用实验事务的 Undo/revision/stale。"""
+
+        experiment, revision = self._bump_experiment(experiment_id)
+        try:
+            updated = replace(experiment, qc_overrides=exclusions,
+                              measurement_revision=revision)
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
         return self._commit_experiment_change(experiment_id, updated)
