@@ -77,6 +77,11 @@ class ExperimentInferenceActions(QObject):
         self._review_frames: tuple[int, ...] = ()
         self._review_current: int | None = None
         self._correcting_role: str | None = None
+        self._relabel_tasks: tuple[tuple[int, str], ...] = ()
+        self._relabel_index = 0
+        self._relabel_completed: set[int] = set()
+        self._relabel_skipped: set[int] = set()
+        self._relabel_message = ""
 
         window.projectChanged.connect(self._on_project_changed)
         window.presentedFrameChanged.connect(self._on_review_frame_presented)
@@ -323,15 +328,9 @@ class ExperimentInferenceActions(QObject):
                 self.window.statusBar().showMessage(
                     "No joint run to inspect — run joint inference first")
                 return
-            candidates = [r for r in runs
-                          if r.run_id != experiment.active_infer_run_id]
-            run_id = (candidates or runs)[-1].run_id
+            run_id = runs[-1].run_id
         try:
-            state = session.get_experiment_review(run_id)
-            if state is None:
-                candidates = session.create_experiment_review_queue(run_id)
-            else:
-                candidates = state[0]
+            candidates = session.create_experiment_review_queue(run_id)
         except (ProjectSessionError, ValueError) as error:
             from PySide6.QtWidgets import QMessageBox
 
@@ -340,16 +339,17 @@ class ExperimentInferenceActions(QObject):
             return
         from ai_physics_tracker.gui.experiment_review_dialog import JointReviewDialog
 
-        if self._dialog is None:
-            self._dialog = JointReviewDialog(run_id, self.window)
-            self._connect_dialog(self._dialog)
+        if self._dialog is not None:
+            self.finishReviewing()
+        self._dialog = JointReviewDialog(run_id, self.window)
+        self._connect_dialog(self._dialog)
         records = session.get_experiment_review(run_id)[1]
         self._review_run_id = run_id
         self._review_frames = tuple(c.frame_index for c in candidates)
         self._review_current = self._review_frames[0] if self._review_frames else None
-        self._dialog.set_roles(self._role_order())
         self._dialog.show()
         self._dialog.raise_()
+        self._refresh_workflow()
         self._sync_review(records)
 
     def _role_order(self):
@@ -358,13 +358,13 @@ class ExperimentInferenceActions(QObject):
         return ROLE_ORDER
 
     def _connect_dialog(self, dialog) -> None:
-        dialog.correctRequested.connect(self.startCorrect)
         dialog.cancelCorrectRequested.connect(self.cancelCorrect)
+        dialog.skipFrameRequested.connect(self.skipRelabelFrame)
         dialog.previousRequested.connect(self.previousFrame)
         dialog.nextRequested.connect(self.nextFrame)
         dialog.finishRequested.connect(self.finishReviewing)
         dialog.frameJumped.connect(self.jumpToFrame)
-        dialog.addFrameToTrainingRequested.connect(self.addCurrentToTrainingSet)
+        dialog.labelSelectedRequested.connect(self.startRelabelSelected)
         dialog.finished.connect(self._on_dialog_closed)
 
     def _on_dialog_closed(self, *_args) -> None:
@@ -383,7 +383,10 @@ class ExperimentInferenceActions(QObject):
         if session is None or self._review_run_id is None:
             return ()
         state = session.get_experiment_review(self._review_run_id)
-        return state[0] if state is not None else ()
+        if state is None:
+            return ()
+        by_frame = {item.frame_index: item for item in state[0]}
+        return tuple(by_frame[frame] for frame in self._review_frames if frame in by_frame)
 
     def _sync_review(self, records: dict, *, seek: bool = True) -> None:
         """把队列/记录/当前帧推给对话框、视频与 overlay。"""
@@ -397,17 +400,37 @@ class ExperimentInferenceActions(QObject):
         training_frames = (frozenset(experiment.frame_set.frames)
                            if experiment and experiment.frame_set else frozenset())
         frame_ready = self.window.presented_frame_index == self._review_current
+        pending = self._relabel_index < len(self._relabel_tasks)
+        progress = self._relabel_message
+        if pending:
+            frame, role = self._relabel_tasks[self._relabel_index]
+            position = self._relabel_index // 4 + 1
+            progress = (
+                f"Frame {position}/{len(self._relabel_tasks) // 4} · source frame {frame} · "
+                f"Point {self._relabel_index % 4 + 1}/4: {role}. "
+                + ("Click its position in the video." if frame_ready else
+                   f"Waiting for frame {frame} to appear…")
+                if self._correcting_role else
+                f"Paused at frame {frame}, {role}. Click Resume to continue.")
+        elif self._correcting_role:
+            progress = (f"Frame {self._review_current}: click {self._correcting_role}."
+                        if frame_ready else f"Waiting for frame {self._review_current}…")
         self._dialog.sync(candidates, records, self._review_current,
-                          self._correcting_role, training_frames, frame_ready)
+                          self._correcting_role, training_frames, frame_ready,
+                          progress=progress, batch_pending=pending)
         self._dialog.set_navigation(
             index is not None and index > 0,
             index is not None and index < len(self._review_frames) - 1)
+        if self.window.projectActions.busy:
+            self._dialog.trainButton.setEnabled(False)
         if seek and self._review_current is not None:
             self._schedule_seek()
         if self._review_current is not None:
             self._refresh_preview(candidates)
         if self._correcting_role:
             self.window.videoView.set_annotation_mode(frame_ready)
+        if pending or self._relabel_message:
+            self.window._setCalibrationGuide(progress)
 
     def _on_review_frame_presented(self, *_args) -> None:
         if self._dialog is not None and self._correcting_role is not None:
@@ -440,18 +463,26 @@ class ExperimentInferenceActions(QObject):
 
         markers = []
         if current is not None:
+            session = self.window.analysisSession
+            experiment = self.window.currentPendulumExperiment()
             for role, prediction in current.predictions.items():
-                if prediction is None:
+                manual = next((p for p in session.manual_points(
+                    experiment.roles.track_id_for(role))
+                    if p.frame_index == current.frame_index), None)
+                shown = manual or prediction
+                if shown is None:
                     continue
                 markers.append(MarkerView(
-                    pixel_x=prediction.pixel_x, pixel_y=prediction.pixel_y,
+                    pixel_x=shown.pixel_x, pixel_y=shown.pixel_y,
                     color=_REVIEW_PREVIEW_COLORS.get(role, "#ffb000"),
-                    source="preview", frame_index=current.frame_index,
+                    source="manual" if manual else "preview", frame_index=current.frame_index,
                 ))
         self.window.videoView.set_preview_markers(
-            markers, "joint candidate preview")
+            markers, "Filled: manual labels · Hollow: AI predictions")
 
     def previousFrame(self) -> None:
+        if self._relabel_index < len(self._relabel_tasks):
+            return
         index = self._index_of(self._review_current)
         if index is None or index <= 0:
             return
@@ -460,6 +491,8 @@ class ExperimentInferenceActions(QObject):
         self._sync_review(None)
 
     def nextFrame(self) -> None:
+        if self._relabel_index < len(self._relabel_tasks):
+            return
         index = self._index_of(self._review_current)
         if index is None or index >= len(self._review_frames) - 1:
             return
@@ -468,6 +501,8 @@ class ExperimentInferenceActions(QObject):
         self._sync_review(None)
 
     def jumpToFrame(self, frame: int) -> None:
+        if self._relabel_index < len(self._relabel_tasks):
+            return
         if self._index_of(frame) is None:
             return
         self._cancel_correct_quietly()
@@ -491,9 +526,11 @@ class ExperimentInferenceActions(QObject):
     def cancelCorrect(self) -> None:
         self._correcting_role = None
         self.window.videoView.set_annotation_mode(False)
+        self.window.projectActions.autosave(
+            "relabeling paused", after=lambda: self._sync_review(None))
         if self._dialog is not None:
             self._sync_review(None)
-        self.window.statusBar().showMessage("Correct mode cancelled")
+        self.window.statusBar().showMessage("Relabeling paused; recorded points kept")
 
     def _cancel_correct_quietly(self) -> None:
         if self._correcting_role is not None:
@@ -524,48 +561,88 @@ class ExperimentInferenceActions(QObject):
             logger.error("joint review correction failed: %s", error)
             self.window.statusBar().showMessage(f"Correction failed: {error}")
             return False
-        self._correcting_role = None
-        self.window.videoView.set_annotation_mode(False)
+        if self._relabel_index < len(self._relabel_tasks):
+            self._relabel_index += 1
+            if self._relabel_index % 4 == 0:
+                self._relabel_completed.add(frame)
+            self._continue_relabeling()
+        else:
+            self._correcting_role = None
+            self.window.videoView.set_annotation_mode(False)
+            self.window.projectActions.autosave("joint review correction")
         records = self._records()
         self._sync_review(records)
-        self.window.statusBar().showMessage(
-            f"Frame {frame}: '{role}' corrected. Choose another suggestion "
-            "or activate the candidate when ready.")
-        self.window.projectActions.autosave("joint review correction")
         self.window._refreshMarkers()
         self._refresh_workflow()
         return True
 
-    def addCurrentToTrainingSet(self) -> None:
-        """把当前推荐帧加入共享帧集，并进入既有四点标注引导。"""
+    def startRelabelSelected(self) -> None:
+        """冻结勾选帧为本次任务；每帧四次点击，不进入另一套帧导航。"""
 
         session = self.window.analysisSession
         experiment = self.window.currentPendulumExperiment()
         if session is None or experiment is None or self._review_run_id is None:
             return
-        frame = self._review_current
-        if frame is None:
+        if self._dialog is None or self.window.projectActions.busy:
+            return
+        if self._relabel_index < len(self._relabel_tasks):
+            self._continue_relabeling()
+            self.window.raise_()
+            self.window.activateWindow()
+            return
+        frames = self._dialog.checkedFrames()
+        if not frames:
             return
         try:
-            merged = session.extend_experiment_frame_set(
-                experiment.experiment_id, (frame,))
+            session.extend_experiment_frame_set(experiment.experiment_id, frames)
         except (ProjectSessionError, ValueError) as error:
             from PySide6.QtWidgets import QMessageBox
 
             QMessageBox.critical(self.window, "Cannot extend frame set", str(error))
             return
-        self.finishReviewing()
-        self.window.beginExperimentAnnotation(start_frame=frame)
-        self.window.projectActions.autosave("recommended training frame added")
-        self.window.statusBar().showMessage(
-            f"Frame {frame} added to training set ({len(merged)} total). "
-            "Mark all four roles; re-freeze fixed-check before retraining.")
-        self._refresh_workflow()
+        self.window._exitExperimentGuide()
+        self.window.stopPlayback()
+        self._relabel_tasks = tuple((frame, role) for frame in frames
+                                   for role in self._role_order())
+        self._relabel_index = 0
+        self._relabel_completed.clear()
+        self._relabel_skipped.clear()
+        self._relabel_message = ""
+        self._review_current, role = self._relabel_tasks[0]
+        self.startCorrect(role)
+
+    def _continue_relabeling(self) -> None:
+        if self._relabel_index < len(self._relabel_tasks):
+            self._review_current, self._correcting_role = self._relabel_tasks[self._relabel_index]
+        else:
+            self._correcting_role = None
+            self.window.videoView.set_annotation_mode(False)
+            self._relabel_message = (
+                f"Batch finished: {len(self._relabel_completed)} frame(s) relabeled, "
+                f"{len(self._relabel_skipped)} skipped. Next: freeze fixed-check, "
+                "train with these labels, then run inference with the new model.")
+            if self._dialog is not None:
+                self._dialog.uncheckFrames(self._relabel_completed | self._relabel_skipped)
+            self.window.projectActions.autosave(
+                "recommended frames relabeled", after=lambda: self._sync_review(None))
+        self._sync_review(None)
+
+    def skipRelabelFrame(self) -> None:
+        if self._relabel_index >= len(self._relabel_tasks):
+            return
+        self._relabel_skipped.add(self._review_current)
+        self._relabel_index = (self._relabel_index // 4 + 1) * 4
+        self._continue_relabeling()
 
     def finishReviewing(self) -> None:
         """关闭推荐列表;保留候选和已写 manual 点。"""
 
         self._cancel_correct_quietly()
+        self.window.projectActions.autosave("relabeling closed")
+        self._relabel_tasks = ()
+        self._relabel_index = 0
+        self._relabel_message = ""
+        self.window._hidePendulumGuide()
         if self._dialog is not None:
             dialog, self._dialog = self._dialog, None
             dialog.finished.disconnect(self._on_dialog_closed)
@@ -681,11 +758,11 @@ class ExperimentInferenceActions(QObject):
              if r.task_type == "infer"
              and r.config.get("request_kind") == "experiment-joint-inference-v1"
              and r.experiment_id == experiment.experiment_id
-             and r.status == "completed"
-             and r.run_id != experiment.active_infer_run_id),
+             and r.status == "completed"),
             key=lambda r: r.created_at,
         )
-        return runs[-1].run_id if runs else None
+        latest = runs[-1].run_id if runs else None
+        return latest if latest != experiment.active_infer_run_id else None
 
     @staticmethod
     def _candidate_summary(session, run_id: UUID) -> str:
@@ -764,6 +841,9 @@ class ExperimentInferenceActions(QObject):
         self._reset_job()
         self._timer.stop()
         self._correcting_role = None
+        self._relabel_tasks = ()
+        self._relabel_index = 0
+        self._relabel_message = ""
         if self._dialog is not None:
             dialog, self._dialog = self._dialog, None
             dialog.finished.disconnect(self._on_dialog_closed)

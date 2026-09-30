@@ -458,7 +458,7 @@ class TestReviewQueue:
         assert controller.review_open
         assert controller._review_frames
         assert not hasattr(controller._dialog, "acceptAllButton")
-        assert "optional suggestions" in controller._dialog.infoLabel.text()
+        assert "four clicks" in controller._dialog.infoLabel.text()
         _wait_presented(qtbot, window, controller._review_current)
 
         current = controller._review_current
@@ -496,12 +496,58 @@ class TestReviewQueue:
         away = 0 if controller._review_current != 0 else 1
         window.seekFrame(away)
         _wait_presented(qtbot, window, away)
-        assert "waiting for frame" in controller._dialog.infoLabel.text()
+        assert "Waiting for frame" in controller._dialog.progressLabel.text()
         assert not window.videoView.is_annotation_mode()
         assert not controller.handleCorrectClick(1.0, 1.0)
         assert session.project.observations == ()
 
-    def test_selected_suggestion_starts_four_role_marking(
+    def test_selected_batch_continuously_marks_four_roles_and_only_selected_frames(
+        self, qtbot, tmp_path, synthetic_video_path,
+    ):
+        from PySide6.QtCore import QPoint, Qt
+
+        window, session, experiment, model = _experiment_window(
+            qtbot, tmp_path, synthetic_video_path)
+        controller = _install(window, _Runner())
+        run = _run_inference(controller, session, experiment, model)
+        controller.openReviewQueue(run.run_id)
+        frames = controller._review_frames[::2][:2]
+        assert len(frames) == 2
+        for row in range(controller._dialog.frameList.count()):
+            item = controller._dialog.frameList.item(row)
+            item.setCheckState(Qt.CheckState.Checked if item.data(Qt.ItemDataRole.UserRole)
+                               in frames else Qt.CheckState.Unchecked)
+        before = (experiment.frame_set.frames
+                  if experiment.frame_set is not None else ())
+        controller._dialog.trainButton.click()
+        merged = session.pendulum_experiment(
+            experiment.experiment_id).frame_set.frames
+        assert set(frames) | set(before) == set(merged)
+        assert not window.experiment_guide_active
+        assert controller.review_open and controller.is_correcting
+        assert session.project.observations == ()
+        for frame in frames:
+            _wait_presented(qtbot, window, frame)
+            qtbot.waitUntil(lambda: not window._has_pending_request)
+            for index, role in enumerate(ROLE_ORDER):
+                assert controller._correcting_role == role
+                assert role in window.calibrationGuideLabel.text()
+                window.videoView.mapScreenToPixel = lambda _pos, i=index: (6.0 + i, 7.0)
+                window.videoView.annotationClicked.emit(QPoint(10, 10))
+                point = session.effective_point(experiment.roles.track_id_for(role), frame)
+                assert point is not None and point.pixel_x == 6.0 + index
+                if index < 3:
+                    assert controller._review_current == frame
+                    assert any(p.source == "manual" and p.pixel_x == 6.0 + index
+                               for p in window.videoView.preview_marker_views())
+        assert not controller.is_correcting
+        assert "2 frame(s) relabeled" in controller._dialog.progressLabel.text()
+        assert {p.frame_index for p in session.project.observations} == set(frames)
+        qtbot.waitUntil(lambda: not window.projectActions.busy)
+        reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+        assert len(reopened.project.observations) == 8
+
+    def test_pause_resumes_same_role_and_skip_moves_to_next_selected_frame(
         self, qtbot, tmp_path, synthetic_video_path,
     ):
         window, session, experiment, model = _experiment_window(
@@ -509,17 +555,20 @@ class TestReviewQueue:
         controller = _install(window, _Runner())
         run = _run_inference(controller, session, experiment, model)
         controller.openReviewQueue(run.run_id)
-        frame = controller._review_current
-        before = (experiment.frame_set.frames
-                  if experiment.frame_set is not None else ())
-        controller._dialog.trainButton.click()
-        merged = session.pendulum_experiment(
-            experiment.experiment_id).frame_set.frames
-        assert frame in merged and set(before) <= set(merged)
-        assert window.experiment_guide_active
-        _wait_presented(qtbot, window, frame)
-        assert not controller.review_open
-        assert session.project.observations == ()
+        frames = controller._dialog.checkedFrames()
+        controller.startRelabelSelected()
+        _wait_presented(qtbot, window, frames[0])
+        assert controller.handleCorrectClick(5.0, 6.0)
+        controller.cancelCorrect()
+        assert not controller.is_correcting
+        qtbot.waitUntil(lambda: not window.projectActions.busy)
+        controller.startRelabelSelected()
+        assert controller._review_current == frames[0]
+        assert controller._correcting_role == "body_top"
+        controller.skipRelabelFrame()
+        assert controller._review_current == frames[1]
+        assert controller._correcting_role == "tip"
+        assert len(session.manual_points(experiment.roles.body_top)) == 0
 
     def test_correct_click_via_video_signal_without_selected_track(
         self, qtbot, tmp_path, synthetic_video_path,
@@ -583,6 +632,11 @@ class TestActivation:
         controller.replaceCandidate(second.run_id)
         assert session.pendulum_experiment(
             experiment.experiment_id).active_infer_run_id == second.run_id
+        controller.openReviewQueue()
+        assert controller._review_run_id == second.run_id
+        card, _state = _current_card(window, session)
+        assert card.title.startswith("Current: experiment measurement active")
+        controller.finishReviewing()
 
         controller.clearMeasurement()
         assert session.pendulum_experiment(

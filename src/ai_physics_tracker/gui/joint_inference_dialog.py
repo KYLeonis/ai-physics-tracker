@@ -77,7 +77,9 @@ class JointInferenceDialog(QDialog):
             "are flagged in review and are NOT written when you activate the "
             "candidate (those frames become missing data). Lower it (e.g. 0.3) "
             "if activation leaves too many gaps; raise it to keep only "
-            "confident predictions.", self)
+            "confident predictions. Changing this threshold does not improve "
+            "the model. After relabeling, train again and select the new model "
+            "here to use the updated labels.", self)
         self.thresholdLabel.setWordWrap(True)
         layout.addWidget(self.thresholdLabel)
 

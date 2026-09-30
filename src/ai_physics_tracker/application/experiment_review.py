@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import hypot, isfinite
+from math import ceil, hypot, isfinite
 from pathlib import Path
 from uuid import UUID
 
@@ -171,16 +171,13 @@ def build_experiment_review_queue(
     if type(top_n) is not int or top_n <= 0:
         raise ValueError("top_n must be a positive integer")
     zone_start, zone_end = working_zone or (0, raw.frame_count - 1)
-    params = MiningParams(
-        top_n=min(zone_end - zone_start + 1, top_n + len(excluded_frames)),
-        confidence_threshold=confidence_threshold,
-    )
+    params = MiningParams(top_n=top_n, confidence_threshold=confidence_threshold)
     signals: dict[int, dict[str, tuple[str, ...]]] = {}
     scores: dict[int, float] = {}
     for role, rows in raw.by_role:
         outcome = mine_difficult_frames(
             rows, zone_start=zone_start, zone_end=zone_end,
-            fps_nominal=fps_nominal, params=params,
+            fps_nominal=fps_nominal, params=params, manual_frames=excluded_frames,
         )
         for item in outcome.shortlist:
             signals.setdefault(item.frame_index, {})[role] = item.reasons
@@ -202,13 +199,25 @@ def build_experiment_review_queue(
     ranked = sorted(
         (index for index in signals if index not in excluded_frames),
         key=lambda index: (-scores.get(index, 0.0), index))
+    # 四个 role 的 shortlist 合并后再做一次时间去重，避免前五帧全挤在一处。
+    gap = max(1, ceil(params.min_gap_s * fps_nominal))
+    while True:
+        selected: list[int] = []
+        for index in ranked:
+            if all(abs(index - other) >= gap for other in selected):
+                selected.append(index)
+            if len(selected) == top_n:
+                break
+        if len(selected) >= top_n or gap == 1:
+            break
+        gap = max(1, gap // 2)
     return tuple(
         frame_diagnostic(
             raw, frame_index, confidence_threshold=confidence_threshold,
             fixed_pivot_px=fixed_pivot_px, mined_reasons=signals[frame_index],
             screening_score=scores.get(frame_index, 0.0),
         )
-        for frame_index in ranked[:top_n]
+        for frame_index in selected
     )
 
 

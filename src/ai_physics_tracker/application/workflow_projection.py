@@ -505,12 +505,15 @@ def project_workflow_state(
         active_id = experiment.active_infer_run_id
         candidate = next(
             (r for r in reversed(joint_runs)
-             if r.status == "completed" and r.run_id != active_id), None)
+             if r.status == "completed"), None)
+        if candidate is not None and candidate.run_id == active_id:
+            candidate = None
         reviewed = total = 0
         if candidate is not None:
             review_data = candidate.extra_fields.get(EXPERIMENT_REVIEW_KEY)
             if isinstance(review_data, dict):
-                candidates_field = review_data.get("candidates")
+                candidates_field = review_data.get("policy", {}).get(
+                    "suggestion_frames", review_data.get("candidates"))
                 records_field = review_data.get("records")
                 total = len(candidates_field) if isinstance(candidates_field, list) else 0
                 reviewed = len(records_field) if isinstance(records_field, dict) else 0
@@ -675,6 +678,14 @@ def select_task_card(state: WorkflowState) -> TaskCard:
     # 推理在途 → candidate 待审/待激活 → 已激活测量。无三态时落到通用阶梯。
     if state.joint is not None:
         joint = state.joint
+        ready_to_train = state.frame_set is not None and state.frame_set.fixed_check_valid
+        refinement_action = ActionSpec(
+            ACTION_RUN_JOINT_TRAINING if ready_to_train else ACTION_FREEZE_FIXED_CHECK,
+            "Train with updated labels" if ready_to_train else "Prepare labels for training",
+            enabled=state.frame_set is not None and state.frame_set.done > 1,
+            reason=None if state.frame_set is not None and state.frame_set.done > 1
+            else "Relabel a few recommended frames first",
+        )
         if joint.pending_run_id is not None:
             return TaskCard(
                 mode=MODE_BLOCKED,
@@ -715,14 +726,14 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 title="Current: joint candidate ready (not active)",
                 explanation=(
                     "Joint inference produced a four-role candidate. Inspect "
-                    "suggested difficult frames; add useful ones to the shared "
-                    "training set and mark all four roles for retraining. "
-                    "Correct changes one measurement point only.",
+                    "suggested difficult frames, select a small batch and "
+                    "continuously mark four roles per frame. Train with the "
+                    "updated labels, then infer with the new model.",
                     "Activate replaces the AI observations of all four tracks "
                     "in one transaction; manual points always win."),
                 primary=ActionSpec(
                     ACTION_REVIEW_JOINT_CANDIDATE, "View suggested frames"),
-                secondary=secondary,
+                secondary=secondary + (refinement_action,),
                 evidence=(
                     f"Candidate run {str(joint.candidate_run_id)[:8]}: "
                     f"complete frames {complete if complete is not None else '?'}, "
@@ -757,6 +768,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                                "View suggested frames"),
                     inference_spec,
                     ActionSpec(ACTION_CLEAR_EXPERIMENT, "Clear active measurement"),
+                    refinement_action,
                 ),
                 evidence=(
                     f"Active run {str(joint.active_run_id)[:8]}, measurement "

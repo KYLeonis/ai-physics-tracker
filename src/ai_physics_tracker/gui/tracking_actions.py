@@ -356,6 +356,11 @@ class TrackingActions(QObject):
             self.panel.setTaskCard(None)
 
     def _sync_candidate_preview(self, session, runs, state, track, video) -> None:
+        joint = getattr(self.window, "experimentInferenceActions", None)
+        if joint is not None and joint.review_open:
+            self._preview_expected_key = None
+            self._preview_loaded_key = None
+            return
         candidate = state.trajectory.candidate
         if (candidate is None or track is None or video is None
                 or session.project_root is None):

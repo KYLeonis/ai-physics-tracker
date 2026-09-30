@@ -225,6 +225,30 @@ def test_joint_review_correct_is_run_scoped_manual_and_undoable(
     assert reopened.effective_point(experiment.roles.tip, frame) == point
 
 
+def test_refreshed_suggestions_keep_partial_frames_and_preserve_completed_history(
+    tmp_path, synthetic_video_path,
+):
+    session, experiment, run, request = _prepared(tmp_path, synthetic_video_path)
+    job_dir = session.project_root / "data" / "engines" / str(run.run_id)
+    session.update_tracking_run(verify_experiment_inference_result(
+        session, run, request, _result(job_dir, request), job_dir))
+    first = session.create_experiment_review_queue(run.run_id, top_n=5)[0].frame_index
+    session.extend_experiment_frame_set(experiment.experiment_id, (first,))
+    session.review_experiment_frame(
+        run.run_id, first, "corrected", role="tip", pixel_x=5.0, pixel_y=6.0)
+    partial = session.create_experiment_review_queue(run.run_id, top_n=5)
+    assert first in {c.frame_index for c in partial}
+    for role in ROLE_ORDER[1:]:
+        session.review_experiment_frame(
+            run.run_id, first, "corrected", role=role, pixel_x=5.0, pixel_y=6.0)
+    refreshed = session.create_experiment_review_queue(run.run_id, top_n=5)
+    assert first not in {c.frame_index for c in refreshed}
+    assert len(refreshed) <= 5
+    stored, records = session.get_experiment_review(run.run_id)
+    assert first in {c.frame_index for c in stored}
+    assert set(records[first]["manual_point_ids"]) == set(ROLE_ORDER)
+
+
 def test_joint_review_rejects_tampered_candidate_without_manual_write(
     tmp_path, synthetic_video_path,
 ):

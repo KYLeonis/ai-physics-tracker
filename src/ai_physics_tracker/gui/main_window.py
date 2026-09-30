@@ -1415,7 +1415,7 @@ class MainWindow(QMainWindow):
         self._refreshMarkers()
         self.statusBar().showMessage("Guided marking finished")
 
-    def beginExperimentAnnotation(self, start_frame: int | None = None) -> None:
+    def beginExperimentAnnotation(self) -> None:
         """进入四 role 顺序引导：点击按当前待标 role 路由，无需选 track。"""
 
         session = self._annotation_session
@@ -1428,11 +1428,11 @@ class MainWindow(QMainWindow):
             return
         worklist = frame_set_worklist(experiment)
         if worklist:
-            target = (start_frame if type(start_frame) is int and start_frame in worklist else next(
+            target = next(
                 (frame for frame in worklist if not annotation_guide_state(
                     session.project, experiment, frame).frame_complete),
                 worklist[-1],
-            ))
+            )
             self._beginGuideJump(target)
         self._guide_experiment_id = experiment.experiment_id
         self.trackList.clearSelection()

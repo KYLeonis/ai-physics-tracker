@@ -1622,6 +1622,10 @@ class ProjectSession:
     def create_experiment_review_queue(
         self, run_id: UUID, *, top_n: int = 20,
     ) -> tuple[ExperimentFrameCandidate, ...]:
+        """返回当前推荐帧；历史 corrected 记录保留在 run 中，不混入新推荐。"""
+
+        from ai_physics_tracker.application.annotation_join import join_complete_frames
+
         run = self._validate_infer_run_for_review(run_id)
         if run.experiment_id is None or self.project_root is None:
             raise ProjectSessionError("joint review requires a saved experiment candidate")
@@ -1632,6 +1636,8 @@ class ProjectSession:
                          if item.video_id == experiment.video_id), None)
         if video is None or timeline is None:
             raise ProjectSessionError("experiment video or timeline is missing")
+        complete_frames = frozenset(join_complete_frames(
+            self.project, experiment).complete_frame_indices)
         try:
             raw = read_experiment_candidate(self.project_root, run, experiment, video.frame_count)
             # 审核坐标展示对当前视频;推理后视频被替换则候选语义失效,拒绝建队列
@@ -1645,19 +1651,19 @@ class ProjectSession:
                 confidence_threshold=confidence_threshold,
                 fixed_pivot_px=experiment.geometry.fixed_pivot_px, top_n=top_n,
                 working_zone=timeline.working_zone,
-                excluded_frames=frozenset(
-                    experiment.frame_set.frames if experiment.frame_set else ()),
+                excluded_frames=complete_frames,
             )
         except (ValueError, KeyError, OSError) as error:
             raise ProjectSessionError(f"joint candidate cannot be reviewed: {error}") from error
         existing = self.get_experiment_review(run_id)
         prior_records = existing[1] if existing is not None else {}
+        stored_candidates = candidates
         if existing is not None:
             selected = {item.frame_index: item for item in candidates}
             for item in existing[0]:
                 if item.frame_index in prior_records:
                     selected.setdefault(item.frame_index, item)
-            candidates = tuple(selected[index] for index in sorted(selected))
+            stored_candidates = tuple(selected.values())
         data = {
             "version": 1,
             "artifact_sha256": run.extra_fields["prediction_sha256"],
@@ -1666,15 +1672,15 @@ class ProjectSession:
                 "confidence_threshold": confidence_threshold,
                 "confidence_source": "inference_request.min_confidence",
                 "mining_params": MiningParams(
-                    top_n=min(timeline.working_zone[1] - timeline.working_zone[0] + 1,
-                              top_n + len(experiment.frame_set.frames
-                                          if experiment.frame_set else ())),
+                    top_n=top_n,
                     confidence_threshold=confidence_threshold,
                 ).to_snapshot(),
+                "excluded_complete_frames": sorted(complete_frames),
+                "suggestion_frames": [item.frame_index for item in candidates],
                 "suggestion_limit": top_n,
                 "pivot_cutoff_px": None,
             },
-            "candidates": [item.to_dict() for item in candidates],
+            "candidates": [item.to_dict() for item in stored_candidates],
             "records": {str(frame): record for frame, record in prior_records.items()},
         }
         updated_run = replace(run, extra_fields={**run.extra_fields, EXPERIMENT_REVIEW_KEY: data})
