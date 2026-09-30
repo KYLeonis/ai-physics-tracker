@@ -18,3 +18,12 @@
 - radius缺项只阻塞P2计算，不阻断四点标注/训练/推理/采用。source inspection可看working zone外的真实帧，zone和普通播放clamp不变。旧_requestFrame callback默认调用形式恢复兼容。
 - 最终 **1218 tests/9 subtests** 全量通过；源帧检查新增一项已计入；旧图表hook失败修复后13定向通过；evidence verifier/diff check通过。
 - 复审 **Approve**（独立4定向、此前源帧2定向通过），无开放findings；Human Review待用户亲自测试；不能以自动化或审查替代。P2.3/P2均未关闭。
+
+
+## Human Review feedback repair — Independent Review
+
+- Scope：本轮相对0ea984a的diff，训练完成自动selftest、Verify & run续跑、取消/失败/关闭/换session/experiment守卫、日期与sidebar文案。
+- Reviewer：fresh-context只读 `p2_3_feedback_review`；最终 **Approve，无开放finding**。独立GUI38、worker/core71通过。
+- 确认：6种selftest终态、证据拒绝Activity/Cancel收尾、原session/experiment续跑、重新检查busy、推理前完整model/evidence fail-closed；训练→selftest→compatible全链回归。
+- 主会话验证：38定向、全量1226 tests/9 subtests；随后仅补证据拒绝Activity终态，6定向通过。evidence15/48/2、diff check通过。真实用户3模型单帧推理均success，用户manifest未覆盖。
+- Human Review：用户反馈的按钮截断/模型不能使用/日期已修；Q4–Q5及原Q1–Q3待真人复测。代码审查通过不代表P2已关闭，不集成/不进入P3。

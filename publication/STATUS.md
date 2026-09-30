@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-30。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P2.1/P2.2 完成；P2.2 merge `4ec09b6` 已推送；当前 `feat/p2.3-energy-analysis-ui`（base `4ec09b6`）。
-- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；等待 Human Review，P2尚未关闭。
+- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Human Review反馈修复中（radius按钮/新模型验证入口/训练日期），P2尚未关闭。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1/P2.2 已完成；P2.3 实现/代码审查通过，等待Human Review；P2尚未完成**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -89,7 +89,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**用户已授权 P2；P2.1 已完成并独立复审通过；执行 [P2.3 mini-plan Human Review](plans/p2.3-energy-analysis-ui.md)：用户亲自测试Q1单位/缺测、Q2源帧导航/返回标注、Q3stale/重算/保存重开。通过后--no-ff集成、push并关闭P2，再停止等待P3指令。** P2 总计划见 [p2-pendulum-analysis.md](plans/p2-pendulum-analysis.md)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。
+**用户已授权 P2；P2.1 已完成并独立复审通过；执行 [P2.3 mini-plan Human Review](plans/p2.3-energy-analysis-ui.md)：用户重启后复测Q4侧栏按钮/日期、Q5最新模型Verify & run/Cancel，并测试原Q1单位/缺测、Q2源帧导航/返回标注、Q3stale/重算/保存重开。通过后--no-ff集成、push并关闭P2，再停止等待P3指令。** P2 总计划见 [p2-pendulum-analysis.md](plans/p2-pendulum-analysis.md)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。
 
 ## P2.1 delivery (2026-09-30)
 
@@ -110,3 +110,12 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - [mini-plan](plans/p2.3-energy-analysis-ui.md)已在实施前建立；[Independent Review](../docs/reviews/publication-p2.3-review.md)两项Closed，复审Approve。Human Review尚未通过；本branch为交付checkpoint，不代表P2.3/P2关闭。
 
 - 最终验证：**1218 passed, 9 subtests passed**；13 review-fix定向；frozen evidence verifier与diff check通过。macOS共用main `.venv`，无需新依赖。按mini-plan启动命令测试后回复Q1–Q3（通过/需调整）；当前工作分支提交并推送，publication集成分支仍停在P2.2 `4ec09b6`。
+
+
+## P2.3 Human Review feedback checkpoint (2026-09-30)
+
+- 侧栏radius按钮改两行；模型选择与训练历史含完整本地日期时间/秒与短UUID；模型列表最新优先，trained使用来源run开始时间。
+- 未验证模型支持Verify & run：复用真实external selftest，成功后在原session/experiment自动推理；失败/取消/证据拒绝/换项目/关闭均不续跑。今后联合训练完成自动自检。
+- 用户test2_pendulum今天10:59/12:01/12:52三次训练成功，train帧11→26→41，标注digest变化。三个trained模型真实单帧selftest全部success、内存验证compatible；用户manifest未写。此前无自检证据且chooser无入口导致新模型无法使用。
+- 验证：38定向；全量 **1226 tests/9 subtests**；evidence15/48/2与diff check通过。补充Independent Review Approve（独立GUI38/worker-core71，零开放finding）；Human Review Q1–Q5待用户，保持当前开发分支不集成/P2未关闭。
+- 下一步：补充审查已通过；用户重启并打开test2_pendulum，Q4按钮/日期、Q5最新d8b6cb6e Verify & run/Cancel，及原分析页Q1–Q3亲自验收；通过后才--no-ff集成、push与P2收尾。
