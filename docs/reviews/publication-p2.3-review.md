@@ -27,3 +27,11 @@
 - 确认：6种selftest终态、证据拒绝Activity/Cancel收尾、原session/experiment续跑、重新检查busy、推理前完整model/evidence fail-closed；训练→selftest→compatible全链回归。
 - 主会话验证：38定向、全量1226 tests/9 subtests；随后仅补证据拒绝Activity终态，6定向通过。evidence15/48/2、diff check通过。真实用户3模型单帧推理均success，用户manifest未覆盖。
 - Human Review：用户反馈的按钮截断/模型不能使用/日期已修；Q4–Q5及原Q1–Q3待真人复测。代码审查通过不代表P2已关闭，不集成/不进入P3。
+
+
+## HR主线稀疏θ/空图 — display repair review
+
+- 用户Q4/Q5已通过；本轮仅Normal-risk显示/诊断：蓝QC/灰geometry-only preview、finite/empty可用性、具体修复帧例子、联合preview frozen role映射与cache key。
+- 数值core/共同QC/SG9/3/timeline/schema均未修改；既有adopted数据与用户manifest未写。当前真实旧/new数据均42 QC/最长5/ω0，不能假称最新模型已改善。
+- 只读reviewer p2_3_feedback_review：**Approve，无开放finding**。独立GUI21、预测解析/联合推理契约104通过，确认source frame/selected interval、empty autorange拒绝、empty-valid-empty、role切换cache隔离；repair example只指引，不保证分支/非均匀时间等检查必过。
+- 主会话：19 GUI定向、全量1228 tests/9 subtests；最后repair文案4 GUI定向；diff check通过。仍等Q6及原Q2/Q3真人复测，不集成/P2不关闭。

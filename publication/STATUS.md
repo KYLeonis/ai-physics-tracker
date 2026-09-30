@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-30。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P2.1/P2.2 完成；P2.2 merge `4ec09b6` 已推送；当前 `feat/p2.3-energy-analysis-ui`（base `4ec09b6`）。
-- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Human Review反馈修复中（radius按钮/新模型验证入口/训练日期），P2尚未关闭。
+- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Q4/Q5用户确认通过；HR主线稀疏θ/空图反馈已定位，显示修复待复测，P2尚未关闭。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1/P2.2 已完成；P2.3 实现/代码审查通过，等待Human Review；P2尚未完成**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -89,7 +89,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**用户已授权 P2；P2.1 已完成并独立复审通过；执行 [P2.3 mini-plan Human Review](plans/p2.3-energy-analysis-ui.md)：用户重启后复测Q4侧栏按钮/日期、Q5最新模型Verify & run/Cancel，并测试原Q1单位/缺测、Q2源帧导航/返回标注、Q3stale/重算/保存重开。通过后--no-ff集成、push并关闭P2，再停止等待P3指令。** P2 总计划见 [p2-pendulum-analysis.md](plans/p2-pendulum-analysis.md)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。
+**用户已授权 P2；P2.1 已完成并独立复审通过；执行 [P2.3 mini-plan Human Review](plans/p2.3-energy-analysis-ui.md)：Q4/Q5已获用户通过；用户重启后复测Q6 Angle有效/排除预览、空图说明与建议修复帧，并确认原Q2源帧导航/返回标注、Q3stale/重算/保存重开。通过后--no-ff集成、push并关闭P2，再停止等待P3指令。** P2 总计划见 [p2-pendulum-analysis.md](plans/p2-pendulum-analysis.md)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。
 
 ## P2.1 delivery (2026-09-30)
 
@@ -117,5 +117,13 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - 侧栏radius按钮改两行；模型选择与训练历史含完整本地日期时间/秒与短UUID；模型列表最新优先，trained使用来源run开始时间。
 - 未验证模型支持Verify & run：复用真实external selftest，成功后在原session/experiment自动推理；失败/取消/证据拒绝/换项目/关闭均不续跑。今后联合训练完成自动自检。
 - 用户test2_pendulum今天10:59/12:01/12:52三次训练成功，train帧11→26→41，标注digest变化。三个trained模型真实单帧selftest全部success、内存验证compatible；用户manifest未写。此前无自检证据且chooser无入口导致新模型无法使用。
-- 验证：38定向；全量 **1226 tests/9 subtests**；evidence15/48/2与diff check通过。补充Independent Review Approve（独立GUI38/worker-core71，零开放finding）；Human Review Q1–Q5待用户，保持当前开发分支不集成/P2未关闭。
-- 下一步：补充审查已通过；用户重启并打开test2_pendulum，Q4按钮/日期、Q5最新d8b6cb6e Verify & run/Cancel，及原分析页Q1–Q3亲自验收；通过后才--no-ff集成、push与P2收尾。
+- 验证：38定向；全量 **1226 tests/9 subtests**；evidence15/48/2与diff check通过。补充Independent Review Approve（独立GUI38/worker-core71，零开放finding）；Q4/Q5用户确认通过；Human Review主线Q1–Q3反馈待修复复测，保持当前开发分支不集成/P2未关闭。
+- 下一步：补充审查已通过；用户重启并打开test2_pendulum，Q4/Q5已获用户确认通过；继续原分析页Q1–Q3主线亲自验收；通过后才--no-ff集成、push与P2收尾。
+
+
+## P2.3 HR主线反馈（2026-09-30）
+
+- 用户确认上一轮Q4/Q5全部通过；报告Angle只有部分点、其他图空且坐标范围异常。对应payload133θ有限/42共同QC/最长5<SG9，ω/energy0；非数据丢失。旧run71c2c8ef仍adopted，最新34de7208未采用；detached模拟替换仍42/5/0，最新tip/body_bottom/pivot均0/148达到0.6阈值。因此不能仅靠采用新模型或放宽SG来造出可靠曲线。
+- 修复：Angle蓝色QC点+灰色排除几何预览可点回源帧；empty隐藏坐标轴并呈现具体原因/缺role数/最长段与最少QC缺项的9帧例子（当前11–19，检查12–15）；未改科学计算或写用户项目。联合candidate预览修复默认target错误，按run冻结bodypart及role缓存身份读取。
+- 19 GUI定向、全量1228 tests/9 subtests通过；最后display建议4定向通过；补充只读审查Approve（独立GUI21/契约104，零开放finding）。当前branch未集成；Q6及原Q2/Q3待真人，P2未关闭。
+- 下一步：审查通过，checkpoint提交并push；用户保存/重启/重新计算，检查灰叉源帧与三页不可用提示，必要时重标12–15四点以先得到11–19连续段的局部图，再确认stale/保存重开。模型质量改善需以新的跟踪验证结果为证据，不能把training完成当精度已通过。
