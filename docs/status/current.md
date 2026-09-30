@@ -1,6 +1,6 @@
 # Current Status
 
-> Publication worktree note（2026-09-30）：本文件保留 main 通用线状态。本 worktree 的 EJP 平台独立规划、科学契约与下一步见 [publication/STATUS.md](../../publication/STATUS.md) 和 [PHASE_PLAN.md](../../publication/PHASE_PLAN.md)；不以 main Phase 6 完成为前置。P0及P1.1–P1.3已完成并合并，P1.4正在执行（S1–S3/S5 已实现，两道 Independent Review gate 已通过；S4 推荐帧交互等待真人复核，S6 收尾未完成）；Windows验证已获用户明确批准延期至P6前。
+> Publication worktree note（2026-09-30）：本文件保留 main 通用线状态。本 worktree 的 EJP 平台独立规划、科学契约与下一步见 [publication/STATUS.md](../../publication/STATUS.md) 和 [PHASE_PLAN.md](../../publication/PHASE_PLAN.md)；不以 main Phase 6 完成为前置。P0及P1.1–P1.3已完成并合并，P1.4正在执行（S1–S3/S5 已实现，两道 Independent Review gate 已通过；S4 每帧四点自动跳帧的推荐批次交互等待真人复核，S6 收尾未完成）；Windows验证已获用户明确批准延期至P6前。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

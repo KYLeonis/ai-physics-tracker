@@ -2,10 +2,12 @@
 
 - 最后更新：2026-09-30。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p1.4-joint-inference-activation`，自已推送的 P1.3 集成提交 `0546ff7` 切出。
-- 当前：**P1.4 S1–S5 已实现，S3/S5 两道 Independent Review gate 已通过；S4 推荐帧交互按 2026-09-30 用户反馈修订，等待新一轮真人 Human Review；S6 导入模型真实短片生命周期 smoke 已部分通过**：[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。推理后给出可选的困难帧推荐，选择一帧加入共享训练集后进入既有四点标注引导；一键 Accept 与强制连续标注已移除。修订后的定向 offscreen **26 passed**；完整回归在最后一轮帧呈现提示微调前 **1149 passed, 9 subtests passed**，其后 GUI 定向 11 passed。S1 自训/导入模型 Mac CPU 十帧结构 smoke 见[证据](evidence/runtime/p14-joint-inference-smoke.json)；S6 导入模型 host→review→activate→clear→undo→reopen 见[证据](evidence/runtime/p14-lifecycle-smoke.json)。P1.1–P1.3 已合并；P2 未开始。
+- 当前：**P1.4 S4 第五轮交互修订等待真人 Human Review；S1–S3/S5 已实现且两道 Independent Review gate 通过；S6 未收尾。** 用户选择「每帧四点→自动下一推荐帧」：推荐窗默认勾选前 5 帧，Start 后连续标注、Pause/Resume/Skip、即时人工点反馈与明确批次进度；修复旧历史混入推荐、partial 帧被排除、激活后回到旧 run、标注后训练入口消失的问题。详见[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。只读检查发现用户新旧推理 raw 坐标/置信度逐值相同（同一模型，仅 threshold 0.6→0.5）；历史人工标签疑似错角色，真实再训练前需用户复核，未改测试项目。P1.1–P1.3 已合并；P2 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1–P1.3已完成，P1.4执行中；P2–P6未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
+
+本轮验证（2026-09-30）：连续推荐帧重标定向 **36 passed**，全量 **1151 passed, 9 subtests passed**。Human Review 尚待用户反馈，未合并 P1.4。
 
 - [P1 complete mini-plan](plans/p1-four-landmark-measurement.md)：保留P1.1–P1.4边界，按schema/setup → complete-frame annotation/export → external worker/joint training/teacher import → joint inference/review/atomic activation实施。
 - 计划明确每个Subphase的Context Pack、scope、slice依赖、AC、自动化与真实DLC验证、增量Human Review、risk-based Independent Review及失败恢复。
@@ -87,4 +89,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**请用户从本 worktree 重启 GUI，真人验证新的「推理→推荐帧→选帧加入训练集→四点标注」路径及单点 Correct。** 通过后进入 S6 收尾：trained compatible 模型经普通 host request 的完整链路、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后 `--no-ff` 合并至 `publication/ejp-damped-pendulum` 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
+**请用户重启本 worktree GUI，验证勾选少量推荐帧→一次 Start→每帧四点自动跳下一勾选帧，及 Pause/Resume/Skip。** 同时请用户复核 mini-plan 所列历史疑似错角色标签（训练帧 98 的 tip、17/93/107 的 pivot）；当前相同模型重复推理不代表精度改善。体验通过后继续 S6：trained compatible host 全链、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后合并至 publication/ejp-damped-pendulum 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
