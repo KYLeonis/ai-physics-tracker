@@ -43,6 +43,10 @@ class PendulumAnalysisPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.payload = None
+        self.repair_frames = ()
+        self.payload_valid = False
+        self.repairButton = QPushButton("Repair suggested frames (four points each)", self)
+        self.repairButton.hide()
         self.statusLabel = QLabel("No pendulum analysis yet", self)
         self.statusLabel.setWordWrap(True)
         self.summaryLabel = QLabel("", self)
@@ -106,6 +110,7 @@ class PendulumAnalysisPanel(QWidget):
         layout.addWidget(self.statusLabel)
         layout.addLayout(controls)
         layout.addWidget(self.summaryLabel)
+        layout.addWidget(self.repairButton)
         layout.addWidget(self.tabs, 1)
         layout.addWidget(self.frameLabel)
         note = QLabel("Analysis uses the adopted run + manual corrections; a new candidate preview is not included. SG9/3 needs at least 9 consecutive QC-valid frames. Click a blue point or gray cross → inspect its source frame; return to Acquire to complete/correct four landmarks, then recompute. Gaps stay missing; first/last 4 points of each segment are edge windows.", self)
@@ -118,6 +123,9 @@ class PendulumAnalysisPanel(QWidget):
 
     def clearData(self):
         self.payload = None
+        self.repair_frames = ()
+        self.payload_valid = False
+        self.repairButton.hide()
         for kind, item in self.items.items():
             item.setData([], [])
             self.highlights[kind].setData([], [])
@@ -131,6 +139,8 @@ class PendulumAnalysisPanel(QWidget):
 
     def setPayload(self, payload, valid, reason=None):
         self.payload = payload
+        self.payload_valid = valid
+        self.repair_frames = ()
         rows = payload["rows"]
         end = payload["config"]["end_frame_index"]
         usable = [r["is_qc_valid"] and 0 <= r["time_release_relative_s"] and r["frame_index"] <= end for r in rows]
@@ -158,7 +168,8 @@ class PendulumAnalysisPanel(QWidget):
                         key=lambda i: sum(not ok for ok in usable[i:i+SG_WINDOW]), default=None)
             if start is not None:
                 repair = rows[start:start+SG_WINDOW]
-                gaps = ", ".join(str(r["frame_index"]) for r, ok in zip(repair, usable[start:start+SG_WINDOW]) if not ok)
+                self.repair_frames = tuple(r["frame_index"] for r, ok in zip(repair, usable[start:start+SG_WINDOW]) if not ok)
+                gaps = ", ".join(map(str, self.repair_frames))
                 unavailable += (f"\nRepair example: source block {repair[0]['frame_index']}–{repair[-1]['frame_index']}; "
                                 f"inspect/correct the four landmarks at QC-excluded frames {gaps}.")
         for kind, item in self.items.items():
@@ -196,6 +207,9 @@ class PendulumAnalysisPanel(QWidget):
                                     else unavailable))
             if visible:
                 self.plots[kind].autoRange()
+        self.repairButton.setVisible(bool(self.repair_frames))
+        self.repairButton.setEnabled(valid)
+        self.repairButton.setText(f"Repair suggested frames: {', '.join(map(str, self.repair_frames))} (four points each)")
         periods, tail = payload["periods"], payload["tail"]
         q = payload["q_reference_s_inv2"]
         tail_text = (f"q_tail = {tail['omega2_mean_s_inv2']:.6g} s⁻²" if tail["omega2_mean_s_inv2"] is not None
@@ -263,6 +277,7 @@ class PendulumAnalysisActions(QObject):
         window.closing.connect(self.shutdown)
         self.panel.frameRequested.connect(window.seekSourceFrame)
         self.panel.computeButton.clicked.connect(self.compute)
+        self.panel.repairButton.clicked.connect(self.repairSuggestedFrames)
         self.panel.cancelButton.clicked.connect(self.cancel)
         self.panel.endFrame.valueChanged.connect(self._intervalChanged)
         self.refresh()
@@ -282,6 +297,8 @@ class PendulumAnalysisActions(QObject):
 
     def _intervalChanged(self):
         if self.panel.payload is not None:
+            self.panel.repairButton.setEnabled(self.panel.payload_valid and self._future is None
+                and self.panel.endFrame.value() == self.panel.payload["config"]["end_frame_index"])
             applied = self.panel.payload["config"]["end_frame_index"]
             if self.panel.endFrame.value() != applied:
                 self.panel.statusLabel.setText("Interval changed — recompute to apply; plots still show saved interval")
@@ -350,6 +367,24 @@ class PendulumAnalysisActions(QObject):
         self._timer.start(30)
         self.panel.cancelButton.setEnabled(True)
         self.panel.computeButton.setEnabled(False)
+        self.panel.repairButton.setEnabled(False)
+
+    def repairSuggestedFrames(self):
+        """只用当前已验证结果的建议；复用主窗口四点写入和自动跳帧。"""
+        session, experiment = self.window.analysisSession, self.window.currentPendulumExperiment()
+        if session is None or experiment is None or self._future is not None or self._closed or self.window.projectActions.busy:
+            return
+        if (not self.panel.payload_valid or not self.panel.repair_frames or self._key is None
+                or self._key[0] != analysis_input_state(session, experiment.experiment_id)
+                or self._key[2] != _videoStamp(session, experiment.experiment_id)
+                or self.panel.endFrame.value() != self.panel.payload["config"]["end_frame_index"]):
+            self.panel.repairButton.setEnabled(False)
+            self.panel.statusLabel.setText("Inputs changed — recompute before starting the suggested repair")
+            return
+        try:
+            self.window.beginExperimentAnnotation(self.panel.repair_frames)
+        except (ProjectSessionError, ValueError) as error:
+            self.panel.statusLabel.setText(f"Cannot start repair: {error}")
 
     def compute(self):
         if self._future is not None or self._closed or self.window.projectActions.busy:

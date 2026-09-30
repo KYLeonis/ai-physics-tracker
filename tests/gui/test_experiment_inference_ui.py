@@ -810,3 +810,35 @@ def test_joint_candidate_preview_uses_role_and_refreshes_when_role_changes(qtbot
         assert sum(marker.color == '#ff6b6b' for marker in markers) == (1 if role == 'tip' else 0)
         assert 'positions unavailable' not in window.videoView._preview_legend.text()
     assert experiment.active_infer_run_id is None  # 预览不采用候选
+    run_id = window.trackingActions._current_workflow_state.trajectory.candidate.run_id
+    session.activate_experiment_candidate(experiment.experiment_id, run_id)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    assert window.videoView.preview_marker_views() == []
+    assert 'not adopted' not in window.workflowHeader.trajectoryLabel.text()
+    assert f'adopted run {str(run_id)[:8]}' in window.workflowHeader.trajectoryLabel.text()
+
+
+def test_joint_correct_survives_readonly_analysis_roundtrip(qtbot, tmp_path, synthetic_video_path):
+    from PySide6.QtCore import QPoint
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    run = _run_inference(controller, session, experiment, model)
+    controller.openReviewQueue(run.run_id)
+    window.trackList.clearSelection()
+    controller.startCorrect('tip')
+    _wait_presented(qtbot, window, controller._review_current)
+    qtbot.waitUntil(lambda: not window._has_pending_request)
+    assert controller.is_correcting and window.videoView.is_annotation_mode()
+    window.setWorkspace('analysis')
+    controller._sync_review(None, seek=False)  # 异步帧刷新也不能开启分析视频编辑。
+    assert controller.is_correcting and not window.videoView.is_annotation_mode()
+    before = session.project.observations
+    window._onAnnotationClicked(QPoint(10, 10))
+    assert session.project.observations == before
+    window.setWorkspace('acquire')
+    assert controller.is_correcting and window.videoView.is_annotation_mode()
+    window.videoView.mapScreenToPixel = lambda _pos: (10., 12.)
+    window._onAnnotationClicked(QPoint(10, 10))
+    assert len(session.manual_points(experiment.roles.tip)) == 1

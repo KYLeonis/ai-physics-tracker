@@ -162,3 +162,43 @@ def test_sparse_qc_previews_and_empty_charts_recover(qtbot, tmp_path, synthetic_
     panel.clearData()
     assert len(panel.excludedAngles.points()) == 0
     assert all(plot.isHidden() for plot in panel.plots.values())
+
+
+def test_repair_suggestions_reject_changed_inputs_and_restored_four_points_produce_charts(
+    qtbot, tmp_path, synthetic_video_path
+):
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    for frame in range(4, 8):
+        session.mark_point(experiment.roles.body_bottom, frame, 0., 10.)
+    window = Window(session, experiment)
+    qtbot.addWidget(window)
+    repairs = []
+    window.beginExperimentAnnotation = repairs.append
+    actions = PendulumAnalysisActions(window)
+    try:
+        actions.compute()
+        qtbot.waitUntil(lambda: actions._future is None)
+        assert actions.panel.repair_frames == (4, 5, 6, 7)
+        assert actions.panel.repairButton.isEnabled()
+        assert actions.panel.plots['omega'].isHidden()
+        before = session.project
+        actions.panel.repairButton.click()
+        assert repairs == [(4, 5, 6, 7)] and session.project == before
+        # 旧结果的建议不能绕过实际输入变化；无需等UI刷新先拒绝。
+        session.mark_point(experiment.roles.tip, 0, 1., 100.)
+        actions.repairSuggestedFrames()
+        assert len(repairs) == 1 and not actions.panel.repairButton.isEnabled()
+        session.mark_point(experiment.roles.tip, 0, 0., 100.)
+        for frame in range(4, 8):
+            for role, xy in zip(('tip', 'body_top', 'body_bottom', 'pivot'), ((0., 100.), (0., 10.), (0., 20.), (0., 0.))):
+                session.mark_point(experiment.roles.track_id_for(role), frame, *xy)
+        actions.compute()
+        qtbot.waitUntil(lambda: actions._future is None)
+        assert not actions.panel.repair_frames
+        for kind in ('omega', 'phase', 'energy'):
+            assert not actions.panel.plots[kind].isHidden()
+            assert len(actions.panel.items[kind].getData()[0]) == 12
+        assert all(r['is_qc_valid'] and r['omega_rad_s'] is not None and r['energy_s_inv2'] is not None
+                   for r in actions.panel.payload['rows'])
+    finally:
+        actions.shutdown()

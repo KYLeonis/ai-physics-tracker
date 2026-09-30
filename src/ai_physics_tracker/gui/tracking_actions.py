@@ -362,6 +362,11 @@ class TrackingActions(QObject):
             self._preview_loaded_key = None
             return
         candidate = state.trajectory.candidate
+        experiment = self.window.currentPendulumExperiment()
+        if candidate is not None and experiment is not None and experiment.active_infer_run_id == candidate.run_id:
+            # 联合采用以experiment为真值；单轨投影不能把已采用run再次画成未采用预览。
+            self._clear_candidate_preview()
+            return
         if (candidate is None or track is None or video is None
                 or session.project_root is None):
             self._clear_candidate_preview()
@@ -504,7 +509,11 @@ class TrackingActions(QObject):
             trajectory_text = f"Current trajectory: manual only ({traj.manual_count} position(s))"
         else:
             trajectory_text = "Current trajectory: —"
-        if traj.candidate is not None:
+        experiment = window.currentPendulumExperiment()
+        active_joint = experiment.active_infer_run_id if experiment is not None else None
+        if active_joint is not None:
+            trajectory_text += f" · Joint analysis source: adopted run {str(active_joint)[:8]}"
+        if traj.candidate is not None and traj.candidate.run_id != active_joint:
             trajectory_text += f"   ·   Preview: {traj.candidate.label} (not adopted)"
         if state.execution.busy:
             kind = state.execution.kind.replace("_", " ")
