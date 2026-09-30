@@ -1,0 +1,20 @@
+# Independent Review — Publication P2.3
+
+- Date：2026-09-30；branch `feat/p2.3-energy-analysis-ui`，base `4ec09b6`。
+- Scope：reference energy/scalar payload；snapshot消费、signature/capture/currentness；immutable JSON/session事务；后台cancel/generation；半径setup门槛、GUI source frame/trim导航与兼容。
+- Reviewer：fresh-context只读subagent `p2_3_review`。首轮 **request-changes (P2)**，未发现P0/P1阻塞；新增源帧链路独立2定向通过。
+
+| ID | Finding | Triage / Fix / status |
+| --- | --- | --- |
+| F1 (P2) | energy provenance使用canonical source-map不存在的source-energy | FIX：改为energy、policy-student-v1；新增精确来源断言。修复后13定向通过，Closed，复审确认 |
+| F2 (P2) | experiment存在即顶部宣称adopted，无active run时与面板提示矛盾 | FIX：有active run才显示adopted四role，否则no active adopted joint inference；真实MainWindow未采用状态回归。Closed，复审确认，真人也须核对 |
+
+## Self-review / verification
+
+- 非线性无阻尼能量恒等式 A=.3/1.4 rad、None/short/gap/nonfinite与实际source identity；q=g/L、s⁻² proxy，非拟合值/焦耳。
+- adopted实际点与metadata冻结、relative weight/QC/源帧/绝对与相对time；typed columns含所有scalar，missing带reason。
+- worker detached、current assert消费及完成时外部SHA复核；SHA前后stat一致，GUI提交再次检查全部内存事实与文件代际（不是mtime代替SHA）。
+- 新ID JSON同目录暂存/flush/fsync/atomic no-overwrite link、hash读；manifest在完整文件后一次Undo事务。Save As/重开、漏置stale、写盘失败、视频改变、取消/关闭/晚到拒绝均有回归。
+- radius缺项只阻塞P2计算，不阻断四点标注/训练/推理/采用。source inspection可看working zone外的真实帧，zone和普通播放clamp不变。旧_requestFrame callback默认调用形式恢复兼容。
+- 最终 **1218 tests/9 subtests** 全量通过；源帧检查新增一项已计入；旧图表hook失败修复后13定向通过；evidence verifier/diff check通过。
+- 复审 **Approve**（独立4定向、此前源帧2定向通过），无开放findings；Human Review待用户亲自测试；不能以自动化或审查替代。P2.3/P2均未关闭。

@@ -1,9 +1,9 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
 - 最后更新：2026-09-30。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P2.1/P2.2 完成；P2.2 将按 --no-ff 合并推送后进入 `feat/p2.3-energy-analysis-ui`。
-- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)。
-- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1/P2.2 已完成；P2.3 mini-plan 已建立；P2尚未完成**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P2.1/P2.2 完成；P2.2 merge `4ec09b6` 已推送；当前 `feat/p2.3-energy-analysis-ui`（base `4ec09b6`）。
+- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；等待 Human Review，P2尚未关闭。
+- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1/P2.2 已完成；P2.3 实现/代码审查通过，等待Human Review；P2尚未完成**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
 
@@ -89,7 +89,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**用户已授权 P2；P2.1 已完成并独立复审通过；进入 [P2.3 mini-plan](plans/p2.3-energy-analysis-ui.md)：energy、typed 保存、scalar GUI 与真人验收。** P2 总计划见 [p2-pendulum-analysis.md](plans/p2-pendulum-analysis.md)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。
+**用户已授权 P2；P2.1 已完成并独立复审通过；执行 [P2.3 mini-plan Human Review](plans/p2.3-energy-analysis-ui.md)：用户亲自测试Q1单位/缺测、Q2源帧导航/返回标注、Q3stale/重算/保存重开。通过后--no-ff集成、push并关闭P2，再停止等待P3指令。** P2 总计划见 [p2-pendulum-analysis.md](plans/p2-pendulum-analysis.md)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。
 
 ## P2.1 delivery (2026-09-30)
 
@@ -103,3 +103,10 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - 直接 SG9/3、源帧缺口/short/nonuniform/edge、独立 extrema、分段 crossing/period/tail、同源 phase matching；Qt-free adapter。
 - P011/P014 ω1e−8、P011213 extrema精确一致、tail period1e−8/q1e−7；20定向、全量1207 tests/9 subtests。
 - [Independent Review](../docs/reviews/publication-p2.2-review.md) 发现零平台伪周期及provenance顺序，修复复审approve。旧科研只读、golden未改。
+
+## P2.3 delivery checkpoint (2026-09-30)
+
+- reference energy q=g/L s⁻² proxy、typed immutable JSON、多输入signature/外部SHA与提交stat代际、后台cancel/late guard、Save As/重开；四个scalar/phase页与准确源帧检查（不改working zone）。
+- [mini-plan](plans/p2.3-energy-analysis-ui.md)已在实施前建立；[Independent Review](../docs/reviews/publication-p2.3-review.md)两项Closed，复审Approve。Human Review尚未通过；本branch为交付checkpoint，不代表P2.3/P2关闭。
+
+- 最终验证：**1218 passed, 9 subtests passed**；13 review-fix定向；frozen evidence verifier与diff check通过。macOS共用main `.venv`，无需新依赖。按mini-plan启动命令测试后回复Q1–Q3（通过/需调整）；当前工作分支提交并推送，publication集成分支仍停在P2.2 `4ec09b6`。

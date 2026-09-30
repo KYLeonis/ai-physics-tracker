@@ -41,4 +41,4 @@
 
 ## Result
 
-- P1 完成核对通过；P2.1 完成：1187 tests/9 subtests、Independent Review approve、QC与摘要保存重开验证通过。P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 mini-plan 已建立，待实现/真人验收，不声称 P2 完成。
+- P1 完成核对通过；P2.1 完成：1187 tests/9 subtests、Independent Review approve、QC与摘要保存重开验证通过。P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 mini-plan 已实施，energy/typed保存/scalar GUI与代码审查通过，等待真人验收，不声称 P2 完成。
