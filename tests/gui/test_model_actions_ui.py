@@ -183,26 +183,43 @@ class TestJointTrainingFlow:
         class _Runner:
             def start_training(self, project_root, request, *, device="cpu"):
                 job_dir = Path(project_root) / "data" / "engines" / request.run_id
-                return _FakeHandle(_train_success_result(request, job_dir))
+                result = _train_success_result(request, job_dir)
+                pose = job_dir / "dlc-project/dlc-models-pytorch/iteration-0/test/train/pytorch_config.yaml"
+                pose.parent.mkdir(parents=True)
+                pose.write_text("net: resnet_50\n", encoding="utf-8")
+                return _FakeHandle(result)
 
-            def start_selftest(self, *a, **k):
-                return _FakeHandle(None)
+            def start_selftest(self, project_root, model_id, fields, *, device="cpu"):
+                return _FakeHandle({
+                    "status": "success", "actual_device": "cpu", "model_selftest": {
+                        "config_sha256": fields["config_sha256"],
+                        "checkpoint_sha256": fields["checkpoint_sha256"],
+                        "pose_cfg_sha256": fields["pose_cfg_sha256"],
+                        "frame_sha256": "f" * 64, "frame_index": 0,
+                        "bodyparts_found": list(ROLE_ORDER),
+                        "versions": {"deeplabcut": "3.0.1"},
+                    },
+                })
 
         window.modelActions = ModelActions(window, runner_factory=_Runner)
         window.modelActions.runJointTraining()
         assert window.modelActions.busy
         window.modelActions._poll()
+        assert window.modelActions.busy
+        assert window.modelActions._job_kind == "selftest"
+        window.modelActions._poll()
         assert not window.modelActions.busy
         references = session.project.model_references
         assert len(references) == 1
         assert references[0].origin == "trained"
+        assert references[0].compatibility_state == "compatible"
         run = next(
             r for r in session.project.tracking_runs
             if r.run_id == references[0].source_train_run_id
         )
         assert run.status == "completed"
         assert run.extra_fields["elapsed_s"] == 12.5   # i3②
-        assert "model" in window.statusBar().currentMessage()
+        assert "compatible" in window.statusBar().currentMessage()
 
     def test_failure_marks_run_failed(self, qtbot, tmp_path, long_video_path):
         window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
@@ -242,7 +259,8 @@ class TestJointTrainingFlow:
 
 
 class TestSelftestFlow:
-    def test_selftest_success_applies_compatible(self, qtbot, tmp_path, long_video_path):
+    @pytest.mark.parametrize("outcome", ["success", "failed", "cancelled", "late_cancel", "session_swap", "rejected"])
+    def test_selftest_success_applies_compatible(self, qtbot, tmp_path, long_video_path, outcome):
         import yaml
 
         window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
@@ -281,10 +299,23 @@ class TestSelftestFlow:
         window.modelActions = ModelActions(
             window, runner_factory=_FakeRunnerFactory(result)
         )
-        window.modelActions.runSelftest(reference.model_id)
+        if outcome in ("failed", "cancelled"):
+            result["status"] = outcome
+        elif outcome == "rejected":
+            result["model_selftest"]["config_sha256"] = "0" * 64
+        continued = []
+        window.modelActions.runSelftest(reference.model_id, on_success=lambda: continued.append(True))
+        if outcome == "late_cancel":
+            window.modelActions.cancel()
+        elif outcome == "session_swap":
+            window._annotation_session = None
         window.modelActions._poll()
         updated = session.project.model_references[0]
-        assert updated.compatibility_state == "compatible"
+        assert updated.compatibility_state == ("compatible" if outcome == "success" else "unverified")
+        assert continued == ([True] if outcome == "success" else [])
+        assert not window.modelActions.busy
+        assert window.modelActions._selftest_on_success is None
+        assert not window.trackingActions.panel.cancelButton.isEnabled()
 
 
 class TestImportDialogLogic:
@@ -571,5 +602,5 @@ class TestHrFeedback:
                   for i in range(window.trackingActions.panel.historyList.count())]
         import re as _re
         assert labels and all(
-            _re.match(r"^\d\d-\d\d \d\d:\d\d · ", label) for label in labels
+            _re.match(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d · ", label) for label in labels
         ), labels[:3]

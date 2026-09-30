@@ -171,6 +171,21 @@ class ExperimentInferenceActions(QObject):
         if blocked:
             self.window.statusBar().showMessage(blocked)
             return
+        from ai_physics_tracker.application.teacher_models import effective_compatibility_state
+
+        model = next((m for m in session.project.model_references
+                      if m.model_id == model_id), None)
+        if model is not None and effective_compatibility_state(model) == "unverified":
+            experiment_id = experiment.experiment_id
+
+            def continue_inference():
+                current = self.window.currentPendulumExperiment()
+                if (self.window.analysisSession is session and current is not None
+                        and current.experiment_id == experiment_id):
+                    self.runJointInference(model_id, params)
+
+            self.window.modelActions.runSelftest(model_id, on_success=continue_inference)
+            return
         try:
             run, request = prepare_experiment_inference(
                 session, experiment.experiment_id, model_id, params,

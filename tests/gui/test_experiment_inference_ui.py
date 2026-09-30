@@ -740,3 +740,49 @@ class TestActivation:
         assert session.pendulum_experiment(
             experiment.experiment_id).active_infer_run_id is None
         assert session.project.observations == ()
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_unverified_model_checks_before_inference(qtbot, tmp_path, synthetic_video_path, monkeypatch, changed):
+    from dataclasses import replace
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    _inject_model(session, replace(model, compatibility_state="unverified", self_test_evidence=None))
+    controller = _install(window, _Runner())
+    callbacks = []
+    monkeypatch.setattr(window.modelActions, "runSelftest",
+                        lambda model_id, *, on_success: callbacks.append(on_success))
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6))
+    assert len(callbacks) == 1
+    assert not controller.busy
+    assert not session.tracking_runs()
+    _inject_model(session, model)
+    if changed:
+        monkeypatch.setattr(window, "currentPendulumExperiment", lambda: None)
+    callbacks[0]()
+    assert controller.busy is (not changed)
+    if not changed:
+        controller._poll()
+        assert len(session.tracking_runs()) == 1
+
+
+def test_model_chooser_dates_and_verify_action(qtbot, tmp_path, synthetic_video_path):
+    from dataclasses import replace
+    from datetime import timedelta
+    from types import SimpleNamespace
+    from ai_physics_tracker.gui.joint_inference_dialog import JointInferenceDialog
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    started = model.created_at - timedelta(minutes=30)
+    trained = replace(model, model_id=uuid4(), origin="trained", source_train_run_id=uuid4(),
+                      source_experiment_id=experiment.experiment_id,
+                      compatibility_state="unverified", self_test_evidence=None,
+                      created_at=model.created_at + timedelta(minutes=1))
+    dialog = JointInferenceDialog([model, trained], training_runs=[
+        SimpleNamespace(run_id=trained.source_train_run_id, created_at=started)])
+    qtbot.addWidget(dialog)
+    assert dialog.selected_model_id() == trained.model_id
+    assert dialog.modelList.item(0).text().startswith(started.astimezone().strftime("%Y-%m-%d %H:%M:%S"))
+    assert dialog._ok_button.isEnabled() and dialog._ok_button.text() == "Verify & run"
+    dialog.modelList.setCurrentRow(1)
+    assert dialog._ok_button.text() == "Run inference"

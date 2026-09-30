@@ -68,7 +68,7 @@ class PendulumSetupPanel(QGroupBox):
         self.statusLabel.setWordWrap(True)
         self.scaleLabel = QLabel("scale: not set (uses Calibration)", self)
         self.pivotButton = QPushButton("Mark fixed pivot…", self)
-        self.radiusButton = QPushButton("Use current tip as radius reference", self)
+        self.radiusButton = QPushButton("Set radius reference\nfrom current tip", self)
         self.radiusButton.setToolTip("Choose a frame with a trustworthy tip label. Uses its pixel distance to the fixed pivot for QC; does not set physical L.")
         self.radiusLabel = QLabel("tip radius reference: not set", self)
         self.radiusLabel.setWordWrap(True)
