@@ -4,6 +4,8 @@
 
 ## Planning entry points
 
+当前：P1 完成；[P2 analysis plan](plans/p2-pendulum-analysis.md) 已立项，P2.1 θ/QC core 完成。
+
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
 - [Scientific Asset Inventory](spec/scientific-asset-inventory.md)：论文方法/结果到源代码、配置、数据库表和输出的只读对应。
