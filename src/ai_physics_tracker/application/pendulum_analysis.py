@@ -8,8 +8,9 @@ from ai_physics_tracker.application.adopted_measurement import (
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.pendulum import QCExclusion, ROLE_ORDER
 from ai_physics_tracker.domain.pendulum_reconstruction import (
-    AdoptedLandmark, MeasurementFrame, ReconstructionInput,
+    AdoptedLandmark, MeasurementFrame, ReconstructionInput, PendulumReconstruction,
 )
+from ai_physics_tracker.domain.angular_analysis import AngularSeries
 from ai_physics_tracker.infrastructure.publication_serializer import geometry_from_payload
 
 
@@ -45,3 +46,15 @@ def prepare_pendulum_reconstruction(
         )
     except ValueError as error:
         raise ProjectSessionError(str(error)) from error
+
+
+def angular_series_from_reconstruction(
+    reconstruction: PendulumReconstruction, fps_nominal: float,
+) -> AngularSeries:
+    """沿用 P2.1 全部源帧；不筛成稀疏 valid 列表，不压缩时间。"""
+    rows = reconstruction.frames
+    return AngularSeries(
+        reconstruction.input_digest, tuple(row.frame_index for row in rows),
+        tuple(row.time_release_relative_s for row in rows),
+        tuple(row.theta_rad for row in rows), tuple(row.is_qc_valid for row in rows), fps_nominal,
+    )
