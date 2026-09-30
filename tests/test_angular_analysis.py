@@ -179,7 +179,7 @@ def test_policy_identity_invalid_input_and_float64_semantics():
     with pytest.raises(ValueError): analyze_angular_series(series, end_frame_index=True)
     profiles=ROOT.parents[1]/'profiles'
     config=analysis_config(STUDENT)
-    assert config['profile_sha256']==sha256((profiles/'student-default-v1.json').read_bytes()).hexdigest()
+    assert config['profile_sha256']==sha256((profiles/'student-default-v2.json').read_bytes()).hexdigest()
     assert config['diagnostics_sha256']==sha256((profiles/'diagnostics-v1.json').read_bytes()).hexdigest()
 
 

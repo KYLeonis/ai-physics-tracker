@@ -72,12 +72,13 @@ def angular_series_from_reconstruction(
 
 
 ANALYSIS_KIND = "pendulum-core-analysis-v1"
-CORE_VERSION = "pendulum-core-analysis-1.0.0"
+CORE_VERSION = "pendulum-core-analysis-2.0.0"
 COLUMNS = tuple(ResultColumn(name, dtype, unit) for name, dtype, unit in (
     ("frame_index", "int64", None), ("time_absolute_s", "float64", "s"),
     ("time_release_relative_s", "float64", "s"), ("theta_rad", "float64?", "rad"),
     ("phi_rad", "float64?", "rad"), ("omega_rad_s", "float64?", "rad/s"),
     ("is_qc_valid", "bool", None), ("qc_reasons", "string[]", None),
+    ("auxiliary_qc_reasons", "string[]", None),
     ("radius_px", "float64?", "px"), ("body_length_px", "float64?", "px"),
     ("pivot_displacement_px", "float64?", "px"),
     ("relative_weight", "float64?", None), ("edge_window", "bool", None),

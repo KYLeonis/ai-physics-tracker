@@ -45,7 +45,7 @@ class PendulumAnalysisPanel(QWidget):
         self.payload = None
         self.repair_frames = ()
         self.payload_valid = False
-        self.repairButton = QPushButton("Repair suggested frames (four points each)", self)
+        self.repairButton = QPushButton("Repair suggested frames (tip only)", self)
         self.repairButton.hide()
         self.statusLabel = QLabel("No pendulum analysis yet", self)
         self.statusLabel.setWordWrap(True)
@@ -113,7 +113,7 @@ class PendulumAnalysisPanel(QWidget):
         layout.addWidget(self.repairButton)
         layout.addWidget(self.tabs, 1)
         layout.addWidget(self.frameLabel)
-        note = QLabel("Analysis uses the adopted run + manual corrections; a new candidate preview is not included. SG9/3 needs at least 9 consecutive QC-valid frames. Click a blue point or gray cross → inspect its source frame; return to Acquire to complete/correct four landmarks, then recompute. Gaps stay missing; first/last 4 points of each segment are edge windows.", self)
+        note = QLabel("Analysis uses the adopted run + manual corrections; a new candidate preview is not included. SG9/3 needs at least 9 consecutive QC-valid frames. Click a blue point or gray cross → inspect its source frame; return to Acquire to correct tip positions, then recompute. Gaps stay missing; first/last 4 points of each segment are edge windows.", self)
         note.setWordWrap(True)
         layout.addWidget(note)
 
@@ -159,7 +159,7 @@ class PendulumAnalysisPanel(QWidget):
         omega_reasons = Counter(r["omega_reason"] for r, inside in zip(rows, selected)
                                 if inside and r["omega_reason"])
         unavailable = (f"SG9/3 needs {SG_WINDOW} consecutive QC-valid frames; longest block: {longest}. "
-                       "Return to Acquire and complete/correct all four landmarks in a consecutive block, then recompute."
+                       "Return to Acquire and correct tip positions in a consecutive block, then recompute."
                        if longest < SG_WINDOW else
                        "No usable derivative: " + ", ".join(f"{reason} ({count} frames)" for reason, count in omega_reasons.items()))
         if longest < SG_WINDOW:
@@ -171,7 +171,7 @@ class PendulumAnalysisPanel(QWidget):
                 self.repair_frames = tuple(r["frame_index"] for r, ok in zip(repair, usable[start:start+SG_WINDOW]) if not ok)
                 gaps = ", ".join(map(str, self.repair_frames))
                 unavailable += (f"\nRepair example: source block {repair[0]['frame_index']}–{repair[-1]['frame_index']}; "
-                                f"inspect/correct the four landmarks at QC-excluded frames {gaps}.")
+                                f"inspect/correct the tip at QC-excluded frames {gaps}.")
         for kind, item in self.items.items():
             x_key = "theta_rad" if kind == "phase" else "time_release_relative_s"
             y_key = {"theta": "theta_rad", "omega": "omega_rad_s", "phase": "omega_rad_s", "energy": "energy_s_inv2"}[kind]
@@ -209,7 +209,7 @@ class PendulumAnalysisPanel(QWidget):
                 self.plots[kind].autoRange()
         self.repairButton.setVisible(bool(self.repair_frames))
         self.repairButton.setEnabled(valid)
-        self.repairButton.setText(f"Repair suggested frames: {', '.join(map(str, self.repair_frames))} (four points each)")
+        self.repairButton.setText(f"Repair suggested frames: {', '.join(map(str, self.repair_frames))} (tip only)")
         periods, tail = payload["periods"], payload["tail"]
         q = payload["q_reference_s_inv2"]
         tail_text = (f"q_tail = {tail['omega2_mean_s_inv2']:.6g} s⁻²" if tail["omega2_mean_s_inv2"] is not None
@@ -223,11 +223,13 @@ class PendulumAnalysisPanel(QWidget):
                             if reason.endswith(":no_adopted_point") or reason in labels or reason.startswith("user_excluded:"))
         if not qc_text and qc_counts:
             qc_text = "; ".join(f"{reason}: {count}" for reason, count in qc_counts.items())
-        self.summaryLabel.setText(f"QC-valid in selected interval: {sum(usable)}/{sum(0 <= r['time_release_relative_s'] and r['frame_index'] <= end for r in rows)} · ω available: {omega_count} · reference energy available: {energy_count}" + (" (unavailable: no usable SG segment)" if not omega_count else " (energy unavailable; inspect its reasons)" if not energy_count else "") + "\n"
+        auxiliary_count = sum(bool(r.get("auxiliary_qc_reasons")) for r, inside in zip(rows, selected) if inside)
+        self.summaryLabel.setText(f"Auxiliary landmark warnings: {auxiliary_count} frames (do not exclude tip angular analysis).\n"
+            + f"QC-valid in selected interval: {sum(usable)}/{sum(0 <= r['time_release_relative_s'] and r['frame_index'] <= end for r in rows)} · ω available: {omega_count} · reference energy available: {energy_count}" + (" (unavailable: no usable SG segment)" if not omega_count else " (energy unavailable; inspect its reasons)" if not energy_count else "") + "\n"
             + f"Longest QC-valid block: {longest} frames (SG needs {SG_WINDOW}). Main exclusions (counts may overlap): {qc_text or 'none'}.\n"
             + f"Reference energy = ω²/2 + q(1−cos θ), q=g/L={q:.6g} s⁻² (proxy; not fitted energy or joules).\n"
             f"Complete periods: {len(periods['periods'])} · Tail t>{tail['start_s']:.4g} s: {len(tail['periods'])} periods; {tail_text}")
-        self.statusLabel.setText(("Current — adopted four landmarks + manual corrections" if valid else "Historical / STALE — " + (reason or "inputs changed"))
+        self.statusLabel.setText(("Current — tip + fixed pivot; auxiliary landmarks are diagnostic only" if valid else "Historical / STALE — " + (reason or "inputs changed"))
             + f" · source run {payload['measurement']['active_run_id'][:8]} · student SG9/3")
 
     def presentFrame(self, frame_index):
@@ -334,7 +336,7 @@ class PendulumAnalysisActions(QObject):
         if record is None:
             if self._future is None:
                 self.panel.clearData()
-                message = "Ready — compute adopted four-landmark analysis"
+                message = "Ready — compute tip + fixed-pivot analysis"
                 if not status.can_analyze:
                     message = "Complete experiment setup. Missing: " + ", ".join(g.replace("_", " ") for g in status.missing_for_analysis)
                     if "tip_radius_reference" in status.missing_for_analysis:
@@ -370,7 +372,7 @@ class PendulumAnalysisActions(QObject):
         self.panel.repairButton.setEnabled(False)
 
     def repairSuggestedFrames(self):
-        """只用当前已验证结果的建议；复用主窗口四点写入和自动跳帧。"""
+        """只用当前已验证结果的建议；复用主窗口manual tip写入和自动跳帧。"""
         session, experiment = self.window.analysisSession, self.window.currentPendulumExperiment()
         if session is None or experiment is None or self._future is not None or self._closed or self.window.projectActions.busy:
             return
@@ -382,7 +384,7 @@ class PendulumAnalysisActions(QObject):
             self.panel.statusLabel.setText("Inputs changed — recompute before starting the suggested repair")
             return
         try:
-            self.window.beginExperimentAnnotation(self.panel.repair_frames)
+            self.window.beginExperimentAnnotation(self.panel.repair_frames, tip_only=True)
         except (ProjectSessionError, ValueError) as error:
             self.panel.statusLabel.setText(f"Cannot start repair: {error}")
 
@@ -398,7 +400,7 @@ class PendulumAnalysisActions(QObject):
         except Exception as error:
             self.panel.statusLabel.setText(str(error))
         else:
-            self.panel.statusLabel.setText("Computing adopted four-landmark analysis…")
+            self.panel.statusLabel.setText("Computing tip + fixed-pivot analysis…")
 
     def cancel(self):
         self._cancel.set()

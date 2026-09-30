@@ -16,7 +16,7 @@ from ai_physics_tracker.domain.types import canonical_json_digest
 
 CORE_VERSION = "angular-analysis-1.0.0"
 DIAGNOSTICS_SHA256 = "d58670ec679057cd913407c52341b8aacab141bad162abbd894b0f76c26aae8e"
-STUDENT = "student-default-v1"
+STUDENT = "student-default-v2"
 LEGACY = "legacy-publication-v1"
 SG_WINDOW = 9
 SG_POLYORDER = 3
@@ -29,7 +29,7 @@ def analysis_config(profile_id: str) -> dict[str, object]:
     if profile_id not in (STUDENT, LEGACY):
         raise ValueError(f"unsupported angular profile: {profile_id}")
     return {
-        "profile_id": profile_id, "profile_version": "1.0.0",
+        "profile_id": profile_id, "profile_version": "2.0.0" if profile_id == STUDENT else "1.0.0",
         "profile_sha256": STUDENT_PROFILE_SHA256 if profile_id == STUDENT else LEGACY_PROFILE_SHA256,
         "diagnostics_sha256": DIAGNOSTICS_SHA256, "core_version": CORE_VERSION,
         "numpy_version": np.__version__, "scipy_version": scipy.__version__,

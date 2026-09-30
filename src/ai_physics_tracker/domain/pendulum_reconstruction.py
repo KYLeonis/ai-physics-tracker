@@ -1,4 +1,4 @@
-"""领域层：student-default-v1 四点角度与共同 QC，保留完整源帧。"""
+"""领域层：student-default-v2 tip角度QC与辅助诊断，保留完整源帧。"""
 
 from dataclasses import dataclass
 from math import atan2, cos, hypot, isfinite, sin
@@ -7,8 +7,8 @@ from statistics import median
 from ai_physics_tracker.domain.pendulum import PendulumGeometry, QCExclusion, ROLE_ORDER
 from ai_physics_tracker.domain.types import canonical_json_digest
 
-CORE_VERSION = "pendulum-reconstruction-1.0.0"
-STUDENT_PROFILE_SHA256 = "6b5b28065eebd0f0a26d42b6d279b4d4294af89e1a9bd5da5badaf9101e48d51"
+CORE_VERSION = "pendulum-reconstruction-2.0.0"
+STUDENT_PROFILE_SHA256 = "da63846319bf7c3de4b43e6f9a6dacaa1d57a755ad9771d07525edb1ee8ce964"
 LEGACY_PROFILE_SHA256 = "77ed02f10d2a00fc0cae5fd1ddd5fbe4a3e46f1fed2ff07ed7e8ad4be951ce51"
 RADIUS_RELATIVE_TOLERANCE = 0.1
 BODY_RELATIVE_TOLERANCE = 0.2
@@ -17,15 +17,16 @@ BODY_RELATIVE_TOLERANCE = 0.2
 def reconstruction_config() -> dict[str, object]:
     """仅展开本核心实际消费的已冻结政策；不解释 JSON 公式字符串。"""
     return {
-        "profile_id": "student-default-v1", "profile_version": "1.0.0",
+        "profile_id": "student-default-v2", "profile_version": "2.0.0",
         "profile_sha256": STUDENT_PROFILE_SHA256,
         "formula_profile_sha256": LEGACY_PROFILE_SHA256,
         "core_version": CORE_VERSION,
         "radius_relative_tolerance": RADIUS_RELATIVE_TOLERANCE,
         "body_relative_tolerance": BODY_RELATIVE_TOLERANCE,
+        "required_roles": ["tip"], "auxiliary_roles": ["body_top", "body_bottom", "pivot"],
         "ai_weight_floor": 0.05, "manual_weight": 1.0,
         "provenance": {
-            "qc": ["policy-student-v1", "source-data_io"],
+            "qc": ["policy-student-v2", "source-data_io"],
             "weighting": ["policy-student-v1", "source-fitting"],
             "theta_formula": ["source-data_io"],
         },
@@ -130,6 +131,7 @@ class ReconstructedFrame:
     relative_weight: float | None
     is_qc_valid: bool
     qc_reasons: tuple[str, ...]
+    auxiliary_qc_reasons: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -177,12 +179,12 @@ def _body_vector(frame: MeasurementFrame) -> tuple[float, float] | None:
 
 
 def reconstruct_pendulum(request: ReconstructionInput) -> PendulumReconstruction:
-    """共同 QC 与 preview 分开；无置信度硬切，人工点仍须通过几何门。"""
+    """tip QC驱动角运动；辅助诊断不排除θ，人工tip仍须通过半径门。"""
     excluded = {item.frame_index: item.reason for item in request.qc_overrides}
     body_lengths = [None if (v := _body_vector(f)) is None else hypot(*v) for f in request.frames]
     body_lengths = [v if v is not None and isfinite(v) else None for v in body_lengths]
     supports = tuple(f.frame_index for f, length in zip(request.frames, body_lengths)
-                     if all(_finite_point(p) for p in f.points) and length is not None
+                     if all(_source_valid(p) for p in f.points[1:3]) and length is not None
                      and length > 0 and f.frame_index not in excluded)
     reference = median(body_lengths[i] for i in supports) if supports else None
     support_digest = canonical_json_digest({"frames": list(supports), "body_reference_px": reference})
@@ -226,14 +228,17 @@ def reconstruct_pendulum(request: ReconstructionInput) -> PendulumReconstruction
         if phi is not None and previous_phi is not None:
             phi = previous_phi + atan2(sin(phi - previous_phi), cos(phi - previous_phi))
         previous_phi = phi
-        reasons = _qc_reasons(frame, radius, body_length, reference, request, excluded)
+        all_reasons = _qc_reasons(frame, radius, body_length, reference, request, excluded)
+        reasons = tuple(r for r in all_reasons if r.startswith(("tip:", "user_excluded:"))
+                        or r in ("nonpositive_tip_radius", "radius_out_of_tolerance"))
+        auxiliary = tuple(r for r in all_reasons if r not in reasons)
         displacement = hypot(tracked_pivot.pixel_x - pivot[0], tracked_pivot.pixel_y - pivot[1]) if _finite_point(tracked_pivot) else None
         if displacement is not None and not isfinite(displacement):
             displacement = None
         weight = None if not _source_valid(tip) else (1.0 if tip.source == "manual" else max(0.05, tip.confidence))
         rows.append(ReconstructedFrame(
             frame.frame_index, frame.time_absolute_s, frame.time_absolute_s - release_time,
-            theta, phi, radius, body_length, displacement, weight, not reasons, reasons,
+            theta, phi, radius, body_length, displacement, weight, not reasons, reasons, auxiliary,
         ))
     return PendulumReconstruction(identity, request.measurement_digest, tuple(rows), reference, supports, support_digest)
 

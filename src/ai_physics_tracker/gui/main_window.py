@@ -663,7 +663,7 @@ class MainWindow(QMainWindow):
         track_id = self.selectedTrackId
         experiment = self.currentPendulumExperiment() if session is not None else None
         if experiment is not None:
-            source = ("adopted tip / body_top / body_bottom / pivot + manual corrections"
+            source = ("adopted tip + manual corrections / fixed pivot; other landmarks are auxiliary"
                       if experiment.active_infer_run_id is not None else
                       "no active adopted joint inference — adopt a completed result first")
             self._analysisSourceLabel.setText(f"Pendulum: {source} · θ rad · ω rad/s · reference energy s⁻²")
@@ -1468,7 +1468,7 @@ class MainWindow(QMainWindow):
         self._refreshMarkers()
         self.statusBar().showMessage("Guided marking finished")
 
-    def beginExperimentAnnotation(self, frames: tuple[int, ...] | None = None) -> None:
+    def beginExperimentAnnotation(self, frames: tuple[int, ...] | None = None, *, tip_only: bool = False) -> None:
         """复用四role引导；指定修复帧时重标四点并自动推进。"""
 
         session = self._annotation_session
@@ -1498,7 +1498,7 @@ class MainWindow(QMainWindow):
         self.stopPlayback()
         self._guide_experiment_id = experiment.experiment_id
         if frames is not None:
-            self._guide_repair_tasks = tuple((frame, role) for frame in frames for role in ROLE_ORDER)
+            self._guide_repair_tasks = tuple((frame, role) for frame in frames for role in (("tip",) if tip_only else ROLE_ORDER))
         worklist = frames if frames is not None else frame_set_worklist(experiment)
         if worklist:
             target = worklist[0] if frames is not None else next(
@@ -1582,13 +1582,14 @@ class MainWindow(QMainWindow):
             frame, role = self._guide_repair_tasks[self._guide_repair_index]
             ready = self._presented_frame_index == frame and not self._has_pending_request
             self.videoView.set_annotation_mode(ready)
-            position = self._guide_repair_index // 4 + 1
-            total = len(self._guide_repair_tasks) // 4
+            role_count = len({role for _, role in self._guide_repair_tasks})
+            position = self._guide_repair_index // role_count + 1
+            total = len(self._guide_repair_tasks) // role_count
             self._setCalibrationGuide(
                 f"Analysis repair {position}/{total} · source frame {frame} · "
-                f"point {self._guide_repair_index % 4 + 1}/4: click {role}. "
+                f"point {self._guide_repair_index % role_count + 1}/{role_count}: click {role}. "
                 f"{total-position} frame(s) remain after this one. "
-                + ("Four points → next frame automatically. Esc keeps saved points."
+                + ("Next frame automatically after marking. Esc keeps recorded points."
                    if ready else f"Waiting for source frame {frame}; click is disabled."),
                 "guide_finish", "Stop repair (keep points)")
             return

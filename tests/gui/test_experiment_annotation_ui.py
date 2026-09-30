@@ -575,3 +575,16 @@ def test_analysis_repair_four_roles_auto_advance_and_readonly_reference(
     window.beginExperimentAnnotation((0,))
     window.adoptEmptyProject()
     assert not window.experiment_guide_active and not window._guide_repair_tasks
+
+
+def test_tip_repair_advances_after_one_click_and_never_writes_auxiliary(qtbot, synthetic_video_path, tmp_path, monkeypatch):
+    window, session = _guided_window(qtbot, synthetic_video_path, tmp_path, monkeypatch)
+    monkeypatch.setattr(window.projectActions, 'autosave', lambda *a, **kw: None)
+    roles = window.currentPendulumExperiment().roles
+    window.beginExperimentAnnotation((1, 3), tip_only=True)
+    for frame in (1, 3):
+        qtbot.waitUntil(lambda: window.presentedFrameIndex == frame and not window._has_pending_request)
+        window._onGuidedAnnotationClicked((10., 20.))
+    assert window.currentWorkspace == 'analysis'
+    assert len(session.manual_points(roles.tip)) == 2
+    assert all(not session.manual_points(roles.track_id_for(r)) for r in ('body_top', 'body_bottom', 'pivot'))

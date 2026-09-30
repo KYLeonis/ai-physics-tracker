@@ -169,11 +169,11 @@ def test_repair_suggestions_reject_changed_inputs_and_restored_four_points_produ
 ):
     session, experiment = analysis_session(tmp_path, synthetic_video_path)
     for frame in range(4, 8):
-        session.mark_point(experiment.roles.body_bottom, frame, 0., 10.)
+        session.mark_point(experiment.roles.tip, frame, 0., 200.)
     window = Window(session, experiment)
     qtbot.addWidget(window)
     repairs = []
-    window.beginExperimentAnnotation = repairs.append
+    window.beginExperimentAnnotation = lambda frames, **kw: repairs.append(frames)
     actions = PendulumAnalysisActions(window)
     try:
         actions.compute()
@@ -200,5 +200,24 @@ def test_repair_suggestions_reject_changed_inputs_and_restored_four_points_produ
             assert len(actions.panel.items[kind].getData()[0]) == 12
         assert all(r['is_qc_valid'] and r['omega_rad_s'] is not None and r['energy_s_inv2'] is not None
                    for r in actions.panel.payload['rows'])
+    finally:
+        actions.shutdown()
+
+
+def test_tip_only_with_no_auxiliary_points_generates_all_angular_charts(qtbot, tmp_path, synthetic_video_path):
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    for role in ('body_top', 'body_bottom', 'pivot'):
+        for frame in range(12):
+            session.delete_active_manual_point(experiment.roles.track_id_for(role), frame)
+    # 旧AI辅助坐标可能仍存在；无效/缺失都不得阻塞tip。
+    window = Window(session, experiment)
+    qtbot.addWidget(window)
+    actions = PendulumAnalysisActions(window)
+    try:
+        actions.compute()
+        qtbot.waitUntil(lambda: actions._future is None)
+        assert all(r['is_qc_valid'] for r in actions.panel.payload['rows'])
+        assert all(r['omega_rad_s'] is not None for r in actions.panel.payload['rows'])
+        assert all(not actions.panel.plots[k].isHidden() for k in ('theta', 'omega', 'phase', 'energy'))
     finally:
         actions.shutdown()

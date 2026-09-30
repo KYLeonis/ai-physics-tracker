@@ -190,3 +190,23 @@ def test_source_frame_inspection_preserves_trimmed_working_zone(synthetic_video_
         assert delivered.get(timeout=5).frame_index == 2
     finally:
         async_session.close()
+
+
+def test_profile_upgrade_marks_historical_result_stale_without_rewriting_it(tmp_path, synthetic_video_path, monkeypatch):
+    import ai_physics_tracker.application.pendulum_analysis as use_case
+
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    old_config = dict(use_case.reconstruction_config())
+    old_config.update(profile_id='student-default-v1', profile_version='1.0.0',
+                      profile_sha256='6b5b28065eebd0f0a26d42b6d279b4d4294af89e1a9bd5da5badaf9101e48d51')
+    # 全四点静止数据在两版下数值相同；旧政策身份仍必须失效。
+    with monkeypatch.context() as patch:
+        patch.setattr(use_case, 'reconstruction_config', lambda: old_config)
+        patch.setattr(use_case, 'CORE_VERSION', 'pendulum-core-analysis-1.0.0')
+        result = run_analysis_job(prepare_analysis_job(session, experiment.experiment_id, 11), Event())
+        session.apply_pendulum_analysis_result(result)
+        assert load_analysis_result(session, result.record)[1]
+    path = session.project_root / result.record.payload.path
+    before = path.read_bytes()
+    assert not load_analysis_result(session, result.record)[1]
+    assert path.read_bytes() == before

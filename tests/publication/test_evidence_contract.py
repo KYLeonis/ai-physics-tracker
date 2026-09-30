@@ -119,3 +119,15 @@ class EvidenceContractTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def test_v2_ic_requires_tip_qc_provenance(tmp_path):
+    for path in (ROOT / 'publication/profiles').glob('*.json'):
+        content = json.loads(path.read_text(encoding='utf-8'))
+        if content['id'] == 'student-default-v2':
+            content['ic']['sources'].remove('policy-student-v2')
+        (tmp_path / path.name).write_text(json.dumps(content), encoding='utf-8')
+    manifest = json.loads((ROOT / 'publication/evidence/source-map.json').read_text(encoding='utf-8'))
+    import pytest
+    with pytest.raises(ValueError, match='V2 IC must reference tip-QC policy'):
+        evidence.check_profiles(tmp_path, {item['id'] for item in manifest['sources']})
