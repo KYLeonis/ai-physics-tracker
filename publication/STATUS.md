@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-30。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P2.1/P2.2 完成；P2.2 merge `4ec09b6` 已推送；当前 `feat/p2.3-energy-analysis-ui`（base `4ec09b6`）。
-- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Q4/Q5用户确认通过；HR主线再次反馈已定位：tip补标未补齐共同QC所需四点；新增建议帧四点自动推进入口、分析视频只读，待真人复测，P2尚未关闭。
+- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Q4/Q5用户确认通过；HR主线再次反馈已定位：tip补标未补齐共同QC所需四点；用户纠正分析依赖，当前默认student-default-v2：tip + fixed pivot，辅助点仅诊断；tip-only自动修复Independent Review已Approve，待Human Review，P2尚未关闭。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1/P2.2 已完成；P2.3 实现/代码审查通过，等待Human Review；P2尚未完成**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -89,7 +89,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**重新启动当前P2.3分支、打开test2_pendulum并重新计算 → Repair suggested frames → 每帧按提示依次标tip/body_top/body_bottom/pivot，四点后自动下一帧 → 完成返回Analysis再次Compute。先确认11–19的局部ω/phase/energy与源帧/QC一致，再保存重开并确认stale/导航。Q4/Q5已通过；原Q1–Q3与新增修复入口HR未通过前不集成，不关闭P2，不开始P3。**
+**重新启动当前P2.3分支、打开test2_pendulum → 旧v1结果应显示STALE → Compute采用新版tip+fixed pivot角运动QC，辅助缺点不再阻断 → 检查四页局部图及源帧/保存重开。若仍无9帧连续有效tip，用Repair suggested frames，每帧只点tip、自动下一帧。Q4/Q5已通过；新版Q8与原Q2/Q3未通过前不集成、不关闭P2、不进入P3。**
 
 ## P2.1 delivery (2026-09-30)
 
@@ -137,3 +137,13 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - 验证：45 GUI定向、全量1230 tests/9 subtests；随后仅清除分析页calibration mode/修正文案，38 annotation/setup/workflow定向通过。合成数据四点修复后ω/phase/energy恢复；真实用户重标精度仍需真人检查。Independent Review首轮P2 joint Correct工作区切换回归已修复，41定向通过，复审Approve（32独立定向、零开放finding）；仍保持P2.3工作分支等待Human Review。
 
 本轮修复checkpoint `6ca7f05`，文档同步后推送当前P2.3分支；publication集成分支仍停P2.2，待真人HR通过再集成。
+
+
+## P2.3 用户纠正：tip + fixed pivot（2026-09-30，当前规则）
+
+- 前轮四点共同QC/补辅助点不符合用户明确用途。按用户指令发布student-default-v2，tip source/radius/人工排除决定θ/ω/phase/period/energy mask；辅助问题独立auxiliary_qc_reasons，body参考只要求有效body pair，不作角运动门槛。SG9/3、时间/缺口与能量公式不改；v1/legacy与golden字节保留。
+- 重建与scalar bundle core2.0及profile SHA写入签名，旧结果显示stale，必须重算。Repair建议改为tip-only一点击下一帧；训练四点流程保留。决定见[ADR-0018](../docs/decisions/0018-tip-fixed-pivot-angular-qc.md)、scientific-profiles §8。
+- 最新实际payload4b128602只读重建：旧QC42→48、最长5→9、ω/energy0→各9，无用户文件写入；其余tip缺测/半径异常保留。
+- 验证87定向/3subtests，全量1233 tests/9subtests；profile文字/SHA/verifier及source bar补充后79定向/3subtests+evidence15/48/2通过，scalar core version升级14 analysis/UI通过。Independent Review F1/P2已关闭，复审Approve（独立14 evidence/3subtests、75 core/UI/stale）；最终主会话53/3subtests与evidence通过，仍待用户Q8新版tip分析与原Q2/Q3导航/stale/保存重开真人反馈。
+
+代码checkpoint `869e504`；五小时额度剩余5%时已写[简单交接](plans/p2.3-handoff-2026-09-30.md)。待用户Human Review，勿提前集成或进入P3。

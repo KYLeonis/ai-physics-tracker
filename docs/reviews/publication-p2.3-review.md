@@ -43,3 +43,14 @@
 - 首轮reviewer p2_3_feedback_review：Request changes，发现工作区切换后joint Correct仍保留角色但点击模式关闭（P2）。独立新增GUI31、既有review/workspace48通过；其余路由/生命周期/科学边界无finding。
 - 修复：返回Acquire按joint既有_sync_review恢复当前frame/role点击；_sync_review在Analysis不重开编辑模式，startCorrect显式去Acquire。无selected track的Analysis刷新/零写入/返回后真实落点回归通过。复审Approve，P2 finding closed，32定向通过，零开放finding。
 - 主会话：45 GUI定向、全量1230 tests/9 subtests通过；随后分析页calibration模式38定向通过；审查finding修复后41 joint/annotation/workflow定向通过。未改数值core/共同QC/SG/阈值/schema，未覆盖用户项目；仍需Q7及原Q2/Q3 Human Review。
+
+
+## 用户纠正tip-only科学规则 — Independent Review
+
+- 用户明确角运动只依赖tip与fixed pivot，辅助role不作硬门槛。High-risk复审范围：student-default-v2/重建主mask与auxiliary_qc_reasons/body参考、payload新列/签名与历史stale、tip-only GUI修复、旧四点训练模式保留。
+- 首轮Request changes（1个P2）：v2.ic.valid_mask已改tip，但ic.sources仍仅v1/initial、consecutive未明确v2，可能误导未来IC。当前P2未消费IC，已验证角运动不受影响。
+- FIX：ic.sources添加policy-student-v2且保留未变规则来源；consecutive显式v2 tip-QC；verifier与负向测试阻止回退；同步profile SHA/source-map/core常量。复审Approve，F1/P2 closed；独立14 evidence/3subtests、75 core/UI/历史stale通过，零开放finding。
+- 独立验证75 core/UI、8 joint workspace、13 evidence/3subtests、verifier/hash/diff通过；其余source/likelihood/辅助缺测/历史stale/repair生命周期无finding。
+- 主会话87定向/3subtests、全量1233/9subtests；profile文字等79/3subtests、scalar version14、历史身份回归15、完全无aux主mask断言30；后续IC修复定向结果同步mini-plan。真实用户typed payload只读重算QC42→48/最长5→9/ω与energy各9；不写用户数据。仍待新版Q8及原Q2/Q3真人HR，不集成，不关闭P2。
+
+IC修复最终主会话53定向/3subtests、evidence15/48/2、diff check通过。

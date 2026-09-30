@@ -81,3 +81,12 @@ D01/D02/D05/D06/U04已由命名profile及本轮new_student_policy收敛；不改
 angular acceleration α(t)没有论文验证的默认，本轮不设置profile；不是P1–P4必交付default，若以后需要应另立显式新政策。
 
 未解决但不阻塞P0.2：原始四点逐帧和pre-release重建未纳入offline golden；历史逐start优化日志不可恢复；完整依赖lock缺失；cross-platform tolerances尚需P2–P4首次实现时实测；teacher model/原始视频实体按用户要求不继续追查。这些都不能靠把未确认值塞入historical default解决。未来实现若偏离frozen expected，先诊断版本/输入/算法，不自动更新golden或放宽门槛。
+
+## 8. 当前默认 student-default-v2（2026-09-30 用户用途纠正）
+
+v1与legacy冻结字节和历史golden不变；当前新计算采用 [student-default-v2](../profiles/student-default-v2.json)，版本2.0.0。用户明确角运动输入只有tip与calibrated fixed pivot；body_top/body_bottom/tracked pivot为辅助。此条覆盖§3中当前默认的“四点/QC”、body reference支持集与IC valid语义：
+
+- θ/ω/phase/period/reference energy的mask仅由当前adopted tip source-valid、正半径、既有radius≤10%与人工排除决定；fixed pivot/confirmed vertical仍由setup验证。AI tip仍须有限合法likelihood，manual confidence仍null；不把未采用/阈值筛除的raw预测直接当观测。
+- 辅助角色source/坐标/body length/reference/pivot displacement问题写入独立auxiliary_qc_reasons，不进入角运动排除理由。body reference来自非显式排除、正有限、source-valid body pair；不要求tip/tracked pivot同时存在。没有辅助观测时其诊断unavailable。
+- SG9/3、均匀连续源帧、分段/branch/gap、tail、能量公式、权重与拟合阈值沿用v1；这些未更改算法的来源仍引用policy-student-v1。未来IC的valid使用当前tip mask。
+- profile/version/hash与重建core升级进入结果签名；旧v1结果保留但stale，必须重算后用于当前分析，不用新规则重新解释已保存的历史mask。
