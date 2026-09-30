@@ -600,6 +600,12 @@ class TestReviewQueue:
             or controller._relabel_message.startswith("No more"),
             timeout=4000)
         message = controller._relabel_message
+        # 引导条只保留一句方向,长文案/按钮字样留在推荐窗(HR 第六轮反馈)
+        guide_text = window.calibrationGuideLabel.text()
+        assert "Batch finished" in guide_text
+        assert "Done labeling" not in guide_text
+        assert "Done labeling" in controller._dialog.progressLabel.text() or \
+            message.startswith("No more") or message.startswith("Next batch")
         if controller._review_frames:
             assert message.startswith("Next batch")
             # 已标帧被排除:新一批不含 first

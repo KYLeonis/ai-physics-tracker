@@ -442,8 +442,18 @@ class ExperimentInferenceActions(QObject):
             self._refresh_preview(candidates)
         if self._correcting_role:
             self.window.videoView.set_annotation_mode(frame_ready)
-        if pending or self._relabel_message:
+        if pending:
+            # 批量进行中:用户在主窗口点视频,引导条只显示逐帧操作指引
             self.window._setCalibrationGuide(progress)
+        elif self._relabel_message:
+            # 批次结束:细节留在推荐窗(自动置前),引导条只给一句方向
+            self.window._setCalibrationGuide(
+                "Batch finished — the suggestion window (brought to front) "
+                "has the next batch and the train button.")
+            if self._dialog is not None:
+                self._dialog.show()
+                self._dialog.raise_()
+                self._dialog.activateWindow()
 
     def _on_review_frame_presented(self, *_args) -> None:
         if self._dialog is not None and self._correcting_role is not None:
@@ -635,6 +645,9 @@ class ExperimentInferenceActions(QObject):
         self._dialog.set_suggestion_count(self._suggest_count)
         self._sync_pool()
         self._sync_review(None)
+        self._dialog.show()
+        self._dialog.raise_()
+        self._dialog.activateWindow()
         self.window.statusBar().showMessage(
             f"{len(self._review_frames)} suggested frame(s) for this batch "
             f"(pool shown in the window).")
@@ -748,6 +761,11 @@ class ExperimentInferenceActions(QObject):
                 f"({self._total_relabeled} relabeled in total). Freeze the "
                 f"fixed-check set and train with the updated labels next.")
         self._sync_review(None)
+        # 批次边界:推荐窗置前,用户不必去后台找窗口
+        if self._dialog is not None:
+            self._dialog.show()
+            self._dialog.raise_()
+            self._dialog.activateWindow()
 
     def skipRelabelFrame(self) -> None:
         if self._relabel_index >= len(self._relabel_tasks):
