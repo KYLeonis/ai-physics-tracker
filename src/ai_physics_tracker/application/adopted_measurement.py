@@ -13,6 +13,11 @@ from ai_physics_tracker.domain.types import canonical_json_digest
 from ai_physics_tracker.infrastructure.hashing import file_sha256
 
 
+def _coordinates(point: tuple[float, float]) -> list[float]:
+    # JSON reader 将数值解析为 float；写入边界也统一，防止 1 与 1.0 导致重开失效。
+    return [float(value) for value in point]
+
+
 @dataclass(frozen=True)
 class AdoptedMeasurementSnapshot:
     """payload 保留全部源帧;空点带显式缺测原因。"""
@@ -65,31 +70,32 @@ def build_adopted_measurement(
         transform = CalibrationTransform(calibration, video.height_px)
         calibration_fact = {
             "calibration_id": str(calibration.calibration_id),
-            "scale_end_1_px": list(calibration.scale_end_1_px),
-            "scale_end_2_px": list(calibration.scale_end_2_px),
-            "known_length": calibration.known_length,
+            "scale_end_1_px": _coordinates(calibration.scale_end_1_px),
+            "scale_end_2_px": _coordinates(calibration.scale_end_2_px),
+            "known_length": float(calibration.known_length),
             "unit": calibration.unit,
             "pixels_per_unit": transform.pixels_per_unit,
-            "origin_px": list(transform.origin_px),
-            "rotation_deg": calibration.rotation_deg,
+            "origin_px": _coordinates(transform.origin_px),
+            "rotation_deg": float(calibration.rotation_deg),
             "height_px": video.height_px,
         }
     vertical = experiment.geometry.true_vertical
     geometry_fact = {
-        "fixed_pivot_px": list(experiment.geometry.fixed_pivot_px)
+        "fixed_pivot_px": _coordinates(experiment.geometry.fixed_pivot_px)
         if experiment.geometry.fixed_pivot_px is not None else None,
-        "tip_radius_reference_px": experiment.geometry.tip_radius_reference_px,
+        "tip_radius_reference_px": float(experiment.geometry.tip_radius_reference_px)
+        if experiment.geometry.tip_radius_reference_px is not None else None,
         "true_vertical": None if vertical is None else {
-            "top_px": list(vertical.top_px),
-            "bottom_px": list(vertical.bottom_px),
+            "top_px": _coordinates(vertical.top_px),
+            "bottom_px": _coordinates(vertical.bottom_px),
             "direction_confirmed": vertical.direction_confirmed,
             "confirmed_digest": vertical.confirmed_digest,
         },
     }
     physical = experiment.physical
     physical_fact = None if physical is None else {
-        "length_m": physical.length_m, "length_source": physical.length_source,
-        "g_m_s2": physical.g_m_s2, "g_source": physical.g_source,
+        "length_m": float(physical.length_m), "length_source": physical.length_source,
+        "g_m_s2": float(physical.g_m_s2), "g_source": physical.g_source,
     }
     release = experiment.release_frame_index
     release_time = frame_to_time(release, timeline) if release is not None else None
@@ -115,9 +121,10 @@ def build_adopted_measurement(
                 raise ProjectSessionError("adopted point does not match source frame/time")
             points[role] = {
                 "point_id": str(point.point_id),
-                "pixel_x": point.pixel_x, "pixel_y": point.pixel_y,
+                "pixel_x": float(point.pixel_x), "pixel_y": float(point.pixel_y),
                 "source": point.source, "source_detail": point.source_detail,
-                "confidence": point.confidence, "visibility": point.visibility,
+                "confidence": float(point.confidence) if point.confidence is not None else None,
+                "visibility": point.visibility,
                 "quality_flags": list(point.quality_flags),
             }
             reasons[role] = None
@@ -141,7 +148,7 @@ def build_adopted_measurement(
         "video": {
             "video_id": str(video.video_id), "sha256": video_sha256,
             "frame_count": video.frame_count, "width_px": video.width_px,
-            "height_px": video.height_px, "fps_nominal": timeline.fps_nominal,
+            "height_px": video.height_px, "fps_nominal": float(timeline.fps_nominal),
             "frame_indexing": timeline.frame_indexing,
             "working_zone": list(timeline.working_zone),
         },
@@ -150,6 +157,10 @@ def build_adopted_measurement(
         "release_frame_index": release,
         "release_time_absolute_s": release_time,
         "physical": physical_fact,
+        "qc_overrides": [
+            {"frame_index": item.frame_index, "reason": item.reason}
+            for item in experiment.qc_overrides
+        ],
         "frames": rows,
     }
     return AdoptedMeasurementSnapshot(

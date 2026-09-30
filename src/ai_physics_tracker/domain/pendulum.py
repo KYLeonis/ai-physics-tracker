@@ -24,6 +24,20 @@ ACTIVATION_ACTIONS = frozenset({"activate", "replace", "clear"})
 
 
 @dataclass(frozen=True)
+class QCExclusion:
+    """显式排除的源帧及原因；不改写原始点。"""
+
+    frame_index: int
+    reason: str
+
+    def __post_init__(self) -> None:
+        if type(self.frame_index) is not int or self.frame_index < 0:
+            raise ValueError("QC exclusion frame_index must be a non-negative integer")
+        if not isinstance(self.reason, str) or not self.reason.strip():
+            raise ValueError("QC exclusion reason must not be blank")
+
+
+@dataclass(frozen=True)
 class PendulumRoles:
     """恰好四个规范 role 到 Track UUID 的绑定；顺序固定为规范 role 顺序。"""
 
@@ -57,7 +71,8 @@ def vertical_endpoint_digest(
     """true vertical 端点的 canonical digest；确认状态与端点绑定的依据。"""
 
     return canonical_json_digest(
-        {"bottom_px": list(bottom_px), "top_px": list(top_px)}
+        {"bottom_px": [float(value) for value in bottom_px],
+         "top_px": [float(value) for value in top_px]}
     )
 
 
@@ -292,6 +307,7 @@ class PendulumExperiment:
     activation_history: tuple[RoleBindingEditRecord | ExperimentActivationRecord, ...] = ()
     mode: str = PENDULUM_MODE
     contract_version: int = EXPERIMENT_CONTRACT_VERSION
+    qc_overrides: tuple[QCExclusion, ...] = ()
     extra_fields: JsonObject = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
@@ -304,6 +320,13 @@ class PendulumExperiment:
         require_aware_datetime(self.created_at, "created_at")
         if self.measurement_revision < 0:
             raise ValueError("measurement_revision must be non-negative")
+        if not isinstance(self.qc_overrides, tuple) or any(
+            not isinstance(item, QCExclusion) for item in self.qc_overrides
+        ):
+            raise ValueError("QC exclusions must be an immutable tuple of QCExclusion")
+        excluded = [item.frame_index for item in self.qc_overrides]
+        if excluded != sorted(set(excluded)):
+            raise ValueError("QC exclusions must have unique ordered source frames")
         if self.release_frame_index is not None and self.release_frame_index < 0:
             raise ValueError("release_frame_index must be non-negative")
         record_ids = [record.record_id for record in self.activation_history]

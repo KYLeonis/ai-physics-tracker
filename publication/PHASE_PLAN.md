@@ -1,6 +1,6 @@
 # EJP Publication Platform — Master Phase Plan
 
-- 2026-09-19规划，2026-09-20文档收尾；状态：**P0完成，独立合同审查PASS；Windows验证经用户明确批准延期，进入P6前必过；P1–P6未启动**。
+- 2026-09-19规划，2026-09-20文档收尾；状态（2026-09-30）：**P0/P1 完成并集成；P2.1 θ/QC core 完成；P2.2–P6 未启动；Windows验证经用户明确批准延期，进入P6前必过**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -87,7 +87,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P1 — Four-Landmark Pendulum Measurement
 
-完整实施计划见[P1 mini-plan](plans/p1-four-landmark-measurement.md)。该计划已完成，产品实现尚未开始。
+完整实施计划见[P1 mini-plan](plans/p1-four-landmark-measurement.md)。P1.1–P1.4 产品实现、Review 与真实 lifecycle 验证均完成并合并推送（2026-09-30）。
 
 - **Goal**：学生用自己的视频得到可审查、可采用的四landmark轨迹。
 - **Scope**：experiment/calibration/release、同帧四点、multi-bodypart dataset/train/infer、教师模型导入、四轨review/QC/activation。
@@ -106,6 +106,8 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P1.4 Joint inference, review and activation | 一次推理、逐点QC与四轨事务；困难帧修正 | 两条模型路径真实推理；candidate/active/manual一致；独立review+Human Review后收尾 |
 
 ### P2 — Pendulum Reconstruction and Core Analysis
+
+用户于 2026-09-30 授权进入；实施计划见 [P2 plan](plans/p2-pendulum-analysis.md)，P2.1 已完成。
 
 - **Goal**：从已采用四点观测得到可信、可解释的θ/phase/period/energy。
 - **Scope**：角度与时间、QC masks、SG9/3、extrema/period/tail、能量基础表示、scalar/phase图表与多输入失效。
