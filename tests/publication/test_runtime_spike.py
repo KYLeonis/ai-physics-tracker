@@ -64,7 +64,7 @@ class RuntimeSpikeTests(unittest.TestCase):
         process, result, output = self.run_probe('fail')
         self.assertEqual(process.returncode, 1)
         self.assertEqual(result['worker']['error']['type'], 'RuntimeError')
-        self.assertIn('Intentional failure', (output / 'worker.log').read_text())
+        self.assertIn('Intentional failure', (output / 'worker.log').read_text(encoding='utf-8'))
 
     def test_cooperative_cancel_not_success(self):
         _, result, _ = self.run_probe('wait', '--cancel-after', '0.3')

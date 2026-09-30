@@ -133,7 +133,10 @@ def main():
     outcome['elapsed_s'] = time.monotonic() - started
     outcome['log_path'] = str(root / 'worker.log')
     (root / 'host-result.json').write_text(json.dumps(outcome, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
-    print(json.dumps(outcome, ensure_ascii=False))
+    # stdout 只作诊断;Windows console 默认 cp1252 打印中文路径会
+    # UnicodeEncodeError 使 host 以 1 退出(CI Windows 首跑暴露)——
+    # 磁盘上的 host-result.json 仍保留 ensure_ascii=False + utf-8 全量
+    print(json.dumps(outcome, ensure_ascii=True))
     return 1 if outcome['status'] == 'failed' else 0
 
 
