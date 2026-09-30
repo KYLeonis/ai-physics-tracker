@@ -1,7 +1,7 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
 - 最后更新：2026-09-30。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p2.1-theta-qc-core`，自已推送的 P1 收尾集成提交 `100b955` 切出。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前位于集成分支；P2.1 分支 `feat/p2.1-theta-qc-core`（base `100b955`）已按 --no-ff 合并。
 - 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 待开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1 已完成；P2.2–P6 未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
