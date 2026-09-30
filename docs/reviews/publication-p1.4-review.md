@@ -38,6 +38,19 @@ Reviewer 确认无问题方向:只读性(构建前后 undo 栈深度不变,实�
 3. assert 调用节奏(m4):每次分析激活调一次;高频场景加轻量预检。
 4. qc_overoverrides 尚未在 src 实现(reviewer 对照合同 §8 指出):P2 把 QC exclusions 纳入 payload+digest 时一并定形。
 
+## S6 最终 lifecycle/persistence 复审(2026-09-30)
+
+- 触发:mini-plan Review Gate 第三道;重点为 S4 交互语义转变(审核关卡→训练帧推荐/连续重标批量流,commits `72cbfff`/`ef63a38`/`ec2f34e`/`c794e18`)后的数据一致性与生命周期完整性。Reviewer fresh-context 只读,独立实证(自建 undo/redo 混合序列探针、pool 膨胀最小复现)。
+- 首轮 verdict **request-changes**(1 Major);处置:
+  - **F1 (Major) CLOSED**:`experiment_difficulty_pool` 以 `fixed_pivot_px=None` 计算,tip 半径诊断全帧失败→几何补扫把全部帧计入池(60 帧干净数据实测 pool=60)。修复:pool 与 queue 用同一 fixed pivot,且无 pivot 时几何补扫跳过(fail-closed 而非全收);新增内容级测试(干净数据+3 弱帧→pool 恰为弱帧集);依赖旧 bug 行为的 unit fixture 改用帧间跳变信号。
+  - **F2 (Minor) CLOSED**:workflow 投影 `candidate_reviewed`(跨批累计)与 `candidate_total`(当前批)分母不一致——reviewed 改为「当前批 suggestion_frames 中已有 record 的帧数」。
+  - **F3 (Minor) CLOSED(文案)**:skip 是 GUI 簿记不持久化(有意:推荐是可选建议),下一批消息明示「skipped frames may reappear until labeled」。
+  - **F4 (Nit) 记录**:busy 期间按钮单向禁用——同次 sync 的 `_update_selection` 分支已自愈,不改。
+  - **F5 (Nit) 记录**:重算在 GUI 线程两遍 mining;84 帧实测无感,长视频优化留 Phase 9。
+  - **F6 (Nit) CLOSED**:smoke 脚本随 S6 改动一并提交。
+- Reviewer 确认无问题方向:重算合并与校验闭环(records⊆candidates 不变式)、批量流写路径单一性(全部经 session 事务)、帧集/fixed-check fail-closed、推荐算法确定性、S3/S5 已关闭 finding 的守卫在语义转变后完整无损(video SHA/冻结身份/模型解耦三守卫)、undo/redo 跨动作边界、save/reopen 一致性。
+- 处置后全量:**1154 passed, 9 subtests**(基线 1153 + 1 pool 内容测试)。
+
 ## Verification
 
 - 处置后全量回归:**1137 passed, 9 subtests passed**(review 前基线 1131;新增 6 个 review 回归测试)。

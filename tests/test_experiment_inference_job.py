@@ -89,8 +89,13 @@ def _result(job_dir: Path, request):
         writer.writerow(["coords", *[coord for _ in ROLE_ORDER
                                       for coord in ("x", "y", "likelihood")]])
         for frame in range(request.frame_count):
-            writer.writerow([frame, *[value for _ in ROLE_ORDER
-                                      for value in (1.0, 2.0, 0.9)]])
+            # frame 2 坐标突跳制造真实困难信号(修复 F1 后,干净数据且无
+            # fixed pivot 的几何补扫不再把全部帧当困难);跳变与置信阈值
+            # 无关,verify/激活计数不受影响
+            x, y = (40.0, 20.0) if frame == 2 else (1.0, 2.0)
+            writer.writerow(
+                [frame, *[value for _ in ROLE_ORDER
+                          for value in (x, y, 0.9)]])
     return {
         "actual_device": "cpu",
         "outputs": [{"path": artifact.name, "size": artifact.stat().st_size,
@@ -170,6 +175,33 @@ def test_joint_review_merges_roles_and_reports_geometry_without_pivot_cutoff():
         working_zone=(1, 3), excluded_frames=frozenset({2}),
     )
     assert suggested and all(item.frame_index in {1, 3} for item in suggested)
+
+
+def test_difficulty_pool_reports_only_weak_frames():
+    """S6 终审 F1:池=弱检测帧集合,不因缺 fixed pivot 把全部帧当困难。"""
+
+    from ai_physics_tracker.application.experiment_review import (
+        experiment_difficulty_pool,
+    )
+
+    weak = {5, 17, 33}
+    positions = {"pivot": (30.0, 40.0), "body_top": (10.0, 10.0),
+                 "body_bottom": (10.0, 50.0), "tip": (12.0, 30.0)}
+    rows = {
+        role: tuple(
+            RawPrediction(index, x, y, 0.2 if index in weak else 0.95)
+            for index in range(60))
+        for role, (x, y) in positions.items()
+    }
+    raw = JointRawPredictions(tuple(rows.items()), 60, 60, (("pivot", 1),))
+    pool = experiment_difficulty_pool(
+        raw, fps_nominal=10.0, confidence_threshold=0.6,
+        fixed_pivot_px=(0.0, 0.0))
+    assert pool == (5, 17, 33)
+    # 无 fixed pivot:几何补扫跳过,只剩置信/跳变信号——同样只有弱帧
+    pool_without_pivot = experiment_difficulty_pool(
+        raw, fps_nominal=10.0, confidence_threshold=0.6, fixed_pivot_px=None)
+    assert pool_without_pivot == (5, 17, 33)
 
 
 def test_difficulty_pool_counts_all_signals_and_policy_records_it(

@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-30。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。当前开发分支 `feat/p1.4-joint-inference-activation`，自已推送的 P1.3 集成提交 `0546ff7` 切出。
-- 当前：**P1.4 S4 第五轮交互修订等待真人 Human Review；S1–S3/S5 已实现且两道 Independent Review gate 通过；S6 未收尾。** 用户选择「每帧四点→自动下一推荐帧」：推荐窗默认勾选前 5 帧，Start 后连续标注、Pause/Resume/Skip、即时人工点反馈与明确批次进度；修复旧历史混入推荐、partial 帧被排除、激活后回到旧 run、标注后训练入口消失的问题。详见[执行 mini-plan](plans/p1.4-joint-inference-activation-execution.md)。只读检查发现用户新旧推理 raw 坐标/置信度逐值相同（同一模型，仅 threshold 0.6→0.5）；历史人工标签疑似错角色，真实再训练前需用户复核，未改测试项目。P1.1–P1.3 已合并；P2 未开始。
+- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并;P2 未开始。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1.1–P1.3已完成，P1.4执行中；P2–P6未开始**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -89,4 +89,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**请用户重启本 worktree GUI，验证勾选少量推荐帧→一次 Start→每帧四点自动跳下一勾选帧，及 Pause/Resume/Skip。** 同时请用户复核 mini-plan 所列历史疑似错角色标签（训练帧 98 的 tip、17/93/107 的 pivot）；当前相同模型重复推理不代表精度改善。体验通过后继续 S6：trained compatible host 全链、迟到/context switch 与 artifact/stale 负例、最终 lifecycle/persistence re-review、全量回归与 P1 文档/验收清单同步；通过后合并至 publication/ejp-damped-pendulum 并 push，P1 收尾即停，不启动 P2。Windows G1–G4 仍是 P6 前门禁。
+**P1 收尾完成:等待用户启动 P2(reaction/physics analysis)的立项指令。** 下一次开发会话按会话进入协议读本文件 → P2 相关 spec(experiment-run-derived-contracts.md §7、scientific-profiles.md)→ 写 P2 mini-plan(含 Agent Context Pack 与 Review Gate)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。

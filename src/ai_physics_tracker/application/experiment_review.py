@@ -208,6 +208,7 @@ def build_experiment_review_queue(
 def experiment_difficulty_pool(
     raw: JointRawPredictions, *, fps_nominal: float,
     confidence_threshold: float,
+    fixed_pivot_px: tuple[float, float] | None = None,
     working_zone: tuple[int, int] | None = None,
     excluded_frames: frozenset[int] = frozenset(),
 ) -> tuple[int, ...]:
@@ -215,6 +216,8 @@ def experiment_difficulty_pool(
 
     用户决策(2026-09-30):84 帧这类总数应作为「还有多少弱检测帧」的
     信息告知,分批推荐(每批 10–20 帧)由用户决定标多少、何时去训练。
+    fixed_pivot_px 语义与 build_experiment_review_queue 一致(S6 终审 F1:
+    None 会让 tip_radius 诊断全帧失败,几何补扫须跳过而非全收)。
     """
 
     zone = working_zone or (0, raw.frame_count - 1)
@@ -223,7 +226,7 @@ def experiment_difficulty_pool(
     signals, _scores = _difficulty_signals(
         raw, fps_nominal=fps_nominal,
         confidence_threshold=confidence_threshold,
-        fixed_pivot_px=None, zone=zone, params=params,
+        fixed_pivot_px=fixed_pivot_px, zone=zone, params=params,
         excluded_frames=excluded_frames, geometry_limit=None,
     )
     return tuple(sorted(signals))
@@ -252,7 +255,10 @@ def _difficulty_signals(
             signals.setdefault(item.frame_index, {})[role] = item.reasons
             scores[item.frame_index] = max(
                 scores.get(item.frame_index, 0.0), item.total_score)
-    # 几何退化帧可能不被逐 role 的跳变/置信信号捕获,这里显式补扫
+    # 几何退化帧可能不被逐 role 的跳变/置信信号捕获,这里显式补扫;
+    # 无 fixed pivot 时 tip 半径诊断对每帧必然失败,不构成困难信号,跳过
+    if fixed_pivot_px is None:
+        return signals, scores
     geometry_extra = 0
     for frame_index in range(zone_start, zone_end + 1):
         if frame_index in signals or frame_index in excluded_frames:

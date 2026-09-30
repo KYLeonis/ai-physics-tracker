@@ -754,7 +754,8 @@ class ExperimentInferenceActions(QObject):
                 f"Next batch ready: {len(self._review_frames)} more suggested "
                 f"frame(s) (batch {self._batch_index}, {self._total_relabeled} "
                 f"relabeled so far). Start to continue, or press "
-                f"'Done labeling — train with these labels' anytime.")
+                f"'Done labeling — train with these labels' anytime. "
+                f"Skipped frames may reappear until labeled — that is fine.")
         else:
             self._relabel_message = (
                 f"No more difficult frames worth labeling "

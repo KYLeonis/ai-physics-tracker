@@ -512,11 +512,17 @@ def project_workflow_state(
         if candidate is not None:
             review_data = candidate.extra_fields.get(EXPERIMENT_REVIEW_KEY)
             if isinstance(review_data, dict):
-                candidates_field = review_data.get("policy", {}).get(
+                # S6 终审 F2:分母是当前批 suggestion_frames;分子只数该批内
+                # 已有 record 的帧——records 跨批累计,直接计数会 reviewed>total
+                suggestion_field = review_data.get("policy", {}).get(
                     "suggestion_frames", review_data.get("candidates"))
                 records_field = review_data.get("records")
-                total = len(candidates_field) if isinstance(candidates_field, list) else 0
-                reviewed = len(records_field) if isinstance(records_field, dict) else 0
+                if isinstance(suggestion_field, list):
+                    total = len(suggestion_field)
+                    if isinstance(records_field, dict):
+                        reviewed = sum(
+                            1 for frame in suggestion_field
+                            if str(frame) in records_field or frame in records_field)
         missing = candidate.extra_fields.get("missing_by_role") if candidate else None
         joint = JointInferenceFacts(
             pending_run_id=pending.run_id if pending is not None else None,

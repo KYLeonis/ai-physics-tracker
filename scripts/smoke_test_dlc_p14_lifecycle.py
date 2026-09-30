@@ -53,8 +53,69 @@ def _short_project(root: Path) -> None:
         width_px=320, height_px=180, sha256=file_sha256(destination),
     )
     timeline = replace(project.timelines[0], working_zone=(0, 9))
-    updated = replace(project, videos=(shortened,), timelines=(timeline,), observations=())
+    # 剪成 10 帧后,setup 的 release 帧可能越界——钳到末帧;帧集/检查集
+    # 过滤越界帧(smoke 临时副本的合法变换;这些集合在本链只作存在性状态)
+    def _short_experiment(exp):
+        exp = replace(exp, release_frame_index=(
+            None if exp.release_frame_index is None
+            else min(exp.release_frame_index, 9)))
+        if exp.frame_set is not None:
+            frames = tuple(f for f in exp.frame_set.frames if f <= 9)
+            exp = replace(
+                exp, frame_set=replace(exp.frame_set, frames=frames)
+                if frames else None)
+        check = getattr(exp, "fixed_check", None)
+        if check is not None:
+            check_frames = tuple(f for f in check.frames if f <= 9)
+            exp = replace(
+                exp, fixed_check=replace(check, frames=check_frames)
+                if check_frames else None)
+        return exp
+
+    experiments = tuple(_short_experiment(exp) for exp in project.experiments)
+    updated = replace(
+        project, videos=(shortened,), timelines=(timeline,),
+        observations=(), experiments=experiments)
     repository.save(root, updated)
+
+
+def _ensure_compatible_model(session, root, runtime_python):
+    """优先取 compatible 模型;否则对 trained 模型跑真实自检(S6 trained 链)。"""
+
+    compatible = next(
+        (item for item in session.project.model_references
+         if item.compatibility_state == "compatible"), None)
+    if compatible is not None:
+        return compatible, None
+    trained = next(
+        (item for item in session.project.model_references
+         if item.origin == "trained"), None)
+    if trained is None:
+        raise RuntimeError("project has neither a compatible nor a trained model")
+    from uuid import uuid4
+
+    from ai_physics_tracker.application.teacher_models import (
+        build_model_selftest_payload,
+    )
+
+    video = next(item for item in session.project.videos
+                 if item.video_id == session.pendulum_experiments()[0].video_id)
+    video_path = session.video_path(video)
+    payload_fields = build_model_selftest_payload(root, trained, Path(video_path))
+    runner = ExternalWorkerRunner(runtime_python, grace_s=1.0)
+    request, _ = build_request(
+        "selftest_model", job_id=uuid4(), device="cpu", extra=payload_fields,
+    )
+    job = runner.start(root / "data" / "engines" / f"selftest-{trained.model_id}", request)
+    if not job.join(timeout_s=600):
+        job.cancel()
+        raise RuntimeError("model self-test timed out")
+    result = job.read_result()
+    updated = session.apply_model_selftest(trained.model_id, result)
+    if updated.compatibility_state != "compatible":
+        raise RuntimeError(
+            f"trained model stayed {updated.compatibility_state}: {result.get('error')}")
+    return updated, result
 
 
 def main() -> None:
@@ -71,8 +132,8 @@ def main() -> None:
         _short_project(root)
         session = ProjectSession.load(ProjectRepository(), root)
         experiment = session.pendulum_experiments()[0]
-        model = next(item for item in session.project.model_references
-                     if item.compatibility_state == "compatible")
+        model, selftest_result = _ensure_compatible_model(
+            session, root, args.runtime_python)
         video = next(item for item in session.project.videos
                      if item.video_id == experiment.video_id)
         report = FFprobeTimingProbe().probe(session.video_path(video))
@@ -161,6 +222,8 @@ def main() -> None:
         report_data = {
             "source_project": str(args.source_project.resolve()),
             "model_id": str(model.model_id), "model_origin": model.origin,
+            "selftest_before": bool(selftest_result),
+            "selftest_device": (selftest_result or {}).get("actual_device"),
             "video_frame_count": video.frame_count,
             "timing_status": report.status,
             "cancelled_result": cancelled_result,

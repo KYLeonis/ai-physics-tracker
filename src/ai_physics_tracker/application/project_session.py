@@ -1660,6 +1660,7 @@ class ProjectSession:
             difficulty_pool = experiment_difficulty_pool(
                 raw, fps_nominal=timeline.fps_nominal,
                 confidence_threshold=confidence_threshold,
+                fixed_pivot_px=experiment.geometry.fixed_pivot_px,
                 working_zone=timeline.working_zone,
                 excluded_frames=complete_frames,
             )

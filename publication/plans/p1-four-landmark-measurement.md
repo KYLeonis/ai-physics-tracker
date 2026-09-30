@@ -452,17 +452,17 @@ S1→S2→S3 是硬依赖；S4 依赖 S3；S5 只消费 S2–S4 的 application 
 
 ### Acceptance Criteria
 
-- [ ] 一次DLC analyze call返回四个bodyparts；run恰好绑定当前experiment四members和role snapshot，不能由四个独立infer run拼接。
-- [ ] bodypart mapping missing/duplicate/extra、错误scorer/coords、frame重复/越界/不完整batch、nonfinite非法值均整体fail closed；合法missing按role保留。
-- [ ] completed inference只成为candidate；在用户Activate前experiment active pointer和四tracks effective AI observations不变。
-- [ ] review显示四role prediction/confidence/missing/reason；Correct产生manual provenance，Accept/Skip不伪造manual label。
-- [ ] tracked pivot仅出现在QC与adopted measurement中；fixed pivot不被逐帧prediction覆盖，P2 handoff明确区分两者。
-- [ ] Activate/Replace/Clear对四tracks、experiment pointer/history/revision/stale为单次原子更新；任何一个role/artifact校验失败时零变化。
-- [ ] manual corrections在四轨替换后仍优先，旧AI保留合理superseded provenance；Clear只清active AI projection，不删manual/run/raw artifacts。
-- [ ] Undo/Redo完整恢复四tracks和experiment状态，不产生mixed-run；save/reopen后一致。
-- [ ] stale input、context switch、cancel、timeout、late success、modified artifact均不能污染当前active result。
-- [ ] bound Track所有legacy single-track AI写入口不能绕过；generic unbound Track完整回归通过。
-- [ ] P2 snapshot builder只在当前四role binding与active run一致时返回，包含absolute source frame/time和release事实，不压缩gap、不计算θ。
+- [x] 一次DLC analyze call返回四个bodyparts；run恰好绑定当前experiment四members和role snapshot，不能由四个独立infer run拼接。
+- [x] bodypart mapping missing/duplicate/extra、错误scorer/coords、frame重复/越界/不完整batch、nonfinite非法值均整体fail closed；合法missing按role保留。
+- [x] completed inference只成为candidate；在用户Activate前experiment active pointer和四tracks effective AI observations不变。
+- [x] review显示四role prediction/confidence/missing/reason；Correct产生manual provenance，Accept/Skip不伪造manual label。
+- [x] tracked pivot仅出现在QC与adopted measurement中；fixed pivot不被逐帧prediction覆盖，P2 handoff明确区分两者。
+- [x] Activate/Replace/Clear对四tracks、experiment pointer/history/revision/stale为单次原子更新；任何一个role/artifact校验失败时零变化。
+- [x] manual corrections在四轨替换后仍优先，旧AI保留合理superseded provenance；Clear只清active AI projection，不删manual/run/raw artifacts。
+- [x] Undo/Redo完整恢复四tracks和experiment状态，不产生mixed-run；save/reopen后一致。
+- [x] stale input、context switch、cancel、timeout、late success、modified artifact均不能污染当前active result。
+- [x] bound Track所有legacy single-track AI写入口不能绕过；generic unbound Track完整回归通过。
+- [x] P2 snapshot builder只在当前四role binding与active run一致时返回，包含absolute source frame/time和release事实，不压缩gap、不计算θ。
 
 ### Automated tests
 
