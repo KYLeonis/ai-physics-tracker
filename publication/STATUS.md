@@ -2,7 +2,7 @@
 
 - 最后更新：2026-09-30。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P2.1/P2.2 完成；P2.2 merge `4ec09b6` 已推送；当前 `feat/p2.3-energy-analysis-ui`（base `4ec09b6`）。
-- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Q4/Q5用户确认通过；HR主线稀疏θ/空图反馈已定位，显示修复待复测，P2尚未关闭。
+- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Q4/Q5用户确认通过；HR主线再次反馈已定位：tip补标未补齐共同QC所需四点；新增建议帧四点自动推进入口、分析视频只读，待真人复测，P2尚未关闭。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1/P2.2 已完成；P2.3 实现/代码审查通过，等待Human Review；P2尚未完成**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -89,7 +89,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**用户已授权 P2；P2.1 已完成并独立复审通过；执行 [P2.3 mini-plan Human Review](plans/p2.3-energy-analysis-ui.md)：Q4/Q5已获用户通过；用户重启后复测Q6 Angle有效/排除预览、空图说明与建议修复帧，并确认原Q2源帧导航/返回标注、Q3stale/重算/保存重开。通过后--no-ff集成、push并关闭P2，再停止等待P3指令。** P2 总计划见 [p2-pendulum-analysis.md](plans/p2-pendulum-analysis.md)。P1.4 的 review/lifecycle 语义、adopted measurement 消费边界(assert 调用节奏/缺测原因回溯)在 [P1.4 review record](../docs/reviews/publication-p1.4-review.md) 的 P2 注意事项节。Windows G1–G4 仍是 P6 前门禁。
+**重新启动当前P2.3分支、打开test2_pendulum并重新计算 → Repair suggested frames → 每帧按提示依次标tip/body_top/body_bottom/pivot，四点后自动下一帧 → 完成返回Analysis再次Compute。先确认11–19的局部ω/phase/energy与源帧/QC一致，再保存重开并确认stale/导航。Q4/Q5已通过；原Q1–Q3与新增修复入口HR未通过前不集成，不关闭P2，不开始P3。**
 
 ## P2.1 delivery (2026-09-30)
 
@@ -127,3 +127,13 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - 修复：Angle蓝色QC点+灰色排除几何预览可点回源帧；empty隐藏坐标轴并呈现具体原因/缺role数/最长段与最少QC缺项的9帧例子（当前11–19，检查12–15）；未改科学计算或写用户项目。联合candidate预览修复默认target错误，按run冻结bodypart及role缓存身份读取。
 - 19 GUI定向、全量1228 tests/9 subtests通过；最后display建议4定向通过；补充只读审查Approve（独立GUI21/契约104，零开放finding）。当前branch未集成；Q6及原Q2/Q3待真人，P2未关闭。
 - 下一步：审查通过，checkpoint提交并push；用户保存/重启/重新计算，检查灰叉源帧与三页不可用提示，必要时重标12–15四点以先得到11–19连续段的局部图，再确认stale/保存重开。模型质量改善需以新的跟踪验证结果为证据，不能把training完成当精度已通过。
+
+
+## P2.3 HR：建议帧直接四点修复（2026-09-30）
+
+- 用户再次操作后，active run已换be47b1fc（latest trained d8b6cb6e、阈值0.4），42共同QC/最长5仍未变。最新typed结果中12帧缺pivot，13–15缺body_bottom/pivot；tip有限、半径正常也不满足完整四点QC。截图tip96含未保存变化，manifest20:50仅94；诊断只读，无覆盖用户项目。
+- 新入口Repair suggested frames显示确切帧号，复用MainWindow四role引导和既有mark_point事务；每帧重标全部四点、自动下一帧、目标帧未呈现时禁止点击，完成返回分析页供重算；Esc/换项目清空临时任务，已写manual保留。分析视频只读，不能再按选中tip静默写点；旧结果/区间改变/输入变化拒绝启动建议。
+- 联合采用以experiment.active_infer_run_id为真值；同一run不再被单轨状态画成“not adopted”的raw preview，头部明确Joint analysis source。未改科学共同QC、SG9/3、confidence阈值或保存格式，也未自动采用新候选。
+- 验证：45 GUI定向、全量1230 tests/9 subtests；随后仅清除分析页calibration mode/修正文案，38 annotation/setup/workflow定向通过。合成数据四点修复后ω/phase/energy恢复；真实用户重标精度仍需真人检查。Independent Review首轮P2 joint Correct工作区切换回归已修复，41定向通过，复审Approve（32独立定向、零开放finding）；仍保持P2.3工作分支等待Human Review。
+
+本轮修复checkpoint `6ca7f05`，文档同步后推送当前P2.3分支；publication集成分支仍停P2.2，待真人HR通过再集成。

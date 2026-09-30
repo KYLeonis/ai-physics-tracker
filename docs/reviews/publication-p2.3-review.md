@@ -35,3 +35,11 @@
 - 数值core/共同QC/SG9/3/timeline/schema均未修改；既有adopted数据与用户manifest未写。当前真实旧/new数据均42 QC/最长5/ω0，不能假称最新模型已改善。
 - 只读reviewer p2_3_feedback_review：**Approve，无开放finding**。独立GUI21、预测解析/联合推理契约104通过，确认source frame/selected interval、empty autorange拒绝、empty-valid-empty、role切换cache隔离；repair example只指引，不保证分支/非均匀时间等检查必过。
 - 主会话：19 GUI定向、全量1228 tests/9 subtests；最后repair文案4 GUI定向；diff check通过。仍等Q6及原Q2/Q3真人复测，不集成/P2不关闭。
+
+
+## HR建议帧四点修复入口 — Independent Review
+
+- Scope：指定QC缺帧复用既有四role引导/mark_point事务，四点自动下一帧、源帧拒绝/退出/换项目；当前已验证payload入口与stale guard；分析视频只读；联合已采用run不再标not adopted。
+- 首轮reviewer p2_3_feedback_review：Request changes，发现工作区切换后joint Correct仍保留角色但点击模式关闭（P2）。独立新增GUI31、既有review/workspace48通过；其余路由/生命周期/科学边界无finding。
+- 修复：返回Acquire按joint既有_sync_review恢复当前frame/role点击；_sync_review在Analysis不重开编辑模式，startCorrect显式去Acquire。无selected track的Analysis刷新/零写入/返回后真实落点回归通过。复审Approve，P2 finding closed，32定向通过，零开放finding。
+- 主会话：45 GUI定向、全量1230 tests/9 subtests通过；随后分析页calibration模式38定向通过；审查finding修复后41 joint/annotation/workflow定向通过。未改数值core/共同QC/SG/阈值/schema，未覆盖用户项目；仍需Q7及原Q2/Q3 Human Review。
