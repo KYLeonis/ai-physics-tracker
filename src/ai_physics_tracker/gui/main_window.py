@@ -438,6 +438,9 @@ class MainWindow(QMainWindow):
             self, _sys.executable
         )
         self._installChartPanel(self.chartActions.panel)
+        from ai_physics_tracker.gui.pendulum_analysis import PendulumAnalysisActions
+        self.pendulumAnalysisActions = PendulumAnalysisActions(self)
+        self._installChartPanel(self.pendulumAnalysisActions.panel)
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         self.setWorkspace(WORKSPACE_ACQUIRE)
         viewMenu.addAction(zoomInAction)
@@ -487,6 +490,7 @@ class MainWindow(QMainWindow):
         self.videoView.pivotClicked.connect(self._onPivotClicked)
         self.videoView.verticalLineDrawn.connect(self._onVerticalLineDrawn)
         self.pendulumPanel.pivotButton.clicked.connect(self.beginPivotPick)
+        self.pendulumPanel.radiusButton.clicked.connect(self._setRadiusFromCurrentTip)
         self.pendulumPanel.verticalButton.clicked.connect(self.beginVerticalPick)
         self.pendulumPanel.confirmVerticalButton.clicked.connect(
             self._confirmVerticalDirection)
@@ -553,7 +557,11 @@ class MainWindow(QMainWindow):
     def deliveryGeneration(self) -> int:
         return self._delivery_generation
 
-    def seekFrame(self, frame_index: int) -> bool:
+    def seekSourceFrame(self, frame_index: int) -> bool:
+        """科学图点检查完整源帧；不修改working zone或科学输入。"""
+        return self.seekFrame(frame_index, source_frame=True)
+
+    def seekFrame(self, frame_index: int, *, source_frame: bool = False) -> bool:
         """图表导航统一走现有解码入口，暂停并解除视频上的编辑模式。"""
 
         if self.projectActions.busy or self._timeline is None or self._async.snapshot() is None:
@@ -568,7 +576,11 @@ class MainWindow(QMainWindow):
         self.videoView.set_calibration_mode(None)
         self.drawScaleButton.setChecked(False)
         self.setOriginButton.setChecked(False)
-        self._requestFrame(clamp_to_working_zone(frame_index, self._timeline))
+        target = frame_index if source_frame else clamp_to_working_zone(frame_index, self._timeline)
+        if source_frame:
+            self._requestFrame(target, source_frame=True)
+        else:
+            self._requestFrame(target)
         return True
 
     def jumpToFrame(self, frame_index: int) -> bool:
@@ -636,6 +648,13 @@ class MainWindow(QMainWindow):
         """分析页顶部：当前输入来源 + 标定 + 时间依据（§11.2）。"""
         session = self.analysisSession
         track_id = self.selectedTrackId
+        experiment = self.currentPendulumExperiment() if session is not None else None
+        if experiment is not None:
+            source = ("adopted tip / body_top / body_bottom / pivot + manual corrections"
+                      if experiment.active_infer_run_id is not None else
+                      "no active adopted joint inference — adopt a completed result first")
+            self._analysisSourceLabel.setText(f"Pendulum: {source} · θ rad · ω rad/s · reference energy s⁻²")
+            return
         if session is None or track_id is None:
             self._analysisSourceLabel.setText("No analysis source selected")
             return
@@ -871,10 +890,11 @@ class MainWindow(QMainWindow):
             return
         self._requestFrame(snapshot.current_frame.frame_index + 1)
 
-    def _requestFrame(self, frame_index: int) -> None:
+    def _requestFrame(self, frame_index: int, *, source_frame: bool = False) -> None:
         self._has_pending_request = True
         self._last_requested_frame = frame_index
-        self._latest_request_id = self._async.request_frame(frame_index)
+        self._latest_request_id = (self._async.request_frame(frame_index, source_frame=True)
+                                   if source_frame else self._async.request_frame(frame_index))
         self.frameRequested.emit(frame_index)
 
     def _onDecodeCompleted(self, result: DecodeDelivery, generation: int) -> None:
@@ -1387,6 +1407,26 @@ class MainWindow(QMainWindow):
             return
         self._afterPendulumChange(
             f"Release frame set to {self._presented_frame_index}")
+
+    def _setRadiusFromCurrentTip(self) -> None:
+        from math import hypot
+        session, experiment = self.analysisSession, self.currentPendulumExperiment()
+        frame_index = self.presentedFrameIndex
+        if session is None or experiment is None or frame_index is None:
+            return
+        pivot = experiment.geometry.fixed_pivot_px
+        point = next((p for p in session.effective_points(experiment.roles.tip)
+                      if p.frame_index == frame_index), None)
+        if pivot is None or point is None:
+            self.statusBar().showMessage("Set fixed pivot and label the tip on this frame first")
+            return
+        try:
+            session.set_tip_radius_reference(experiment.experiment_id,
+                hypot(point.pixel_x-pivot[0], point.pixel_y-pivot[1]))
+        except Exception as error:
+            self.statusBar().showMessage(str(error))
+            return
+        self._afterPendulumChange(f"Tip radius reference set from source frame {frame_index} (QC only)")
 
     def _afterPendulumChange(self, message: str) -> None:
         """pendulum 事实写入后的统一收敛：面板/卡片/标题同步。"""

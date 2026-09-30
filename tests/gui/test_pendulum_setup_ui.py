@@ -378,6 +378,9 @@ def test_checklist_panel_refresh_reflects_status(
         qtbot, monkeypatch, window, tracks, tmp_path / "publication-copy")
     experiment_id = experiment.experiment_id
     assert window.pendulumPanel.isVisible()
+    window.refreshAnalysisSourceBar()
+    assert "no active adopted joint inference" in window._analysisSourceLabel.text()
+    assert "adopted tip" not in window._analysisSourceLabel.text()
     assert "Setup incomplete" in window.pendulumPanel.statusLabel.text()
 
     def status_text() -> str:
@@ -417,6 +420,12 @@ def test_checklist_panel_refresh_reflects_status(
     )
     text = status_text()
     assert "Setup incomplete" in text and "release frame" in text
+
+    # radius：从当前可信 tip 显式选 QC 参考，不自动设置物理 L
+    window._presented_frame_index = 2
+    session.mark_point(experiment.roles.tip, 2, 12.0, 106.0)
+    window._setRadiusFromCurrentTip()
+    assert session.pendulum_experiment(experiment_id).geometry.tip_radius_reference_px == 100
 
     # release：最后一项补齐 → 分析就绪
     window._presented_frame_index = 2
@@ -575,6 +584,7 @@ class TestPublicationFailureAndReopen:
             )
         )
         session.set_fixed_pivot(experiment.experiment_id, (12.0, 34.0))
+        session.set_tip_radius_reference(experiment.experiment_id, 100.)
         session.set_true_vertical(experiment.experiment_id, (12.0, 2.0), (13.0, 44.0))
         session.confirm_true_vertical(experiment.experiment_id)
         session.set_physical(

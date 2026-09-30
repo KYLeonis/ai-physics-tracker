@@ -47,6 +47,7 @@ _ROLE_DESCRIPTIONS = {
 MM_PER_M = 1000.0
 
 _GAP_LABELS = {
+    "tip_radius_reference": "tip radius reference (from a labelled frame)",
     "fixed_pivot": "fixed pivot on the video",
     "true_vertical": "true vertical (top→bottom)",
     "true_vertical_confirmation": "vertical direction confirmation",
@@ -67,6 +68,10 @@ class PendulumSetupPanel(QGroupBox):
         self.statusLabel.setWordWrap(True)
         self.scaleLabel = QLabel("scale: not set (uses Calibration)", self)
         self.pivotButton = QPushButton("Mark fixed pivot…", self)
+        self.radiusButton = QPushButton("Use current tip as radius reference", self)
+        self.radiusButton.setToolTip("Choose a frame with a trustworthy tip label. Uses its pixel distance to the fixed pivot for QC; does not set physical L.")
+        self.radiusLabel = QLabel("tip radius reference: not set", self)
+        self.radiusLabel.setWordWrap(True)
         self.pivotLabel = QLabel("fixed pivot: not set", self)
         self.verticalButton = QPushButton("Mark vertical (top→bottom)", self)
         self.verticalLabel = QLabel("true vertical: not set", self)
@@ -100,6 +105,8 @@ class PendulumSetupPanel(QGroupBox):
         layout.addWidget(self.scaleLabel)
         layout.addWidget(self.pivotLabel)
         layout.addWidget(self.pivotButton)
+        layout.addWidget(self.radiusLabel)
+        layout.addWidget(self.radiusButton)
         layout.addWidget(self.verticalLabel)
         layout.addWidget(self.verticalButton)
         layout.addWidget(self.confirmVerticalButton)
@@ -140,6 +147,8 @@ class PendulumSetupPanel(QGroupBox):
             else "scale: not set — use Calibration"
         )
         geometry = experiment.geometry
+        radius = geometry.tip_radius_reference_px
+        self.radiusLabel.setText("tip radius reference: not set" if radius is None else f"tip radius reference: {radius:.2f} px (QC only)")
 
         if status.fixed_pivot_set and geometry.fixed_pivot_px is not None:
             self.pivotLabel.setText(

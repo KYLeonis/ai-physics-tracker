@@ -473,6 +473,7 @@ class TestSetupProjectionAndDigest:
         assert status.missing_for_analysis == (
             "fixed_pivot",
             "true_vertical",
+            "tip_radius_reference",
             "active_calibration",
             "physical_parameters",
             "release_frame",
@@ -484,6 +485,7 @@ class TestSetupProjectionAndDigest:
             geometry=PendulumGeometry(
                 fixed_pivot_px=(1.0, 2.0),
                 true_vertical=TrueVertical((1.0, 2.0), (1.5, 90.0)).confirmed(),
+                tip_radius_reference_px=100.0,
             ),
             physical=PhysicalParameters(
                 length_m=1.0, g_m_s2=9.8, length_source="s", g_source="s"

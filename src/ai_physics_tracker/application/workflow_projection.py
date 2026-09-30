@@ -809,7 +809,9 @@ def select_task_card(state: WorkflowState) -> TaskCard:
 
     # 1.5 pendulum experiment setup 未完成 → checklist 卡（experiment 存在即优先；
     # 卡片是引导不是门禁：标注/训练入口不受影响，仅 P2 分析被 setup 阻塞）
-    if state.pendulum is not None and state.pendulum.missing:
+    # QC 半径仅阻塞 P2 分析；不能要求先有采用点才允许训练/推理/采用。
+    setup_gaps = tuple(g for g in state.pendulum.missing if g != "tip_radius_reference") if state.pendulum else ()
+    if state.pendulum is not None and setup_gaps:
         gap_actions = {
             "fixed_pivot": ActionSpec(ACTION_SETUP_FIXED_PIVOT, "Mark fixed pivot"),
             "true_vertical": ActionSpec(
@@ -822,7 +824,7 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             "physical_parameters": ActionSpec(ACTION_SETUP_PHYSICAL, "Enter L and g"),
             "release_frame": ActionSpec(ACTION_SET_RELEASE, "Set release to current frame"),
         }
-        gaps = state.pendulum.missing
+        gaps = setup_gaps
         primary = gap_actions.get(
             gaps[0], ActionSpec(ACTION_CREATE_EXPERIMENT, "Create Pendulum experiment…")
         )

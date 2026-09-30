@@ -27,12 +27,13 @@ class PendulumSetupStatus:
     true_vertical_confirmed: bool
     physical_set: bool
     release_set: bool
+    tip_radius_reference_set: bool
 
     @property
     def geometry_complete(self) -> bool:
-        """分析所需几何：固定 pivot + 已确认的 true vertical。"""
+        """分析所需几何：固定 pivot、确认的 vertical 和显式 tip 半径参考。"""
 
-        return self.fixed_pivot_set and self.true_vertical_confirmed
+        return self.fixed_pivot_set and self.true_vertical_confirmed and self.tip_radius_reference_set
 
     @property
     def can_annotate(self) -> bool:
@@ -62,6 +63,8 @@ class PendulumSetupStatus:
             gaps.append("true_vertical")
         elif not self.true_vertical_confirmed:
             gaps.append("true_vertical_confirmation")
+        if not self.tip_radius_reference_set:
+            gaps.append("tip_radius_reference")
         if self.scale_calibration_id is None:
             gaps.append("active_calibration")
         if not self.physical_set:
@@ -108,6 +111,7 @@ def pendulum_setup_status(
         true_vertical_confirmed=vertical is not None and vertical.direction_confirmed,
         physical_set=experiment.physical is not None,
         release_set=experiment.release_frame_index is not None,
+        tip_radius_reference_set=experiment.geometry.tip_radius_reference_px is not None,
     )
 
 

@@ -93,6 +93,14 @@ class VideoSession:
         self._current_frame = frame
         return frame
 
+    def go_to_source_frame(self, frame_index: int) -> DecodedFrame:
+        """科学结果源帧检查：不改变working zone，不把源帧钳成另一帧。"""
+        if type(frame_index) is not int or not 0 <= frame_index < self.info.frame_count:
+            raise VideoError("source frame is outside the video")
+        frame = self._read_frame(frame_index)
+        self._current_frame = frame
+        return frame
+
     def step(self, delta: int) -> DecodedFrame:
         """按整数帧差步进并钳位到 working_zone。"""
 

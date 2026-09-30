@@ -145,6 +145,7 @@ class AngularAnalysis:
     information_extrema: tuple[tuple[int, str], ...]
     periods: PeriodAnalysis
     tail: PeriodAnalysis
+    source_series_digest: str
 
 
 def valid_segments(series: AngularSeries, mask: tuple[bool, ...], *, branch_guard: bool = True) -> tuple[tuple[int, int], ...]:
@@ -300,4 +301,4 @@ def analyze_angular_series(series: AngularSeries, *, profile_id: str = STUDENT,
                            profile_id=profile_id, minimum_periods=TAIL_MIN_PERIODS)
     identity = canonical_json_digest({"series_digest": angular_series_digest(series), "end_frame_index": end_frame,
         "tail_start_s": float(tail_start), "config": config})
-    return AngularAnalysis(identity, profile_id, omega, reasons, edges, tuple(sorted(information)), periods, tail)
+    return AngularAnalysis(identity, profile_id, omega, reasons, edges, tuple(sorted(information)), periods, tail, angular_series_digest(series))

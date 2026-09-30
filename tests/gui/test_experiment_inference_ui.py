@@ -309,6 +309,7 @@ class TestJointLadderCards:
     ):
         session, experiment = self._session(tmp_path, synthetic_video_path)
         state = self._state(session, experiment)
+        assert state.pendulum.missing == ("tip_radius_reference",)  # QC参考不能阻断训练/推理
         card = select_task_card(state)
         inference = next(
             a for a in card.secondary if a.action_id == "run_joint_inference")
