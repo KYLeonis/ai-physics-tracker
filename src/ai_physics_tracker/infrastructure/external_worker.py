@@ -69,6 +69,10 @@ _ENV_ALLOWLIST: tuple[str, ...] = (
     "HOMEDRIVE",
     "HOMEPATH",
     "OS",
+    # platform.machine() 在 Windows 读这两个;缺失时 machine 为空串,host 端
+    # runtime identity 校验会拒绝(CI Windows 首跑暴露,2026-09-30)
+    "PROCESSOR_ARCHITECTURE",
+    "PROCESSOR_ARCHITEW6432",
 )
 
 

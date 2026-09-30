@@ -125,6 +125,17 @@ def _mutate_result_file(handle: Any, mutate: Callable[[dict[str, Any]], None]) -
 # --- 1. hello 成功 ------------------------------------------------------------
 
 
+def test_env_allowlist_keeps_windows_machine_identity():
+    """CI Windows 首跑暴露:缺 PROCESSOR_ARCHITECTURE 时 worker 的
+    platform.machine() 为空串,success result 被 host identity 校验拒绝。"""
+
+    from ai_physics_tracker.infrastructure.external_worker import _ENV_ALLOWLIST
+
+    assert "SYSTEMROOT" in _ENV_ALLOWLIST
+    assert "PROCESSOR_ARCHITECTURE" in _ENV_ALLOWLIST
+    assert "PROCESSOR_ARCHITEW6432" in _ENV_ALLOWLIST
+
+
 def test_hello_success_returns_full_protocol_identity(tmp_path: Path) -> None:
     runner = ExternalWorkerRunner(RUNTIME_PYTHON)
     job_id = uuid4()
