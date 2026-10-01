@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ai_physics_tracker.domain.angular_analysis import AngularSeries, LEGACY
 from ai_physics_tracker.domain.pendulum_ode import (
     InitialCondition, M0, M1, ObjectiveRequest, PendulumParameters, evaluate_trajectory,
+    fit_valid_indices,
 )
 from ai_physics_tracker.domain.pendulum_fit import fit_pendulum
 
@@ -101,13 +102,30 @@ def regression_case(video_id: str, prov_root: Path | None) -> list[dict]:
         e2_rmse_error = None if fixed.status != "success" else abs(degrees(fixed.rmse_rad)-float(reference["rmse_deg"]))
         refit_error = None if fit.trajectory is None else float(np.max(
             np.abs(np.asarray(fit.trajectory.prediction.theta_rad)-archived)))
+        identity = {
+            "release_frame_used_0based": request.release_frame_index,
+            "frame_count_post_release": len(request.series.frame_indices),
+            "frame_count_geometry_valid": len(fit_valid_indices(request)),
+            "optimization_point_count": len(fit.sample_frames),
+        }
+        identity_checks = {key: {"expected": int(reference[key]), "actual": value,
+                                "passed": value == int(reference[key])} for key, value in identity.items()}
+        selected = None if fit.selected_start_index is None else fit.starts[fit.selected_start_index]
         report.append({"video_id": video_id, "model": fit.model, "status": fit.status, "reason": fit.reason,
             "source_sha256": source_sha, "input_digest": fit.input_digest,
             "comparability_digest": fit.comparability_digest, "differences": differences,
+            "identity_checks": identity_checks,
+            "archived_diagnostics": {key: reference[key] for key in (
+                "fit_status", "optimizer_nfev", "jacobian_rank", "jacobian_condition_number")},
+            "selected_diagnostics": None if selected is None else {
+                "nfev": selected.nfev, "jacobian_rank": selected.jacobian_rank,
+                "jacobian_condition": selected.jacobian_condition},
             "refit_prediction_max_abs_rad": refit_error,
             "e2_prediction_max_abs_rad": e2_error, "e2_rmse_abs_deg": e2_rmse_error,
             "e2_passed": e2_error is not None and e2_error <= 1e-5 and e2_rmse_error <= 1e-4,
-            "e3_passed": fit.status == "success" and all(row["passed"] for row in differences.values()),
+            "e3_passed": fit.status == reference["fit_status"] == "success"
+                and all(row["passed"] for row in differences.values())
+                and all(row["passed"] for row in identity_checks.values()),
             "warnings": fit.warnings, "starts": [asdict(start) for start in fit.starts],
             "seed": {k: v for k, v in asdict(fit.seed).items() if k != "source_frames"},
             "seed_frame_count": len(fit.seed.source_frames), "sample_count": len(fit.sample_frames),
@@ -140,6 +158,7 @@ def main() -> int:
         parser.error("workers must be positive")
     protected = (EVIDENCE/"golden", ROOT/"publication/profiles")
     if any(args.output.resolve().is_relative_to(p.resolve()) for p in protected) or (
+            args.output.resolve() == (EVIDENCE/"source-map.json").resolve()) or (
             args.prov_root is not None and args.output.resolve().is_relative_to(args.prov_root.resolve())):
         parser.error("output must not overwrite frozen inputs/profiles or external research assets")
     videos = args.video_id or ([r["video_id"] for r in json.loads((EVIDENCE/"golden/inputs24.json").read_text())]

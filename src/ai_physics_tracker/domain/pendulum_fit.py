@@ -181,7 +181,13 @@ def _run_start(request, model, settings, start, lower, upper, check_cancel):
         return StartDiagnostic(start, None, "failed", False, None, int(result.nfev),
                                "nonfinite optimizer candidate", failures, (), None, None)
     values = tuple(map(float, result.x))
-    singular = np.linalg.svd(result.jac, compute_uv=False)
+    try:
+        if not np.all(np.isfinite(result.jac)):
+            raise ValueError("nonfinite optimizer Jacobian")
+        singular = np.linalg.svd(result.jac, compute_uv=False)
+    except (ValueError, RuntimeError, FloatingPointError, OverflowError) as error:
+        return StartDiagnostic(start, None, "failed", False, None, int(result.nfev),
+                               f"Jacobian diagnostic failed: {error}", failures, (), None, None)
     tolerance = np.finfo(float).eps*max(result.jac.shape)*singular[0] if len(singular) else 0.
     rank = int(np.count_nonzero(singular > tolerance))
     condition = float(singular[0]/singular[-1]) if len(singular) and singular[-1] > 0 else None

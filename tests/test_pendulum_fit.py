@@ -47,6 +47,16 @@ def test_noiseless_physical_parameters_are_recovered_on_full_grid(model, theta0,
     assert result.config["optimizer"]["f_scale_rad"] == pytest.approx(pi/360, abs=1e-15)
 
 
+@pytest.mark.xfail(strict=True, reason="P3.2 review F2 Open: frozen tolerance can give false M1 recovery")
+def test_frozen_default_m1_parameter_recovery_gate():
+    request, truth = _request(M1)
+    result = fit_pendulum(request, M1)
+    assert result.status == "success"
+    assert result.parameters.alpha1_s_inv == pytest.approx(truth.alpha1_s_inv, abs=2e-5)
+    assert result.parameters.alpha2_rad_inv == pytest.approx(truth.alpha2_rad_inv, abs=2e-5)
+    assert result.parameters.omega2_s_inv2 == pytest.approx(truth.omega2_s_inv2, abs=2e-5)
+
+
 def test_m0_warm_start_and_comparison_of_nested_model_on_same_observations():
     request, _ = _request(M0)
     m0 = fit_pendulum(request, M0)
@@ -142,6 +152,18 @@ def test_optimizer_failure_is_recorded_per_start_and_does_not_hide_valid_candida
     assert len(result.starts) == 3 and result.reason == "all_starts_failed"
 
 
+def test_nonfinite_jacobian_is_a_failed_start_not_an_uncaught_numerical_error(monkeypatch):
+    import ai_physics_tracker.domain.pendulum_fit as core
+    request, _ = _request(M0)
+    bad = _optimizer_result((.03, 40.), .01)
+    bad.jac[:] = float("nan")
+    calls = iter([bad, _optimizer_result((.03, 40.), .1), _optimizer_result((.03, 40.), .2)])
+    monkeypatch.setattr(core, "least_squares", lambda *a, **kw: next(calls))
+    result = fit_pendulum(request, M0)
+    assert result.status == "success" and result.selected_start_index == 1
+    assert result.starts[0].status == "failed" and "Jacobian" in result.starts[0].message
+
+
 def test_penalty_only_optimizer_success_cannot_become_successful_fit(monkeypatch):
     import ai_physics_tracker.domain.pendulum_fit as core
     import ai_physics_tracker.domain.pendulum_ode as ode
@@ -208,3 +230,14 @@ def test_archived_regression_parser_preserves_units_mask_and_rejects_changed_inp
     changed.write_bytes(b"changed research asset")
     with pytest.raises(ValueError, match="hash mismatch"):
         regression.read_request("P011", tmp_path)
+
+
+def test_regression_cli_refuses_frozen_source_map_output(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location("fit_regression", root/"scripts/publication_fit_regression.py")
+    regression = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(regression)
+    monkeypatch.setattr("sys.argv", ["regression", "--output", str(root/"publication/evidence/source-map.json")])
+    with pytest.raises(SystemExit) as error:
+        regression.main()
+    assert error.value.code == 2
