@@ -214,7 +214,7 @@ def test_archived_regression_parser_preserves_units_mask_and_rejects_changed_inp
     regression = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(regression)
     request, digest = regression.read_request("P011", None)
-    item = next(row for row in json.loads((root/"publication/evidence/golden/inputs24.json").read_text())
+    item = next(row for row in json.loads((root/"publication/evidence/golden/inputs24.json").read_text(encoding="utf-8"))
                 if row["video_id"] == "P011")
     assert request.profile_id == LEGACY and request.initial_condition.source == "archived_toml"
     assert request.initial_condition.theta0_rad == item["theta0_rad"]
@@ -223,7 +223,7 @@ def test_archived_regression_parser_preserves_units_mask_and_rejects_changed_inp
     assert request.series.theta_rad[0] == pytest.approx(radians(-69.87425787288859), abs=1e-12)
     assert request.series.qc_valid[0] and request.relative_weights[0] == 1.
     assert request.series.upstream_digest == digest
-    source = next(row for row in json.loads((root/"publication/evidence/source-map.json").read_text())["sources"]
+    source = next(row for row in json.loads((root/"publication/evidence/source-map.json").read_text(encoding="utf-8"))["sources"]
                   if row["id"] == "trajectory-P011")
     changed = tmp_path/source["path"]
     changed.parent.mkdir(parents=True)

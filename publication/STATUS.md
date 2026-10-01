@@ -2,8 +2,15 @@
 
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P4.1/P4.2/P4.3 Independent Review全部通过，用户2026-10-01确认“HR通过”并授权P4收尾。P5/P6未启动，停止等待用户授权P5。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍为ADR-0020 Accepted Limitation，不计为数值通过。**
+- 当前：**P0–P4完成；P4.1/P4.2/P4.3 Independent Review全部通过，用户确认最终HR通过。P5已获授权，阅读规划入口后按用户“稍等”先修复Windows CI；P5 mini-plan/实现尚未开始，P6未启动。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍为ADR-0020 Accepted Limitation，不计为数值通过。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## Windows CI UTF-8 repair — 2026-10-01
+
+- 用户收到Actions失败邮件，要求先检查修复。失败run [36879865387](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36879865387)：macOS通过；Windows 1335 passed / 5 skipped / 1 existing strict xfailed / 1 failed。唯一失败是`test_archived_regression_parser_preserves_units_mask_and_rejects_changed_input`用默认cp1252读取包含中文路径的UTF-8 `source-map.json`，不是拟合数值失败；P3 run36841781340同一原因。
+- 修复`6a20ac6`：相关测试和回归脚本四处JSON读取显式`encoding="utf-8"`。Normal-risk局部编码bugfix，无算法/profile/golden/产品GUI修改，无独立/真人review触发；publication专用文件不在main，main工作树未改。
+- 本地6项定向通过（1.60s）；冻结verifier15files/48fitrows/2trajectories及diff check通过。远程双平台CI待本修复push后确认，不提前记为通过。
+- 下一步：push修复并确认双平台CI；修复完成后回到P5.1 mini-plan入口。
 
 ## P4 closeout — 2026-10-01
 
@@ -152,7 +159,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P4已收尾，停止等待用户授权P5；获授权后先读AGENTS、当前状态、PHASE_PLAN P5与相关requirements，再建立P5首个subphase mini-plan。当前不进入P5。**
+**P5已获用户授权；当前先完成Windows CI编码修复并核对远程结果，随后建立P5.1 workflow integration mini-plan。P5尚无代码实现；P6不进入。**
 
 ## P2.1 delivery (2026-09-30)
 
