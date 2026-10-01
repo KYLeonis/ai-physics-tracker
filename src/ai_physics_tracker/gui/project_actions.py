@@ -75,6 +75,10 @@ class ProjectActions(QObject):
             for action in (self.saveAsAction, self.relinkVideoAction):
                 action.setEnabled(not tracking.pending)
                 action.setToolTip("Cancel the AI task before changing project/media location" if tracking.pending else "")
+        fit = getattr(self.window, "pendulumFitActions", None)
+        if fit is not None and fit.pending and not self.busy:
+            self.saveAsAction.setEnabled(False)
+            self.saveAsAction.setToolTip("Cancel the ODE fit before Save as")
 
     def guarded(self, continuation: Callable[[], None]) -> None:
         if self.busy:
@@ -337,6 +341,10 @@ class ProjectActions(QObject):
         )
 
     def saveAs(self, after: Callable[[], None] | None = None) -> None:
+        fit = getattr(self.window, "pendulumFitActions", None)
+        if fit is not None and fit.pending:
+            self.window.statusBar().showMessage("Cancel the ODE fit before Save as")
+            return
         tracking = getattr(self.window, "trackingActions", None)
         if tracking and tracking.pending:
             self.window.statusBar().showMessage("Cancel the AI task before Save as")

@@ -442,7 +442,15 @@ class MainWindow(QMainWindow):
         self._installChartPanel(self.chartActions.panel)
         from ai_physics_tracker.gui.pendulum_analysis import PendulumAnalysisActions
         self.pendulumAnalysisActions = PendulumAnalysisActions(self)
-        self._installChartPanel(self.pendulumAnalysisActions.panel)
+        from PySide6.QtWidgets import QTabWidget
+        from ai_physics_tracker.gui.pendulum_fit import PendulumFitActions
+        self.pendulumFitActions = PendulumFitActions(self)
+        self.pendulumPages = QTabWidget(self)
+        self.pendulumPages.addTab(self.pendulumAnalysisActions.panel, "Kinematics")
+        self.pendulumPages.addTab(self.pendulumFitActions.panel, "ODE fitting")
+        self.pendulumAnalysisActions.container = self.pendulumPages
+        self._installChartPanel(self.pendulumPages)
+        self.pendulumAnalysisActions.refresh()
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         self.setWorkspace(WORKSPACE_ACQUIRE)
         viewMenu.addAction(zoomInAction)
