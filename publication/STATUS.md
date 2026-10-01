@@ -6,6 +6,12 @@
 - 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
+## P3.4 HR 本地数据准备（2026-10-01）
+
+- 用户授权复用省赛成功结果，明确同意P011/P014的near-CFR平均FPS近似。两个独立工程在ignored `provincial_ui_test/`，视频/四点CSV/TOML/训练provenance字节SHA一致；不改旧科研原件或test1/test2。
+- P011：3344有效θ、3250ω/energy；P014：3077有效θ、2976ω/energy。各存全片Kinematics及释放后20秒/601帧M0 success，RMSE约0.02203917/0.01154777rad。typed保存重开/immutable读回有效，两工程真实payload的Qt panel offscreen检查通过。
+- 真正省赛snapshot-best-055权重/177帧labeled-data在Windows待用户提供；当前只导入历史推理，不虚构trained/compatible模型。操作见[测试数据说明](../docs/notes/provincial-ui-test-2026-10-01.md)；真人HR仍待用户，P3不收尾。
+
 ## P3.4 delivery checkpoint（2026-10-01）
 
 - 工作分支codex/ejp-p3-4-fit-ui，base38f6de5；实现4e4fe2d。Normal/Advanced同FitOptions/core，明确固定IC/精度，两页、overlay/raw residual/full RMSE/参数与逐start诊断，historical/stale读回、源帧、取消/迟到清理及SaveAs守卫。
@@ -108,7 +114,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P3.4已实现/Independent Review Approve，按[mini-plan](plans/p3.4-fit-ui.md)给用户最短启动命令与5项真人HR步骤，停止等待反馈。HR通过后才集成/push并关闭P3；不开始P4。P3.2 Accepted Limitation保持明示。**
+**用户打开[省赛UI测试工程](../docs/notes/provincial-ui-test-2026-10-01.md)进行[P3.4真人HR](plans/p3.4-fit-ui.md)，停止等待反馈；无需重新训练或推理。模型/原训练标签等用户后续从Windows提供。HR通过后才集成/push并关闭P3；不开始P4。P3.2 Accepted Limitation保持明示。**
 
 ## P2.1 delivery (2026-09-30)
 
