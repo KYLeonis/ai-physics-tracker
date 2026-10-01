@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-01）：P0/P1/[P2](plans/p2-pendulum-analysis.md)完成；P2.3数值/保存/图表、Independent Review及用户整体交付验收通过，已--no-ff集成（99f34b0）。用户已授权进入P3，[P3.1](plans/p3.1-forward-objective.md)已完成并独立复审通过；P3.2以Accepted Limitation收口，P3.3已完成并集成；[P3.4计划/真人验收](plans/p3.4-fit-ui.md)的GUI已实现/Independent Review Approve，等待Human Review。图表外观改善记录为非阻断后续事项。
+当前（2026-10-01）：P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。停止在P3，等待用户授权P4；P4–P6未启动。运行及验收见[P3.4计划](plans/p3.4-fit-ui.md)，权威进度见[STATUS](STATUS.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
@@ -29,7 +29,7 @@
 
 不做通用multi-object identity、多相机/3D/任意实验插件、通用model library、论文修改/投稿metadata/Zenodo deposit或新的论文科学补充分析。完整non-goals见requirements。
 
-P0已完成科学/数据/runtime合同与Mac探针；Windows验证经用户批准延至P6前，仍not_run。P1/P2/P3.1–P3.3已交付，P3.2历史数值差异为用户接受的限制；P3.4 GUI开发中、须真人HR；P4–P6尚未实现。后续每Phase通过科学/工程Independent Review及适用Human Review后收尾，并停止等待下一条指令。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
+P0已完成科学/数据/runtime合同与Mac探针；Windows验证经用户批准延至P6前，仍not_run。P1–P3已交付，P3.2历史数值差异为用户接受的限制；P3.4 Independent/Human Review通过。P4–P6尚未实现，停止等待下一条指令。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
 
 当前角运动默认规则：student-default-v2，tip + calibrated fixed pivot，辅助role仅诊断。历史v1/legacy与golden不改；见[ADR-0018](../docs/decisions/0018-tip-fixed-pivot-angular-qc.md)、[scientific-profiles §8](spec/scientific-profiles.md)。
 

@@ -23,3 +23,7 @@
 - [ ] Request changes.
 
 实现方最终验证（非reviewer重跑）：34 GUI定向passed / 25.64s；替换为真实TimingActions的最终8项passed / 18.92s。diff check通过。
+
+## Human Review closeout — 2026-10-01
+
+用户亲自运行P011 M0/M1并提出四项UI反馈，修复后明确“通过，收尾”。记录为整体交付与四项修复验收通过；不把此前自动化检查改称逐项真人实测。独立审查结论及ADR-0020数值限制不变。

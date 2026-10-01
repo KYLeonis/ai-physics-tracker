@@ -4,7 +4,7 @@
 
 > 2026-10-01：用户授权显式SG窗口/阶数覆盖，默认9/3与冻结profile不变；见[ADR-0019](../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。
 
-- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0/P1/P2完成；P2.3 Independent Review与用户整体交付验收通过、已--no-ff集成（99f34b0）；P3.1完成、P3整体进行中，P4–P6未启动；Windows验证经用户明确批准延期，进入P6前必过**。
+- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0–P3完成，P3.4独立/真人验收通过，P3.2保留ADR-0020 Accepted Limitation；P4–P6未启动，停止等待P4指令；Windows验证经用户明确批准延期，进入P6前必过**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -128,9 +128,9 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P2.2 Derivative, phase and periods ✅ | SG9/3、gap/short segment、extrema各profile、过零period/tail | 解析及封存数据核对；无跨缺口周期、无虚假频率 |
 | P2.3 Energy and analysis UI ✅ | reference potential/specific-energy primitives、analysis adapter/charts、保存 | energy identity测试；学生能识别单位、缺口、来源与stale；Human Review收尾 |
 
-### P3 — Full-Trajectory ODE Fitting 🔄
+### P3 — Full-Trajectory ODE Fitting ✅（Accepted Limitation）
 
-2026-10-01用户授权进入；[P3.1 mini-plan](plans/p3.1-forward-objective.md)已完成并独立复审Approve；[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)已实现checkpoint；48项覆盖但E3 30/48、E2 47/48，F1/F2用户接受限制，R2条件性通过；P3.3执行/持久化已完成并独立复审Approve、集成38f6de5；P3.4 GUI已实现并独立Approve，待真人HR，P3未关闭。
+2026-10-01：P3.1/P3.3独立复审Approve；P3.2以ADR-0020 Accepted Limitation收口（E3 30/48、E2 47/48，默认M1恢复strict xfail保留）；P3.4 GUI及四项反馈修复独立复审Approve，用户亲自运行P011 M0/M1并明确“通过，收尾”。P3功能交付完成，历史数值限制未改写为通过。
 
 - **Goal**：以同一Qt-free core完成M0/M1全轨迹拟合与可追溯输出。
 - **Scope**：RHS/forward、sample/weights/IC/bounds/seeds、robust optimisation、FitRequest/Result、后台执行、Normal/Advanced UI、完整RMSE/overlay与诊断。
@@ -146,7 +146,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P3.1 Forward and objective ✅ | 两模型RHS、DOP853、IC、选样/weights、loss | synthetic和source golden unit checks通过；失败结构化，不访问GUI/文件 |
 | P3.2 Bounded multistart fit ✅（Accepted Limitation） | bounds/seeds/M0 warm start、逐start诊断、full-grid输出 | 参数恢复与48行历史结果软件回归记录；没有用论文目标值调参“凑一致” |
 | P3.3 Application execution and persistence ✅ | snapshot请求、取消、代际、原子结果、stale与重开 | 注入取消/输入改变/失败不会提交部分或旧结果；配置round-trip |
-| P3.4 Fit UI | Normal M0/M1与Run fit、Advanced配置、overlay/RMSE/residual | 同core证明、Human Review完成自选视频拟合；P3收尾停止 |
+| P3.4 Fit UI ✅ | Normal M0/M1与Run fit、Advanced配置、overlay/RMSE/residual | 同core证明、Human Review完成自选视频拟合；P3收尾停止 |
 
 ### P4 — Model Criticism and Structural Identifiability
 

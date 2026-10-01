@@ -31,8 +31,8 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | Publication P1.4 (S3/S5/S6) | [publication-p1.4-review.md](publication-p1.4-review.md) | 三道 gate 闭环；S6 Major 已修；六轮 Human Review 与 trained/imported lifecycle 通过；1154 passed，双平台 CI 绿；已合并 | 2026-09-30 |
 | Publication P2.3 | [publication-p2.3-review.md](publication-p2.3-review.md) | F1/F2 Closed；代码Approve，等待Human Review | 2026-09-30 |
 | Publication P3.1 | [publication-p3.1-review.md](publication-p3.1-review.md) | F1–F3 Closed，R2 Approve；35 core / 1287全量 tests，9 subtests | 2026-10-01 |
-| Publication P3.4 HR follow-up | [publication-p3.4-hr-followup-review.md](publication-p3.4-hr-followup-review.md) | R1 F1 Closed、R2 Approve；34 GUI/最终8真实控制器通过，待真人复测 | 2026-10-01 |
-| Publication P3.4 | [publication-p3.4-review.md](publication-p3.4-review.md) | R1 Approve（gpt-6-luna/max），独立33 GUI通过；待真人HR | 2026-10-01 |
+| Publication P3.4 HR follow-up | [publication-p3.4-hr-followup-review.md](publication-p3.4-hr-followup-review.md) | R1 F1 Closed、R2 Approve；34 GUI/最终8真实控制器通过，用户真人复测通过 | 2026-10-01 |
+| Publication P3.4 | [publication-p3.4-review.md](publication-p3.4-review.md) | R1 Approve（gpt-6-luna/max），独立33 GUI通过；用户HR通过 | 2026-10-01 |
 | Publication P3.3 | [publication-p3.3-review.md](publication-p3.3-review.md) | R1 F1–F3 Closed；R2 Approve（gpt-6-luna/max），独立41/1strict xfail | 2026-10-01 |
 | Publication P3.2 | [publication-p3.2-review.md](publication-p3.2-review.md) | R2条件性通过；F1/F2 Accepted Limitation（用户授权），失败数值保留 | 2026-10-01 |
 | Publication P2.2 | [publication-p2.2-review.md](publication-p2.2-review.md) | F1/F2 Closed；复审 approve；1207 tests/9 subtests | 2026-09-30 |

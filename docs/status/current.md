@@ -1,8 +1,8 @@
-> Publication工作树（2026-10-01）：当前P3.4 HR反馈修复已实现，34 GUI定向及真实时序控制器最终8项通过，Independent Review R2 Approve（F1 Closed），等待用户修复复测；无handoff（用户本轮明确免除）。P3.3已集成38f6de5/push；P3.4实现4e4fe2d，全量1324 passed/1 strict xfailed/9subtests，33GUI定向与frozen verifier通过。Independent Review已Approve（gpt-6-luna/max），已按用户授权准备[省赛P011/P014测试工程](../notes/provincial-ui-test-2026-10-01.md)，含全片运动学/20秒M0拟合；省赛权重/原训练标签待Windows提供。按[P3.4计划](../../publication/plans/p3.4-fit-ui.md)发起真人HR，停止等反馈，不提前集成/P3收尾或进入P4。默认M1历史限制保持Accepted Limitation。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-01）：P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。停止在P3，等待用户授权P4；P4–P6未启动。最终UI定向34 passed，真实TimingActions最终8 passed；此前全量1324 passed/1 strict xfailed/9 subtests及frozen verifier通过。用户本轮免除handoff。省赛权重/标签待Windows提供，测试工程说明见[本地数据](../notes/provincial-ui-test-2026-10-01.md)。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 
-> Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线权威入口为[publication/STATUS.md](../../publication/STATUS.md)。P0/P1/P2完成，P2.3独立复审Approve、用户接受当前增量并授权收尾；角运动tip+fixed pivot、辅助诊断、可调SG/四页图/immutable保存均已交付。最终全量1251 tests/9subtests、证据校验通过；publication已--no-ff集成（99f34b0），另会话Windows取消修复补充47项通过；图表外观改善为非阻断事项。用户已授权P3；P3.1已完成（独立复审Approve、最终1287 tests/9subtests），P3.2实现checkpoint（23950c8），48fit覆盖但E3仅30/48、E2 47/48，R2条件性通过，F1/F2 Accepted Limitation；用户授权继续P3.3/P3.4，后续每subphase先建mini-plan；本页main状态不变。Windows门禁仍延期至P6前。
+> Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线P0–P3已交付，P3 Human Review通过并授权收尾，下一步等待用户P4指令，每subphase先建mini-plan。Windows门禁仍延期至P6前；详见[publication/STATUS.md](../../publication/STATUS.md)。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
