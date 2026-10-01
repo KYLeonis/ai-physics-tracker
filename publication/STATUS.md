@@ -2,9 +2,34 @@
 
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0/P1/P2完成；P2.3用户于2026-10-01确认图表已出现、当前增量可交付并明确授权收尾。Independent Review全部finding Closed、最终Approve；最终验证1251 tests/9subtests及冻结证据通过；--no-ff merge `99f34b0`已完成，提交最终状态后推送。** 当前角运动为tip + fixed pivot，辅助role仅诊断；默认SG9/3，支持显式7/3、5/2及自定义窗口/阶数，配置随结果保存。
-- 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
-- Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
+- 当前：**P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。停止在P3，等待用户授权P4；P4–P6未启动。**
+- Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P3 closeout — 2026-10-01
+
+- 用户“通过，收尾”确认P3.4整体交付及四项UI修复。原始tip θ + fixed pivot → 同Qt-free M0/M1 core → 异步拟合/取消 → immutable结果/重开；Normal/Advanced同配置同请求。
+- 当前代码证据：此前全量1324 passed / 1 strict xfailed / 9 subtests；最终UI定向34 passed（25.64s），真实TimingActions最终8 passed（18.92s）。冻结证据15文件/48正式fit行/2轨迹通过，审查finding全部Closed。文档收尾未重跑数值优化。
+- AC核对：forward/objective、synthetic显式高精度恢复、integration/energy、选样/weights、后台取消/失败/stale、配置与结果读回及Normal/Advanced同core已验证。历史回归按[ADR-0020](../docs/decisions/0020-explicit-fit-precision-and-historical-regression-limit.md)裁定为Accepted Limitation：E3 30/48、E2 47/48，strict xfail不计为数值通过。
+- 运行命令/体验步骤：[P3.4交付计划](plans/p3.4-fit-ui.md)；[省赛本地测试工程](../docs/notes/provincial-ui-test-2026-10-01.md)保留，权重/标签待Windows提供。用户本轮明确无需handoff。
+- Git集成：收尾文档提交后执行--no-ff合并与push，实际merge记录随后补入。
+
+## P3.4 真人反馈修复 checkpoint（2026-10-01）
+
+- 用户实际跑通P011 M0/M1后报告：时序确认入口在拟合页不可见、后台状态不明确、模型曲线难区分、JSON诊断不直观。当前修复仅GUI展示：拟合页直接复用原Use approximate timing确认，busy动态等待条/耗时/真实start数；设置滚动区与240px最小图高，异色/实线虚线、小透明观测点，拟合区间固定X范围与单独M1−M0预测差值（degree）；参数表/RMSE柱图、逐start cost星标/结果表，JSON移到Technical details。
+- 34项GUI定向通过（最终25.64s），真实TimingActions最终8项通过（18.92s），包含时序入口/验证中禁用/解除、后台等待条、已知模型差值、源时间X范围与诊断表；无算法/schema/源数据改动，不重复全量。Independent Review R1时序pending接口finding已修复，R2 Approve；真人修复复测已获用户“通过，收尾”确认。用户明确本轮不写handoff。
+- 下一步：完成已授权的P3集成/push后停止；P4未开始。
+
+## P3.4 HR 本地数据准备（2026-10-01）
+
+- 用户授权复用省赛成功结果，明确同意P011/P014的near-CFR平均FPS近似。两个独立工程在ignored `provincial_ui_test/`，视频/四点CSV/TOML/训练provenance字节SHA一致；不改旧科研原件或test1/test2。
+- P011：3344有效θ、3250ω/energy；P014：3077有效θ、2976ω/energy。各存全片Kinematics及释放后20秒/601帧M0 success，RMSE约0.02203917/0.01154777rad。typed保存重开/immutable读回有效，两工程真实payload的Qt panel offscreen检查通过。
+- 真正省赛snapshot-best-055权重/177帧labeled-data在Windows待用户提供；当前只导入历史推理，不虚构trained/compatible模型。操作见[测试数据说明](../docs/notes/provincial-ui-test-2026-10-01.md)；用户真人HR已通过，本地工程保留用于后续UI测试。
+
+## P3.4 delivery checkpoint（2026-10-01）
+
+- 工作分支codex/ejp-p3-4-fit-ui，base38f6de5；实现4e4fe2d。Normal/Advanced同FitOptions/core，明确固定IC/精度，两页、overlay/raw residual/full RMSE/参数与逐start诊断，historical/stale读回、源帧、取消/迟到清理及SaveAs守卫。
+- 主全量1324 passed/1 strict xfailed/9subtests（186.76s），33GUI定向通过，frozen evidence15/48/2与diff通过。Independent Review R1 Approve（gpt-6-luna/max，独立33 GUI /24.09s、frozen verifier通过）；该checkpoint当时待HR；现用户HR通过并授权P3收尾。
+- [mini-plan及真人验收步骤](plans/p3.4-fit-ui.md)。P3.3已集成38f6de5并push；main未修改。
 
 ## P3.3 delivery（2026-10-01）
 
@@ -102,7 +127,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P3.3复审通过，集成/push后执行[P3.4 mini-plan](plans/p3.4-fit-ui.md)：接入ODE fitting UI、取消/历史读回/迟到清理，offscreen与Independent Review通过后给用户真实HR。P3.2 Accepted Limitation保持明示；P3结束后停止，不开始P4。**
+**停止在P3，等待用户明确授权P4。下一会话读AGENTS → 本页 → PHASE_PLAN P4 → requirements §8，先建立P4.1 mini-plan（Context Pack/Review Gate）再实施。P4–P6未启动。Windows G1–G4进入P6前必须完成；训练权重/标签待用户从Windows提供。**
 
 ## P2.1 delivery (2026-09-30)
 

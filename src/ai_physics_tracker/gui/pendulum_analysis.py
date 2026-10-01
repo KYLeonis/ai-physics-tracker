@@ -346,6 +346,7 @@ class PendulumAnalysisActions(QObject):
         super().__init__(window)
         self.window = window
         self.panel = PendulumAnalysisPanel(window)
+        self.container = None
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pendulum-analysis")
         self._future: Future | None = None
         self._cancel = Event()
@@ -409,7 +410,7 @@ class PendulumAnalysisActions(QObject):
             return
         session, video_id = self.window.analysisSession, self.window.activeVideoId
         experiment = next((e for e in session.project.experiments if e.video_id == video_id), None) if session else None
-        self.panel.setVisible(experiment is not None)
+        (self.container if self.container is not None else self.panel).setVisible(experiment is not None)
         self.window.chartActions.panel.setVisible(experiment is None)
         if experiment is None:
             return
