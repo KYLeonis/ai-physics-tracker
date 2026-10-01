@@ -177,4 +177,4 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 | bf8f0c5 | 4d4e3e9 | 共用TaskHandle强杀后的退出回收；初版有界异常方案随后被下一提交替代 |
 | 8a7d90d | 6323e11 | 最终kill后native join，保留原取消接口；避免Windows退出异步导致取消后仍存活。代码与测试字节和main source一致；本线47项task/external-worker/analysis通过 |
 
-main复审记录位于source `842460c:docs/reviews/task-cancel-windows-review.md`，最终Approve、两项Closed。最终Windows/macOS远程CI由该修复会话继续确认；本记录不把待完成的远程运行写成通过，不影响用户已接受的P2交付。
+main复审记录位于source `842460c:docs/reviews/task-cancel-windows-review.md`，最终Approve、两项Closed。最终远程CI已确认：main [36813075358](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813075358)（d857e22）与publication [36813371127](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813371127)（02e3afd）均Windows/macOS通过；本修复会话在论文工作树补充54项取消相关定向测试通过。修复闭环完成，P2已收尾；等待用户P3指令。
