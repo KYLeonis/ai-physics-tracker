@@ -99,3 +99,7 @@ v1与legacy冻结字节和历史golden不变；当前新计算采用 [student-de
 - 同一已有direct SG核心按连续QC-valid、均匀源帧段求导；每段长度至少window，边缘window//2帧标记。uniform/branch/QC/gap规则不变，无插值/预平滑。
 - 更短窗允许较短段产生局部ω/同帧相图/参考能量，通常也更敏感于噪声；界面显示可求导点数、窗时间跨度、边缘估计数量及实际使用的参数，不宣称缩窗改善精度。
 - 编辑设置需Compute才应用，旧图仍显示保存参数；读回历史结果恢复参数，版本升级或输入变化stale。SG参数不改变周期/tail/拟合资格。
+
+## 10. 显式拟合精度与已接受历史复现限制（2026-10-01）
+
+用户批准继续P3.3/P3.4，见[ADR-0020](../../docs/decisions/0020-explicit-fit-precision-and-historical-regression-limit.md)。冻结文件和容差不变；E3 30/48、E2 47/48失败保留。产品提供明示High precision 2e−10/2e−12、Historical precision 2e−7/2e−9和自定义请求，实际override进入配置/摘要；仅高精度synthetic恢复通过，未宣称默认历史参数恢复通过。
