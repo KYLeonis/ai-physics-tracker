@@ -91,6 +91,7 @@ class TrackingActions(QObject):
         self.panel.trainRequested.connect(self.train)
         self.panel.primaryActionRequested.connect(self._onCardAction)
         self.panel.secondaryActionRequested.connect(self._onCardAction)
+        window.workflowHeader.actionRequested.connect(self._onCardAction)
         self.panel.inferRequested.connect(self.infer)
         self.panel.cancelRequested.connect(self.cancel)
         self.panel.runSelected.connect(self.showLog)
@@ -139,6 +140,9 @@ class TrackingActions(QObject):
         session = self.window.analysisSession
         video_id, track_id = self.window.activeVideoId, self.window.selectedTrackId
         key = (id(session.project) if session else None, video_id, track_id, self.pending,
+               getattr(self.window, "_workspace", "acquire"),
+               bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy),
+               bool(getattr(self.window, "experimentInferenceActions", None) and self.window.experimentInferenceActions.busy),
                self.panel.selectedTrainingRunId(),
                session.can_measure(video_id) if session and video_id else False,
                self.window.projectActions.busy,
@@ -174,8 +178,7 @@ class TrackingActions(QObject):
         # 在按钮层提前禁用并说明,而不是点击后才在 activity 区闪一条错误;
         # joint 训练/推理属于 P1.3/P1.4,当前版本 bound track 尚无 AI 路径。
         bound_reason = (
-            "Bound to pendulum experiment — single-track AI disabled "
-            "(joint training comes in a later phase)"
+            "Pendulum experiment — use joint training or an imported teacher model"
             if (
                 session is not None
                 and track_id is not None
@@ -325,6 +328,7 @@ class TrackingActions(QObject):
                 self.panel.setTaskCard(None)
                 self.window.workflowHeader.setStatus(
                     "No project", "Current trajectory: —", None)
+                self.window.workflowHeader.setTaskCard(None)
                 self._clear_candidate_preview()
                 return
             state = self._workflow_state(session, track_id, runs)
@@ -336,6 +340,17 @@ class TrackingActions(QObject):
                 # 审核器可从持久化批次恢复；重新投影以带上当前序号与帧号。
                 state = self._workflow_state(session, track_id, runs)
             card = select_task_card(state)
+            experiment = self.window.currentPendulumExperiment()
+            if experiment is not None:
+                from ai_physics_tracker.application.publication_workflow import publication_task_card
+                model_actions = getattr(self.window, "modelActions", None)
+                joint_actions = getattr(self.window, "experimentInferenceActions", None)
+                activity = (model_actions.activity_text if model_actions and model_actions.busy
+                            else "Joint inference is running" if joint_actions and joint_actions.busy
+                            else state.execution.kind.replace("_", " ") + " is running" if state.execution.busy else "")
+                card = publication_task_card(session, experiment, state,
+                    getattr(self.window, "_workspace", "acquire"), activity=activity)
+            self.window.workflowHeader.setTaskCard(card if experiment is not None else None)
             if state.failed_run_id is not None:
                 failed_run = next(
                     (r for r in runs if r.run_id == state.failed_run_id), None)
@@ -707,12 +722,31 @@ class TrackingActions(QObject):
         if action_id == "view_analysis":
             window.setWorkspace("analysis")
             return
+        if action_id in ("view_setup", "view_acquire"):
+            window.setWorkspace("setup" if action_id == "view_setup" else "acquire")
+            return
+        if action_id == "compute_pendulum":
+            window.setWorkspace("analysis")
+            window.pendulumAnalysisActions.compute()
+            return
+        if action_id == "import_teacher":
+            window.projectActions.importDlcModel()
+            return
+        if action_id == "view_history":
+            window.setWorkspace("acquire")
+            if not self.panel.resultsToggleButton.isChecked():
+                self.panel.resultsToggleButton.click()
+            return
         if action_id == "update_charts":
             window.setWorkspace("analysis")
             window.chartActions.recompute()
             return
         if action_id == "cancel_task":
-            if self.pending:
+            if getattr(window, "modelActions", None) and window.modelActions.busy:
+                window.modelActions.cancel()
+            elif getattr(window, "experimentInferenceActions", None) and window.experimentInferenceActions.busy:
+                window.experimentInferenceActions.cancel()
+            elif self.pending:
                 self.cancel()
             elif window.frameSelectionActions.busy:
                 window.frameSelectionActions.cancel()

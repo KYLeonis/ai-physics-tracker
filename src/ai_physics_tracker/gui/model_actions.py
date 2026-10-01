@@ -89,6 +89,8 @@ class ModelActions(QObject):
     def _set_activity(self, text: str, *, running: bool | None = None) -> None:
         self._activity_text = text
         if self._panel is not None:
+            self.window.trackingActions._context_key = None
+            self.window.trackingActions.refresh()
             self._panel.setActivity(text)
             # running 缺省跟随当前 busy;终态文案(Completed/Failed/Cancelled)
             # 由调用方传 running=False,避免 reset 顺序把 Cancel 留在可用态

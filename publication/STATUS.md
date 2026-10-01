@@ -1,8 +1,8 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-01。
+- 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P4.1/P4.2/P4.3 Independent Review全部通过，用户确认最终HR通过。P5已获授权；按用户“稍等”优先处理的Windows CI修复已完成，最终论文分支双平台CI通过。P5停在mini-plan入口、无代码实现，P6未启动。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍为ADR-0020 Accepted Limitation，不计为数值通过。**
+- 当前：**P0–P4完成；P5实施中，从[P5.1 mini-plan](plans/p5.1-workflow-integration.md)开始。用户授权连续推进P5各subphase，到最终HR再停止。Windows CI修复已闭环，P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
 
 ## Windows CI UTF-8 repair — 2026-10-01

@@ -41,6 +41,7 @@ class WorkflowHeader(QWidget):
     """窗口顶部常驻头：工作区切换 + 上下文/轨迹/分析状态。"""
 
     workspaceRequested = Signal(str)
+    actionRequested = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -81,6 +82,18 @@ class WorkflowHeader(QWidget):
         status_column.addLayout(status_row)
         status_column.addWidget(self.limitationsLabel)
         status_column.addWidget(self.taskStripLabel)
+        self.nextStepLabel = QLabel()
+        self.nextStepLabel.setWordWrap(True)
+        status_column.addWidget(self.nextStepLabel)
+        next_actions = QHBoxLayout()
+        self.nextStepButtons = [QPushButton() for _ in range(3)]
+        for button in self.nextStepButtons:
+            button.clicked.connect(lambda _checked=False, b=button:
+                                   self.actionRequested.emit(b.property("actionId")))
+            next_actions.addWidget(button)
+            button.hide()
+        next_actions.addStretch()
+        status_column.addLayout(next_actions)
 
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.VLine)
@@ -103,6 +116,20 @@ class WorkflowHeader(QWidget):
     def setWorkspace(self, workspace: str) -> None:
         for key, button in self._buttons.items():
             button.setChecked(key == workspace)
+
+    def setTaskCard(self, card) -> None:
+        """常驻下一步；完整Acquire说明与历史仍由原任务面板显示。"""
+        self.nextStepLabel.setText((card.title + (" · " + card.explanation[0] if card.explanation else "")) if card else "")
+        self.nextStepLabel.setToolTip("\n".join(card.explanation) if card else "")
+        actions = ([card.primary] if card and card.primary else []) + (list(card.secondary) if card else [])
+        for index, button in enumerate(self.nextStepButtons):
+            button.setVisible(index < len(actions))
+            if index < len(actions):
+                spec = actions[index]
+                button.setText(spec.label)
+                button.setProperty("actionId", spec.action_id)
+                button.setEnabled(spec.enabled)
+                button.setToolTip(spec.reason or "")
 
     def setAnalysisChip(self, state: str | None) -> None:
         self.analysisChipLabel.setText(

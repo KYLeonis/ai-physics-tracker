@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-01）：P0–P4完成，P4独立/真人验收通过。用户优先处理的Windows CI修复已闭环：6a20ac6/2e8b5a9/188bd47，R4 Approve；集成0feb196的run36887110342双平台success（Win1336/Mac1338passed，各1既有strictxfail）。P5已获授权，保留在P5.1 mini-plan入口、无代码实现；P6未启动。ADR-0020历史限制与P6前Windows门禁保留。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-02）：P0–P4完成；Windows CI修复已闭环。P5实施中，先建立[P5.1 mini-plan](../../publication/plans/p5.1-workflow-integration.md)，用户授权推进到最终HR。P6未启动；ADR-0020历史限制与P6前Windows真机门禁保留。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 
