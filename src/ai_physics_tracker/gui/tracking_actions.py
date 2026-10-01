@@ -732,6 +732,9 @@ class TrackingActions(QObject):
         if action_id == "import_teacher":
             window.projectActions.importDlcModel()
             return
+        if action_id == "export_scientific":
+            window.projectActions.exportScientificResults()
+            return
         if action_id == "view_history":
             window.setWorkspace("acquire")
             if not self.panel.resultsToggleButton.isChecked():

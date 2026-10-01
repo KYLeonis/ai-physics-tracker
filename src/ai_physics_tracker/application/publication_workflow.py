@@ -38,9 +38,12 @@ def publication_analysis_facts(session: ProjectSession, experiment: PendulumExpe
     for record in sorted(records, key=lambda r: r.created_at):
         latest_by_kind[record.kind] = record
     current = [r for r in latest_by_kind.values() if r.freshness == "valid"
-               and r.execution_status in ("success", "insufficient_data") and r.payload is not None]
+               and r.execution_status in ("success", "insufficient_data", "nonconverged") and r.payload is not None]
     if any(r.execution_status == "insufficient_data" for r in current):
         limits.append("Saved kinematics is partial — some derivatives or energy are unavailable")
+    for record in latest_by_kind.values():
+        if record.execution_status in ("nonconverged", "failed", "cancelled"):
+            limits.append(f"Latest saved {record.kind}: {record.execution_status}; inspect its diagnostics before interpreting")
     if any(r.freshness == "stale" for r in latest_by_kind.values()):
         limits.append("Some saved results are stale — recompute their page before exporting")
     state = "latest" if current else "needs_update"
@@ -81,7 +84,8 @@ def publication_task_card(session: ProjectSession, experiment: PendulumExperimen
                         ("Kinematics computes θ / ω / phase / reference energy; ODE fitting uses raw θ. Auxiliary landmarks do not gate either.",
                          "Saved results retain their own settings; recompute the relevant page after changing inputs."),
                         ActionSpec("compute_pendulum", "Compute / update kinematics"),
-                        (ActionSpec("view_acquire", "Correct tip observations"),))
+                        (ActionSpec("export_scientific", "Export scientific results…"),
+                         ActionSpec("view_acquire", "Correct tip observations")))
     attempts = [r for r in session.tracking_runs()
                 if r.config.get("experiment_id") == str(experiment.experiment_id)]
     last_attempt = max(attempts, key=lambda r: r.created_at, default=None)

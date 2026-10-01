@@ -51,6 +51,21 @@ def test_first_save_reopen_restores_points_frame_and_paused_state(opened, qtbot,
     assert window.videoView.marker_count() == 1
 
 
+def test_late_cancel_after_output_publication_still_reports_saved_directory(opened, tmp_path):
+    output = tmp_path / "published-output"
+    output.mkdir()
+    completed = []
+    actions = opened.projectActions
+    actions._run(lambda _cancel: output, completed.append, cancellable=True,
+                 completion_after_cancel=True, progress_label="Exporting…")
+    actions._future.result(timeout=5)
+    # worker已原子发布并返回：晚到的Cancel不能假称输出被撤销。
+    actions._cancel.set()
+    actions._poll()
+    assert completed == [output] and output.is_dir()
+    assert not actions.busy
+
+
 def test_reopen_uses_saved_fps_zone_and_does_not_request_clamped_old_spinbox(opened, qtbot, tmp_path):
     session = opened._annotation_session.detached()
     timeline = replace(session.project.timelines[0], fps_nominal=20.0, working_zone=(1, 3))
@@ -218,4 +233,3 @@ class TestAutosave:
         window._register_mark_for_autosave()  # 第 10 个
         assert calls == ["10 new annotations"]
         assert window._marks_since_autosave == 0
-

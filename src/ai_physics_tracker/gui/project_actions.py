@@ -31,6 +31,7 @@ class ProjectActions(QObject):
         self.busy = False
         self.close_allowed = False
         self._cancellable = False
+        self._completion_after_cancel = False
         self._was_annotating = False
         self._prior_session: ProjectSession | None = None
         self._cancel = Event()
@@ -49,6 +50,8 @@ class ProjectActions(QObject):
             ("Import DLC Model…", None, self.importDlcModel),
             ("Save", QKeySequence.StandardKey.Save, self.save),
             ("Save as…", QKeySequence.StandardKey.SaveAs, self.saveAs),
+            ("Save portable project copy…", None, self.savePortableCopy),
+            ("Export scientific results…", None, self.exportScientificResults),
             ("Relink video…", None, self.relinkVideo),
             ("Close project", None, self.closeProject),
         )
@@ -206,6 +209,14 @@ class ProjectActions(QObject):
             self.saveAs(after)
             return
         self._saveCandidate(None, after)
+
+    def exportScientificResults(self) -> None:
+        from ai_physics_tracker.gui.scientific_export import export_scientific_results
+        export_scientific_results(self.window)
+
+    def savePortableCopy(self) -> None:
+        from ai_physics_tracker.gui.scientific_export import export_portable_project
+        export_portable_project(self.window)
 
     def autosave(self, reason: str, after: Callable[[], None] | None = None) -> None:
         """静默自动保存（防丢锚点）：无进度对话框、不打断标注模式与播放。
@@ -382,12 +393,15 @@ class ProjectActions(QObject):
     def _run(
         self, work: Callable, completion: Callable, *, cancellable: bool,
         failure_message: Callable[[str], object] | None = None,
+        progress_label: str | None = None,
+        completion_after_cancel: bool = False,
     ) -> None:
         if self.busy:
             return
         self.busy = True
         self._failure_message = failure_message
         self._cancellable = cancellable
+        self._completion_after_cancel = completion_after_cancel
         self._cancel = Event()
         self._completion = completion
         self._prior_session = self.window._annotation_session
@@ -397,7 +411,7 @@ class ProjectActions(QObject):
         self.window.centralWidget().setEnabled(False)
         for action in self.actions:
             action.setEnabled(False)
-        self._progress = QProgressDialog("Opening project / checking media identity…" if cancellable else "Saving project…",
+        self._progress = QProgressDialog(progress_label or ("Opening project / checking media identity…" if cancellable else "Saving project…"),
                                         "Cancel" if cancellable else "", 0, 0, self.window)
         self._progress.setWindowModality(Qt.WindowModality.WindowModal)
         if cancellable:
@@ -426,7 +440,7 @@ class ProjectActions(QObject):
             action.setEnabled(True)
         try:
             value = future.result()
-            if self._cancel.is_set():
+            if self._cancel.is_set() and not self._completion_after_cancel:
                 if isinstance(value, PreparedProject):
                     self.executor.submit(value.close)
             elif completion is not None:
