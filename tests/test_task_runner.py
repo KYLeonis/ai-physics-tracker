@@ -149,3 +149,55 @@ def test_task_runner_forced_cancellation_of_hanging_worker() -> None:
     assert not handle.is_alive()
     # 验证强杀后 poll_messages 不会因 EOFError 崩溃
     handle.poll_messages()
+
+
+def test_cancellation_waits_for_delayed_os_exit_after_kill():
+    from threading import Event
+    from ai_physics_tracker.infrastructure.task_runner import TaskHandle
+
+    class DelayedExitProcess:
+        # 模拟Windows已收到强杀但尚未完成I/O退出；一秒不足以确认回收。
+        alive = True
+        killed = False
+
+        def join(self, timeout=None):
+            if self.killed and timeout >= 2.0:
+                self.alive = False
+
+        def is_alive(self):
+            return self.alive
+
+        def terminate(self):
+            pass
+
+        def kill(self):
+            self.killed = True
+
+    process = DelayedExitProcess()
+    cancel = Event()
+    handle = TaskHandle(uuid4(), process, None, cancel)
+    handle.cancel(timeout_s=0)
+    assert cancel.is_set() and not handle.is_alive()
+
+
+def test_cancellation_reports_failure_if_os_process_remains_alive():
+    from threading import Event
+    import pytest
+    from ai_physics_tracker.infrastructure.task_runner import TaskHandle
+
+    class UnreapedProcess:
+        def join(self, timeout=None):
+            pass
+
+        def is_alive(self):
+            return True
+
+        def terminate(self):
+            pass
+
+        def kill(self):
+            pass
+
+    handle = TaskHandle(uuid4(), UnreapedProcess(), None, Event())
+    with pytest.raises(TimeoutError, match='did not exit'):
+        handle.cancel(timeout_s=0)
