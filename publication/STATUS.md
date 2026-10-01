@@ -6,6 +6,12 @@
 - 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
+## P3.4 delivery checkpoint（2026-10-01）
+
+- 工作分支codex/ejp-p3-4-fit-ui，base38f6de5；实现4e4fe2d。Normal/Advanced同FitOptions/core，明确固定IC/精度，两页、overlay/raw residual/full RMSE/参数与逐start诊断，historical/stale读回、源帧、取消/迟到清理及SaveAs守卫。
+- 主全量1324 passed/1 strict xfailed/9subtests（186.76s），33GUI定向通过，frozen evidence15/48/2与diff通过。Independent Review R1 Approve（gpt-6-luna/max，独立33 GUI /24.09s、frozen verifier通过）；Human Review未通过，P3.4/P3未关闭，不集成。
+- [mini-plan及真人验收步骤](plans/p3.4-fit-ui.md)。P3.3已集成38f6de5并push；main未修改。
+
 ## P3.3 delivery（2026-10-01）
 
 - Detached adopted tip + fixed pivot → rawθ/QC/weights/fixed IC → M0/M1同core，explicit fit interval保持release为IC t=0。options/软件版本/逐start/config/signature/完整预测与残差原子保存，取消/迟到/换根拒收，Save As/Undo/重开验证。
@@ -102,7 +108,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P3.3复审通过，集成/push后执行[P3.4 mini-plan](plans/p3.4-fit-ui.md)：接入ODE fitting UI、取消/历史读回/迟到清理，offscreen与Independent Review通过后给用户真实HR。P3.2 Accepted Limitation保持明示；P3结束后停止，不开始P4。**
+**P3.4已实现/Independent Review Approve，按[mini-plan](plans/p3.4-fit-ui.md)给用户最短启动命令与5项真人HR步骤，停止等待反馈。HR通过后才集成/push并关闭P3；不开始P4。P3.2 Accepted Limitation保持明示。**
 
 ## P2.1 delivery (2026-09-30)
 

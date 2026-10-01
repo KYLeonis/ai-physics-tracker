@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-01）：P3.3完成，R1三项Closed/R2 Approve；全量1311 passed/1 strict xfailed/9subtests，独立41/1xfail。执行已提前建立的[P3.4 mini-plan](../../publication/plans/p3.4-fit-ui.md)，最终等待用户HR。默认M1历史限制保持Accepted Limitation；P3整体未结束。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-01）：P3.3已集成38f6de5/push；P3.4实现4e4fe2d，全量1324 passed/1 strict xfailed/9subtests，33GUI定向与frozen verifier通过。Independent Review已Approve（gpt-6-luna/max），按[P3.4计划](../../publication/plans/p3.4-fit-ui.md)发起真人HR，停止等反馈，不提前集成/P3收尾或进入P4。默认M1历史限制保持Accepted Limitation。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 

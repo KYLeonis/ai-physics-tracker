@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-01）：P0/P1/[P2](plans/p2-pendulum-analysis.md)完成；P2.3数值/保存/图表、Independent Review及用户整体交付验收通过，已--no-ff集成（99f34b0）。用户已授权进入P3，[P3.1](plans/p3.1-forward-objective.md)已完成并独立复审通过；[P3.2计划](plans/p3.2-bounded-multistart-fit.md)及[handoff](plans/p3-handoff-2026-10-01.md)已准备。图表外观改善记录为非阻断后续事项。
+当前（2026-10-01）：P0/P1/[P2](plans/p2-pendulum-analysis.md)完成；P2.3数值/保存/图表、Independent Review及用户整体交付验收通过，已--no-ff集成（99f34b0）。用户已授权进入P3，[P3.1](plans/p3.1-forward-objective.md)已完成并独立复审通过；P3.2以Accepted Limitation收口，P3.3已完成并集成；[P3.4计划/真人验收](plans/p3.4-fit-ui.md)的GUI已实现/Independent Review Approve，等待Human Review。图表外观改善记录为非阻断后续事项。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
