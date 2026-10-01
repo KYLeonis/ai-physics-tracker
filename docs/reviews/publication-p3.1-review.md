@@ -3,7 +3,7 @@
 - Subphase / Issue：P3.1 — Forward and objective
 - Review 范围（commits / 分支 / 文件）：`970bd95..7d8ee0b`，分支 `codex/ejp-p3-1-forward-objective`；`pendulum_ode.py`、`test_pendulum_ode.py`、P3.1 mini-plan 与 publication status 同步。
 - Context（spec / ADR / plan 路径）：[P3.1 mini-plan](../../publication/plans/p3.1-forward-objective.md)；[scientific-profiles §2–4/6/8–9](../../publication/spec/scientific-profiles.md)；[platform-requirements §7](../../publication/spec/platform-requirements.md)；[evidence README E2](../../publication/evidence/README.md)；`CODE_STANDARD.md` §8–9。
-- 轮次：R1 2026-10-01（首轮）
+- 轮次：R1 2026-10-01（首轮）· R2 2026-10-01（F1–F3 修复复审）
 - Reviewer：fresh-context 独立只读审查；未修改 `src/`、`tests/` 或产品数据。
 
 ## Checklist
@@ -35,10 +35,10 @@
 - **Impact**：P3 请求可以把 t=0 放在没有源观测/源时间的帧上，违反 platform-requirements §4.2 的“选择有效释放帧 r”与 scientific-profiles §2 的 release-relative 身份语义；后续选样、`N_interval` 和 fit eligibility 会基于一个未存在的 release frame 计算。
 - **Recommendation**：在 `ObjectiveRequest.__post_init__` fail-closed 要求 `release_frame_index in series.frame_indices`，并保留已有的 release 行时间为 0 检查；增加缺失 release 的回归测试。
 - **Decision**：Fix Now — 收敛已复现的输入/失败边界，增加对应回归。
-- **Fix commit**：N/A
+- **Fix commit**：`3278ef8`
 - **Verification**：修复后core tests 35 passed；缺失source release拒绝、缺失release观测但source存在允许。
-- **Re-review**：N/A
-- **Status**：Open
+- **Re-review**：R2 确认 `ObjectiveRequest.__post_init__` 在 release frame 不属于 source series 时 fail-closed；source 中存在但观测被 mask 的 release frame 仍按约定允许。
+- **Status**：Closed
 
 ### F2 — 错误 IC 类型在请求构造边界泄漏 `AttributeError`
 
@@ -47,10 +47,10 @@
 - **Impact**：无效请求没有在 Qt-free 输入边界被拒绝；应用/worker 可将类型错误当作未分类异常，不能按“needs explicit IC / invalid request”安全呈现或记录。该边界属于 CODE_STANDARD §8 和 scientific-profiles §6 的请求构造校验。
 - **Recommendation**：构造期先验证 `InitialCondition`（同时对 `AngularSeries`、`IntegrationSettings` 等协作者保持同样的类型边界），以 `ValueError` 点名字段；补充错误类型回归。
 - **Decision**：Fix Now — 收敛已复现的输入/失败边界，增加对应回归。
-- **Fix commit**：N/A
-- **Verification**：修复后core tests 35 passed；缺失source release拒绝、缺失release观测但source存在允许。
-- **Re-review**：N/A
-- **Status**：Open
+- **Fix commit**：`3278ef8`
+- **Verification**：修复后core tests 35 passed；错误IC/series/integration类型均构造期ValueError。
+- **Re-review**：R2 确认 `ObjectiveRequest` 对 `InitialCondition`、`AngularSeries`、`IntegrationSettings` 的错误类型统一返回结构化 `ValueError`；`simulate_pendulum` 对错误 collaborator 类型同样 fail-closed。
+- **Status**：Closed
 
 ### F3 — solver `RuntimeError` 未转为结构化 forward failure
 
@@ -59,14 +59,14 @@
 - **Impact**：积分器异常可越过 objective/后台调用边界，令一次候选评估中断整个 fit 流程；与 P3.1 AC2、platform-requirements §7.1 的“integration failure 独立状态、不能冒充成功”不一致。
 - **Recommendation**：在 solver 调用边界把预期数值求解异常（至少 `RuntimeError`，并保留原始消息）转换为结构化 failed result；增加 objective 与 full-trajectory 两条回归，确认 `cost_rad2 is None` 且失败状态保留。
 - **Decision**：Fix Now — 收敛已复现的输入/失败边界，增加对应回归。
-- **Fix commit**：N/A
-- **Verification**：首轮已复现；正常 SciPy 失败返回、非有限 prediction guard 与 1000 penalty 已由现有测试通过。
-- **Re-review**：N/A
-- **Status**：Open
+- **Fix commit**：`3278ef8`
+- **Verification**：修复后core tests 35 passed；RuntimeError在objective/full-trajectory两条路径保留failed与原消息、无cost/RMSE/部分预测。
+- **Re-review**：R2 以 monkeypatch solver `RuntimeError` 复核 objective 与 full-trajectory 两条路径：均返回 `failed`，保留原始消息，`cost_rad2`/`rmse_rad` 为 `None`，不返回部分预测。
+- **Status**：Closed
 
 ## 实际验证
 
-- `PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m pytest tests/test_pendulum_ode.py -q` → **30 passed**。
+- `PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m pytest tests/test_pendulum_ode.py -q` → **35 passed in 2.20s**。
 - `python3 scripts/verify_publication_evidence.py` → `local_files=15, formal_fit_rows=48, offline_trajectory_cases=2, external_sources=0`。
 - `git diff --check 970bd95..7d8ee0b` → 通过。
 - 独立探针确认：M0/M1 α₂=0、非均匀真实时刻、gap 连续积分、前 5 帧 IC、50/ceil/3Tref 门槛、ties-to-even 选样、权重与全帧 RMSE 分离、E2 P011/P014 两模型均通过；F1–F3 的负例如上。
@@ -79,11 +79,17 @@
 - 结论：**Request changes**；发现 3 个 Blocker，未宣布通过。
 - Findings 变化：新增 F1、F2、F3；关闭 —
 
-## Final Verdict（收口时填写）
+### R2 — 2026-10-01 · F1–F3 修复复审
+
+- 范围：修复提交 `3278ef8` 相对基线 `7d8ee0b`；只复核 F1–F3 对应代码、回归测试及其失败/允许边界。
+- 结论：**Approve**；35 项 `tests/test_pendulum_ode.py` 定向测试通过，三个 Blocker 均已关闭，未发现本范围内新增风险。
+- Findings 变化：F1 Closed；F2 Closed；F3 Closed。
+
+## Final Verdict
 
 - [ ] 通过（无未处置 Blocker）
-- [ ] 修改后通过（findings 按 Decision 处置完毕，复审确认）
+- [x] 修改后通过（findings 按 Decision 处置完毕，复审确认）
 - [ ] 需要重做（说明理由）
 
-- 最终结论（一句话）：R1 发现三个请求/失败边界 blocker；修复并由新的独立会话复审通过后才能收口。
-- 日期 / 依据轮次：2026-10-01 / R1
+- 最终结论（一句话）：R1 的 F1–F3 三个请求/失败边界 Blocker 已由 `3278ef8` 修复，R2 独立复审确认全部 Closed，结论 **Approve**。
+- 日期 / 依据轮次：2026-10-01 / R1 + R2

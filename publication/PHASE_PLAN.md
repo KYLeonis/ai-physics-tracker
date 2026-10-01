@@ -4,7 +4,7 @@
 
 > 2026-10-01：用户授权显式SG窗口/阶数覆盖，默认9/3与冻结profile不变；见[ADR-0019](../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。
 
-- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0/P1/P2完成；P2.3 Independent Review与用户整体交付验收通过、已--no-ff集成（99f34b0）；P3–P6 未启动；Windows验证经用户明确批准延期，进入P6前必过**。
+- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0/P1/P2完成；P2.3 Independent Review与用户整体交付验收通过、已--no-ff集成（99f34b0）；P3.1完成、P3整体进行中，P4–P6未启动；Windows验证经用户明确批准延期，进入P6前必过**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -128,7 +128,9 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P2.2 Derivative, phase and periods ✅ | SG9/3、gap/short segment、extrema各profile、过零period/tail | 解析及封存数据核对；无跨缺口周期、无虚假频率 |
 | P2.3 Energy and analysis UI ✅ | reference potential/specific-energy primitives、analysis adapter/charts、保存 | energy identity测试；学生能识别单位、缺口、来源与stale；Human Review收尾 |
 
-### P3 — Full-Trajectory ODE Fitting
+### P3 — Full-Trajectory ODE Fitting 🔄
+
+2026-10-01用户授权进入；[P3.1 mini-plan](plans/p3.1-forward-objective.md)已完成并独立复审Approve；[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)已准备，尚未实现。
 
 - **Goal**：以同一Qt-free core完成M0/M1全轨迹拟合与可追溯输出。
 - **Scope**：RHS/forward、sample/weights/IC/bounds/seeds、robust optimisation、FitRequest/Result、后台执行、Normal/Advanced UI、完整RMSE/overlay与诊断。
@@ -141,7 +143,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 | Subphase | 交付边界 | 完成判据 |
 | --- | --- | --- |
-| P3.1 Forward and objective | 两模型RHS、DOP853、IC、选样/weights、loss | synthetic和source golden unit checks通过；失败结构化，不访问GUI/文件 |
+| P3.1 Forward and objective ✅ | 两模型RHS、DOP853、IC、选样/weights、loss | synthetic和source golden unit checks通过；失败结构化，不访问GUI/文件 |
 | P3.2 Bounded multistart fit | bounds/seeds/M0 warm start、逐start诊断、full-grid输出 | 参数恢复与48行历史结果软件回归记录；没有用论文目标值调参“凑一致” |
 | P3.3 Application execution and persistence | snapshot请求、取消、代际、原子结果、stale与重开 | 注入取消/输入改变/失败不会提交部分或旧结果；配置round-trip |
 | P3.4 Fit UI | Normal M0/M1与Run fit、Advanced配置、overlay/RMSE/residual | 同core证明、Human Review完成自选视频拟合；P3收尾停止 |
