@@ -3,7 +3,7 @@
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P0/P1/P2完成；P2.3用户于2026-10-01确认图表已出现、当前增量可交付并明确授权收尾。Independent Review全部finding Closed、最终Approve；最终验证1251 tests/9subtests及冻结证据通过；--no-ff merge `99f34b0`已完成，提交最终状态后推送。** 当前角运动为tip + fixed pivot，辅助role仅诊断；默认SG9/3，支持显式7/3、5/2及自定义窗口/阶数，配置随结果保存。
-- P3–P6未启动；本阶段结束后停止，等待用户下一条指令。图表外观一般已记为非阻断改善事项，不在本轮追加实现。
+- 用户于2026-10-01授权进入P3；当前P3.1 Forward/objective进行中，分支`codex/ejp-p3-1-forward-objective`、base `970bd95`。实施前已建立[mini-plan](plans/p3.1-forward-objective.md)。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
 ## P1 planning
@@ -90,7 +90,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P2收尾后停止，等待用户授权进入P3。届时先核对集成分支/status，阅读P3 requirements、master plan与相关profile/IC契约，并在每个subphase进入前建立mini-plan。本次未开始P3规划或实现。**
+**执行P3.1 mini-plan：固定IC与DOP853 forward → 资格/选样/权重/objective → Independent Scientific Review与验证/集成。随后先建立P3.2 mini-plan再实现bounded multistart fit；P3.4 UI交付等待Human Review，P3收尾后停止。**
 
 ## P2.1 delivery (2026-09-30)
 
