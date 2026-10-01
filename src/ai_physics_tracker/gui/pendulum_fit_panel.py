@@ -5,10 +5,11 @@ import json
 from math import degrees
 
 import pyqtgraph as pg
-from PySide6.QtCore import Signal, QSignalBlocker
+from PySide6.QtCore import Signal, QSignalBlocker, Qt
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QScrollArea, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+    QProgressBar, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
 
 from ai_physics_tracker.application.pendulum_fit import FitOptions, HIGH_PRECISION
@@ -19,6 +20,7 @@ from ai_physics_tracker.domain.pendulum_ode import M0, M1, InitialCondition, Int
 class PendulumFitPanel(QWidget):
     frameRequested = Signal(int)
     settingsChanged = Signal()
+    timingRequested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -27,6 +29,12 @@ class PendulumFitPanel(QWidget):
         self._startIsDefault = True
         self.statusLabel = QLabel("No ODE fit yet", self)
         self.statusLabel.setWordWrap(True)
+        self.timingHint = QLabel(self); self.timingHint.setWordWrap(True)
+        self.timingButton = QPushButton("Use approximate timing…", self)
+        self.timingButton.clicked.connect(self.timingRequested)
+        self.timingHint.hide(); self.timingButton.hide()
+        self.progressBar = QProgressBar(self); self.progressBar.setRange(0, 0); self.progressBar.hide()
+        self.progressLabel = QLabel(self); self.progressLabel.hide()
         self.model = QComboBox(self)
         self.model.addItems(["Compare M0 + M1", "M0: linear damping"])
         self.precision = QComboBox(self)
@@ -101,29 +109,66 @@ class PendulumFitPanel(QWidget):
             plot = pg.PlotWidget(enableMenu=False)
             plot.setLabel("bottom", "Time from release", units="s"); plot.setLabel("left", ylabel, units="rad")
             plot.showGrid(x=True, y=True, alpha=.2); plot.addLegend()
+            plot.setMinimumHeight(240)
             for axis in ("left", "bottom"):
                 plot.getAxis(axis).enableAutoSIPrefix(False)
             self.plots[key] = plot
             for model, name, color in ((M0, "M0", "#00b8e4"), (M1, "M1", "#e69f00")):
-                item = plot.plot(pen=pg.mkPen(color, width=2) if key == "overlay" else None, name=name,
-                                 symbol="o" if key == "residual" else None, symbolSize=5)
+                item = plot.plot(pen=pg.mkPen(color, width=2.5, style=Qt.PenStyle.DashLine if model == M1 else Qt.PenStyle.SolidLine) if key == "overlay" else None, name=name,
+                                 symbol=("t" if model == M1 else "o") if key == "residual" else None, symbolSize=6, symbolBrush=color, symbolPen=None)
                 item.sigPointsClicked.connect(self._pointClicked); self.curves[key, model] = item
             page = QWidget(self.tabs); pageLayout = QVBoxLayout(page)
             message = QLabel("No fit yet — choose fixed IC and Run fit", page); message.setWordWrap(True)
             pageLayout.addWidget(message); pageLayout.addWidget(plot, 1)
             self.chartMessages[key] = message; plot.hide()
             self.tabs.addTab(page, title)
-        self.observations = self.plots["overlay"].plot(pen=None, symbol="o", symbolSize=5,
-            symbolBrush="#7787de", name="QC-valid raw θ")
+        self.differencePlot = pg.PlotWidget(enableMenu=False)
+        self.differencePlot.setMinimumHeight(240)
+        self.differencePlot.setLabel("bottom", "Time from release", units="s")
+        self.differencePlot.setLabel("left", "M1 − M0 prediction", units="deg")
+        self.differencePlot.showGrid(x=True, y=True, alpha=.2)
+        self.differenceCurve = self.differencePlot.plot(pen=pg.mkPen("#e69f00", width=2))
+        self.differencePlot.addItem(pg.InfiniteLine(pos=0, angle=0, pen=pg.mkPen("#888888")))
+        differencePage = QWidget(self.tabs); differenceLayout = QVBoxLayout(differencePage)
+        self.differenceHint = QLabel("Run Compare M0 + M1 to see their prediction difference", differencePage)
+        self.differenceHint.setWordWrap(True)
+        differenceLayout.addWidget(self.differenceHint); differenceLayout.addWidget(self.differencePlot, 1)
+        self.differencePlot.hide(); self.tabs.addTab(differencePage, "M1 − M0 difference")
+        self.observations = self.plots["overlay"].plot(pen=None, symbol="o", symbolSize=3, symbolPen=None,
+            symbolBrush=(180, 180, 180, 100), name="QC-valid raw θ")
+        self.observations.setZValue(-1)
         self.observations.sigPointsClicked.connect(self._pointClicked)
         self.details = QTextEdit(self); self.details.setReadOnly(True)
-        self.tabs.addTab(self.details, "Parameters / start diagnostics")
+        self.diagnostics = QTabWidget(self)
+        self.parameterTable = self._table(["Quantity", "Unit", "M0", "M1"])
+        self.rmsePlot = pg.PlotWidget(enableMenu=False)
+        self.rmsePlot.setLabel("left", "Full RMSE", units="rad")
+        self.rmsePlot.getAxis("bottom").setTicks([[(0, "M0"), (1, "M1")]])
+        parameterPage = QWidget(self); parameterLayout = QVBoxLayout(parameterPage)
+        parameterLayout.addWidget(self.parameterTable, 1); parameterLayout.addWidget(self.rmsePlot, 1)
+        self.diagnostics.addTab(parameterPage, "Parameters / RMSE")
+        self.startPlot = pg.PlotWidget(enableMenu=False)
+        self.startPlot.setLabel("left", "Robust objective cost", units="rad²")
+        self.startPlot.setLabel("bottom", "Start number (star = selected)"); self.startPlot.addLegend()
+        self.startTable = self._table(["Model", "Start", "Cost (rad²)", "Evaluations", "Outcome"])
+        startPage = QWidget(self); startLayout = QVBoxLayout(startPage)
+        startLayout.addWidget(self.startPlot, 1); startLayout.addWidget(self.startTable, 1)
+        self.diagnostics.addTab(startPage, "Multistart")
+        self.diagnostics.addTab(self.details, "Technical details")
+        self.tabs.addTab(self.diagnostics, "Parameters / start diagnostics")
         self.summaryLabel = QLabel(self); self.summaryLabel.setWordWrap(True)
         self.frameLabel = QLabel("Click an observation or residual to inspect its source frame", self)
         self.frameLabel.setWordWrap(True)
-        layout = QVBoxLayout(self); layout.addWidget(self.statusLabel); layout.addLayout(normal)
-        layout.addLayout(interval); layout.addWidget(self.icHint); layout.addWidget(self.precisionHint)
-        layout.addWidget(self.advancedButton); layout.addWidget(self.advanced)
+        layout = QVBoxLayout(self); layout.addWidget(self.statusLabel)
+        timingRow = QHBoxLayout(); timingRow.addWidget(self.timingHint, 1); timingRow.addWidget(self.timingButton)
+        layout.addLayout(timingRow)
+        settingsPage = QWidget(self); settingsLayout = QVBoxLayout(settingsPage)
+        settingsLayout.addLayout(normal); settingsLayout.addWidget(self.icHint); settingsLayout.addWidget(self.precisionHint)
+        settingsLayout.addWidget(self.advancedButton); settingsLayout.addWidget(self.advanced)
+        self.settingsScroll = QScrollArea(self); self.settingsScroll.setWidgetResizable(True)
+        self.settingsScroll.setMaximumHeight(240); self.settingsScroll.setWidget(settingsPage)
+        layout.addWidget(self.settingsScroll); layout.addLayout(interval)
+        layout.addWidget(self.progressLabel); layout.addWidget(self.progressBar)
         layout.addWidget(self.summaryLabel); layout.addWidget(self.tabs, 1); layout.addWidget(self.frameLabel)
         note = QLabel("Fits use adopted raw tip θ + fixed pivot; SG and auxiliary landmarks do not gate fitting. Lower RMSE alone does not prove quadratic damping or unique parameters.", self)
         note.setWordWrap(True); layout.addWidget(note)
@@ -141,6 +186,18 @@ class PendulumFitPanel(QWidget):
             self.commonFields[key].textChanged.connect(self._solverEdited)
         self.startFrame.valueChanged.connect(lambda _v: setattr(self, "_startIsDefault", False))
         self._changed()
+
+    def _table(self, headers):
+        table = QTableWidget(0, len(headers), self)
+        table.setHorizontalHeaderLabels(headers)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        return table
+
+    def setTimingRequirement(self, text, action="", enabled=False):
+        self.timingHint.setText(text); self.timingHint.setVisible(bool(text))
+        self.timingButton.setText(action); self.timingButton.setVisible(bool(action))
+        self.timingButton.setEnabled(enabled)
 
     def _toggleAdvanced(self, enabled):
         self.advanced.setVisible(enabled)
@@ -242,6 +299,8 @@ class PendulumFitPanel(QWidget):
         for widget in self.controls: widget.setEnabled(not busy)
         self.modelFields[M0]["alpha2_bounds"].setEnabled(False)
         self.runButton.setEnabled(not busy); self.cancelButton.setEnabled(busy)
+        self.progressBar.setVisible(busy); self.progressLabel.setVisible(busy)
+        if busy: self.progressLabel.setText("Working in background… elapsed 0 s; duration varies by optimizer start")
 
     def clearData(self):
         self.payload = None; self.payload_valid = False
@@ -250,6 +309,10 @@ class PendulumFitPanel(QWidget):
         for key, plot in self.plots.items():
             plot.hide(); self.chartMessages[key].setText("No fit yet — choose fixed IC and Run fit"); self.chartMessages[key].show()
         self.summaryLabel.clear(); self.details.clear()
+        self.differenceCurve.clear(); self.differencePlot.hide()
+        self.differenceHint.setText("Run Compare M0 + M1 to see their prediction difference")
+        self.parameterTable.setRowCount(0); self.startTable.setRowCount(0)
+        self.rmsePlot.clear(); self.startPlot.clear()
         self.frameLabel.setText("Click an observation or residual to inspect its source frame")
         self.statusLabel.setText("No ODE fit yet")
 
@@ -302,7 +365,52 @@ class PendulumFitPanel(QWidget):
             plot.setVisible(available); self.chartMessages[key].setVisible(not available)
             self.chartMessages[key].setText("No " + key + " available: " + "; ".join(
                 f["reason"] or f["status"] for f in payload["fits"].values()))
-            plot.enableAutoRange()
+            plot.enableAutoRange(axis="y")
+            if observed:
+                plot.setXRange(observed[0]["time_release_relative_s"], observed[-1]["time_release_relative_s"], padding=.02)
+
+        difference = [r for r in rows if r["m0_theta_rad"] is not None and r["m1_theta_rad"] is not None]
+        self.differenceCurve.setData([r["time_release_relative_s"] for r in difference],
+            [degrees(r["m1_theta_rad"]-r["m0_theta_rad"]) for r in difference])
+        self.differencePlot.setVisible(bool(difference))
+        self.differenceHint.setText("Prediction difference in degrees; zero means overlapping models. This is not residual error."
+            if difference else "Prediction difference unavailable — both M0 and M1 need a fitted trajectory.")
+        if difference:
+            self.differencePlot.enableAutoRange(axis="y")
+            self.differencePlot.setXRange(difference[0]["time_release_relative_s"], difference[-1]["time_release_relative_s"], padding=.02)
+        self._showDiagnostics(payload)
+
+    def _showDiagnostics(self, payload):
+        models = [payload["fits"].get(m) for m in (M0, M1)]
+        values = [("Status", "", [f["status"] if f else "Not run" for f in models])]
+        for label, unit, key in (("α₁*", "s⁻¹", "alpha1_s_inv"), ("α₂*", "rad⁻¹", "alpha2_rad_inv"), ("q", "s⁻²", "omega2_s_inv2")):
+            values.append((label, unit, [f"{f['parameters'][key]:.6g}" if f and f["parameters"] else "—" for f in models]))
+        errors = [f["trajectory"]["rmse_rad"] if f and f["trajectory"] else None for f in models]
+        values.append(("Full RMSE", "rad", [f"{v:.6g}" if v is not None else "—" for v in errors]))
+        self.parameterTable.setRowCount(len(values))
+        for row, (label, unit, cells) in enumerate(values):
+            for column, value in enumerate([label, unit, *cells]):
+                self.parameterTable.setItem(row, column, QTableWidgetItem(value))
+        self.rmsePlot.clear(); self.startPlot.clear(); self.startTable.setRowCount(0)
+        for index, (fit, label, color) in enumerate(zip(models, ("M0", "M1"), ("#00b8e4", "#e69f00"))):
+            if fit is None: continue
+            if errors[index] is not None:
+                self.rmsePlot.addItem(pg.BarGraphItem(x=[index], height=[errors[index]], width=.5, brush=color))
+            for start_index, start in enumerate(fit["starts"]):
+                selected = start_index == fit["selected_start_index"]
+                cost = start["cost_rad2"]
+                if cost is not None:
+                    self.startPlot.plot([start_index+1], [cost], pen=None, symbol="star" if selected else "o",
+                        symbolBrush=color, symbolSize=13 if selected else 7, name=label if start_index == 0 else None)
+                row = self.startTable.rowCount(); self.startTable.insertRow(row)
+                outcome = ("Selected · " if selected else "") + start["status"]
+                if any(start["at_bound"]): outcome += " · at bound"
+                for column, value in enumerate((label, str(start_index+1), f"{cost:.6g}" if cost is not None else "—", str(start["nfev"]), outcome)):
+                    item = QTableWidgetItem(value); item.setToolTip(start["message"])
+                    self.startTable.setItem(row, column, item)
+        self.rmsePlot.setXRange(-.6, 1.6, padding=0)
+        self.rmsePlot.enableAutoRange(axis="y")
+        self.startPlot.enableAutoRange()
 
     def _pointClicked(self, _item, points, _event=None):
         if points: self.frameRequested.emit(int(points[0].data()))

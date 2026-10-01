@@ -43,6 +43,27 @@ def test_overlay_full_residual_and_frame_navigation(qtbot, tmp_path, synthetic_v
     assert len(panel.curves["residual", M0].getData()[0]) == 121
     assert "full RMSE" in panel.summaryLabel.text() and "s⁻¹" in panel.summaryLabel.text()
     assert "optimizer_success" in panel.details.toPlainText()
+    assert panel.parameterTable.rowCount() == 5
+    assert panel.startTable.rowCount() == len(result.payload["fits"][M0]["starts"])
+    assert panel.parameterTable.item(4, 2).text() != "—"
+    assert panel.plots["overlay"].minimumHeight() >= 240
+    assert panel.settingsScroll.maximumHeight() == 240
+    # 显示层合成第二条曲线，用已知差值验证比较图；不伪作科学拟合结果。
+    from copy import deepcopy
+    from math import degrees
+    from ai_physics_tracker.domain.pendulum_ode import M1
+    comparison = deepcopy(result.payload)
+    comparison["fits"][M1] = deepcopy(comparison["fits"][M0])
+    comparison["fits"][M1]["parameters"]["alpha2_rad_inv"] = .01
+    for row in comparison["rows"]:
+        if row["m0_theta_rad"] is not None:
+            row["m1_theta_rad"] = row["m0_theta_rad"] + .01
+            row["m1_residual_rad"] = row["m0_residual_rad"] + .01
+    panel.setPayload(comparison, True)
+    assert panel.differenceCurve.getData()[1] == pytest.approx([degrees(.01)]*121, abs=1e-12)
+    assert panel.parameterTable.item(2, 3).text() == "0.01"
+    assert panel.curves["overlay", M0].opts["pen"].style() != panel.curves["overlay", M1].opts["pen"].style()
+    assert panel.plots["overlay"].viewRange()[0][0] > -.5
     with qtbot.waitSignal(panel.frameRequested) as signal:
         panel._pointClicked(None, [SimpleNamespace(data=lambda: 90)])
     assert signal.args == [90]
@@ -65,8 +86,13 @@ def test_background_fit_commit_settings_change_stale_and_reopen(qtbot, tmp_path,
         actions.panel.restoreOptions(options)
         assert actions.panel.runButton.isEnabled()
         actions.compute()
+        assert actions.panel.progressBar.maximum() == 0
+        assert not actions.panel.progressBar.isHidden()
+        actions._poll()
+        assert "elapsed" in actions.panel.progressLabel.text()
         qtbot.waitUntil(lambda: actions._future is None, timeout=15000)
         assert len(session.project.scientific_results) == 1
+        assert actions.panel.progressBar.isHidden()
         assert actions.panel.payload_valid and actions.panel.statusLabel.text().startswith("Current")
         actions.panel.loss.setCurrentText("linear")
         assert "Settings changed" in actions.panel.statusLabel.text()
@@ -171,3 +197,35 @@ def test_save_as_is_blocked_before_copying_unregistered_fit_payload():
         statusBar=lambda: SimpleNamespace(showMessage=messages.append))
     ProjectActions.saveAs(SimpleNamespace(window=window))
     assert messages == ["Cancel the ODE fit before Save as"]
+
+
+def test_timing_prerequisite_is_visible_and_reuses_existing_confirmation(qtbot, tmp_path, synthetic_video_path):
+    from PySide6.QtWidgets import QPushButton
+    from ai_physics_tracker.gui.pendulum_fit import PendulumFitActions
+    from test_pendulum_analysis_ui import Window
+    session, experiment, options = fit_session(tmp_path, synthetic_video_path)
+    session._verified_videos.clear()
+    window = Window(session, experiment); qtbot.addWidget(window)
+    window.timingButton = QPushButton("Use approximate timing…", window)
+    from ai_physics_tracker.gui.timing_actions import TimingActions
+    from concurrent.futures import Future
+    window.timingActions = TimingActions(window)
+    requested = []
+    window.timingButton.clicked.connect(lambda: requested.append(True))
+    actions = PendulumFitActions(window)
+    try:
+        actions.panel.restoreOptions(options)
+        assert not actions.panel.runButton.isEnabled()
+        assert "Run fit requires video timing confirmation" in actions.panel.timingHint.text()
+        assert actions.panel.timingButton.isEnabled()
+        actions.panel.timingButton.click()
+        assert requested == [True]
+        window.timingActions._future = Future(); actions._enableRun()
+        assert "Validating" in actions.panel.timingHint.text()
+        assert not actions.panel.timingButton.isEnabled()
+        window.timingActions._future = None
+        session._verified_videos.add(experiment.video_id); actions._enableRun()
+        assert actions.panel.timingHint.isHidden() and actions.panel.runButton.isEnabled()
+    finally:
+        actions.shutdown()
+        window.timingActions.shutdown()

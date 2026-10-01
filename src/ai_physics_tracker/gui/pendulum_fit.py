@@ -2,6 +2,7 @@
 
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 import logging
+from time import monotonic
 from queue import Empty, SimpleQueue
 from threading import Event
 
@@ -65,6 +66,7 @@ class PendulumFitActions(QObject):
         self.panel.frameRequested.connect(window.seekSourceFrame)
         self.panel.settingsChanged.connect(self._optionsChanged)
         self.panel.releaseAngleButton.clicked.connect(self.fillReleaseAngle)
+        self.panel.timingRequested.connect(self._requestTiming)
         self.refresh()
 
     @property
@@ -83,6 +85,7 @@ class PendulumFitActions(QObject):
         if self._future is not None:
             _discardUnused(self._future, self._job, self._cancel, self._accepted)
         self._future = None; self._job = None; self._timer.stop()
+        self.panel.setBusy(False)
         self._refreshProjectActions()
 
     def resetContext(self):
@@ -107,6 +110,10 @@ class PendulumFitActions(QObject):
                 " · Settings changed — Run fit to apply; plots retain saved settings" if options != saved else ""))
         self._enableRun()
 
+    def _requestTiming(self):
+        button = getattr(self.window, "timingButton", None)
+        if button is not None: button.click()
+
     def _enableRun(self):
         session, experiment = self.window.analysisSession, self._experiment()
         enabled = False
@@ -119,6 +126,14 @@ class PendulumFitActions(QObject):
                     and options.end_frame_index >= (options.start_frame_index or experiment.release_frame_index or 0))
             except ValueError:
                 enabled = False
+        locked = session is not None and experiment is not None and not session.can_measure(experiment.video_id)
+        timing = getattr(self.window, "timingActions", None)
+        button = getattr(self.window, "timingButton", None)
+        validating = timing is not None and timing.pending
+        action = button.text() if button is not None and not validating else ""
+        self.panel.setTimingRequirement("Run fit requires video timing confirmation. " +
+            ("Validating timing in background…" if validating else "Use the button here to confirm approximate timing or retry validation.")
+            if locked else "", action if locked else "", locked and not validating and self._future is None)
         self.panel.runButton.setEnabled(enabled)
         self.panel.releaseAngleButton.setEnabled(self._future is None and self._releaseAngle() is not None)
 
@@ -190,6 +205,8 @@ class PendulumFitActions(QObject):
         self._job = job
         options = job.options if job is not None else None
         self._context = (mode, self.window.deliveryGeneration, state, options, restore)
+        self._startedAt = monotonic()
+        self._progressText = "Fitting raw θ" if mode == "compute" else "Verifying saved fit"
         if job is None:
             future = self._executor.submit(_readFit, self.window.analysisSession.detached(), record, self._cancel)
         else:
@@ -218,11 +235,15 @@ class PendulumFitActions(QObject):
         self.panel.statusLabel.setText("Cancelling — previous fit kept; pending result will be discarded")
 
     def _poll(self):
+        if self._future is not None:
+            stage = "Cancelling" if self._cancel.is_set() else self._progressText
+            self.panel.progressLabel.setText(f"{stage} · elapsed {int(monotonic()-self._startedAt)} s · running in background")
         try:
             while True:
                 model, done, total = self._progress.get_nowait()
                 if not self._cancel.is_set():
-                    self.panel.statusLabel.setText(f"Fitting {model}: {done}/{total} starts complete…")
+                    self._progressText = f"Fitting {model}: {done}/{total} starts complete"
+                    self.panel.statusLabel.setText(self._progressText + "…")
         except Empty:
             pass
         future = self._future
