@@ -158,6 +158,14 @@ def test_actual_objective_is_invariant_on_equivalent_starred_parameters_and_curv
     request, fitted = _request()
     raw = illustrative_raw_reference(fitted, alpha_a=0.0)
     transformed = transform_raw_parameters(raw, 1.12)
+    actual = evaluate_objective(request, M1, lump_parameters(raw))
+    equivalent = evaluate_objective(request, M1, lump_parameters(transformed))
+    assert actual.status == equivalent.status == "success"
+    # evidence/README E4：实际请求按已声明的轨迹及mean objective误差预算核对。
+    assert actual.prediction.theta_rad == pytest.approx(equivalent.prediction.theta_rad, abs=1e-7, rel=0)
+    actual_mean_cost = 2 * actual.cost_rad2 / len(actual.residual_rad)
+    equivalent_mean_cost = 2 * equivalent.cost_rad2 / len(equivalent.residual_rad)
+    assert actual_mean_cost == pytest.approx(equivalent_mean_cost, abs=1e-9, rel=1e-4)
     # 变换回集总参数会有ULP舍入，改变自适应步长；等价性证明使用更高积分精度，保留原断言容差。
     proof_request = replace(request, integration=IntegrationSettings(1e-12, 1e-14))
     first = evaluate_objective(proof_request, M1, lump_parameters(raw))
@@ -172,6 +180,7 @@ def test_actual_objective_is_invariant_on_equivalent_starred_parameters_and_curv
     assert curve.sample_count == 93
     assert curve.alpha1_star_s_inv == fitted.alpha1_s_inv
     assert curve.alpha2_star_rad_inv == fitted.alpha2_rad_inv
+    assert curve.fitted_mean_objective_rad2 == pytest.approx(actual_mean_cost, abs=1e-15, rel=1e-12)
     assert curve.omega2_s_inv2[0] == pytest.approx(0.94 * fitted.omega2_s_inv2 / 1.12)
     assert curve.omega2_s_inv2[-1] == pytest.approx(1.16 * fitted.omega2_s_inv2)
 
