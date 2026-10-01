@@ -13,8 +13,6 @@ from ai_physics_tracker.domain.types import JsonObject
 
 from ai_physics_tracker.application.tracking_types import TaskProgress, TaskLog, TaskResult, TaskMessage
 
-FORCED_EXIT_TIMEOUT_S = 10.0
-
 
 def _worker_process_entry(
     target_fn: Callable[..., Any],
@@ -96,11 +94,9 @@ class TaskHandle:
             self._process.join(timeout=1.0)
         if self._process.is_alive():
             self._process.kill()
-            # Windows TerminateProcess异步返回；需等pending I/O取消与实际退出，
-            # 不能把发出kill当成已回收。等待有界，超时不得报告取消成功。
-            self._process.join(timeout=FORCED_EXIT_TIMEOUT_S)
-        if self._process.is_alive():
-            raise TimeoutError(f"Task {self.run_id} process did not exit after forced cancellation")
+            # Windows TerminateProcess异步返回；最终join等OS确认退出，
+            # 不能在固定一秒后把仍存活的进程当成已回收。宿主在后台调用取消。
+            self._process.join()
 
     def join(self, timeout_s: float | None = None) -> None:
         """等待子进程结束。"""

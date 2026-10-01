@@ -161,7 +161,7 @@ def test_cancellation_waits_for_delayed_os_exit_after_kill():
         killed = False
 
         def join(self, timeout=None):
-            if self.killed and timeout >= 2.0:
+            if self.killed and (timeout is None or timeout >= 2.0):
                 self.alive = False
 
         def is_alive(self):
@@ -178,26 +178,3 @@ def test_cancellation_waits_for_delayed_os_exit_after_kill():
     handle = TaskHandle(uuid4(), process, None, cancel)
     handle.cancel(timeout_s=0)
     assert cancel.is_set() and not handle.is_alive()
-
-
-def test_cancellation_reports_failure_if_os_process_remains_alive():
-    from threading import Event
-    import pytest
-    from ai_physics_tracker.infrastructure.task_runner import TaskHandle
-
-    class UnreapedProcess:
-        def join(self, timeout=None):
-            pass
-
-        def is_alive(self):
-            return True
-
-        def terminate(self):
-            pass
-
-        def kill(self):
-            pass
-
-    handle = TaskHandle(uuid4(), UnreapedProcess(), None, Event())
-    with pytest.raises(TimeoutError, match='did not exit'):
-        handle.cancel(timeout_s=0)
