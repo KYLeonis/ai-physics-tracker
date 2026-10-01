@@ -201,7 +201,7 @@ def test_frozen_e2_forward_and_all_valid_rmse(video_id, model):
         rows = list(csv.DictReader(f))
     with (GOLDEN/"formal-fit48.csv").open(encoding="utf-8-sig", newline="") as f:
         fit = next(r for r in csv.DictReader(f) if r["video_id"] == video_id and r["model"] == model)
-    item = next(r for r in json.loads((GOLDEN/"inputs24.json").read_text()) if r["video_id"] == video_id)
+    item = next(r for r in json.loads((GOLDEN/"inputs24.json").read_text(encoding="utf-8")) if r["video_id"] == video_id)
     parameters = PendulumParameters(float(fit["alpha1_s_inv"]), float(fit["omega2_s_inv2"]), float(fit["alpha2_rad_inv"]))
     times = tuple(float(r["time_s"]) for r in rows)
     result = simulate_pendulum(model, parameters,

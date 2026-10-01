@@ -161,7 +161,7 @@ def main() -> int:
             args.output.resolve() == (EVIDENCE/"source-map.json").resolve()) or (
             args.prov_root is not None and args.output.resolve().is_relative_to(args.prov_root.resolve())):
         parser.error("output must not overwrite frozen inputs/profiles or external research assets")
-    videos = args.video_id or ([r["video_id"] for r in json.loads((EVIDENCE/"golden/inputs24.json").read_text())]
+    videos = args.video_id or ([r["video_id"] for r in json.loads((EVIDENCE/"golden/inputs24.json").read_text(encoding="utf-8"))]
                                if args.prov_root is not None else ["P011", "P014"])
     rows, errors = [], {}
     with ProcessPoolExecutor(max_workers=args.workers, mp_context=multiprocessing.get_context("spawn")) as executor:
