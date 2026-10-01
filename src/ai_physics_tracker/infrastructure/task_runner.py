@@ -94,7 +94,9 @@ class TaskHandle:
             self._process.join(timeout=1.0)
         if self._process.is_alive():
             self._process.kill()
-            self._process.join(timeout=1.0)
+            # Windows TerminateProcess异步返回；最终join等OS确认退出，
+            # 不能在固定一秒后把仍存活的进程当成已回收。宿主在后台调用取消。
+            self._process.join()
 
     def join(self, timeout_s: float | None = None) -> None:
         """等待子进程结束。"""
