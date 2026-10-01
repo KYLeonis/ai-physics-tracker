@@ -30,7 +30,11 @@ def prepare_pendulum_reconstruction(
 ) -> ReconstructionInput:
     """每次分析消费调用一次 current 检查；不逐帧哈希视频。"""
     assert_adopted_measurement_current(session, snapshot)
-    payload = snapshot.payload
+    return reconstruction_input_from_payload(snapshot.payload, snapshot.digest)
+
+
+def reconstruction_input_from_payload(payload: dict, digest: str) -> ReconstructionInput:
+    """当前/历史immutable测量共用同一typed重建边界。"""
     if payload["calibration"] is None:
         raise ProjectSessionError("pendulum analysis requires scale calibration")
     if payload["physical"] is None:
@@ -49,7 +53,7 @@ def prepare_pendulum_reconstruction(
                                        cast(float, row["time_absolute_s"]), tuple(adopted)))
     try:
         return ReconstructionInput(
-            snapshot.digest, tuple(frames),
+            digest, tuple(frames),
             geometry_from_payload(cast(dict[str, object], payload["geometry"])),
             cast(int, payload["release_frame_index"]),
             tuple(QCExclusion(cast(int, item["frame_index"]), cast(str, item["reason"]))

@@ -6,6 +6,12 @@
 - 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
+## P3.3 delivery（2026-10-01）
+
+- Detached adopted tip + fixed pivot → rawθ/QC/weights/fixed IC → M0/M1同core，explicit fit interval保持release为IC t=0。options/软件版本/逐start/config/signature/完整预测与残差原子保存，取消/迟到/换根拒收，Save As/Undo/重开验证。
+- R1 F1/F2/F3全部修复，R2 gpt-6-luna/max Approve；独立41 passed/1 strict xfailed（57.41s）。主全量1311 passed/1strict xfailed/9subtests，补充定向39/1xfail与实际双模型不同设置、invalid JSON通过。frozen verifier15/48/2通过；F2默认M1 xfail仍为Accepted Limitation，不计为数值通过。
+- P3.3无GUI交付；[P3.4 mini-plan](plans/p3.4-fit-ui.md)先于实施建立，S1控件已准备，执行接入在P3.3集成后开始。P3.4须独立复审与用户Human Review，P3未关闭。
+
 ## P3.2 delivery（2026-10-01）
 
 - `23950c8`/`16af211` bounded multistart、逐start诊断、full-grid/comparison及48项只读报告；`e6266b3`记录用户裁定/ADR-0020。
@@ -96,7 +102,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**用户已接受P3.2限制，R2条件性通过；按[P3.3 mini-plan](plans/p3.3-fit-execution-persistence.md)实施snapshot/core编排/取消/原子结果/重开，独立复审后进入P3.4（先建mini-plan）；P3.4提供显式高精度设置并等待用户Human Review。P3结束后停止，不开始P4。**
+**P3.3复审通过，集成/push后执行[P3.4 mini-plan](plans/p3.4-fit-ui.md)：接入ODE fitting UI、取消/历史读回/迟到清理，offscreen与Independent Review通过后给用户真实HR。P3.2 Accepted Limitation保持明示；P3结束后停止，不开始P4。**
 
 ## P2.1 delivery (2026-09-30)
 

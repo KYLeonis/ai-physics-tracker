@@ -181,3 +181,6 @@ PendulumAnalysisActions 使用detached session后台计算/完整性读取，主
 - [0014 — 结果激活与固定验证历史](decisions/0014-result-activation-and-fixed-validation-history.md)
 - [0015 — Training Advisor 与 Resume 再训练](decisions/0015-training-advisor-and-resume-retraining.md)
 - [0016 — 固定检查帧预选与推荐计划执行](decisions/0016-fixed-check-preselection-and-recommended-plan-execution.md)
+
+
+P3拟合链复用adopted snapshot与同一结果存储：raw θ/QC/weights + fixed release IC → Qt-free M0/M1 bounded multistart → PendulumFitJob immutable JSON → ProjectSession共享科学提交guard。显式高精度与历史精度分开（ADR-0020），SG不进入拟合。历史读回复核measurement/源帧/配置/typed诊断/最终forward/metrics一致性，优化器不重跑；fit区间可以晚于release，但积分仍从release t=0开始。P3.2历史回归限制仍为Accepted Limitation。

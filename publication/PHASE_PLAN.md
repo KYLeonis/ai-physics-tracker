@@ -144,8 +144,8 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | Subphase | 交付边界 | 完成判据 |
 | --- | --- | --- |
 | P3.1 Forward and objective ✅ | 两模型RHS、DOP853、IC、选样/weights、loss | synthetic和source golden unit checks通过；失败结构化，不访问GUI/文件 |
-| P3.2 Bounded multistart fit | bounds/seeds/M0 warm start、逐start诊断、full-grid输出 | 参数恢复与48行历史结果软件回归记录；没有用论文目标值调参“凑一致” |
-| P3.3 Application execution and persistence | snapshot请求、取消、代际、原子结果、stale与重开 | 注入取消/输入改变/失败不会提交部分或旧结果；配置round-trip |
+| P3.2 Bounded multistart fit ✅（Accepted Limitation） | bounds/seeds/M0 warm start、逐start诊断、full-grid输出 | 参数恢复与48行历史结果软件回归记录；没有用论文目标值调参“凑一致” |
+| P3.3 Application execution and persistence ✅ | snapshot请求、取消、代际、原子结果、stale与重开 | 注入取消/输入改变/失败不会提交部分或旧结果；配置round-trip |
 | P3.4 Fit UI | Normal M0/M1与Run fit、Advanced配置、overlay/RMSE/residual | 同core证明、Human Review完成自选视频拟合；P3收尾停止 |
 
 ### P4 — Model Criticism and Structural Identifiability
