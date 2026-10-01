@@ -3,7 +3,7 @@
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P0/P1/P2完成；P2.3用户于2026-10-01确认图表已出现、当前增量可交付并明确授权收尾。Independent Review全部finding Closed、最终Approve；最终验证1251 tests/9subtests及冻结证据通过；--no-ff merge `99f34b0`已完成，提交最终状态后推送。** 当前角运动为tip + fixed pivot，辅助role仅诊断；默认SG9/3，支持显式7/3、5/2及自定义窗口/阶数，配置随结果保存。
-- P3–P6未启动；本阶段结束后停止，等待用户下一条指令。图表外观一般已记为非阻断改善事项，不在本轮追加实现。
+- 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。当前执行subphase集成/push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
 ## P1 planning
@@ -90,7 +90,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P2收尾后停止，等待用户授权进入P3。届时先核对集成分支/status，阅读P3 requirements、master plan与相关profile/IC契约，并在每个subphase进入前建立mini-plan。本次未开始P3规划或实现。**
+**按[P3 handoff](plans/p3-handoff-2026-10-01.md)继续已授权的P3：核对P3.1最终集成/remote/clean状态，从publication切P3.2工作分支并记录mini-plan准确base，实施bounds/seed/multistart → synthetic/48项legacy refit → Independent Review。P3.3/P3.4进入前各自新建mini-plan，P3.4等待用户Human Review，P3结束后停止。本轮在quota剩余5%写交接，P3.2代码尚未开始。**
 
 ## P2.1 delivery (2026-09-30)
 
@@ -178,3 +178,11 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 | 8a7d90d | 6323e11 | 最终kill后native join，保留原取消接口；避免Windows退出异步导致取消后仍存活。代码与测试字节和main source一致；本线47项task/external-worker/analysis通过 |
 
 main复审记录位于source `842460c:docs/reviews/task-cancel-windows-review.md`，最终Approve、两项Closed。最终远程CI已确认：main [36813075358](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813075358)（d857e22）与publication [36813371127](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813371127)（02e3afd）均Windows/macOS通过；本修复会话在论文工作树补充54项取消相关定向测试通过。修复闭环完成，P2已收尾；等待用户P3指令。
+
+
+## P3.1 delivery (2026-10-01)
+
+- `pendulum_ode.py`：固定IC/validated数值请求、M0/M1 DOP853、tip base-QC资格、原始时间选样/weights/soft-L1、完整预测与原始残差/full RMSE、配置及共同输入digest。
+- 保留tip+fixed pivot与辅助诊断边界，SG不参与fit；rest确认且恰好前5有效帧才估IC，否则明确explicit IC；gap不重启/不补观测。
+- Commit `7d8ee0b` + review fix `3278ef8`。35定向、全量**1287 passed / 9subtests（81.52s）**；E2两offline case×两模型及frozen verifier通过；外部24 trajectory SHA只读核验通过，未运行48项refit。
+- [Independent Review](../docs/reviews/publication-p3.1-review.md)三项Closed、R2 Approve；无GUI，不需Human Review。本轮quota读到used95%后写[handoff](plans/p3-handoff-2026-10-01.md)。P3.2已规划，P3整体仍进行中。
