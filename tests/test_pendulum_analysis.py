@@ -210,3 +210,39 @@ def test_profile_upgrade_marks_historical_result_stale_without_rewriting_it(tmp_
     before = path.read_bytes()
     assert not load_analysis_result(session, result.record)[1]
     assert path.read_bytes() == before
+
+
+def test_custom_sg_restores_short_segment_energy_and_survives_reopen(tmp_path, synthetic_video_path):
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    session.set_qc_exclusions(experiment.experiment_id, (QCExclusion(8, 'occlusion'),))
+    default = run_analysis_job(prepare_analysis_job(session, experiment.experiment_id, 11), Event())
+    assert default.record.execution_status == 'insufficient_data'
+    custom = run_analysis_job(prepare_analysis_job(session, experiment.experiment_id, 11,
+                                                  sg_window=7, sg_polyorder=3), Event())
+    assert custom.record.input_digest != default.record.input_digest
+    assert [r['frame_index'] for r in custom.payload['rows'] if r['energy_s_inv2'] is not None] == list(range(8))
+    assert all(r['omega_rad_s'] is None for r in custom.payload['rows'][8:])
+    session.apply_pendulum_analysis_result(custom)
+    session.save()
+    reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+    payload, valid, _ = load_analysis_result(reopened, reopened.project.scientific_results[-1])
+    assert valid and payload['config']['angular']['derivative']['window_frames'] == 7
+    with pytest.raises(ValueError, match='SG window'):
+        prepare_analysis_job(session, experiment.experiment_id, 11, sg_window=4, sg_polyorder=2)
+
+
+def test_matching_manifest_and_payload_cannot_forge_resolved_provenance(tmp_path, synthetic_video_path):
+    from copy import deepcopy
+    from uuid import uuid4
+
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    result = run_analysis_job(prepare_analysis_job(session, experiment.experiment_id, 11,
+                                                  sg_window=7, sg_polyorder=3), Event())
+    forged = deepcopy(result.payload)
+    forged['config']['angular']['provenance']['derivative'] = ['fabricated-source']
+    result_id = uuid4()
+    reference = write_scientific_payload(session.project_root, result_id, forged, result.record.payload.columns)
+    record = replace(result.record, result_id=result_id, payload=reference,
+                     extra_fields={**result.record.extra_fields, 'config': forged['config']})
+    _, valid, reason = load_analysis_result(session, record)
+    assert not valid and 'provenance' in reason

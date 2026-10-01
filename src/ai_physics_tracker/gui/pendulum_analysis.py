@@ -16,7 +16,10 @@ from ai_physics_tracker.application.pendulum_analysis import (
     prepare_analysis_job, run_analysis_job,
 )
 from ai_physics_tracker.application.pendulum_setup import pendulum_setup_status
-from ai_physics_tracker.domain.angular_analysis import AngularSeries, SG_WINDOW, valid_segments
+from ai_physics_tracker.domain.angular_analysis import (
+    AngularSeries, STUDENT, SG_WINDOW, SG_POLYORDER, UNIFORM_DT_REL_TOL,
+    analysis_config, valid_segments,
+)
 from ai_physics_tracker.application.project_session import ProjectSessionError
 
 
@@ -43,6 +46,7 @@ class PendulumAnalysisPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.payload = None
+        self._series = None
         self.repair_frames = ()
         self.payload_valid = False
         self.repairButton = QPushButton("Repair suggested frames (tip only)", self)
@@ -62,6 +66,29 @@ class PendulumAnalysisPanel(QWidget):
         controls.addWidget(self.endFrame)
         controls.addWidget(self.computeButton)
         controls.addWidget(self.cancelButton)
+        self.sgWindow = QSpinBox(self)
+        self.sgWindow.setRange(3, 9999)
+        self.sgWindow.setSingleStep(2)
+        self.sgWindow.setValue(SG_WINDOW)
+        self.sgPolyorder = QSpinBox(self)
+        self.sgPolyorder.setRange(1, 9998)
+        self.sgPolyorder.setValue(SG_POLYORDER)
+        self.sgHint = QLabel(self)
+        self.sgHint.setWordWrap(True)
+        sg_controls = QHBoxLayout()
+        sg_controls.addWidget(QLabel("SG window (frames):", self))
+        sg_controls.addWidget(self.sgWindow)
+        sg_controls.addWidget(QLabel("Polynomial order:", self))
+        sg_controls.addWidget(self.sgPolyorder)
+        self.sgPresets = []
+        for window, order, title in ((9, 3, "Default 9/3"), (7, 3, "7/3"), (5, 2, "5/2")):
+            button = QPushButton(title, self)
+            button.clicked.connect(lambda _checked=False, w=window, p=order: self.setSG(w, p))
+            sg_controls.addWidget(button)
+            self.sgPresets.append(button)
+        self.sgWindow.valueChanged.connect(self.updateSGHint)
+        self.sgPolyorder.valueChanged.connect(self.updateSGHint)
+        self.endFrame.valueChanged.connect(self.updateSGHint)
         self.tabs = QTabWidget(self)
         self.plots = {}
         self.items = {}
@@ -109,13 +136,56 @@ class PendulumAnalysisPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(self.statusLabel)
         layout.addLayout(controls)
+        layout.addLayout(sg_controls)
+        layout.addWidget(self.sgHint)
         layout.addWidget(self.summaryLabel)
         layout.addWidget(self.repairButton)
         layout.addWidget(self.tabs, 1)
         layout.addWidget(self.frameLabel)
-        note = QLabel("Analysis uses the adopted run + manual corrections; a new candidate preview is not included. SG9/3 needs at least 9 consecutive QC-valid frames. Click a blue point or gray cross → inspect its source frame; return to Acquire to correct tip positions, then recompute. Gaps stay missing; first/last 4 points of each segment are edge windows.", self)
-        note.setWordWrap(True)
-        layout.addWidget(note)
+        self.note = QLabel("Compute from adopted tip + fixed pivot. SG estimates derivatives within continuous valid segments; gaps stay missing.", self)
+        self.note.setWordWrap(True)
+        layout.addWidget(self.note)
+        self.updateSGHint()
+
+    def sgSettings(self):
+        return self.sgWindow.value(), self.sgPolyorder.value()
+
+    def setSG(self, window, order):
+        self.sgWindow.setValue(window)
+        self.sgPolyorder.setValue(order)
+
+    def settingsMatchPayload(self):
+        if self.payload is None:
+            return False
+        derivative = self.payload["config"]["angular"]["derivative"]
+        return (self.sgSettings() == (derivative["window_frames"], derivative["polyorder"])
+                and self.endFrame.value() == self.payload["config"]["end_frame_index"])
+
+    def updateSGHint(self):
+        window, order = self.sgSettings()
+        try:
+            analysis_config(STUDENT, sg_window=window, sg_polyorder=order)
+        except ValueError as error:
+            self.sgHint.setText(str(error))
+            return
+        text = "Choose settings, then Compute. Shorter windows use shorter segments but reduce noise averaging."
+        if self._series is not None:
+            series = self._series
+            mask = tuple(t >= 0 and f <= self.endFrame.value()
+                         for f, t in zip(series.frame_indices, series.time_release_relative_s))
+            segments = valid_segments(series, mask)
+            eligible = 0
+            for start, end in segments:
+                if end-start < window:
+                    continue
+                dt = np.diff(series.time_release_relative_s[start:end])
+                delta = float(np.median(dt))
+                if np.all(np.abs(dt-delta) <= UNIFORM_DT_REL_TOL * delta):
+                    eligible += end-start
+            longest = max((end-start for start, end in segments), default=0)
+            text = (f"SG{window}/{order}: {eligible} points eligible for ω / phase / energy; longest block {longest} frames. "
+                    f"Window span ≈ {(window-1)/series.fps_nominal:.3g} s. " + text)
+        self.sgHint.setText(text)
 
     def _pointClicked(self, _item, points, _event=None):
         if points:
@@ -123,6 +193,7 @@ class PendulumAnalysisPanel(QWidget):
 
     def clearData(self):
         self.payload = None
+        self._series = None
         self.repair_frames = ()
         self.payload_valid = False
         self.repairButton.hide()
@@ -136,6 +207,7 @@ class PendulumAnalysisPanel(QWidget):
         self.excludedAngles.setData([], [])
         self.summaryLabel.clear()
         self.frameLabel.setText("Click a plotted point to inspect its source frame")
+        self.updateSGHint()
 
     def setPayload(self, payload, valid, reason=None):
         self.payload = payload
@@ -143,6 +215,8 @@ class PendulumAnalysisPanel(QWidget):
         self.repair_frames = ()
         rows = payload["rows"]
         end = payload["config"]["end_frame_index"]
+        derivative = payload["config"]["angular"]["derivative"]
+        window, order = derivative["window_frames"], derivative["polyorder"]
         usable = [r["is_qc_valid"] and 0 <= r["time_release_relative_s"] and r["frame_index"] <= end for r in rows]
         selected = [0 <= r["time_release_relative_s"] and r["frame_index"] <= end for r in rows]
         series = AngularSeries(payload["reconstruction_digest"],
@@ -150,6 +224,8 @@ class PendulumAnalysisPanel(QWidget):
             tuple(r["time_release_relative_s"] for r in rows),
             tuple(r["theta_rad"] for r in rows), tuple(r["is_qc_valid"] for r in rows),
             payload["measurement"]["video"]["fps_nominal"])
+        self._series = series
+        self.updateSGHint()
         longest = max((b-a for a, b in valid_segments(series, tuple(selected))), default=0)
         excluded = [r for r, inside, ok in zip(rows, selected, usable)
                     if inside and not ok and r["theta_rad"] is not None]
@@ -158,17 +234,17 @@ class PendulumAnalysisPanel(QWidget):
             [r["theta_rad"] for r in excluded], data=[r["frame_index"] for r in excluded])
         omega_reasons = Counter(r["omega_reason"] for r, inside in zip(rows, selected)
                                 if inside and r["omega_reason"])
-        unavailable = (f"SG9/3 needs {SG_WINDOW} consecutive QC-valid frames; longest block: {longest}. "
-                       "Return to Acquire and correct tip positions in a consecutive block, then recompute."
-                       if longest < SG_WINDOW else
+        unavailable = (f"SG{window}/{order} needs {window} consecutive QC-valid frames; longest block: {longest}. "
+                       "Choose a shorter SG window and Compute to use existing segments, or correct missing tip positions."
+                       if longest < window else
                        "No usable derivative: " + ", ".join(f"{reason} ({count} frames)" for reason, count in omega_reasons.items()))
-        if longest < SG_WINDOW:
-            start = min((i for i in range(len(rows)-SG_WINDOW+1)
-                         if all(selected[i:i+SG_WINDOW]) and not all(usable[i:i+SG_WINDOW])),
-                        key=lambda i: sum(not ok for ok in usable[i:i+SG_WINDOW]), default=None)
+        if longest < window:
+            start = min((i for i in range(len(rows)-window+1)
+                         if all(selected[i:i+window]) and not all(usable[i:i+window])),
+                        key=lambda i: sum(not ok for ok in usable[i:i+window]), default=None)
             if start is not None:
-                repair = rows[start:start+SG_WINDOW]
-                self.repair_frames = tuple(r["frame_index"] for r, ok in zip(repair, usable[start:start+SG_WINDOW]) if not ok)
+                repair = rows[start:start+window]
+                self.repair_frames = tuple(r["frame_index"] for r, ok in zip(repair, usable[start:start+window]) if not ok)
                 gaps = ", ".join(map(str, self.repair_frames))
                 unavailable += (f"\nRepair example: source block {repair[0]['frame_index']}–{repair[-1]['frame_index']}; "
                                 f"inspect/correct the tip at QC-excluded frames {gaps}.")
@@ -177,6 +253,8 @@ class PendulumAnalysisPanel(QWidget):
             y_key = {"theta": "theta_rad", "omega": "omega_rad_s", "phase": "omega_rad_s", "energy": "energy_s_inv2"}[kind]
             x = np.asarray([r[x_key] if r[x_key] is not None else np.nan for r in rows])
             y = np.asarray([r[y_key] if ok and r[y_key] is not None else np.nan for r, ok in zip(rows, usable)])
+            # 无效y对应的时间不能把图范围扩到pre-release区间。
+            x = np.where(np.isfinite(y), x, np.nan)
             connect = np.zeros(len(rows), dtype=bool)
             for i in range(len(rows)-1):
                 connect[i] = (all(isfinite(v) for v in (x[i], y[i], x[i+1], y[i+1]))
@@ -197,7 +275,9 @@ class PendulumAnalysisPanel(QWidget):
                 message.setText(f"Blue: {sum(usable)} QC-valid angles. Gray crosses: {len(excluded)} geometry-only previews, excluded from derivatives/energy/fitting. "
                                + ("" if visible else "No adopted tip positions in this interval."))
             elif has_values:
-                message.setText("Computed from continuous QC-valid segments; gaps remain missing.")
+                edge_count = sum(ok and r[y_key] is not None and r["edge_window"] for r, ok in zip(rows, usable))
+                message.setText(f"Computed with SG{window}/{order} from continuous QC-valid segments; gaps remain missing. "
+                                f"{edge_count} points use edge-window estimates.")
             else:
                 message.setText({"omega": "Angular velocity", "phase": "Phase portrait", "energy": "Reference energy"}[kind]
                                 + " unavailable.\n" + (
@@ -226,11 +306,17 @@ class PendulumAnalysisPanel(QWidget):
         auxiliary_count = sum(bool(r.get("auxiliary_qc_reasons")) for r, inside in zip(rows, selected) if inside)
         self.summaryLabel.setText(f"Auxiliary landmark warnings: {auxiliary_count} frames (do not exclude tip angular analysis).\n"
             + f"QC-valid in selected interval: {sum(usable)}/{sum(0 <= r['time_release_relative_s'] and r['frame_index'] <= end for r in rows)} · ω available: {omega_count} · reference energy available: {energy_count}" + (" (unavailable: no usable SG segment)" if not omega_count else " (energy unavailable; inspect its reasons)" if not energy_count else "") + "\n"
-            + f"Longest QC-valid block: {longest} frames (SG needs {SG_WINDOW}). Main exclusions (counts may overlap): {qc_text or 'none'}.\n"
+            + f"Longest QC-valid block: {longest} frames (SG needs {window}). Main exclusions (counts may overlap): {qc_text or 'none'}.\n"
             + f"Reference energy = ω²/2 + q(1−cos θ), q=g/L={q:.6g} s⁻² (proxy; not fitted energy or joules).\n"
             f"Complete periods: {len(periods['periods'])} · Tail t>{tail['start_s']:.4g} s: {len(tail['periods'])} periods; {tail_text}")
-        self.statusLabel.setText(("Current — tip + fixed pivot; auxiliary landmarks are diagnostic only" if valid else "Historical / STALE — " + (reason or "inputs changed"))
-            + f" · source run {payload['measurement']['active_run_id'][:8]} · student SG9/3")
+        self.resultStatusText = (("Current — tip + fixed pivot; auxiliary landmarks are diagnostic only" if valid else "Historical / STALE — " + (reason or "inputs changed"))
+            + f" · source run {payload['measurement']['active_run_id'][:8]} · "
+            + ("student default " if (window, order) == (SG_WINDOW, SG_POLYORDER) else "custom ") + f"SG{window}/{order}")
+        self.statusLabel.setText(self.resultStatusText)
+        self.note.setText(f"Analysis uses the adopted run + manual corrections; candidate previews are not included. "
+                         f"These plots use SG{window}/{order}, minimum {window} consecutive QC-valid frames. "
+                         f"Gaps stay missing; first/last {window//2} points of each segment are edge estimates. "
+                         "Click a point to inspect its source frame. SG settings do not change complete-period or tail requirements.")
 
     def presentFrame(self, frame_index):
         if self.payload is None or frame_index is None:
@@ -282,6 +368,8 @@ class PendulumAnalysisActions(QObject):
         self.panel.repairButton.clicked.connect(self.repairSuggestedFrames)
         self.panel.cancelButton.clicked.connect(self.cancel)
         self.panel.endFrame.valueChanged.connect(self._intervalChanged)
+        self.panel.sgWindow.valueChanged.connect(self._intervalChanged)
+        self.panel.sgPolyorder.valueChanged.connect(self._intervalChanged)
         self.refresh()
 
     def scheduleRefresh(self, *_args):
@@ -298,12 +386,23 @@ class PendulumAnalysisActions(QObject):
         self.refresh()
 
     def _intervalChanged(self):
+        try:
+            window, order = self.panel.sgSettings()
+            analysis_config(STUDENT, sg_window=window, sg_polyorder=order)
+            settings_valid = True
+        except ValueError:
+            settings_valid = False
         if self.panel.payload is not None:
             self.panel.repairButton.setEnabled(self.panel.payload_valid and self._future is None
-                and self.panel.endFrame.value() == self.panel.payload["config"]["end_frame_index"])
-            applied = self.panel.payload["config"]["end_frame_index"]
-            if self.panel.endFrame.value() != applied:
-                self.panel.statusLabel.setText("Interval changed — recompute to apply; plots still show saved interval")
+                and self.panel.settingsMatchPayload())
+            if not self.panel.settingsMatchPayload():
+                self.panel.statusLabel.setText("Settings changed — Compute to apply; plots still show saved settings")
+            else:
+                self.panel.statusLabel.setText(self.panel.resultStatusText)
+        if not settings_valid:
+            self.panel.computeButton.setEnabled(False)
+        elif self._future is None:
+            self.refresh()
 
     def refresh(self):
         if self._closed:
@@ -322,11 +421,21 @@ class PendulumAnalysisActions(QObject):
             self.panel.endFrame.setRange(experiment.release_frame_index or 0, video.frame_count-1)
             self.panel.endFrame.setValue(video.frame_count-1)
             self.panel.endFrame.blockSignals(False)
+            for control, value in ((self.panel.sgWindow, SG_WINDOW), (self.panel.sgPolyorder, SG_POLYORDER)):
+                control.blockSignals(True)
+                control.setValue(value)
+                control.blockSignals(False)
         else:
             self.panel.endFrame.setMinimum(experiment.release_frame_index or 0)
         status = pendulum_setup_status(session.project, experiment)
         self.panel.computeButton.setEnabled(status.can_analyze and experiment.active_infer_run_id is not None
                                            and session.can_measure(video_id) and self._future is None)
+        try:
+            analysis_config(STUDENT, sg_window=self.panel.sgWindow.value(), sg_polyorder=self.panel.sgPolyorder.value())
+        except ValueError:
+            self.panel.computeButton.setEnabled(False)
+        for control in (self.panel.endFrame, self.panel.sgWindow, self.panel.sgPolyorder, *self.panel.sgPresets):
+            control.setEnabled(self._future is None)
         self.panel.cancelButton.setEnabled(self._future is not None)
         records = [r for r in session.project.scientific_results if r.experiment_id == experiment.experiment_id and r.kind == ANALYSIS_KIND]
         record = max(records, key=lambda r: r.created_at) if records else None
@@ -348,13 +457,21 @@ class PendulumAnalysisActions(QObject):
                 self.panel.statusLabel.setText(message)
             return
         if key != self._key and self._future is None:
+            record_changed = self._key is None or self._key[1].result_id != record.result_id
             self._key = key
-            if self.panel.payload is None:
+            if self.panel.payload is None or record_changed:
                 saved_end = record.extra_fields.get("end_frame_index")
                 if type(saved_end) is int:
                     self.panel.endFrame.blockSignals(True)
                     self.panel.endFrame.setValue(saved_end)
                     self.panel.endFrame.blockSignals(False)
+                derivative = record.extra_fields.get("config", {}).get("angular", {}).get("derivative", {})
+                for control, value in ((self.panel.sgWindow, derivative.get("window_frames", SG_WINDOW)),
+                                       (self.panel.sgPolyorder, derivative.get("polyorder", SG_POLYORDER))):
+                    if type(value) is int:
+                        control.blockSignals(True)
+                        control.setValue(value)
+                        control.blockSignals(False)
             self.panel.statusLabel.setText("Historical result — verifying payload and current inputs…")
             self._submit("read", state, self._executor.submit(_readJob, session.detached(), record, self._newCancel()))
         self.panel.presentFrame(self.window.presentedFrameIndex)
@@ -364,12 +481,15 @@ class PendulumAnalysisActions(QObject):
         return self._cancel
 
     def _submit(self, mode, state, future):
-        self._context = (mode, self.window.deliveryGeneration, state)
+        self._context = (mode, self.window.deliveryGeneration, state,
+                         (self.panel.endFrame.value(), *self.panel.sgSettings()))
         self._future = future
         self._timer.start(30)
         self.panel.cancelButton.setEnabled(True)
         self.panel.computeButton.setEnabled(False)
         self.panel.repairButton.setEnabled(False)
+        for control in (self.panel.endFrame, self.panel.sgWindow, self.panel.sgPolyorder, *self.panel.sgPresets):
+            control.setEnabled(False)
 
     def repairSuggestedFrames(self):
         """只用当前已验证结果的建议；复用主窗口manual tip写入和自动跳帧。"""
@@ -379,7 +499,7 @@ class PendulumAnalysisActions(QObject):
         if (not self.panel.payload_valid or not self.panel.repair_frames or self._key is None
                 or self._key[0] != analysis_input_state(session, experiment.experiment_id)
                 or self._key[2] != _videoStamp(session, experiment.experiment_id)
-                or self.panel.endFrame.value() != self.panel.payload["config"]["end_frame_index"]):
+                or not self.panel.settingsMatchPayload()):
             self.panel.repairButton.setEnabled(False)
             self.panel.statusLabel.setText("Inputs changed — recompute before starting the suggested repair")
             return
@@ -395,7 +515,9 @@ class PendulumAnalysisActions(QObject):
         if session is None or experiment is None:
             return
         try:
-            job = prepare_analysis_job(session, experiment.experiment_id, self.panel.endFrame.value())
+            window, order = self.panel.sgSettings()
+            job = prepare_analysis_job(session, experiment.experiment_id, self.panel.endFrame.value(),
+                                       sg_window=window, sg_polyorder=order)
             self._submit("compute", job.captured_state, self._executor.submit(run_analysis_job, job, self._newCancel()))
         except Exception as error:
             self.panel.statusLabel.setText(str(error))
@@ -412,7 +534,7 @@ class PendulumAnalysisActions(QObject):
             return
         self._timer.stop()
         self._future = None
-        mode, generation, state = self._context
+        mode, generation, state, settings = self._context
         session = self.window.analysisSession
         try:
             result = future.result()
@@ -421,6 +543,8 @@ class PendulumAnalysisActions(QObject):
             if self.window.activeVideoId != state[3].video_id or analysis_input_state(session, state[2].experiment_id) != state:
                 raise ValueError("analysis inputs changed — result discarded; recompute")
             if mode == "compute":
+                if settings != (self.panel.endFrame.value(), *self.panel.sgSettings()):
+                    raise ValueError("analysis settings changed — result discarded; recompute")
                 session.apply_pendulum_analysis_result(result)
                 self._key = (state, result.record, result.verified_video_stamp)
                 self.panel.setPayload(result.payload, True)

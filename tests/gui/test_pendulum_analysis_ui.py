@@ -221,3 +221,87 @@ def test_tip_only_with_no_auxiliary_points_generates_all_angular_charts(qtbot, t
         assert all(not actions.panel.plots[k].isHidden() for k in ('theta', 'omega', 'phase', 'energy'))
     finally:
         actions.shutdown()
+
+
+def test_custom_sg_settings_restore_short_charts_and_reopen_controls(qtbot, tmp_path, synthetic_video_path):
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    session.set_qc_exclusions(experiment.experiment_id, (QCExclusion(8, 'occlusion'),))
+    window = Window(session, experiment)
+    qtbot.addWidget(window)
+    actions = PendulumAnalysisActions(window)
+    try:
+        actions.compute()
+        qtbot.waitUntil(lambda: actions._future is None)
+        assert actions.panel.plots['phase'].isHidden()
+        assert actions.panel.repairButton.isEnabled()
+        actions.panel.sgPresets[1].click()  # 7/3，明确选择而非静默缩窗。
+        assert actions.panel.sgSettings() == (7, 3)
+        assert '8 points eligible' in actions.panel.sgHint.text()
+        assert 'Settings changed' in actions.panel.statusLabel.text()
+        assert not actions.panel.repairButton.isEnabled()
+        assert actions.panel.plots['phase'].isHidden()  # 旧图不重解释。
+        actions.compute()
+        qtbot.waitUntil(lambda: actions._future is None)
+        assert 'custom SG7/3' in actions.panel.statusLabel.text()
+        assert all(not actions.panel.plots[k].isHidden() for k in ('omega', 'phase', 'energy'))
+        assert 'first/last 3 points' in actions.panel.note.text()
+        assert not actions.panel.repair_frames
+        session.save()
+        from ai_physics_tracker.application.project_session import ProjectSession
+        from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
+        reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+        # Window替身没有真实媒体打开/时序探针；模拟本次媒体会话授权。
+        reopened._verified_videos.add(experiment.video_id)
+        window.analysisSession = reopened
+        actions.resetContext()
+        qtbot.waitUntil(lambda: actions._future is None)
+        assert actions.panel.sgSettings() == (7, 3)
+        assert actions.panel.statusLabel.text().startswith('Current')
+        # 手输非法偶数窗口不计算，恢复默认可以再次计算。
+        actions.panel.sgWindow.setValue(4)
+        assert not actions.panel.computeButton.isEnabled()
+        actions.panel.sgPresets[0].click()
+        assert actions.panel.sgSettings() == (9, 3) and actions.panel.computeButton.isEnabled()
+    finally:
+        actions.shutdown()
+
+
+def test_late_computation_rejects_changed_sg_settings(qtbot, tmp_path, synthetic_video_path):
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    window = Window(session, experiment)
+    qtbot.addWidget(window)
+    actions = PendulumAnalysisActions(window)
+    result = run_analysis_job(prepare_analysis_job(session, experiment.experiment_id, 11), Event())
+    try:
+        future = Future()
+        actions._newCancel()
+        actions._submit('compute', analysis_input_state(session, experiment.experiment_id), future)
+        assert not actions.panel.sgWindow.isEnabled()
+        actions.panel.sgWindow.setValue(7)  # 程序改值也不能让旧请求提交。
+        future.set_result(result)
+        actions._poll()
+        assert session.project.scientific_results == ()
+    finally:
+        actions.shutdown()
+
+
+def test_undo_redo_analysis_restores_historical_sg_controls(qtbot, tmp_path, synthetic_video_path):
+    session, experiment = analysis_session(tmp_path, synthetic_video_path)
+    window = Window(session, experiment)
+    qtbot.addWidget(window)
+    actions = PendulumAnalysisActions(window)
+    try:
+        actions.compute()
+        qtbot.waitUntil(lambda: actions._future is None)
+        actions.panel.setSG(7, 3)
+        actions.compute()
+        qtbot.waitUntil(lambda: actions._future is None)
+        assert actions.panel.sgSettings() == (7, 3)
+        for operation, expected in ((session.undo, (9, 3)), (session.redo, (7, 3))):
+            assert operation()
+            window.analysisChanged.emit()
+            qtbot.waitUntil(lambda: actions._future is None and actions.panel.sgSettings() == expected)
+            assert actions.panel.settingsMatchPayload()
+            assert actions.panel.statusLabel.text().startswith('Current')
+    finally:
+        actions.shutdown()

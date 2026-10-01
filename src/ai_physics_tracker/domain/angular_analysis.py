@@ -14,7 +14,7 @@ from ai_physics_tracker.domain.pendulum_reconstruction import (
 from ai_physics_tracker.domain.scientific_result import is_sha256_hex
 from ai_physics_tracker.domain.types import canonical_json_digest
 
-CORE_VERSION = "angular-analysis-1.0.0"
+CORE_VERSION = "angular-analysis-1.1.0"
 DIAGNOSTICS_SHA256 = "d58670ec679057cd913407c52341b8aacab141bad162abbd894b0f76c26aae8e"
 STUDENT = "student-default-v2"
 LEGACY = "legacy-publication-v1"
@@ -24,26 +24,36 @@ UNIFORM_DT_REL_TOL = 1e-6
 TAIL_MIN_PERIODS = 10
 
 
-def analysis_config(profile_id: str) -> dict[str, object]:
+def analysis_config(profile_id: str, *, sg_window: int = SG_WINDOW,
+                    sg_polyorder: int = SG_POLYORDER) -> dict[str, object]:
     """展开本核心实际用到的 profile；历史算法只有显式请求才启用。"""
     if profile_id not in (STUDENT, LEGACY):
         raise ValueError(f"unsupported angular profile: {profile_id}")
+    if (type(sg_window) is not int or sg_window < 3 or sg_window % 2 != 1
+            or type(sg_polyorder) is not int or not 1 <= sg_polyorder < sg_window):
+        raise ValueError("SG window must be an odd integer >= 3; polynomial order must be >= 1 and < window")
+    custom = (sg_window, sg_polyorder) != (SG_WINDOW, SG_POLYORDER)
+    if profile_id == LEGACY and custom:
+        raise ValueError("legacy reproduction does not allow SG overrides")
     return {
         "profile_id": profile_id, "profile_version": "2.0.0" if profile_id == STUDENT else "1.0.0",
         "profile_sha256": STUDENT_PROFILE_SHA256 if profile_id == STUDENT else LEGACY_PROFILE_SHA256,
         "diagnostics_sha256": DIAGNOSTICS_SHA256, "core_version": CORE_VERSION,
         "numpy_version": np.__version__, "scipy_version": scipy.__version__,
-        "derivative": {"window_frames": SG_WINDOW, "polyorder": SG_POLYORDER,
+        "resolved_overrides": {"sg_window": sg_window, "sg_polyorder": sg_polyorder,
+                               "source": "user-settings; ADR-0019"} if custom else {},
+        "derivative": {"window_frames": sg_window, "polyorder": sg_polyorder,
                        "deriv": 1, "mode": "interp", "presmoothing": False,
                        "delta": "segment_median_dt" if profile_id == STUDENT else "1/fps_nominal",
-                       "minimum_segment_frames": SG_WINDOW if profile_id == STUDENT else None,
+                       "minimum_segment_frames": sg_window if profile_id == STUDENT else None,
                        "uniform_dt_relative_tolerance": UNIFORM_DT_REL_TOL if profile_id == STUDENT else None},
         "tail": {"start": "last_third_strict" if profile_id == STUDENT else 70.0,
                  "minimum_periods": TAIL_MIN_PERIODS, "aggregate": "mean_per_period_omega2"},
         "period": {"zero_plateau": "split_raw_or_centered_zero" if profile_id == STUDENT else "legacy_sign_edges",
                    "isolated_zero": "opposite_neighbors" if profile_id == STUDENT else "legacy_sign_edges"},
         "information_extrema": {"order": "max(8,int(fps_nominal/10))", "mode": "clip", "insert_initial": False},
-        "provenance": {"derivative": ["policy-student-v1", "metrics"] if profile_id == STUDENT else ["metrics"],
+        "provenance": {"derivative": (["policy-student-v1", "metrics", "ADR-0019:user-settings"] if custom
+                                      else ["policy-student-v1", "metrics"]) if profile_id == STUDENT else ["metrics"],
                        "period": ["tail", "policy-student-v1"] if profile_id == STUDENT else ["tail"],
                        "information_extrema": ["information"]},
     }
@@ -169,7 +179,8 @@ def valid_segments(series: AngularSeries, mask: tuple[bool, ...], *, branch_guar
     return tuple(segments)
 
 
-def _derivative(series: AngularSeries, mask: tuple[bool, ...], profile_id: str):
+def _derivative(series: AngularSeries, mask: tuple[bool, ...], profile_id: str,
+                sg_window: int, sg_polyorder: int):
     n = len(mask)
     omega = [None] * n
     reasons = ["outside_interval" if t < 0 else "qc_excluded" for t in series.time_release_relative_s]
@@ -186,19 +197,19 @@ def _derivative(series: AngularSeries, mask: tuple[bool, ...], profile_id: str):
         return tuple(float(v) for v in result), (None,) * n, tuple(i < window//2 or i >= n-window//2 for i in range(n))
     for start, end in valid_segments(series, mask):
         dt = np.diff(series.time_release_relative_s[start:end])
-        reason = "short_segment" if end-start < SG_WINDOW else None
+        reason = "short_segment" if end-start < sg_window else None
         delta = float(np.median(dt)) if len(dt) else None
         if reason is None and np.any(np.abs(dt-delta) > UNIFORM_DT_REL_TOL * delta):
             reason = "nonuniform_segment"
         if reason is not None:
             reasons[start:end] = [reason] * (end-start)
             continue
-        values = savgol_filter(series.theta_rad[start:end], SG_WINDOW, SG_POLYORDER,
+        values = savgol_filter(series.theta_rad[start:end], sg_window, sg_polyorder,
                                deriv=1, delta=delta, mode="interp")
         for i, value in enumerate(values, start):
             omega[i] = float(value) if isfinite(value) else None
             reasons[i] = None if isfinite(value) else "nonfinite_derivative"
-            edges[i] = i < start+SG_WINDOW//2 or i >= end-SG_WINDOW//2
+            edges[i] = i < start+sg_window//2 or i >= end-sg_window//2
     return tuple(omega), tuple(reasons), tuple(edges)
 
 
@@ -268,9 +279,10 @@ def period_analysis(series: AngularSeries, mask: tuple[bool, ...], *, start_s: f
 
 
 def analyze_angular_series(series: AngularSeries, *, profile_id: str = STUDENT,
-                           end_frame_index: int | None = None, tail_start_s: float | None = None) -> AngularAnalysis:
+                           end_frame_index: int | None = None, tail_start_s: float | None = None,
+                           sg_window: int = SG_WINDOW, sg_polyorder: int = SG_POLYORDER) -> AngularAnalysis:
     """一套源帧网格输出 derivative / information / period / tail；无二次平滑。"""
-    config = analysis_config(profile_id)
+    config = analysis_config(profile_id, sg_window=sg_window, sg_polyorder=sg_polyorder)
     end_frame = series.frame_indices[-1] if end_frame_index is None else end_frame_index
     if type(end_frame) is not int or end_frame not in series.frame_indices:
         raise ValueError("analysis end frame must exist in the source series")
@@ -286,7 +298,7 @@ def analyze_angular_series(series: AngularSeries, *, profile_id: str = STUDENT,
     if type(tail_start) not in (int, float) or not isfinite(tail_start):
         raise ValueError("tail start must be finite")
     mask = tuple(i and q for i, q in zip(interval, series.qc_valid))
-    omega, reasons, edges = _derivative(series, mask, profile_id)
+    omega, reasons, edges = _derivative(series, mask, profile_id, sg_window, sg_polyorder)
     reasons = tuple(reason if included else "outside_interval" for reason, included in zip(reasons, interval))
     information = []
     order = max(8, int(series.fps_nominal/10))

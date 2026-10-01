@@ -11,7 +11,7 @@ from ai_physics_tracker.application.adopted_measurement import (
 )
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.angular_analysis import (
-    AngularSeries, STUDENT, analysis_config, analyze_angular_series,
+    AngularSeries, STUDENT, SG_WINDOW, SG_POLYORDER, analysis_config, analyze_angular_series,
 )
 from ai_physics_tracker.domain.pendulum import QCExclusion, ROLE_ORDER
 from ai_physics_tracker.domain.pendulum_energy import energy_config, reference_energy
@@ -72,7 +72,7 @@ def angular_series_from_reconstruction(
 
 
 ANALYSIS_KIND = "pendulum-core-analysis-v1"
-CORE_VERSION = "pendulum-core-analysis-2.0.0"
+CORE_VERSION = "pendulum-core-analysis-2.1.0"
 COLUMNS = tuple(ResultColumn(name, dtype, unit) for name, dtype, unit in (
     ("frame_index", "int64", None), ("time_absolute_s", "float64", "s"),
     ("time_release_relative_s", "float64", "s"), ("theta_rad", "float64?", "rad"),
@@ -112,11 +112,19 @@ def analysis_video_stamp(session: ProjectSession, experiment_id: UUID) -> tuple:
             stat.st_mtime_ns, stat.st_ctime_ns)
 
 
-def analysis_signature(snapshot: AdoptedMeasurementSnapshot, end_frame_index: int) -> str:
-    return canonical_json_digest({"measurement_digest": snapshot.digest,
-        "end_frame_index": end_frame_index, "core_version": CORE_VERSION,
-        "reconstruction": reconstruction_config(), "angular": analysis_config(STUDENT),
-        "energy": energy_config()})
+def resolved_analysis_config(end_frame_index: int, *, sg_window: int = SG_WINDOW,
+                             sg_polyorder: int = SG_POLYORDER) -> dict:
+    """签名、发布与读回使用同一完整展开配置，包括来源与依赖版本。"""
+    return {"end_frame_index": end_frame_index,
+        "reconstruction": reconstruction_config(), "angular": analysis_config(
+            STUDENT, sg_window=sg_window, sg_polyorder=sg_polyorder),
+        "energy": energy_config()}
+
+
+def analysis_signature(snapshot: AdoptedMeasurementSnapshot, end_frame_index: int, *,
+                       sg_window: int = SG_WINDOW, sg_polyorder: int = SG_POLYORDER) -> str:
+    return canonical_json_digest({"measurement_digest": snapshot.digest, "core_version": CORE_VERSION,
+        **resolved_analysis_config(end_frame_index, sg_window=sg_window, sg_polyorder=sg_polyorder)})
 
 
 @dataclass(frozen=True)
@@ -125,6 +133,8 @@ class PendulumAnalysisJob:
     experiment_id: UUID
     end_frame_index: int
     captured_state: tuple
+    sg_window: int = SG_WINDOW
+    sg_polyorder: int = SG_POLYORDER
 
 
 @dataclass(frozen=True)
@@ -136,7 +146,9 @@ class PendulumAnalysisResult:
 
 
 def prepare_analysis_job(session: ProjectSession, experiment_id: UUID,
-                         end_frame_index: int) -> PendulumAnalysisJob:
+                         end_frame_index: int, *, sg_window: int = SG_WINDOW,
+                         sg_polyorder: int = SG_POLYORDER) -> PendulumAnalysisJob:
+    analysis_config(STUDENT, sg_window=sg_window, sg_polyorder=sg_polyorder)
     if session.project_root is None:
         raise ProjectSessionError("save the publication project before analysis")
     experiment = session.pendulum_experiment(experiment_id)
@@ -148,7 +160,7 @@ def prepare_analysis_job(session: ProjectSession, experiment_id: UUID,
     if not session.can_measure(video.video_id):
         raise ProjectSessionError("video timing must be authorized before analysis")
     return PendulumAnalysisJob(session.detached(), experiment_id, end_frame_index,
-                               analysis_input_state(session, experiment_id))
+                               analysis_input_state(session, experiment_id), sg_window, sg_polyorder)
 
 
 def _check_cancel(cancel: Event) -> None:
@@ -162,7 +174,8 @@ def run_analysis_job(job: PendulumAnalysisJob, cancel: Event) -> PendulumAnalysi
     snapshot = build_adopted_measurement(job.session, job.experiment_id)
     reconstruction = reconstruct_pendulum(prepare_pendulum_reconstruction(job.session, snapshot))
     series = angular_series_from_reconstruction(reconstruction, snapshot.payload["video"]["fps_nominal"])
-    angular = analyze_angular_series(series, end_frame_index=job.end_frame_index)
+    angular = analyze_angular_series(series, end_frame_index=job.end_frame_index,
+                                    sg_window=job.sg_window, sg_polyorder=job.sg_polyorder)
     physical = snapshot.payload["physical"]
     energy = reference_energy(series, angular, physical["length_m"], physical["g_m_s2"])
     _check_cancel(cancel)
@@ -173,10 +186,11 @@ def run_analysis_job(job: PendulumAnalysisJob, cancel: Event) -> PendulumAnalysi
             "edge_window": angular.edge_window[i], "potential_s_inv2": energy.potential_s_inv2[i],
             "kinetic_s_inv2": energy.kinetic_s_inv2[i], "energy_s_inv2": energy.total_s_inv2[i],
             "energy_reason": energy.reasons[i]})
-    digest = analysis_signature(snapshot, job.end_frame_index)
+    digest = analysis_signature(snapshot, job.end_frame_index,
+                                sg_window=job.sg_window, sg_polyorder=job.sg_polyorder)
     payload = {"contract": ANALYSIS_KIND, "input_digest": digest, "measurement": snapshot.payload,
-        "config": {"reconstruction": reconstruction_config(), "angular": analysis_config(STUDENT),
-                   "energy": energy_config(), "end_frame_index": job.end_frame_index},
+        "config": resolved_analysis_config(job.end_frame_index, sg_window=job.sg_window,
+                                           sg_polyorder=job.sg_polyorder),
         "reconstruction_digest": reconstruction.input_digest, "angular_digest": angular.input_digest,
         "energy_digest": energy.input_digest, "q_reference_s_inv2": energy.q_s_inv2,
         "body_reference_px": reconstruction.body_reference_px,
@@ -211,8 +225,14 @@ def load_analysis_result(session: ProjectSession, record: ScientificResult) -> t
     if payload.get("contract") != ANALYSIS_KIND or payload.get("input_digest") != record.input_digest:
         raise ProjectSessionError("pendulum payload identity does not match record")
     try:
+        derivative = payload["config"]["angular"]["derivative"]
+        expected = resolved_analysis_config(record.extra_fields["end_frame_index"],
+            sg_window=derivative["window_frames"], sg_polyorder=derivative["polyorder"])
+        if payload["config"] != expected or record.extra_fields["config"] != expected:
+            raise ValueError("saved analysis configuration or provenance changed — recompute")
         snapshot = build_adopted_measurement(session, record.experiment_id)
-        current = analysis_signature(snapshot, record.extra_fields["end_frame_index"])
+        current = analysis_signature(snapshot, record.extra_fields["end_frame_index"],
+            sg_window=derivative["window_frames"], sg_polyorder=derivative["polyorder"])
     except (ProjectSessionError, ValueError, KeyError) as error:
         return payload, False, str(error)
     valid = current == record.input_digest and record.core_version == CORE_VERSION and record.freshness == "valid"
