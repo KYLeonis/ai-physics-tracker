@@ -2,7 +2,7 @@
 
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P4.1/P4.2/P4.3 Independent Review全部通过，用户确认最终HR通过。P5已获授权，阅读规划入口后按用户“稍等”先修复Windows CI；P5 mini-plan/实现尚未开始，P6未启动。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍为ADR-0020 Accepted Limitation，不计为数值通过。**
+- 当前：**P0–P4完成；P4.1/P4.2/P4.3 Independent Review全部通过，用户确认最终HR通过。P5已获授权；按用户“稍等”优先处理的Windows CI修复已完成，最终论文分支双平台CI通过。P5停在mini-plan入口、无代码实现，P6未启动。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍为ADR-0020 Accepted Limitation，不计为数值通过。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
 
 ## Windows CI UTF-8 repair — 2026-10-01
@@ -11,8 +11,9 @@
 - 修复`6a20ac6`：相关测试和回归脚本四处JSON读取显式`encoding="utf-8"`。Normal-risk局部编码bugfix，无算法/profile/golden/产品GUI修改，无独立/真人review触发；publication专用文件不在main，main工作树未改。
 - 本地6项定向通过（1.60s）；冻结verifier15files/48fitrows/2trajectories及diff check通过。编码修复分支run [36881913496](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36881913496)双平台通过（Windows1336passed/5skipped/1strictxfail；macOS1338passed/3skipped/1strictxfail），已集成905aa91。
 - 集成run [36882267010](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36882267010)编码用例通过，但暴露P4.2等价objective测试的跨平台浮点敏感：参数变换回集总值产生一个ULP差异，自适应积分后cost差2.75e−11，超出1e−11断言。修复`2e8b5a9`为高精度数学证明；R3要求补保留原request检查，`188bd47`按已有E4轨迹/mean objective预算核对原request及curve分母，并保留高精度1e−11断言。产品/profile/golden/既有E4门槛均不改。
-- 最终5项定向通过（20.97s）；[P4.2 Independent Review R4](../docs/reviews/publication-p4.2-review.md) Approve、F3 Closed，独立1项通过（5.44s）。中间`2e8b5a9` run [36884155783](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36884155783)双平台通过；最终含原request检查的集成CI待push后确认。
-- 下一步：push修复并确认双平台CI；修复完成后回到P5.1 mini-plan入口。
+- 最终5项定向通过（20.97s）；[P4.2 Independent Review R4](../docs/reviews/publication-p4.2-review.md) Approve、F3 Closed，独立1项通过（5.44s）。中间`2e8b5a9` run [36884155783](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36884155783)双平台通过。
+- 最终工作分支d469ac7、--no-ff集成0feb196并push；最终集成run [36887110342](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36887110342) **Windows1336passed/5skipped/1strictxfail（359.80s），macOS1338passed/3skipped/1strictxfail（157.03s），双平台success**。集成树与工作分支完全一致；后续仅补记状态，不重复数值验证。既有strict xfail不是新失败、不计为数值通过。
+- 本轮CI修复闭环，临时watch日志已清理，main未改。下一步为已授权P5.1 mini-plan入口。
 
 ## P4 closeout — 2026-10-01
 
@@ -161,7 +162,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P5已获用户授权；当前先完成Windows CI编码修复并核对远程结果，随后建立P5.1 workflow integration mini-plan。P5尚无代码实现；P6不进入。**
+**Windows CI修复已完成。继续已授权P5.1时，先建立`publication/plans/p5.1-workflow-integration.md`（Context Pack/AC/Slices/Independent及Human Review Gate），再在独立工作分支实施Setup/Acquire/Analysis任务卡、训练/教师导入两路径和取消/重试/历史。用户本轮先处理CI，P5尚无代码实现；P6不进入。**
 
 ## P2.1 delivery (2026-09-30)
 
