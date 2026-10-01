@@ -347,7 +347,7 @@ def validate_saved_fit(request: ObjectiveRequest, model: str, settings: FitSetti
     diagnostics = tuple(diagnostics)
     candidates = [i for i, d in enumerate(diagnostics) if d.parameters is not None and d.cost_rad2 is not None]
     selected = min(candidates, key=lambda i: diagnostics[i].cost_rad2) if candidates else None
-    if saved["selected_start_index"] != selected:
+    if (saved["selected_start_index"] is not None and type(saved["selected_start_index"]) is not int) or saved["selected_start_index"] != selected:
         raise ValueError("saved selected start changed")
     parameters = _parameters(model, diagnostics[selected].parameters) if selected is not None else None
     evaluated = evaluate_objective(request, model, parameters) if parameters is not None else None

@@ -19,7 +19,7 @@ from ai_physics_tracker.application.project_session import ProjectSession, Proje
 from ai_physics_tracker.domain.pendulum_fit import FitSettings, compare_fits, fit_config, fit_pendulum, validate_saved_fit
 from ai_physics_tracker.domain.pendulum_ode import (
     DEFAULT_F_SCALE_RAD, M0, M1, InitialCondition, IntegrationSettings, ObjectiveRequest,
-    resolve_student_initial_condition,
+    resolve_student_initial_condition, fit_eligibility,
 )
 from ai_physics_tracker.domain.pendulum_reconstruction import reconstruct_pendulum, reconstruction_config
 from ai_physics_tracker.domain.scientific_result import ResultColumn, ScientificResult
@@ -191,6 +191,7 @@ def run_fit_job(job: PendulumFitJob, cancel: Event, *,
     digest = fit_signature(snapshot, config)
     payload = {"contract": FIT_KIND, "input_digest": digest, "measurement": snapshot.payload,
         "measurement_digest": snapshot.digest, "config": config, "rows": rows,
+        "eligibility": asdict(fit_eligibility(request)),
         "fits": {m: asdict(f) for m, f in fits.items()},
         "comparison": asdict(compare_fits(fits[M0], fits[M1])) if M1 in fits else None}
     stamp = analysis_video_stamp(job.session, job.experiment_id)
@@ -239,7 +240,7 @@ def load_fit_result(session: ProjectSession, record: ScientificResult) -> tuple[
     try:
         options = options_from_payload(payload["config"]["options"])
         _validate_payload(payload, record, options)
-    except (ProjectSessionError, ValueError, KeyError, TypeError, AttributeError, IndexError) as error:
+    except (ProjectSessionError, ValueError, KeyError, TypeError, AttributeError, IndexError, OverflowError) as error:
         raise ProjectSessionError(f"fit payload is invalid: {error}") from error
     try:
         snapshot = build_adopted_measurement(session, record.experiment_id)
@@ -249,7 +250,7 @@ def load_fit_result(session: ProjectSession, record: ScientificResult) -> tuple[
                 canonical_json_digest(record.extra_fields["config"]) != canonical_json_digest(expected)):
             raise ValueError("saved fit configuration/provenance changed — recompute")
         current = fit_signature(snapshot, expected)
-    except (ProjectSessionError, ValueError, KeyError, TypeError, AttributeError, IndexError) as error:
+    except (ProjectSessionError, ValueError, KeyError, TypeError, AttributeError, IndexError, OverflowError) as error:
         return payload, False, str(error)
     valid = current == record.input_digest and record.core_version == CORE_VERSION and record.freshness == "valid"
     return payload, valid, None if valid else "fit inputs changed — recompute"
@@ -278,6 +279,8 @@ def _validate_payload(payload: dict, record: ScientificResult, options: FitOptio
         raise ValueError("saved fit configuration/provenance changed")
     if canonical_json_digest({"measurement_digest": digest, "config": payload["config"]}) != record.input_digest:
         raise ValueError("saved fit input digest changed")
+    if canonical_json_digest(payload["eligibility"]) != canonical_json_digest(asdict(fit_eligibility(request))):
+        raise ValueError("saved fit eligibility changed")
     fits = payload["fits"]
     if set(fits) != set(options.models):
         raise ValueError("saved fit models changed")
