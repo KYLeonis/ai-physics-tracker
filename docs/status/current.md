@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-01）：P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。停止在P3，等待用户授权P4；P4–P6未启动。最终UI定向34 passed，真实TimingActions最终8 passed；此前全量1324 passed/1 strict xfailed/9 subtests及frozen verifier通过。用户本轮免除handoff。省赛权重/标签待Windows提供，测试工程说明见[本地数据](../notes/provincial-ui-test-2026-10-01.md)。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-01）：P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。P3 --no-ff集成`cb28326`，最终状态随提交推送。停止在P3，等待用户授权P4；P4–P6未启动。最终UI定向34 passed，真实TimingActions最终8 passed；此前全量1324 passed/1 strict xfailed/9 subtests及frozen verifier通过。用户本轮免除handoff。省赛权重/标签待Windows提供，测试工程说明见[本地数据](../notes/provincial-ui-test-2026-10-01.md)。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 

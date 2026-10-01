@@ -11,13 +11,13 @@
 - 当前代码证据：此前全量1324 passed / 1 strict xfailed / 9 subtests；最终UI定向34 passed（25.64s），真实TimingActions最终8 passed（18.92s）。冻结证据15文件/48正式fit行/2轨迹通过，审查finding全部Closed。文档收尾未重跑数值优化。
 - AC核对：forward/objective、synthetic显式高精度恢复、integration/energy、选样/weights、后台取消/失败/stale、配置与结果读回及Normal/Advanced同core已验证。历史回归按[ADR-0020](../docs/decisions/0020-explicit-fit-precision-and-historical-regression-limit.md)裁定为Accepted Limitation：E3 30/48、E2 47/48，strict xfail不计为数值通过。
 - 运行命令/体验步骤：[P3.4交付计划](plans/p3.4-fit-ui.md)；[省赛本地测试工程](../docs/notes/provincial-ui-test-2026-10-01.md)保留，权重/标签待Windows提供。用户本轮明确无需handoff。
-- Git集成：收尾文档提交后执行--no-ff合并与push，实际merge记录随后补入。
+- Git集成：工作分支收尾`c819ef5`，--no-ff merge `cb28326`（parents `38f6de5` / `c819ef5`）已完成；本最终状态提交随两分支推送。集成后源代码/测试与已验证工作分支一致。
 
 ## P3.4 真人反馈修复 checkpoint（2026-10-01）
 
 - 用户实际跑通P011 M0/M1后报告：时序确认入口在拟合页不可见、后台状态不明确、模型曲线难区分、JSON诊断不直观。当前修复仅GUI展示：拟合页直接复用原Use approximate timing确认，busy动态等待条/耗时/真实start数；设置滚动区与240px最小图高，异色/实线虚线、小透明观测点，拟合区间固定X范围与单独M1−M0预测差值（degree）；参数表/RMSE柱图、逐start cost星标/结果表，JSON移到Technical details。
 - 34项GUI定向通过（最终25.64s），真实TimingActions最终8项通过（18.92s），包含时序入口/验证中禁用/解除、后台等待条、已知模型差值、源时间X范围与诊断表；无算法/schema/源数据改动，不重复全量。Independent Review R1时序pending接口finding已修复，R2 Approve；真人修复复测已获用户“通过，收尾”确认。用户明确本轮不写handoff。
-- 下一步：完成已授权的P3集成/push后停止；P4未开始。
+- 下一步：P3已集成，最终文档推送后停止；P4未开始。
 
 ## P3.4 HR 本地数据准备（2026-10-01）
 
