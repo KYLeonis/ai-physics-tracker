@@ -1,8 +1,8 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-09-30。
+- 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P2.1/P2.2 完成；P2.2 merge `4ec09b6` 已推送；当前 `feat/p2.3-energy-analysis-ui`（base `4ec09b6`）。
-- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Q4/Q5用户确认通过；HR主线再次反馈已定位：tip补标未补齐共同QC所需四点；用户纠正分析依赖，当前默认student-default-v2：tip + fixed pivot，辅助点仅诊断；tip-only自动修复Independent Review已Approve，待Human Review，P2尚未关闭。
+- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Q4/Q5用户确认通过；HR主线再次反馈已定位：tip补标未补齐共同QC所需四点；用户纠正分析依赖，当前默认student-default-v2：tip + fixed pivot，辅助点仅诊断；tip-only自动修复Independent Review已Approve；2026-10-01用户反馈test1最长8帧被SG9阻断，现已实现显式SG窗口/阶数与7/3、5/2快捷设置，本轮独立复审Approve，待Human Review，P2尚未关闭。
 - P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1/P2.2 已完成；P2.3 实现/代码审查通过，等待Human Review；P2尚未完成**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
 
 ## P1 planning
@@ -89,7 +89,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**重新启动当前P2.3分支、打开test2_pendulum → 旧v1结果应显示STALE → Compute采用新版tip+fixed pivot角运动QC，辅助缺点不再阻断 → 检查四页局部图及源帧/保存重开。若仍无9帧连续有效tip，用Repair suggested frames，每帧只点tip、自动下一帧。Q4/Q5已通过；新版Q8与原Q2/Q3未通过前不集成、不关闭P2、不进入P3。**
+**保存/关闭旧app，重新启动当前P2.3分支、打开test1 → 重新Compute → 选7/3或5/2看预计覆盖并Compute，确认局部ω/phase/energy → 检查图点源帧与保存重开恢复SG参数。Q4/Q5已通过；本轮Q9及原Q2/Q3未通过前不集成、不关闭P2、不进入P3。**
 
 ## P2.1 delivery (2026-09-30)
 
@@ -147,3 +147,13 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - 验证87定向/3subtests，全量1233 tests/9subtests；profile文字/SHA/verifier及source bar补充后79定向/3subtests+evidence15/48/2通过，scalar core version升级14 analysis/UI通过。Independent Review F1/P2已关闭，复审Approve（独立14 evidence/3subtests、75 core/UI/stale）；最终主会话53/3subtests与evidence通过，仍待用户Q8新版tip分析与原Q2/Q3导航/stale/保存重开真人反馈。
 
 代码checkpoint `869e504`；五小时额度剩余5%时已写[简单交接](plans/p2.3-handoff-2026-09-30.md)。待用户Human Review，勿提前集成或进入P3。
+
+
+## P2.3 HR：可调SG（2026-10-01）
+
+- test1有66/112有效角度、最长连续8帧，默认SG9/3阻断全部ω。用户授权自定义SG，见ADR-0019与scientific-profiles §9；同一分段直接SG核心支持显式奇数窗口/阶数，默认9/3与frozen profiles不变，legacy不接受override。
+- UI提供9/3、7/3、5/2快捷与自定义、预计覆盖/窗时间跨度/噪声取舍、实际图参数/edge数；参数随digest/job/immutable结果保存，重开恢复；改变设置需Compute、旧图保持旧设置，设置代际迟到拒收，repair按保存窗口并拒绝未应用设置。
+- test1最新a2d4bb43只读重算：9/3 ω/energy0；7/3各15；5/2各32；3/1各39。周期/tail仍0，未跨gap构造周期；未写用户manifest或derived。
+- 全量1249 tests/9subtests、evidence15/48/2与diff通过；Independent Review首轮F1/P1完整配置来源读回、F2/P2历史参数恢复均修复并复审Approve（独立51项），最终主会话65定向/3subtests通过。Q9新版SG与原Q2/Q3真人反馈前不集成、不关闭P2、不进入P3。
+
+本轮代码checkpoint `01a8f87`，工作分支推送后等待Q9真人验收；publication集成分支仍停P2.2。

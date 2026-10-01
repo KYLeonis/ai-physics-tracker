@@ -1,6 +1,6 @@
 # Current Status
 
-> Publication worktree note（2026-09-30）：本文件保留main通用线状态，论文线权威入口为[publication/STATUS.md](../../publication/STATUS.md)。P0/P1/P2.1/P2.2已完成；P2.3当前分支feat/p2.3-energy-analysis-ui。用户纠正角运动只依赖tip与fixed pivot，辅助role仅诊断；发布student-default-v2，tip-only修复与旧结果stale，全量1233 tests/9subtests通过，独立审查finding关闭、复审Approve，最后53定向/3subtests通过，待Q8/原Q2/Q3真人HR。P2未关闭，不进入P3；Windows门禁已明确延期至P6前。
+> Publication worktree note（2026-10-01）：本文件保留main通用线状态，论文线权威入口为[publication/STATUS.md](../../publication/STATUS.md)。P0/P1/P2.1/P2.2已完成；P2.3分支feat/p2.3-energy-analysis-ui。当前角运动tip + fixed pivot，辅助role仅诊断；用户test1最长8帧被固定SG9挡住，已提供显式SG窗口/阶数与快捷7/3、5/2。实际只读重算ω/energy从0→15/32；全量1249/9subtests与最终65定向/3subtests通过；独立审查两项finding已修复并复审Approve，Q9及原Q2/Q3待真人HR。P2未关闭，不进入P3；Windows门禁延期至P6前。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

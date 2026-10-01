@@ -90,3 +90,12 @@ v1与legacy冻结字节和历史golden不变；当前新计算采用 [student-de
 - 辅助角色source/坐标/body length/reference/pivot displacement问题写入独立auxiliary_qc_reasons，不进入角运动排除理由。body reference来自非显式排除、正有限、source-valid body pair；不要求tip/tracked pivot同时存在。没有辅助观测时其诊断unavailable。
 - SG9/3、均匀连续源帧、分段/branch/gap、tail、能量公式、权重与拟合阈值沿用v1；这些未更改算法的来源仍引用policy-student-v1。未来IC的valid使用当前tip mask。
 - profile/version/hash与重建core升级进入结果签名；旧v1结果保留但stale，必须重算后用于当前分析，不用新规则重新解释已保存的历史mask。
+
+## 9. 用户自定义SG（2026-10-01）
+
+用户授权对现有tip数据显式调整SG；见[ADR-0019](../../docs/decisions/0019-custom-angular-sg-settings.md)。student-default-v2冻结字节与默认9/3不改，运行请求可覆盖窗口/阶数；最终resolved config、override来源、窗口最短段、依赖版本均进入digest与immutable结果。legacy不接受override。
+
+- window是奇数整数≥3；1≤polyorder<window。GUI提供9/3、7/3、5/2与自定义；不得静默选择更短窗口。
+- 同一已有direct SG核心按连续QC-valid、均匀源帧段求导；每段长度至少window，边缘window//2帧标记。uniform/branch/QC/gap规则不变，无插值/预平滑。
+- 更短窗允许较短段产生局部ω/同帧相图/参考能量，通常也更敏感于噪声；界面显示可求导点数、窗时间跨度、边缘估计数量及实际使用的参数，不宣称缩窗改善精度。
+- 编辑设置需Compute才应用，旧图仍显示保存参数；读回历史结果恢复参数，版本升级或输入变化stale。SG参数不改变周期/tail/拟合资格。

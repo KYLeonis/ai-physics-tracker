@@ -54,3 +54,13 @@
 - 主会话87定向/3subtests、全量1233/9subtests；profile文字等79/3subtests、scalar version14、历史身份回归15、完全无aux主mask断言30；后续IC修复定向结果同步mini-plan。真实用户typed payload只读重算QC42→48/最长5→9/ω与energy各9；不写用户数据。仍待新版Q8及原Q2/Q3真人HR，不集成，不关闭P2。
 
 IC修复最终主会话53定向/3subtests、evidence15/48/2、diff check通过。
+
+
+## 用户自定义SG — Independent Review（2026-10-01）
+
+- High-risk范围：domain显式SG参数/验证/分段/均匀/edge；application请求/签名/配置保存与重开；GUI设置/覆盖预览/旧图提示/后台代际与repair guard。用户授权记于ADR-0019和当前mini-plan。
+- 主会话63定向/3subtests、全量1249 tests/9subtests通过；test1只读重算7/3与5/2分别15/32个ω/energy，period/tail保持不足。evidence15/48/2通过。首轮Request changes（以下两项），Human Review Q9及Q2/Q3待用户。
+
+- F1/P1：payload/manifest匹配不足以验证完整config/provenance，同步伪造来源后仍被标valid。FIX：resolved_analysis_config统一当前展开值，签名/发布/读回共用；payload与manifest均须等于expected；伪造来源负向回归通过。Closed。
+- F2/P2：undo到历史record时控件未恢复。FIX：按result_id变化恢复保存end/window/order；同一record刷新仍保留用户待应用设置；undo/redo9/3↔7/3回归通过。Closed。
+- 复审Approve，独立51 analysis/domain/UI定向通过，diff通过，零开放finding；首轮独立49 analysis/UI与44 evidence/reconstruction通过。未编辑/触碰用户项目。最终主会话65定向/3subtests与evidence15/48/2通过；全量1249/9subtests在上述两项修复前通过，修复后以完整受影响定向验证收口。

@@ -2,6 +2,8 @@
 
 > 2026-09-30用户用途纠正：P2角运动默认student-default-v2，tip + fixed pivot驱动，辅助点仅诊断；覆盖原四点共同QC口径。见[ADR-0018](../../docs/decisions/0018-tip-fixed-pivot-angular-qc.md)与scientific-profiles §8。
 
+> 2026-10-01：默认SG9/3保留，用户可显式调整窗口/阶数；见[ADR-0019](../../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。短窗只改变导数估计，不跨缺口构造周期。
+
 2026-09-30：用户授权在确认 P1 完成后进入 P2。P1 integration `100b955`，工作树干净且与 origin 一致；P1.1–P1.4 均合并，P1.4 十一条 AC、三道 Independent Review、六轮 Human Review、两类模型真实 lifecycle、1154 tests 和 macOS/Windows CI 均有存证。旧科研目录仅作只读参考；data_io / initial / metrics 字节匹配 source-map。
 
 ## Goal / Scope
