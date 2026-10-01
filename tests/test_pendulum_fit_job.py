@@ -149,8 +149,8 @@ def test_matching_payload_and_manifest_cannot_forge_fit_provenance(tmp_path, syn
     reference = write_scientific_payload(session.project_root, result_id, forged, result.record.payload.columns)
     record = replace(result.record, result_id=result_id, payload=reference,
                      extra_fields={**result.record.extra_fields, "config": forged["config"]})
-    _, valid, reason = load_fit_result(session, record)
-    assert not valid and "provenance" in reason
+    with pytest.raises(ProjectSessionError, match="provenance"):
+        load_fit_result(session, record)
 
 
 def test_later_fit_interval_preserves_release_ic_and_raw_source_times(tmp_path, synthetic_video_path):
@@ -181,3 +181,69 @@ def test_model_specific_settings_return_unavailable_comparison_without_invalid_w
     assert result.record.execution_status == "insufficient_data"
     assert result.payload["comparison"]["status"] == "not_comparable"
     assert result.payload["comparison"]["reason"] == "inputs_or_configuration_differ"
+
+
+
+def test_fit_prepare_rejects_pre_release_start_and_accepts_interval_boundaries(tmp_path, synthetic_video_path):
+    session, experiment, options = fit_session(tmp_path, synthetic_video_path)
+    with pytest.raises(ProjectSessionError, match="at or after release"):
+        prepare_fit_job(session, experiment.experiment_id, replace(options, start_frame_index=4))
+    assert prepare_fit_job(session, experiment.experiment_id, replace(options, start_frame_index=5)).options.start_frame_index == 5
+    assert prepare_fit_job(session, experiment.experiment_id, replace(options, start_frame_index=125)).options.start_frame_index == 125
+
+
+def test_paired_payload_corruption_is_rejected_and_missing_or_changed_artifact_is_structured(tmp_path, synthetic_video_path):
+    from copy import deepcopy
+    from uuid import uuid4
+    from ai_physics_tracker.infrastructure.scientific_payload import write_scientific_payload
+    session, experiment, options = fit_session(tmp_path, synthetic_video_path)
+    result = run_fit_job(prepare_fit_job(session, experiment.experiment_id, options), Event())
+    mutations = [lambda p: p.update(rows=[]), lambda p: p["measurement"].update(release_frame_index=0),
+        lambda p: p["rows"][10].update(theta_rad=0.), lambda p: p["fits"][M0].update(input_digest="0"*64),
+        lambda p: p["fits"][M0]["trajectory"]["prediction"].update(theta_rad=[]),
+        lambda p: p["fits"][M0].update(warnings=[]), lambda p: p["fits"][M0].pop("starts")]
+    # 此合成fit默认无warning；用不同非法状态验证warning边界。
+    mutations[5] = lambda p: p["fits"][M0].update(warnings=["fabricated"])
+    for mutate in mutations:
+        payload = deepcopy(result.payload); mutate(payload); result_id = uuid4()
+        reference = write_scientific_payload(session.project_root, result_id, payload, result.record.payload.columns)
+        record = replace(result.record, result_id=result_id, payload=reference)
+        with pytest.raises(ProjectSessionError, match="invalid"):
+            load_fit_result(session, record)
+    path = session.project_root/result.record.payload.path
+    path.write_bytes(b"broken")
+    with pytest.raises(ProjectSessionError, match="unreadable"):
+        load_fit_result(session, result.record)
+    path.unlink()
+    with pytest.raises(ProjectSessionError, match="unreadable"):
+        load_fit_result(session, result.record)
+
+
+def test_different_model_settings_execute_without_incompatible_warm_start(tmp_path, synthetic_video_path):
+    from ai_physics_tracker.domain.pendulum_ode import M1
+    session, experiment, options = fit_session(tmp_path, synthetic_video_path)
+    options = replace(options, models=(M0, M1),
+        m0_settings=FitSettings(max_nfev=3, starts=((.02, 19.62),)),
+        m1_settings=FitSettings(max_nfev=4, starts=((.02, .005, 19.62),)))
+    result = run_fit_job(prepare_fit_job(session, experiment.experiment_id, options), Event())
+    assert all(result.payload["fits"][model]["starts"][0]["nfev"] > 0 for model in options.models)
+    assert result.payload["comparison"]["status"] == "not_comparable"
+    assert load_fit_result(session, result.record)[1]
+
+
+def test_invalid_json_with_matching_reference_is_a_structured_load_error(tmp_path, synthetic_video_path):
+    import hashlib
+    from uuid import uuid4
+    from ai_physics_tracker.application.pendulum_fit import COLUMNS, FIT_KIND, CORE_VERSION
+    from ai_physics_tracker.domain.scientific_result import ScientificResult, ResultPayload
+    from ai_physics_tracker.domain.types import utc_now
+    from pathlib import PurePosixPath
+    session, experiment, _ = fit_session(tmp_path, synthetic_video_path)
+    data = b"{broken json"; relative = PurePosixPath("data/derived/broken.json")
+    (session.project_root/relative).parent.mkdir(parents=True, exist_ok=True)
+    (session.project_root/relative).write_bytes(data)
+    reference = ResultPayload("json", relative, len(data), hashlib.sha256(data).hexdigest(), COLUMNS)
+    record = ScientificResult(uuid4(), experiment.experiment_id, FIT_KIND, utc_now(), "0"*64,
+        CORE_VERSION, "success", payload=reference)
+    with pytest.raises(ProjectSessionError, match="unreadable"):
+        load_fit_result(session, record)

@@ -199,10 +199,7 @@ def _run_start(request, model, settings, start, lower, upper, check_cancel):
                            float(result.cost), int(result.nfev), str(result.message), failures, flags, rank, condition)
 
 
-def fit_pendulum(request: ObjectiveRequest, model: str, settings: FitSettings = FitSettings(), *,
-                 warm_start: PendulumFit | None = None, check_cancel: Callable[[], None] | None = None,
-                 progress: Callable[[int, int], None] | None = None) -> PendulumFit:
-    """数值候选取最小finite cost，单独复核最终forward；取消异常透传给任务所有者。"""
+def _fit_identity(request, model, settings, warm_start):
     lower, upper = fit_bounds(request, model, settings)
     seed = estimate_fit_seed(request, (lower[-1], upper[-1]), upper[0])
     starts = _resolve_starts(request, model, settings, seed, lower, upper, warm_start)
@@ -213,6 +210,37 @@ def fit_pendulum(request: ObjectiveRequest, model: str, settings: FitSettings = 
     comparison = _comparison_digest(request, settings)
     digest = canonical_json_digest({"request": objective_request_digest(request), "model": model,
         "config": config, "lower": list(lower), "upper": list(upper), "starts": starts, "seed": asdict(seed)})
+    return lower, upper, seed, starts, config, frames, times, comparison, digest
+
+
+def _fit_warnings(request, best, diagnostics, lower):
+    warnings = []
+    if not best.optimizer_success:
+        warnings.append("optimizer_not_converged")
+    if any(best.at_bound):
+        warnings.append("parameter_at_bound")
+    if best.jacobian_rank < len(lower):
+        warnings.append("rank_deficient_local_jacobian")
+    if best.jacobian_condition is None or best.jacobian_condition > JACOBIAN_CONDITION_WARNING:
+        warnings.append("ill_conditioned_local_jacobian")
+    if any(d.failed_evaluations for d in diagnostics):
+        warnings.append("integration_failures_during_optimization")
+    if any(d.status == "failed" for d in diagnostics):
+        warnings.append("some_starts_failed")
+    valid = fit_valid_indices(request)
+    end_s = request.series.time_release_relative_s[request.series.frame_indices.index(request.end_frame_index)]
+    late = [request.series.theta_rad[i] for i in valid if request.series.time_release_relative_s[i] >= end_s-5]
+    if late and abs(degrees(float(np.median(late)))) > 1:
+        warnings.append("late_equilibrium_offset_over_1deg")
+    return tuple(warnings)
+
+
+def fit_pendulum(request: ObjectiveRequest, model: str, settings: FitSettings = FitSettings(), *,
+                 warm_start: PendulumFit | None = None, check_cancel: Callable[[], None] | None = None,
+                 progress: Callable[[int, int], None] | None = None) -> PendulumFit:
+    """数值候选取最小finite cost，单独复核最终forward；取消异常透传给任务所有者。"""
+    lower, upper, seed, starts, config, frames, times, comparison, digest = _fit_identity(
+        request, model, settings, warm_start)
     def output(status, reason=None, parameters=None, selected=None, diagnostics=(), trajectory=None, warnings=()):
         return PendulumFit(model, status, reason, parameters, selected, diagnostics, seed,
                            lower, upper, frames, times, trajectory, warnings, digest, comparison, config)
@@ -240,24 +268,7 @@ def fit_pendulum(request: ObjectiveRequest, model: str, settings: FitSettings = 
     if final_objective.status != "success" or trajectory.status != "success":
         return output("failed", final_objective.reason or trajectory.reason,
                       selected=selected, diagnostics=diagnostics)
-    warnings = []
-    if not best.optimizer_success:
-        warnings.append("optimizer_not_converged")
-    if any(best.at_bound):
-        warnings.append("parameter_at_bound")
-    if best.jacobian_rank < len(lower):
-        warnings.append("rank_deficient_local_jacobian")
-    if best.jacobian_condition is None or best.jacobian_condition > JACOBIAN_CONDITION_WARNING:
-        warnings.append("ill_conditioned_local_jacobian")
-    if any(d.failed_evaluations for d in diagnostics):
-        warnings.append("integration_failures_during_optimization")
-    if any(d.status == "failed" for d in diagnostics):
-        warnings.append("some_starts_failed")
-    valid = fit_valid_indices(request)
-    end_s = request.series.time_release_relative_s[request.series.frame_indices.index(request.end_frame_index)]
-    late = [request.series.theta_rad[i] for i in valid if request.series.time_release_relative_s[i] >= end_s-5]
-    if late and abs(degrees(float(np.median(late)))) > 1:
-        warnings.append("late_equilibrium_offset_over_1deg")
+    warnings = _fit_warnings(request, best, diagnostics, lower)
     return output(best.status, parameters=parameters, selected=selected,
                   diagnostics=diagnostics, trajectory=trajectory, warnings=tuple(warnings))
 
@@ -281,3 +292,82 @@ def compare_fits(m0: PendulumFit, m1: PendulumFit) -> FitComparison:
     if denominator <= 0:
         return FitComparison("unavailable", "zero_m0_rmse", None)
     return FitComparison("comparable", None, 100*(denominator-m1.trajectory.rmse_rad)/denominator)
+
+
+def validate_saved_fit(request: ObjectiveRequest, model: str, settings: FitSettings,
+                       saved: dict, *, warm_start: PendulumFit | None = None) -> PendulumFit:
+    """读回时复核同core身份、typed诊断和final forward；不重做优化。"""
+    from dataclasses import fields
+    if not isinstance(saved, dict) or set(saved) != {f.name for f in fields(PendulumFit)}:
+        raise ValueError("saved fit structure changed")
+    lower, upper, seed, starts, config, frames, times, comparison, digest = _fit_identity(request, model, settings, warm_start)
+    expected = {"model": model, "lower": lower, "upper": upper, "seed": asdict(seed), "config": config,
+                "sample_frames": frames, "sample_time_s": times, "comparability_digest": comparison, "input_digest": digest}
+    if canonical_json_digest(expected) != canonical_json_digest({k: saved[k] for k in expected}):
+        raise ValueError("saved fit input/configuration identity changed")
+    if fit_eligibility(request).status != "ready":
+        result = fit_pendulum(request, model, settings, warm_start=warm_start)
+        if canonical_json_digest(asdict(result)) != canonical_json_digest(saved):
+            raise ValueError("saved insufficient-data fit changed")
+        return result
+    if not isinstance(saved["starts"], list) or len(saved["starts"]) != len(starts):
+        raise ValueError("saved start diagnostics incomplete")
+    diagnostics = []
+    for expected_start, raw in zip(starts, saved["starts"]):
+        if not isinstance(raw, dict) or set(raw) != {f.name for f in fields(StartDiagnostic)}:
+            raise ValueError("saved start diagnostic structure changed")
+        data = dict(raw)
+        for key in ("start", "parameters", "at_bound"):
+            data[key] = None if data[key] is None else tuple(data[key])
+        diagnostic = StartDiagnostic(**data)
+        if (diagnostic.start != expected_start or diagnostic.status not in ("success", "nonconverged", "failed")
+                or type(diagnostic.optimizer_success) is not bool
+                or diagnostic.optimizer_success != (diagnostic.status == "success")
+                or type(diagnostic.nfev) is not int or not 0 <= diagnostic.nfev <= settings.max_nfev
+                or type(diagnostic.failed_evaluations) is not int or diagnostic.failed_evaluations < 0
+                or not isinstance(diagnostic.message, str)):
+            raise ValueError("saved start diagnostic values changed")
+        if diagnostic.parameters is not None:
+            if (len(diagnostic.parameters) != len(lower) or any(type(v) not in (int, float) or not isfinite(v)
+                    or not lo <= v <= hi for v, lo, hi in zip(diagnostic.parameters, lower, upper))
+                    or type(diagnostic.cost_rad2) not in (int, float) or not isfinite(diagnostic.cost_rad2) or diagnostic.cost_rad2 < 0
+                    or len(diagnostic.at_bound) != len(lower) or any(type(v) is not bool for v in diagnostic.at_bound)
+                    or type(diagnostic.jacobian_rank) is not int or not 0 <= diagnostic.jacobian_rank <= len(lower)
+                    or diagnostic.jacobian_condition is not None and (type(diagnostic.jacobian_condition) not in (int, float)
+                        or not isfinite(diagnostic.jacobian_condition) or diagnostic.jacobian_condition < 1)):
+                raise ValueError("saved candidate diagnostic is invalid")
+            flags = tuple(bool(v) for v in (np.minimum(np.asarray(diagnostic.parameters)-lower,
+                np.asarray(upper)-diagnostic.parameters) <= BOUND_RELATIVE_TOLERANCE*np.maximum(np.asarray(upper)-lower, 1.)))
+            if diagnostic.at_bound != flags:
+                raise ValueError("saved candidate bound flags changed")
+        elif (diagnostic.status != "failed" or diagnostic.cost_rad2 is not None or diagnostic.at_bound
+                or diagnostic.jacobian_rank is not None or diagnostic.jacobian_condition is not None):
+            raise ValueError("saved failed candidate has parameters/cost")
+        diagnostics.append(diagnostic)
+    diagnostics = tuple(diagnostics)
+    candidates = [i for i, d in enumerate(diagnostics) if d.parameters is not None and d.cost_rad2 is not None]
+    selected = min(candidates, key=lambda i: diagnostics[i].cost_rad2) if candidates else None
+    if saved["selected_start_index"] != selected:
+        raise ValueError("saved selected start changed")
+    parameters = _parameters(model, diagnostics[selected].parameters) if selected is not None else None
+    evaluated = evaluate_objective(request, model, parameters) if parameters is not None else None
+    reason = "all_starts_failed" if selected is None else None
+    trajectory = evaluate_trajectory(request, model, parameters) if parameters is not None else None
+    if trajectory is not None and (trajectory.status != "success" or evaluated.status != "success"):
+        reason = evaluated.reason or trajectory.reason
+        trajectory = None; parameters = None
+    if (canonical_json_digest(saved["parameters"]) != canonical_json_digest(None if parameters is None else asdict(parameters))
+            or canonical_json_digest(saved["trajectory"]) != canonical_json_digest(None if trajectory is None else asdict(trajectory))):
+        raise ValueError("saved fit parameters/prediction/residual changed")
+    if trajectory is not None:
+        if evaluated.status != "success" or not np.isclose(evaluated.cost_rad2,
+                diagnostics[selected].cost_rad2, atol=1e-12, rtol=1e-8):
+            raise ValueError("saved selected objective cost changed")
+    status = diagnostics[selected].status if trajectory is not None else "failed"
+    warnings = _fit_warnings(request, diagnostics[selected], diagnostics, lower) if trajectory is not None else ()
+    if saved["status"] != status or saved["warnings"] != list(warnings) or saved["reason"] != reason:
+        raise ValueError("saved fit status/warnings changed")
+    if saved["reason"] is not None and not isinstance(saved["reason"], str):
+        raise ValueError("saved fit reason changed")
+    return PendulumFit(model, status, saved["reason"], parameters, selected, diagnostics, seed,
+        lower, upper, frames, times, trajectory, warnings, digest, comparison, config)

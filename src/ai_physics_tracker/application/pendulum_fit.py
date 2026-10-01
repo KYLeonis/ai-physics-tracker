@@ -13,10 +13,10 @@ from ai_physics_tracker.application.adopted_measurement import (
 )
 from ai_physics_tracker.application.pendulum_analysis import (
     analysis_input_state, analysis_video_stamp, angular_series_from_reconstruction,
-    prepare_analysis_job, prepare_pendulum_reconstruction,
+    prepare_analysis_job, prepare_pendulum_reconstruction, reconstruction_input_from_payload,
 )
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
-from ai_physics_tracker.domain.pendulum_fit import FitSettings, compare_fits, fit_config, fit_pendulum
+from ai_physics_tracker.domain.pendulum_fit import FitSettings, compare_fits, fit_config, fit_pendulum, validate_saved_fit
 from ai_physics_tracker.domain.pendulum_ode import (
     DEFAULT_F_SCALE_RAD, M0, M1, InitialCondition, IntegrationSettings, ObjectiveRequest,
     resolve_student_initial_condition,
@@ -145,7 +145,26 @@ def prepare_fit_job(session: ProjectSession, experiment_id: UUID, options: FitOp
     if not isinstance(options, FitOptions):
         raise ProjectSessionError("fit requires validated options")
     base = prepare_analysis_job(session, experiment_id, options.end_frame_index)
+    if options.start_frame_index is not None and options.start_frame_index < session.pendulum_experiment(experiment_id).release_frame_index:
+        raise ProjectSessionError("fit start frame must be at or after release")
     return PendulumFitJob(base.session, experiment_id, base.captured_state, options)
+
+
+def _fit_rows(reconstructed, fits):
+    rows = []
+    for row in reconstructed.frames:
+        rows.append({"frame_index": row.frame_index, "time_absolute_s": row.time_absolute_s,
+            "time_release_relative_s": row.time_release_relative_s, "theta_rad": row.theta_rad,
+            "is_qc_valid": row.is_qc_valid, "qc_reasons": row.qc_reasons,
+            "relative_weight": row.relative_weight,
+            "m0_theta_rad": None, "m0_residual_rad": None, "m1_theta_rad": None, "m1_residual_rad": None})
+    for model, fit in fits.items():
+        if fit.trajectory is not None:
+            prefix = "m0" if model == M0 else "m1"
+            for j, i in enumerate(fit.trajectory.source_indices):
+                rows[i][prefix+"_theta_rad"] = fit.trajectory.prediction.theta_rad[j]
+                rows[i][prefix+"_residual_rad"] = fit.trajectory.residual_rad[j]
+    return rows
 
 
 def run_fit_job(job: PendulumFitJob, cancel: Event, *,
@@ -168,19 +187,7 @@ def run_fit_job(job: PendulumFitJob, cancel: Event, *,
             warm_start=fits.get(M0) if model == M1 and common_settings[0] == common_settings[1] else None, check_cancel=check_cancel,
             progress=None if progress is None else lambda done, total, m=model: progress(m, done, total))
     check_cancel()
-    rows = []
-    for row in reconstructed.frames:
-        rows.append({"frame_index": row.frame_index, "time_absolute_s": row.time_absolute_s,
-            "time_release_relative_s": row.time_release_relative_s, "theta_rad": row.theta_rad,
-            "is_qc_valid": row.is_qc_valid, "qc_reasons": row.qc_reasons,
-            "relative_weight": row.relative_weight,
-            "m0_theta_rad": None, "m0_residual_rad": None, "m1_theta_rad": None, "m1_residual_rad": None})
-    for model, fit in fits.items():
-        if fit.trajectory is not None:
-            prefix = "m0" if model == M0 else "m1"
-            for j, i in enumerate(fit.trajectory.source_indices):
-                rows[i][prefix+"_theta_rad"] = fit.trajectory.prediction.theta_rad[j]
-                rows[i][prefix+"_residual_rad"] = fit.trajectory.residual_rad[j]
+    rows = _fit_rows(reconstructed, fits)
     digest = fit_signature(snapshot, config)
     payload = {"contract": FIT_KIND, "input_digest": digest, "measurement": snapshot.payload,
         "measurement_digest": snapshot.digest, "config": config, "rows": rows,
@@ -223,11 +230,18 @@ def discard_fit_result(session: ProjectSession, result: PendulumFitResult) -> No
 def load_fit_result(session: ProjectSession, record: ScientificResult) -> tuple[dict, bool, str | None]:
     if record.kind != FIT_KIND or record.payload is None or session.project_root is None:
         raise ProjectSessionError("fit result has no readable payload")
-    payload = read_scientific_payload(session.project_root, record.payload)
+    try:
+        payload = read_scientific_payload(session.project_root, record.payload)
+    except (OSError, ValueError) as error:
+        raise ProjectSessionError(f"fit payload is unreadable: {error}") from error
     if payload.get("contract") != FIT_KIND or payload.get("input_digest") != record.input_digest:
         raise ProjectSessionError("fit payload identity does not match record")
     try:
         options = options_from_payload(payload["config"]["options"])
+        _validate_payload(payload, record, options)
+    except (ProjectSessionError, ValueError, KeyError, TypeError, AttributeError, IndexError) as error:
+        raise ProjectSessionError(f"fit payload is invalid: {error}") from error
+    try:
         snapshot = build_adopted_measurement(session, record.experiment_id)
         request, _ = _objective(session, snapshot, options)
         expected = resolved_fit_config(request, options)
@@ -235,7 +249,53 @@ def load_fit_result(session: ProjectSession, record: ScientificResult) -> tuple[
                 canonical_json_digest(record.extra_fields["config"]) != canonical_json_digest(expected)):
             raise ValueError("saved fit configuration/provenance changed — recompute")
         current = fit_signature(snapshot, expected)
-    except (ProjectSessionError, ValueError, KeyError, TypeError) as error:
+    except (ProjectSessionError, ValueError, KeyError, TypeError, AttributeError, IndexError) as error:
         return payload, False, str(error)
     valid = current == record.input_digest and record.core_version == CORE_VERSION and record.freshness == "valid"
     return payload, valid, None if valid else "fit inputs changed — recompute"
+
+
+def _validate_payload(payload: dict, record: ScientificResult, options: FitOptions) -> None:
+    """不重跑optimizer；历史测量重建与模型forward复核正文一致性。"""
+    measurement = payload["measurement"]
+    digest = canonical_json_digest(measurement)
+    if digest != payload["measurement_digest"] or digest != record.extra_fields["measurement_digest"]:
+        raise ValueError("saved fit measurement digest changed")
+    if record.payload.columns != COLUMNS:
+        raise ValueError("saved fit columns changed")
+    reconstruction = reconstruct_pendulum(reconstruction_input_from_payload(measurement, digest))
+    series = angular_series_from_reconstruction(reconstruction, measurement["video"]["fps_nominal"])
+    ic = resolve_student_initial_condition(series, measurement["release_frame_index"],
+        rest_confirmed=options.rest_confirmed, explicit=options.explicit_ic)
+    if ic is None:
+        raise ValueError("saved fit IC cannot be resolved")
+    physical = measurement["physical"]
+    request = ObjectiveRequest(series, tuple(r.relative_weight for r in reconstruction.frames), ic,
+        measurement["release_frame_index"], options.end_frame_index, physical["length_m"], physical["g_m_s2"],
+        maximum_samples=options.maximum_samples, f_scale_rad=options.f_scale_rad, integration=options.integration,
+        loss=options.loss, fit_start_frame_index=options.start_frame_index)
+    if canonical_json_digest(payload["config"]) != canonical_json_digest(resolved_fit_config(request, options)):
+        raise ValueError("saved fit configuration/provenance changed")
+    if canonical_json_digest({"measurement_digest": digest, "config": payload["config"]}) != record.input_digest:
+        raise ValueError("saved fit input digest changed")
+    fits = payload["fits"]
+    if set(fits) != set(options.models):
+        raise ValueError("saved fit models changed")
+    verified = {}
+    common0 = asdict(options.m0_settings); common0.pop("starts")
+    common1 = asdict(options.m1_settings); common1.pop("starts")
+    for model in options.models:
+        verified[model] = validate_saved_fit(request, model,
+            options.m0_settings if model == M0 else options.m1_settings, fits[model],
+            warm_start=verified.get(M0) if model == M1 and common0 == common1 else None)
+    comparison = asdict(compare_fits(verified[M0], verified[M1])) if M1 in verified else None
+    if canonical_json_digest(comparison) != canonical_json_digest(payload["comparison"]):
+        raise ValueError("saved fit comparison changed")
+    if canonical_json_digest(_fit_rows(reconstruction, verified)) != canonical_json_digest(payload["rows"]):
+        raise ValueError("saved fit source rows/values changed")
+    statuses = {f.status for f in verified.values()}
+    status = "success" if statuses == {"success"} else (
+        "insufficient_data" if statuses == {"insufficient_data"} else
+        "nonconverged" if statuses <= {"success", "nonconverged"} else "failed")
+    if record.execution_status != status or record.extra_fields["end_frame_index"] != options.end_frame_index:
+        raise ValueError("saved fit record status/interval changed")
