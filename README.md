@@ -1,6 +1,6 @@
 # AI Physics Tracker
 
-> Publication线（2026-10-01）：P0/P1/P2已完成，P2.3用户整体交付验收通过；详见[publication/STATUS.md](publication/STATUS.md)。P3.1 Forward/objective已完成；P3整体进行中，P3.2计划及handoff已准备。
+> Publication线（2026-10-01）：P0/P1/P2已完成，P2.3用户整体交付验收通过；详见[publication/STATUS.md](publication/STATUS.md)。P3.1 Forward/objective已完成；P3整体进行中；P3.2实现checkpoint已交付审查，用户已接受历史回归/默认精度限制，R2条件性通过，进入P3.3/P3.4。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 

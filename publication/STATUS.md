@@ -6,6 +6,12 @@
 - 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
+## P3.2 delivery（2026-10-01）
+
+- `23950c8`/`16af211` bounded multistart、逐start诊断、full-grid/comparison及48项只读报告；`e6266b3`记录用户裁定/ADR-0020。
+- E3仍M0 24/24、M1 6/24，E2仍47/48；默认M1恢复strict xfail保留。用户明确授权“没有问题，继续P3.3/P3.4”，F1/F2为Accepted Limitation，不是数值通过。
+- R2 fresh-context复审按修订AC条件性允许继续，54 passed/1xfail与冻结检查通过。P3.2集成后从P3.3 mini-plan开始，P3.4须Human Review。
+
 ## P1 planning
 
 P1 最终验证（2026-09-30）：全量 **1154 passed, 9 subtests passed**，Independent/Human Review 均通过并已合并；macOS/Windows CI run 36674309852 通过。旧的 1151/待 Human Review 状态已由最终证据替代。
@@ -90,7 +96,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**按[P3 handoff](plans/p3-handoff-2026-10-01.md)继续已授权的P3：核对P3.1最终集成/remote/clean状态，从publication切P3.2工作分支并记录mini-plan准确base，实施bounds/seed/multistart → synthetic/48项legacy refit → Independent Review。P3.3/P3.4进入前各自新建mini-plan，P3.4等待用户Human Review，P3结束后停止。本轮在quota剩余5%写交接，P3.2代码尚未开始。**
+**用户已接受P3.2限制，R2条件性通过；按[P3.3 mini-plan](plans/p3.3-fit-execution-persistence.md)实施snapshot/core编排/取消/原子结果/重开，独立复审后进入P3.4（先建mini-plan）；P3.4提供显式高精度设置并等待用户Human Review。P3结束后停止，不开始P4。**
 
 ## P2.1 delivery (2026-09-30)
 
@@ -188,3 +194,9 @@ main复审记录位于source `842460c:docs/reviews/task-cancel-windows-review.md
 - [Independent Review](../docs/reviews/publication-p3.1-review.md)三项Closed、R2 Approve；无GUI，不需Human Review。本轮quota读到used95%后写[handoff](plans/p3-handoff-2026-10-01.md)。P3.2已规划，P3整体仍进行中。
 
 - P3.1 integration：`7285658`；工作分支tip `25491a7`已push。源代码/测试与已测reviewed工作分支一致；集成分支最后状态commit后push。P3.2无代码，接续前记录实际HEAD作为base。
+
+## P3.2 start
+
+2026-10-01用户继续授权；五小时额度已刷新（used0%）。执行已建立mini-plan，先S1/S2纯数值，再24×2 E3/Independent Review。P3.1最终HEAD `fef9c4c`已push且clean。
+
+最新定向复核：ODE+fit **54 passed / 1 strict xfailed**（冻结默认M1恢复F2 Open），24.63s；未将xfail计为科学验收通过。
