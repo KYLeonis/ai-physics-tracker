@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-01）：P0–P3完成，用户授权连续P4直到最终HR；P4.1数值已交付04eaa35、Independent R5 Approve，P4.2数值交付9fe8b42、R2 Approve，P4.3 mini-plan已建立且主Agent正在实现UI/后台。P4未关闭，P5/P6未启动。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍是ADR-0020 Accepted Limitation；Windows门禁仍延期P6前。本轮不写handoff。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-01）：P0–P3完成，用户授权连续P4直到最终HR；P4.1数值已交付04eaa35、Independent R5 Approve，P4.2数值交付9fe8b42、R2 Approve，P4.3实现99402e9、Independent R1 Approve（独立3passed），全量1341passed/1strictxfail/9subtests+末次GUI2passed；等待用户最终HR，之后才集成P4.3。P4未关闭，P5/P6未启动。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍是ADR-0020 Accepted Limitation；Windows门禁仍延期P6前。本轮不写handoff。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 

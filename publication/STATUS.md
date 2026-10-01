@@ -2,8 +2,15 @@
 
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。用户授权继续P4至最终HR；P4.1数值交付04eaa35、独立R5 Approve；P4.2数值交付9fe8b42、R2 Approve，P4.3 mini-plan已建立且主Agent正在实现界面；P4整体待最终HR，P5/P6未启动。**
+- 当前：**P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。用户授权继续P4至最终HR；P4.1数值交付04eaa35、独立R5 Approve；P4.2数值交付9fe8b42、R2 Approve，P4.3实现99402e9、Independent R1 Approve，已给统一Human Review，等待用户亲测；P4整体待最终HR，P5/P6未启动。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P4.3 delivery checkpoint — 2026-10-01
+
+- 工作分支codex/ejp-p4-3-teaching-ui；实现99402e9。Model criticism显示同源raw residual、early/full/late及SG速度分层、分段过零相位、q/length/tail/no-refit能量证据与缺证原因；Parameter equivalence显示raw/starred、可行λ、独立raw overlay/difference、非等价q+5%和同请求条件objective surface/直接cursor。
+- 教学只读，无schema/依赖/优化器新增。后台取消/实际222节点计数/耗时、去抖/cache、fit/input/video/project/close迟到拒收；cursor超raster仅扩展视窗且明确不外推，zero分母不造ratio。
+- 全量1341 passed / 1 existing strict xfailed / 9subtests（269.76s）；末次GUI显示边界2 passed（13.64s），Independent R1 Approve、独立3 passed（15.70s），无开放finding。冻结verifier15/48/2、diff通过；真实P011/P014只读接入raw差3.74e−9/3.22e−15rad，manifest SHA未变。ADR-0020历史失败未被记作通过。
+- P4.1/P4.2已--no-ff集成至8addd43并push；P4.3仅工作分支checkpoint。按[P4.3 mini-plan](plans/p4.3-valley-teaching-ui.md)最后5步骤等待用户Human Review；通过前不集成UI/关闭P4，不进入P5。main工作树clean且未改。
 
 ## P4.2 delivery — 2026-10-01
 
@@ -137,7 +144,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**按已建立的P4.3 mini-plan完成诊断/等价族UI、后台生命周期验证与独立审查，最后统一Human Review；HR前不关闭P4，不进入P5。**
+**等待用户按P4.3 mini-plan完成最终Human Review（Q1诊断与导航/Q2λ及非等价对照/Q3后台及来源，各答通过/需调整）；按反馈修复复审或经用户通过后--no-ff集成P4.3、文档收尾/push。HR前不关闭P4，不进入P5。**
 
 ## P2.1 delivery (2026-09-30)
 

@@ -31,6 +31,8 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 完整版本（目标、交付物、验收标准、技术风险）见 `docs/roadmap.md`。
 
+论文线 `ai-physics-tracker-ejp` 当前（2026-10-01）：P0–P3完成，P4.1/P4.2数值已交付/独立审查通过，P4.3教学UI与Independent Review已通过，等待最终统一Human Review；通过前不关闭P4；P5/P6未启动。以上通用Phase表不表示论文线进度；以 `publication/STATUS.md` 与各Subphase mini-plan为准。
+
 ## 3. 预期技术栈
 
 ```text

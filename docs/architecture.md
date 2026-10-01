@@ -186,3 +186,6 @@ PendulumAnalysisActions 使用detached session后台计算/完整性读取，主
 P3拟合链复用adopted snapshot与同一结果存储：raw θ/QC/weights + fixed release IC → Qt-free M0/M1 bounded multistart → PendulumFitJob immutable JSON → ProjectSession共享科学提交guard。显式高精度与历史精度分开（ADR-0020），SG不进入拟合。历史读回复核measurement/源帧/配置/typed诊断/最终forward/metrics一致性，优化器不重跑；fit区间可以晚于release，但积分仍从release t=0开始。P3.2历史回归限制仍为Accepted Limitation。
 
 P3.4通过同一Analysis宿主的Kinematics/ODE fitting页签隔离SG与fit；PendulumFitPanel只编辑FitOptions/显示immutable payload，PendulumFitActions复用executor/QTimer输入代际与主线程事务。后台done callback只持有job root/cancel/accepted事件，迟到产物清理不访问Qt；GUI fit pending期间阻止SaveAs复制未注册产物。Independent Review通过，用户2026-10-01确认Human Review通过并授权P3收尾。
+
+
+P4复用已验证的fit typed inputs；Qt-free pendulum_criticism按共同来源给出残差/相位与辅助物理证据，SG输出按明确配置重算核对。pendulum_identifiability独立raw RHS积分与lumped对照，固定starred damping/IC/sample/weight/loss的一维q扫描投影为条件曲面。FitExploration是只读临时状态，不新增科学结果或schema；PendulumExplorationActions用单executor、取消事件与fit/项目/视频身份拒收迟到，缓存随来源失效。Model criticism与Parameter equivalence页共用Analysis宿主，最终体验待用户Human Review。

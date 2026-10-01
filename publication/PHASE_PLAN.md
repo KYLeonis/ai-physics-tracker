@@ -4,7 +4,7 @@
 
 > 2026-10-01：用户授权显式SG窗口/阶数覆盖，默认9/3与冻结profile不变；见[ADR-0019](../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。
 
-- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0–P3完成，P3.4独立/真人验收通过，P3.2保留ADR-0020 Accepted Limitation；P4–P6未启动，停止等待P4指令；Windows验证经用户明确批准延期，进入P6前必过**。
+- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0–P3完成，P3.4独立/真人验收通过，P3.2保留ADR-0020 Accepted Limitation；P4.1/P4.2数值交付及独立审查通过，P4.3实现/Independent Review通过、待最终HR；P5/P6未启动；Windows验证经用户明确批准延期，进入P6前必过**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -148,7 +148,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P3.3 Application execution and persistence ✅ | snapshot请求、取消、代际、原子结果、stale与重开 | 注入取消/输入改变/失败不会提交部分或旧结果；配置round-trip |
 | P3.4 Fit UI ✅ | Normal M0/M1与Run fit、Advanced配置、overlay/RMSE/residual | 同core证明、Human Review完成自选视频拟合；P3收尾停止 |
 
-### P4 — Model Criticism and Structural Identifiability
+### P4 — Model Criticism and Structural Identifiability（进行中，最终HR待用户）
 
 - **Goal**：学生能判断模型在何处不足，并亲手验证raw参数连续非唯一。
 - **Scope**：共同输入模型比较、regime/phase残差、tail/energy/length一致性、λ交互、等价trajectory、conditional objective valley。
