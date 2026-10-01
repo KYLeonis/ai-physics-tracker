@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-01）：P0–P4完成，P4独立/真人验收通过。P5已获授权，按用户“稍等”先修复Windows CI：6a20ac6为回归JSON显式UTF-8，本地6项及冻结verifier通过，远程CI待确认。随后先建立P5.1 mini-plan；P6未启动。ADR-0020历史限制与P6前Windows门禁保留。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-01）：P0–P4完成，P4独立/真人验收通过。P5已获授权，按用户“稍等”先修复Windows CI：6a20ac6为UTF-8修复，2e8b5a9/188bd47为等价族测试精度及原request检查；本地/独立验证通过、R4 Approve，最终集成CI待确认。随后先建立P5.1 mini-plan；P6未启动。ADR-0020历史限制与P6前Windows门禁保留。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 
