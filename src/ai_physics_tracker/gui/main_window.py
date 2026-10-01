@@ -448,6 +448,11 @@ class MainWindow(QMainWindow):
         self.pendulumPages = QTabWidget(self)
         self.pendulumPages.addTab(self.pendulumAnalysisActions.panel, "Kinematics")
         self.pendulumPages.addTab(self.pendulumFitActions.panel, "ODE fitting")
+        from ai_physics_tracker.gui.pendulum_criticism_panel import ModelCriticismPanel
+        from ai_physics_tracker.gui.pendulum_exploration import PendulumExplorationActions
+        self.pendulumExplorationActions = PendulumExplorationActions(self, ModelCriticismPanel(self))
+        self.pendulumPages.addTab(self.pendulumExplorationActions.criticism, "Model criticism")
+        self.pendulumPages.addTab(self.pendulumExplorationActions.teaching, "Parameter equivalence")
         self.pendulumAnalysisActions.container = self.pendulumPages
         self._installChartPanel(self.pendulumPages)
         self.pendulumAnalysisActions.refresh()
