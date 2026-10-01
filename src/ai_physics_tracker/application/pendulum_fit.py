@@ -16,7 +16,7 @@ from ai_physics_tracker.application.pendulum_analysis import (
     prepare_analysis_job, prepare_pendulum_reconstruction, reconstruction_input_from_payload,
 )
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
-from ai_physics_tracker.domain.pendulum_fit import FitSettings, compare_fits, fit_config, fit_pendulum, validate_saved_fit
+from ai_physics_tracker.domain.pendulum_fit import PendulumFit, FitSettings, compare_fits, fit_config, fit_pendulum, validate_saved_fit
 from ai_physics_tracker.domain.pendulum_ode import (
     DEFAULT_F_SCALE_RAD, M0, M1, InitialCondition, IntegrationSettings, ObjectiveRequest,
     resolve_student_initial_condition, fit_eligibility,
@@ -256,7 +256,7 @@ def load_fit_result(session: ProjectSession, record: ScientificResult) -> tuple[
     return payload, valid, None if valid else "fit inputs changed — recompute"
 
 
-def _validate_payload(payload: dict, record: ScientificResult, options: FitOptions) -> None:
+def _validate_payload(payload: dict, record: ScientificResult, options: FitOptions) -> tuple[ObjectiveRequest, dict[str, PendulumFit]]:
     """不重跑optimizer；历史测量重建与模型forward复核正文一致性。"""
     measurement = payload["measurement"]
     digest = canonical_json_digest(measurement)
@@ -302,3 +302,13 @@ def _validate_payload(payload: dict, record: ScientificResult, options: FitOptio
         "nonconverged" if statuses <= {"success", "nonconverged"} else "failed")
     if record.execution_status != status or record.extra_fields["end_frame_index"] != options.end_frame_index:
         raise ValueError("saved fit record status/interval changed")
+
+    return request, verified
+
+
+def validated_fit_inputs(payload: dict, record: ScientificResult) -> tuple[ObjectiveRequest, dict[str, PendulumFit]]:
+    """只读重建已保存fit的数值输入/typed结果；复用完整验证，不重跑优化器。"""
+    if (record.kind != FIT_KIND or record.payload is None
+            or payload.get("contract") != FIT_KIND or payload.get("input_digest") != record.input_digest):
+        raise ValueError("fit payload identity does not match record")
+    return _validate_payload(payload, record, options_from_payload(payload["config"]["options"]))

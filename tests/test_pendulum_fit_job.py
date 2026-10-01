@@ -8,7 +8,7 @@ from threading import Event
 import pytest
 
 from ai_physics_tracker.application.pendulum_fit import (
-    FitOptions, HIGH_PRECISION, discard_fit_result, load_fit_result, prepare_fit_job, run_fit_job,
+    FitOptions, HIGH_PRECISION, discard_fit_result, load_fit_result, prepare_fit_job, run_fit_job, validated_fit_inputs,
 )
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.pendulum import QCExclusion
@@ -57,7 +57,13 @@ def test_tip_only_fixed_ic_full_payload_reopen_saveas_and_stale_undo(tmp_path, s
     assert path.exists()  # 已注册不能被cleanup删除
     session.save()
     reopened = ProjectSession.load(ProjectRepository(), session.project_root)
-    assert load_fit_result(reopened, reopened.project.scientific_results[-1])[1]
+    payload, valid, _ = load_fit_result(reopened, reopened.project.scientific_results[-1])
+    assert valid
+    request, typed = validated_fit_inputs(payload, reopened.project.scientific_results[-1])
+    assert request.initial_condition.theta0_rad == pytest.approx(.3, abs=1e-12)
+    with pytest.raises(ValueError, match="identity"):
+        validated_fit_inputs({**payload, "contract": "different-contract"}, reopened.project.scientific_results[-1])
+    assert tuple(request.series.frame_indices[i] for i in typed[M0].trajectory.source_indices) == tuple(range(5, 126))
     session.save_as(tmp_path/"copy")
     assert load_fit_result(session, session.project.scientific_results[-1])[1]
     session.set_qc_exclusions(experiment.experiment_id, (QCExclusion(20, "occluded"),))
