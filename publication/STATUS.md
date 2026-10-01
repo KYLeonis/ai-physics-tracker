@@ -2,7 +2,7 @@
 
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0/P1/P2完成；P2.3用户于2026-10-01确认图表已出现、当前增量可交付并明确授权收尾。Independent Review全部finding Closed、最终Approve；正在完成最终验证、--no-ff集成与push。** 当前角运动为tip + fixed pivot，辅助role仅诊断；默认SG9/3，支持显式7/3、5/2及自定义窗口/阶数，配置随结果保存。
+- 当前：**P0/P1/P2完成；P2.3用户于2026-10-01确认图表已出现、当前增量可交付并明确授权收尾。Independent Review全部finding Closed、最终Approve；最终验证1251 tests/9subtests及冻结证据通过；--no-ff merge `99f34b0`已完成，提交最终状态后推送。** 当前角运动为tip + fixed pivot，辅助role仅诊断；默认SG9/3，支持显式7/3、5/2及自定义窗口/阶数，配置随结果保存。
 - P3–P6未启动；本阶段结束后停止，等待用户下一条指令。图表外观一般已记为非阻断改善事项，不在本轮追加实现。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
@@ -158,3 +158,23 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 - 全量1249 tests/9subtests、evidence15/48/2与diff通过；Independent Review首轮F1/P1完整配置来源读回、F2/P2历史参数恢复均修复并复审Approve（独立51项），最终主会话65定向/3subtests通过。Q9新版SG与原Q2/Q3真人反馈前不集成、不关闭P2、不进入P3。
 
 本轮代码checkpoint `01a8f87`，工作分支推送后等待Q9真人验收；publication集成分支仍停P2.2。
+
+
+## P2 closeout（2026-10-01）
+
+- P2.3 Human Review：用户确认图已出现、当前增量可交付并明确授权收尾；图表外观一般列为非阻断事项。未虚构历史Q2/Q3逐题现场实测，已有自动化/独立审查覆盖。
+- P2.3 8条AC与P2最终验收矩阵已核对勾选；所有Independent Review finding Closed，最后Approve。最终全量1251 tests/9subtests（80.80s）、evidence15/48/2、diff通过。
+- 集成：P2.3文档收尾 `97ce664`，--no-ff merge `99f34b0`（parents `4ec09b6` + `97ce664`）；集成回publication，main通用产品线未被本次P2收尾修改。
+- 同时另一会话已同步Windows取消修复（见下）；补充47项task_runner/external_worker/pendulum_analysis通过。无P2额外数值改动、无用户项目写入。
+- 下一步：停止，等待用户授权P3；进入每个subphase前建立mini-plan。运行与体验步骤见[P2.3交付计划](plans/p2.3-energy-analysis-ui.md)。
+
+## Relevant Source Commits — Windows cancellation sync
+
+另一活跃会话针对用户的Windows CI报错，在main侧先修复并受控同步；本轮收尾核查其来源，不重复实施：
+
+| main source | publication commit | 为什么论文需要 / 本线验证 |
+| --- | --- | --- |
+| bf8f0c5 | 4d4e3e9 | 共用TaskHandle强杀后的退出回收；初版有界异常方案随后被下一提交替代 |
+| 8a7d90d | 6323e11 | 最终kill后native join，保留原取消接口；避免Windows退出异步导致取消后仍存活。代码与测试字节和main source一致；本线47项task/external-worker/analysis通过 |
+
+main复审记录位于source `842460c:docs/reviews/task-cancel-windows-review.md`，最终Approve、两项Closed。最终Windows/macOS远程CI由该修复会话继续确认；本记录不把待完成的远程运行写成通过，不影响用户已接受的P2交付。

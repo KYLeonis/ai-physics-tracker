@@ -4,7 +4,7 @@
 
 > 2026-10-01：用户授权显式SG窗口/阶数覆盖，默认9/3与冻结profile不变；见[ADR-0019](../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。
 
-- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0/P1/P2完成；P2.3 Independent Review与用户整体交付验收通过、执行集成收尾；P3–P6 未启动；Windows验证经用户明确批准延期，进入P6前必过**。
+- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0/P1/P2完成；P2.3 Independent Review与用户整体交付验收通过、已--no-ff集成（99f34b0）；P3–P6 未启动；Windows验证经用户明确批准延期，进入P6前必过**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。

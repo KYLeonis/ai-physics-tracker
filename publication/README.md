@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-01）：P0/P1/[P2](plans/p2-pendulum-analysis.md)完成；P2.3数值/保存/图表、Independent Review及用户整体交付验收通过，执行集成收尾。P3尚未开始，等待下一条指令。图表外观改善记录为非阻断后续事项。
+当前（2026-10-01）：P0/P1/[P2](plans/p2-pendulum-analysis.md)完成；P2.3数值/保存/图表、Independent Review及用户整体交付验收通过，已--no-ff集成（99f34b0）。P3尚未开始，等待下一条指令。图表外观改善记录为非阻断后续事项。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。

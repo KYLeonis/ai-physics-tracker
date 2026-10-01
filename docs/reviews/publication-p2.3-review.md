@@ -71,3 +71,5 @@ IC修复最终主会话53定向/3subtests、evidence15/48/2、diff check通过�
 用户确认已有图、虽外观一般但当前subphase可交付，并明确要求收尾。整体交付验收接受；不把未逐题回复的Q2/Q3伪记为各项现场实测。已有自动化/独立审查覆盖源帧、stale、参数保存重开/历史恢复。图表外观改善是非阻断后续事项，无开放blocking finding，允许--no-ff集成并收尾P2。
 
 阶段收尾最终验证：1251 passed、9 subtests passed（80.80s）；冻结evidence15/48/2、diff check通过。无需新增独立代码审查，本轮只同步交付文档与集成已审查代码。
+
+集成完成：merge99f34b0（P2.3文档97ce664）。另会话main取消修复受控同步后，本线task_runner/external_worker/pendulum_analysis共47项通过；来源与独立复审记录索引见publication/STATUS.md。用户P2验收完成，P3未开始。
