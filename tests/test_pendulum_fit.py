@@ -47,7 +47,7 @@ def test_noiseless_physical_parameters_are_recovered_on_full_grid(model, theta0,
     assert result.config["optimizer"]["f_scale_rad"] == pytest.approx(pi/360, abs=1e-15)
 
 
-@pytest.mark.xfail(strict=True, reason="P3.2 review F2 Open: frozen tolerance can give false M1 recovery")
+@pytest.mark.xfail(strict=True, reason="P3.2 review F2 Accepted Limitation: frozen tolerance can give false M1 recovery")
 def test_frozen_default_m1_parameter_recovery_gate():
     request, truth = _request(M1)
     result = fit_pendulum(request, M1)

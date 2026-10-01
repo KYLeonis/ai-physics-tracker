@@ -18,7 +18,7 @@ from ai_physics_tracker.domain.pendulum_ode import (
 )
 from ai_physics_tracker.domain.types import canonical_json_digest
 
-CORE_VERSION = "pendulum-fit-1.0.0"
+CORE_VERSION = "pendulum-fit-1.1.0"
 BOUND_RELATIVE_TOLERANCE = 1e-4
 JACOBIAN_CONDITION_WARNING = 1e8
 

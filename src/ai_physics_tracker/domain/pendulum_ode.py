@@ -18,7 +18,7 @@ from ai_physics_tracker.domain.types import canonical_json_digest
 
 M0 = "M0_linear"
 M1 = "M1_linear_quadratic"
-CORE_VERSION = "pendulum-ode-1.0.0"
+CORE_VERSION = "pendulum-ode-1.1.0"
 INTEGRATION_FAILURE_RESIDUAL_RAD = 1000.0
 DEFAULT_F_SCALE_RAD = pi / 360
 DEFAULT_MAXIMUM_SAMPLES = 500
@@ -206,6 +206,7 @@ class ObjectiveRequest:
     f_scale_rad: float = DEFAULT_F_SCALE_RAD
     integration: IntegrationSettings = IntegrationSettings()
     loss: str = "soft_l1"
+    fit_start_frame_index: int | None = None
 
     def __post_init__(self) -> None:
         if (not isinstance(self.series, AngularSeries) or not isinstance(self.initial_condition, InitialCondition)
@@ -220,6 +221,10 @@ class ObjectiveRequest:
                 or type(self.end_frame_index) is not int or self.end_frame_index < self.release_frame_index
                 or self.end_frame_index not in self.series.frame_indices):
             raise ValueError("fit interval requires valid release and observed source end frame")
+        start = self.release_frame_index if self.fit_start_frame_index is None else self.fit_start_frame_index
+        if (type(start) is not int or not self.release_frame_index <= start <= self.end_frame_index
+                or start not in self.series.frame_indices):
+            raise ValueError("fit start must be a source frame between release and end")
         for f, t in zip(self.series.frame_indices, self.series.time_release_relative_s):
             if ((f < self.release_frame_index and t >= 0) or (f > self.release_frame_index and t <= 0)
                     or (f == self.release_frame_index and (t < 0 or abs(t) > TIME_COMPARISON_TOLERANCE_S))):
@@ -252,6 +257,10 @@ class ObjectiveRequest:
             raise ValueError("maximum_samples must be a positive integer")
         object.__setattr__(self, "relative_weights", tuple(None if w is None else float(w) for w in self.relative_weights))
 
+    @property
+    def start_frame_index(self) -> int:
+        return self.release_frame_index if self.fit_start_frame_index is None else self.fit_start_frame_index
+
 
 def objective_config(request: ObjectiveRequest) -> dict[str, object]:
     """配置展开记录实际库版本；只实现本轮已使用的政策，无公式字符串eval。"""
@@ -263,6 +272,8 @@ def objective_config(request: ObjectiveRequest) -> dict[str, object]:
         "numpy_version": np.__version__, "scipy_version": scipy.__version__,
         "integration": {"method": "DOP853", **asdict(request.integration),
                         "vectorized": False, "dense_output": False, "events": None},
+        "interval": {"start_frame_index": request.start_frame_index, "end_frame_index": request.end_frame_index,
+                     "ic_release_frame_index": request.release_frame_index},
         "sampling": {"maximum": request.maximum_samples, "rounding": "nearest_ties_to_even",
                      "algorithm": "valid_index_linspace_rint_unique"},
         "objective": {"loss": request.loss, "f_scale_rad": request.f_scale_rad,
@@ -288,7 +299,7 @@ def objective_request_digest(request: ObjectiveRequest) -> str:
 def fit_valid_indices(request: ObjectiveRequest) -> tuple[int, ...]:
     """源帧筛选；不受SG是否有导数或辅助role是否完整影响。"""
     return tuple(i for i, (f, ok) in enumerate(zip(request.series.frame_indices, request.series.qc_valid))
-                 if request.release_frame_index <= f <= request.end_frame_index and ok)
+                 if request.start_frame_index <= f <= request.end_frame_index and ok)
 
 
 @dataclass(frozen=True)
@@ -304,7 +315,7 @@ class FitEligibility:
 def fit_eligibility(request: ObjectiveRequest) -> FitEligibility:
     """student计算门槛，不是信息充分/科学认证；历史仅保留floor计数门槛。"""
     indices = fit_valid_indices(request)
-    total = request.end_frame_index - request.release_frame_index + 1
+    total = request.end_frame_index - request.start_frame_index + 1
     required = max(MINIMUM_VALID_FRAMES, ceil(total / 2) if request.profile_id == STUDENT else total // 2)
     times = request.series.time_release_relative_s
     span = times[indices[-1]] - times[indices[0]] if len(indices) > 1 else 0.0
@@ -380,7 +391,7 @@ def evaluate_trajectory(request: ObjectiveRequest, model: str,
                         parameters: PendulumParameters) -> TrajectoryEvaluation:
     """缺测位置有模型预测但没有新观测；非有限forward不会缩小评价mask。"""
     indices = tuple(i for i, f in enumerate(request.series.frame_indices)
-                    if request.release_frame_index <= f <= request.end_frame_index)
+                    if request.start_frame_index <= f <= request.end_frame_index)
     times = tuple(request.series.time_release_relative_s[i] for i in indices)
     prediction = simulate_pendulum(model, parameters, request.initial_condition, times, request.integration)
     if prediction.status != "success":

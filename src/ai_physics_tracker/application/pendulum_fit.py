@@ -51,10 +51,14 @@ class FitOptions:
     f_scale_rad: float = DEFAULT_F_SCALE_RAD
     m0_settings: FitSettings = FitSettings()
     m1_settings: FitSettings = FitSettings()
+    start_frame_index: int | None = None
 
     def __post_init__(self) -> None:
         if type(self.end_frame_index) is not int or self.end_frame_index < 0:
             raise ValueError("fit end frame must be a nonnegative source frame")
+        if self.start_frame_index is not None and (type(self.start_frame_index) is not int
+                or not 0 <= self.start_frame_index <= self.end_frame_index):
+            raise ValueError("fit start must be a source frame no later than end")
         if self.models not in ((M0,), (M0, M1)):
             raise ValueError("choose M0 or M0 + M1 (with M0 warm start)")
         if type(self.rest_confirmed) is not bool:
@@ -105,7 +109,7 @@ def _objective(session: ProjectSession, snapshot: AdoptedMeasurementSnapshot, op
     request = ObjectiveRequest(series, tuple(r.relative_weight for r in reconstructed.frames), ic,
         snapshot.payload["release_frame_index"], options.end_frame_index, physical["length_m"],
         physical["g_m_s2"], maximum_samples=options.maximum_samples, f_scale_rad=options.f_scale_rad,
-        integration=options.integration, loss=options.loss)
+        integration=options.integration, loss=options.loss, fit_start_frame_index=options.start_frame_index)
     return request, reconstructed
 
 
@@ -154,10 +158,14 @@ def run_fit_job(job: PendulumFitJob, cancel: Event, *,
     request, reconstructed = _objective(job.session, snapshot, job.options)
     config = resolved_fit_config(request, job.options)
     fits = {}
+    common_settings = []
+    for settings in (job.options.m0_settings, job.options.m1_settings):
+        values = asdict(settings); values.pop("starts")
+        common_settings.append(values)
     for model in job.options.models:
         fits[model] = fit_pendulum(request, model,
             job.options.m0_settings if model == M0 else job.options.m1_settings,
-            warm_start=fits.get(M0) if model == M1 else None, check_cancel=check_cancel,
+            warm_start=fits.get(M0) if model == M1 and common_settings[0] == common_settings[1] else None, check_cancel=check_cancel,
             progress=None if progress is None else lambda done, total, m=model: progress(m, done, total))
     check_cancel()
     rows = []

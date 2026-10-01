@@ -151,3 +151,33 @@ def test_matching_payload_and_manifest_cannot_forge_fit_provenance(tmp_path, syn
                      extra_fields={**result.record.extra_fields, "config": forged["config"]})
     _, valid, reason = load_fit_result(session, record)
     assert not valid and "provenance" in reason
+
+
+def test_later_fit_interval_preserves_release_ic_and_raw_source_times(tmp_path, synthetic_video_path):
+    from ai_physics_tracker.domain.pendulum_ode import fit_eligibility, fit_valid_indices
+    from ai_physics_tracker.application.pendulum_fit import _objective
+    from ai_physics_tracker.application.adopted_measurement import build_adopted_measurement
+    session, experiment, options = fit_session(tmp_path, synthetic_video_path)
+    options = replace(options, start_frame_index=25)
+    request, _ = _objective(session, build_adopted_measurement(session, experiment.experiment_id), options)
+    assert request.initial_condition.support_frames == (0, 1, 2, 3, 4)
+    assert request.release_frame_index == 5 and request.fit_start_frame_index == 25
+    assert fit_eligibility(request).required_count == 51
+    assert request.series.time_release_relative_s[fit_valid_indices(request)[0]] == pytest.approx(2., abs=1e-12)
+    result = run_fit_job(prepare_fit_job(session, experiment.experiment_id, options), Event())
+    fit = result.payload["fits"][M0]
+    assert fit["parameters"]["alpha1_s_inv"] == pytest.approx(.03, abs=2e-5)
+    assert result.payload["rows"][24]["m0_theta_rad"] is None
+    assert result.payload["rows"][25]["m0_theta_rad"] is not None
+    assert fit["sample_time_s"][0] == pytest.approx(2., abs=1e-12)
+    assert load_fit_result(session, result.record)[1]
+
+
+def test_model_specific_settings_return_unavailable_comparison_without_invalid_warm_start(tmp_path, synthetic_video_path):
+    session, experiment, options = fit_session(tmp_path, synthetic_video_path)
+    session.set_qc_exclusions(experiment.experiment_id, tuple(QCExclusion(i, "occluded") for i in range(10, 100)))
+    result = run_fit_job(prepare_fit_job(session, experiment.experiment_id,
+        replace(options, models=(M0, "M1_linear_quadratic"))), Event())
+    assert result.record.execution_status == "insufficient_data"
+    assert result.payload["comparison"]["status"] == "not_comparable"
+    assert result.payload["comparison"]["reason"] == "inputs_or_configuration_differ"
