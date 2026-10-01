@@ -1,8 +1,8 @@
-> Publication工作树（2026-10-01）：P0–P3完成，用户授权连续P4直到最终HR；P4.1数值已交付04eaa35、Independent R5 Approve，P4.2数值交付9fe8b42、R2 Approve，P4.3 mini-plan已建立且主Agent正在实现UI/后台。P4未关闭，P5/P6未启动。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍是ADR-0020 Accepted Limitation；Windows门禁仍延期P6前。本轮不写handoff。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-01）：P0–P4完成；P4三项Subphase Independent Review通过，用户确认最终HR通过并授权收尾。全量1341passed/1strictxfail/9subtests，最后GUI边界及独立定向通过。P5/P6未启动，停止等待用户授权P5；获授权后先建mini-plan。ADR-0020历史限制与P6前Windows门禁保留。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 
-> Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线P0–P3已交付，P4正实施且每subphase已有mini-plan，最终统一Human Review。Windows门禁仍延期至P6前；详见[publication/STATUS.md](../../publication/STATUS.md)。
+> Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线P0–P4已交付，P4独立/真人验收均通过，停止等待P5指令。Windows门禁仍延期至P6前；详见[publication/STATUS.md](../../publication/STATUS.md)。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

@@ -1,6 +1,6 @@
 # AI Physics Tracker
 
-> Publication线（2026-10-01）：P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。停止在P3，等待用户授权P4；P4–P6未启动。详见[publication/STATUS.md](publication/STATUS.md)。
+> Publication线（2026-10-01）：P0–P4完成；模型批判与参数等价族教学已通过独立审查及用户Human Review。全量1341 passed / 1既有strict xfailed / 9subtests；ADR-0020历史限制保留。P5/P6未启动，等待用户授权P5。权威状态见[publication/STATUS.md](publication/STATUS.md)。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 

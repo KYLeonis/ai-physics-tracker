@@ -4,7 +4,7 @@
 
 > 2026-10-01：用户授权显式SG窗口/阶数覆盖，默认9/3与冻结profile不变；见[ADR-0019](../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。
 
-- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0–P3完成，P3.4独立/真人验收通过，P3.2保留ADR-0020 Accepted Limitation；P4–P6未启动，停止等待P4指令；Windows验证经用户明确批准延期，进入P6前必过**。
+- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0–P4完成，P4三项Subphase独立审查通过、用户最终HR通过并授权收尾；P3.2保留ADR-0020 Accepted Limitation；P5/P6未启动，停止等待P5指令；Windows验证经用户明确批准延期，进入P6前必过**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -148,7 +148,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P3.3 Application execution and persistence ✅ | snapshot请求、取消、代际、原子结果、stale与重开 | 注入取消/输入改变/失败不会提交部分或旧结果；配置round-trip |
 | P3.4 Fit UI ✅ | Normal M0/M1与Run fit、Advanced配置、overlay/RMSE/residual | 同core证明、Human Review完成自选视频拟合；P3收尾停止 |
 
-### P4 — Model Criticism and Structural Identifiability
+### P4 — Model Criticism and Structural Identifiability ✅（2026-10-01）
 
 - **Goal**：学生能判断模型在何处不足，并亲手验证raw参数连续非唯一。
 - **Scope**：共同输入模型比较、regime/phase残差、tail/energy/length一致性、λ交互、等价trajectory、conditional objective valley。
@@ -164,6 +164,18 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P4.1 Model criticism evidence | common-grid residual、speed/early-late/zero-crossing、tail/energy/length检查 | synthetic正反例及封存diagnostic核对；无“必然M1优”的断言 |
 | P4.2 Identifiability pure core | lump/transform/feasible range、raw RHS、same IC/objective checks | 数学不变量+synthetic先通过独立review，才允许开始GUI |
 | P4.3 Valley and λ teaching UI | raw参数并排、starred、overlap/difference、surface/cursor、取消与缓存 | slider不污染fit；直接objective抽点验证surface；完整C-level Human Review |
+
+#### P4 最终验收核对
+
+- [x] 同一输入/mask/IC/配置与收敛资格才比较，单模型或不匹配有原因；raw residual不受SG辅助缺失阻断。
+- [x] early/late、速度分层、同源连续段/同方向过零相位与源帧映射验证。
+- [x] no-refit能量恒等式、reference q=g/L、fit q、tail same-source及表观动力学长度边界清楚。
+- [x] λ identity/composition/inverse/严格可行域、独立raw/lumped积分与objective不变量验证。
+- [x] 222节点条件q扫描/101×91曲面及非网格直接objective核对，P011 E4 frozen对照通过；非等价q+5%轨迹改变。
+- [x] 只读教学、去抖/cache、取消/迟到/换项目/来源变化/关闭生命周期验证。
+- [x] 三项Independent Review通过；用户2026-10-01确认最终Human Review通过，授权收尾。
+
+全量1341 passed / 1既有strict xfailed / 9subtests，最后显示边界GUI2项通过；P4收尾定向与冻结检查记录在[STATUS](STATUS.md)。未把ADR-0020历史失败记成通过；Windows门禁仍按用户批准延期至P6前。
 
 ### P5 — Undergraduate End-to-End Workflow and Scientific Outputs
 

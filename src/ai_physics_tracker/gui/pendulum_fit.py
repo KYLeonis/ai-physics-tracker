@@ -6,7 +6,7 @@ from time import monotonic
 from queue import Empty, SimpleQueue
 from threading import Event
 
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 
 from ai_physics_tracker.application.pendulum_analysis import analysis_input_state
 from ai_physics_tracker.application.pendulum_fit import (
@@ -44,6 +44,8 @@ def _discardUnused(future, job, cancel, accepted):
 
 
 class PendulumFitActions(QObject):
+    resultChanged = Signal()
+
     def __init__(self, window):
         super().__init__(window)
         self.window = window
@@ -87,6 +89,7 @@ class PendulumFitActions(QObject):
         self._future = None; self._job = None; self._timer.stop()
         self.panel.setBusy(False)
         self._refreshProjectActions()
+        self.resultChanged.emit()
 
     def resetContext(self):
         self._retire(); self._key = None; self._video_id = None
@@ -217,6 +220,7 @@ class PendulumFitActions(QObject):
             future.add_done_callback(lambda done: _discardUnused(done, job, cancel, accepted))
         self._future = future; self.panel.setBusy(True); self._timer.start(30)
         self._refreshProjectActions()
+        self.resultChanged.emit()
 
     def compute(self):
         if self._future is not None or self._closed or self.window.projectActions.busy: return
@@ -291,6 +295,7 @@ class PendulumFitActions(QObject):
                 current = analysis_input_state(session, self._experiment().experiment_id)
                 if self._key[0] != current or self._key[2] != _videoStamp(session, self._experiment().experiment_id):
                     self.scheduleRefresh()
+            self.resultChanged.emit()
 
     def shutdown(self):
         self._closed = True; self._retire(); self._refreshTimer.stop()
