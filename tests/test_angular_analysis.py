@@ -179,7 +179,7 @@ def test_policy_identity_invalid_input_and_float64_semantics():
     with pytest.raises(ValueError): analyze_angular_series(series, end_frame_index=True)
     profiles=ROOT.parents[1]/'profiles'
     config=analysis_config(STUDENT)
-    assert config['profile_sha256']==sha256((profiles/'student-default-v1.json').read_bytes()).hexdigest()
+    assert config['profile_sha256']==sha256((profiles/'student-default-v2.json').read_bytes()).hexdigest()
     assert config['diagnostics_sha256']==sha256((profiles/'diagnostics-v1.json').read_bytes()).hexdigest()
 
 
@@ -225,3 +225,40 @@ def test_zero_plateau_and_touch_zero_do_not_manufacture_cycles():
     assert len(result.periods.crossings) == 1
     assert result.periods.periods == ()
     assert analysis_config(STUDENT)['provenance']['derivative'] == ['policy-student-v1', 'metrics']
+
+
+@pytest.mark.parametrize('window,order', [(7, 3), (5, 2), (3, 1)])
+def test_custom_sg_uses_short_segments_and_keeps_qc_gaps(window, order):
+    # 多项式的解析导数独立于SciPy，可验证短窗、边缘和缺口未被拼接。
+    theta = tuple(.2 + .4*(i*.01) + (.3*(i*.01)**2 if order >= 2 else 0) for i in range(17))
+    series = replace(_series(theta), qc_valid=(True,)*8+(False,)+(True,)*8)
+    assert analyze_angular_series(series).omega_rad_s == (None,)*17
+    custom = analyze_angular_series(series, sg_window=window, sg_polyorder=order)
+    expected = tuple(.4 + (.6*t if order >= 2 else 0) for t in series.time_release_relative_s)
+    for start, end in ((0, 8), (9, 17)):
+        np.testing.assert_allclose(custom.omega_rad_s[start:end], expected[start:end], atol=1e-12, rtol=1e-12)
+        assert custom.edge_window[start:start+window//2] == (True,)*(window//2)
+        assert custom.edge_window[end-window//2:end] == (True,)*(window//2)
+    assert custom.omega_rad_s[8] is None and custom.omega_reasons[8] == 'qc_excluded'
+    assert custom.input_digest != analyze_angular_series(series).input_digest
+    config = analysis_config(STUDENT, sg_window=window, sg_polyorder=order)
+    assert config['derivative']['minimum_segment_frames'] == window
+    assert config['resolved_overrides']['sg_window'] == window
+
+
+@pytest.mark.parametrize('window,order', [(True, 1), (4, 2), (1, 1), (5, 0), (5, True), (5, 5), (5., 2)])
+def test_invalid_sg_settings_fail_before_computation(window, order):
+    with pytest.raises(ValueError, match='SG window'):
+        analyze_angular_series(_series((.1,)*8), sg_window=window, sg_polyorder=order)
+
+
+def test_custom_sg_keeps_timing_branch_and_legacy_guards():
+    series = _series((.1,)*8)
+    times = list(series.time_release_relative_s); times[4] += .001
+    result = analyze_angular_series(replace(series, time_release_relative_s=tuple(times)), sg_window=5, sg_polyorder=2)
+    assert result.omega_rad_s == (None,)*8
+    assert set(result.omega_reasons) == {'nonuniform_segment'}
+    branch = replace(series, theta_rad=(3.,)*4+(-3.,)*4)
+    assert analyze_angular_series(branch, sg_window=5, sg_polyorder=2).omega_rad_s == (None,)*8
+    with pytest.raises(ValueError, match='legacy'):
+        analyze_angular_series(series, profile_id=LEGACY, sg_window=5, sg_polyorder=2)

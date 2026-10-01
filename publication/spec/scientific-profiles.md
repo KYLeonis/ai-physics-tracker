@@ -81,3 +81,21 @@ D01/D02/D05/D06/U04已由命名profile及本轮new_student_policy收敛；不改
 angular acceleration α(t)没有论文验证的默认，本轮不设置profile；不是P1–P4必交付default，若以后需要应另立显式新政策。
 
 未解决但不阻塞P0.2：原始四点逐帧和pre-release重建未纳入offline golden；历史逐start优化日志不可恢复；完整依赖lock缺失；cross-platform tolerances尚需P2–P4首次实现时实测；teacher model/原始视频实体按用户要求不继续追查。这些都不能靠把未确认值塞入historical default解决。未来实现若偏离frozen expected，先诊断版本/输入/算法，不自动更新golden或放宽门槛。
+
+## 8. 当前默认 student-default-v2（2026-09-30 用户用途纠正）
+
+v1与legacy冻结字节和历史golden不变；当前新计算采用 [student-default-v2](../profiles/student-default-v2.json)，版本2.0.0。用户明确角运动输入只有tip与calibrated fixed pivot；body_top/body_bottom/tracked pivot为辅助。此条覆盖§3中当前默认的“四点/QC”、body reference支持集与IC valid语义：
+
+- θ/ω/phase/period/reference energy的mask仅由当前adopted tip source-valid、正半径、既有radius≤10%与人工排除决定；fixed pivot/confirmed vertical仍由setup验证。AI tip仍须有限合法likelihood，manual confidence仍null；不把未采用/阈值筛除的raw预测直接当观测。
+- 辅助角色source/坐标/body length/reference/pivot displacement问题写入独立auxiliary_qc_reasons，不进入角运动排除理由。body reference来自非显式排除、正有限、source-valid body pair；不要求tip/tracked pivot同时存在。没有辅助观测时其诊断unavailable。
+- SG9/3、均匀连续源帧、分段/branch/gap、tail、能量公式、权重与拟合阈值沿用v1；这些未更改算法的来源仍引用policy-student-v1。未来IC的valid使用当前tip mask。
+- profile/version/hash与重建core升级进入结果签名；旧v1结果保留但stale，必须重算后用于当前分析，不用新规则重新解释已保存的历史mask。
+
+## 9. 用户自定义SG（2026-10-01）
+
+用户授权对现有tip数据显式调整SG；见[ADR-0019](../../docs/decisions/0019-custom-angular-sg-settings.md)。student-default-v2冻结字节与默认9/3不改，运行请求可覆盖窗口/阶数；最终resolved config、override来源、窗口最短段、依赖版本均进入digest与immutable结果。legacy不接受override。
+
+- window是奇数整数≥3；1≤polyorder<window。GUI提供9/3、7/3、5/2与自定义；不得静默选择更短窗口。
+- 同一已有direct SG核心按连续QC-valid、均匀源帧段求导；每段长度至少window，边缘window//2帧标记。uniform/branch/QC/gap规则不变，无插值/预平滑。
+- 更短窗允许较短段产生局部ω/同帧相图/参考能量，通常也更敏感于噪声；界面显示可求导点数、窗时间跨度、边缘估计数量及实际使用的参数，不宣称缩窗改善精度。
+- 编辑设置需Compute才应用，旧图仍显示保存参数；读回历史结果恢复参数，版本升级或输入变化stale。SG参数不改变周期/tail/拟合资格。

@@ -67,9 +67,9 @@ def test_manual_and_ai_confidence_weighting_and_preview_are_separate():
     request = _point(request, 4, 0, AdoptedLandmark(0, 100, "manual", None))
     result = reconstruct_pendulum(request)
     assert result.frames[1].is_qc_valid and result.frames[1].relative_weight == .05
-    assert result.frames[2].theta_rad == 0 and not result.frames[2].is_qc_valid
-    assert "pivot:no_adopted_point" in result.frames[2].qc_reasons
-    assert "body_top:invalid_ai_likelihood" in result.frames[3].qc_reasons
+    assert result.frames[2].theta_rad == 0 and result.frames[2].is_qc_valid
+    assert "pivot:no_adopted_point" in result.frames[2].auxiliary_qc_reasons
+    assert "body_top:invalid_ai_likelihood" in result.frames[3].auxiliary_qc_reasons
     assert result.frames[4].relative_weight == 1 and result.frames[4].is_qc_valid
     assert [row.frame_index for row in result.frames] == list(range(12))
     assert result.frames[3].time_release_relative_s == pytest.approx(-.2, abs=1e-12)
@@ -89,7 +89,8 @@ def test_body_boundary(length, valid):
     request = _point(_request(), 0, 1, AdoptedLandmark(0, 20-length, "manual", None))
     result = reconstruct_pendulum(request)
     assert result.body_reference_px == 10
-    assert result.frames[0].is_qc_valid is valid
+    assert result.frames[0].is_qc_valid
+    assert (not result.frames[0].auxiliary_qc_reasons) is valid
 
 
 def test_body_reference_excludes_user_and_incomplete_frames_and_reports_unavailable():
@@ -97,14 +98,15 @@ def test_body_reference_excludes_user_and_incomplete_frames_and_reports_unavaila
     request = replace(request, qc_overrides=(QCExclusion(0, "occlusion"),))
     request = _point(request, 1, 3, None)
     result = reconstruct_pendulum(request)
-    assert result.body_reference_frames == tuple(range(2, 12))
+    assert result.body_reference_frames == tuple(range(1, 12))
     assert result.body_reference_px == 10
     assert "user_excluded:occlusion" in result.frames[0].qc_reasons
     assert result.input_digest != reconstruct_pendulum(_request()).input_digest
-    frames = tuple(replace(f, points=(*f.points[:3], None)) for f in request.frames)
+    frames = tuple(replace(f, points=(f.points[0], None, None, None)) for f in request.frames)
     result = reconstruct_pendulum(replace(request, frames=frames))
     assert result.body_reference_px is None
-    assert all("body_reference_unavailable" in row.qc_reasons for row in result.frames)
+    assert all("body_reference_unavailable" in row.auxiliary_qc_reasons for row in result.frames)
+    assert all(row.is_qc_valid for row in result.frames[1:])
 
 
 def test_phi_unwrap_resets_at_missing_body_pair():
@@ -148,7 +150,7 @@ def test_invalid_time_frames_release_and_exclusions_fail_closed():
 def test_compiled_policy_matches_frozen_profile_bytes_and_values():
     root = Path(__file__).resolve().parents[1] / 'publication' / 'profiles'
     config = reconstruction_config()
-    student_bytes = (root / 'student-default-v1.json').read_bytes()
+    student_bytes = (root / 'student-default-v2.json').read_bytes()
     legacy_bytes = (root / 'legacy-publication-v1.json').read_bytes()
     assert config['profile_sha256'] == sha256(student_bytes).hexdigest()
     assert config['formula_profile_sha256'] == sha256(legacy_bytes).hexdigest()

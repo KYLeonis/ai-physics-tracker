@@ -835,6 +835,7 @@ class TestPendulumSetupProjection:
             )
         )
         session.set_fixed_pivot(experiment.experiment_id, (5.0, 5.0))
+        session.set_tip_radius_reference(experiment.experiment_id, 100.)
         session.set_true_vertical(experiment.experiment_id, (5.0, 1.0), (5.5, 19.0))
         session.confirm_true_vertical(experiment.experiment_id)
         session.set_physical(

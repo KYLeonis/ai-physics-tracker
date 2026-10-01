@@ -4431,6 +4431,10 @@
     {
       "path": "publication/profiles/student-default-v1.json",
       "sha256": "6b5b28065eebd0f0a26d42b6d279b4d4294af89e1a9bd5da5badaf9101e48d51"
+    },
+    {
+      "path": "publication/profiles/student-default-v2.json",
+      "sha256": "da63846319bf7c3de4b43e6f9a6dacaa1d57a755ad9771d07525edb1ee8ce964"
     }
   ]
 }

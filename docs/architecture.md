@@ -170,7 +170,9 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 
 ## Publication branch contract boundary
 
-本线未来Pendulum schema2/multi-track与typed scientific results见[ADR-0017](decisions/0017-publication-project-contract.md)及[合同](../publication/spec/experiment-run-derived-contracts.md)。本轮只固定契约，src仍是既有schema1实现。外置AI进程边界见[runtime contract](../publication/spec/runtime-boundary.md)，Mac探针不替代Windows验收或正式安装实现。
+本线已实现 Pendulum schema2、四 role/run 事务与 typed scientific_results（[ADR-0017](decisions/0017-publication-project-contract.md)、[合同](../publication/spec/experiment-run-derived-contracts.md)）；generic v1仍原样支持。P2 数据流：adopted snapshot → reconstruction θ/φ/QC → student直接SG9/3与分段period/tail → q=g/L reference energy（s⁻² proxy）。结果 JSON 以新ID不可变发布至 data/derived，manifest存path/size/SHA与typed列；缺测为null+reason，不复用二维DerivedData。
+
+PendulumAnalysisActions 使用detached session后台计算/完整性读取，主线程仅在项目/视频代际、全部捕获数值事实与SHA验证后的文件stat代际仍一致时提交一条Undo事务。历史结果输入改变显示stale；保存重开仍复核内容摘要。scalar图表保留源frame映射，源帧检查可超出working zone而不改它，复用分析页同一视频控件；GUI体验由真人验收。外置AI进程边界见[runtime contract](../publication/spec/runtime-boundary.md)，Mac探针不替代Windows验收或正式安装实现。
 - [0009 — 交互式图表与分析事务](decisions/0009-interactive-charts-and-analysis-transactions.md)
 - [0010 — 当前图表 PNG 快照](decisions/0010-current-chart-png-snapshots.md)
 - [0011 — DeepLabCut 集成架构](decisions/0011-deeplabcut-integration-architecture.md)
@@ -179,4 +181,3 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 - [0014 — 结果激活与固定验证历史](decisions/0014-result-activation-and-fixed-validation-history.md)
 - [0015 — Training Advisor 与 Resume 再训练](decisions/0015-training-advisor-and-resume-retraining.md)
 - [0016 — 固定检查帧预选与推荐计划执行](decisions/0016-fixed-check-preselection-and-recommended-plan-execution.md)
->>>>>>> main

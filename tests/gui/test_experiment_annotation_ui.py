@@ -521,3 +521,70 @@ def test_frame_selection_actions_persist_shared_frame_set(
     assert saved.frame_set.frames == (2, 4)
     assert saved.frame_set.algorithm == "uniform"
     assert "Saved as shared frame set" in panel.suggestStatusLabel.text()
+
+
+def test_analysis_repair_four_roles_auto_advance_and_readonly_reference(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+):
+    from PySide6.QtCore import QPoint
+
+    window, session = _guided_window(qtbot, synthetic_video_path, tmp_path, monkeypatch)
+    experiment = window.currentPendulumExperiment()
+    window._exitAnnotationMode()
+    # 不让保存的后台任务掩盖点击路由；持久化已有独立往返测试。
+    monkeypatch.setattr(window.projectActions, 'autosave', lambda *a, **kw: None)
+    session.mark_point(experiment.roles.tip, 2, 99., 99.)
+    window.videoView.set_calibration_mode('pivot')
+    window.setWorkspace('analysis')
+    assert not window.videoView.is_calibration_mode()
+    before = session.project.observations
+    window.videoView.set_annotation_mode(True)  # 下游错误重开模式也不能写点。
+    window._onAnnotationClicked(QPoint(10, 10))
+    assert session.project.observations == before
+
+    window.beginExperimentAnnotation((2, 4))
+    qtbot.waitUntil(lambda: window.presentedFrameIndex == 2 and not window._has_pending_request)
+    assert window.currentWorkspace == 'acquire'
+    assert 'point 1/4: click tip' in window.calibrationGuideLabel.text()
+    # 时间轴离开任务帧，拒绝落点；再回目标帧继续。
+    assert window.jumpToFrame(3)
+    qtbot.waitUntil(lambda: window.presentedFrameIndex == 3 and not window._has_pending_request)
+    before = session.project.observations
+    window._onGuidedAnnotationClicked((1., 2.))
+    assert session.project.observations == before
+    assert window.jumpToFrame(2)
+    qtbot.waitUntil(lambda: window.presentedFrameIndex == 2 and not window._has_pending_request)
+    for frame in (2, 4):
+        qtbot.waitUntil(lambda: window.presentedFrameIndex == frame and not window._has_pending_request)
+        for index, role in enumerate(ROLE_ORDER):
+            assert f'point {index+1}/4: click {role}' in window.calibrationGuideLabel.text()
+            window._onGuidedAnnotationClicked((10.+index, 20.+index))
+            point = next(p for p in session.manual_points(experiment.roles.track_id_for(role)) if p.frame_index == frame)
+            assert (point.pixel_x, point.pixel_y) == (10.+index, 20.+index)
+    assert window.currentWorkspace == 'analysis'
+    assert not window.experiment_guide_active and not window._guide_repair_tasks
+    assert not window.videoView.is_annotation_mode()
+    assert session.pendulum_experiment(experiment.experiment_id).frame_set.frames == (2, 4)
+
+    window.beginExperimentAnnotation((1,))
+    qtbot.waitUntil(lambda: window.presentedFrameIndex == 1 and not window._has_pending_request)
+    window._onGuidedAnnotationClicked((30., 40.))
+    window._exitAnnotationMode()
+    assert not window._guide_repair_tasks
+    assert any(p.frame_index == 1 for p in session.manual_points(experiment.roles.tip))
+    window.beginExperimentAnnotation((0,))
+    window.adoptEmptyProject()
+    assert not window.experiment_guide_active and not window._guide_repair_tasks
+
+
+def test_tip_repair_advances_after_one_click_and_never_writes_auxiliary(qtbot, synthetic_video_path, tmp_path, monkeypatch):
+    window, session = _guided_window(qtbot, synthetic_video_path, tmp_path, monkeypatch)
+    monkeypatch.setattr(window.projectActions, 'autosave', lambda *a, **kw: None)
+    roles = window.currentPendulumExperiment().roles
+    window.beginExperimentAnnotation((1, 3), tip_only=True)
+    for frame in (1, 3):
+        qtbot.waitUntil(lambda: window.presentedFrameIndex == frame and not window._has_pending_request)
+        window._onGuidedAnnotationClicked((10., 20.))
+    assert window.currentWorkspace == 'analysis'
+    assert len(session.manual_points(roles.tip)) == 2
+    assert all(not session.manual_points(roles.track_id_for(r)) for r in ('body_top', 'body_bottom', 'pivot'))

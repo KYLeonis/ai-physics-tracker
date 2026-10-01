@@ -170,6 +170,8 @@ class MainWindow(QMainWindow):
         # 当前待标 role 的 track（不依赖 track 选中）
         self._guide_experiment_id: UUID | None = None
         self._guide_skipped_roles: set[str] = set()
+        self._guide_repair_tasks: tuple[tuple[int, str], ...] = ()
+        self._guide_repair_index = 0
         # F1(2026-09-24 HR)：加载后的短暂窗口内 seekFrame 可能被拒
         # （busy/解码器未就绪），入口跳帧会被静默丢弃。记下目标帧，
         # 由定时器有界重试，直到呈现目标帧或超时放弃。
@@ -438,6 +440,9 @@ class MainWindow(QMainWindow):
             self, _sys.executable
         )
         self._installChartPanel(self.chartActions.panel)
+        from ai_physics_tracker.gui.pendulum_analysis import PendulumAnalysisActions
+        self.pendulumAnalysisActions = PendulumAnalysisActions(self)
+        self._installChartPanel(self.pendulumAnalysisActions.panel)
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         self.setWorkspace(WORKSPACE_ACQUIRE)
         viewMenu.addAction(zoomInAction)
@@ -487,12 +492,13 @@ class MainWindow(QMainWindow):
         self.videoView.pivotClicked.connect(self._onPivotClicked)
         self.videoView.verticalLineDrawn.connect(self._onVerticalLineDrawn)
         self.pendulumPanel.pivotButton.clicked.connect(self.beginPivotPick)
+        self.pendulumPanel.radiusButton.clicked.connect(self._setRadiusFromCurrentTip)
         self.pendulumPanel.verticalButton.clicked.connect(self.beginVerticalPick)
         self.pendulumPanel.confirmVerticalButton.clicked.connect(
             self._confirmVerticalDirection)
         self.pendulumPanel.physicalButton.clicked.connect(self.openPhysicalDialog)
         self.pendulumPanel.releaseButton.clicked.connect(self._setReleaseToCurrentFrame)
-        self.pendulumPanel.annotateButton.clicked.connect(self.beginExperimentAnnotation)
+        self.pendulumPanel.annotateButton.clicked.connect(lambda: self.beginExperimentAnnotation())
         self.drawScaleButton.clicked.connect(self._toggleDrawScaleMode)
         self.setOriginButton.clicked.connect(self._toggleSetOriginMode)
         self.calibrationGuideButton.clicked.connect(self._onCalibrationGuideAction)
@@ -553,7 +559,11 @@ class MainWindow(QMainWindow):
     def deliveryGeneration(self) -> int:
         return self._delivery_generation
 
-    def seekFrame(self, frame_index: int) -> bool:
+    def seekSourceFrame(self, frame_index: int) -> bool:
+        """科学图点检查完整源帧；不修改working zone或科学输入。"""
+        return self.seekFrame(frame_index, source_frame=True)
+
+    def seekFrame(self, frame_index: int, *, source_frame: bool = False) -> bool:
         """图表导航统一走现有解码入口，暂停并解除视频上的编辑模式。"""
 
         if self.projectActions.busy or self._timeline is None or self._async.snapshot() is None:
@@ -568,14 +578,18 @@ class MainWindow(QMainWindow):
         self.videoView.set_calibration_mode(None)
         self.drawScaleButton.setChecked(False)
         self.setOriginButton.setChecked(False)
-        self._requestFrame(clamp_to_working_zone(frame_index, self._timeline))
+        target = frame_index if source_frame else clamp_to_working_zone(frame_index, self._timeline)
+        if source_frame:
+            self._requestFrame(target, source_frame=True)
+        else:
+            self._requestFrame(target)
         return True
 
     def jumpToFrame(self, frame_index: int) -> bool:
         """建议帧跳帧（Phase 5.1）：跳转到指定帧，并在有选中 Track 时保持标注模式。"""
         if not self.seekFrame(frame_index):
             return False
-        if self._selected_track_id is not None and self._measurement_allowed and not self.projectActions.busy:
+        if self._selected_track_id is not None and self._measurement_allowed and not self.projectActions.busy and self._workspace != WORKSPACE_ANALYSIS:
             self.videoView.set_annotation_mode(True)
             self.statusBar().showMessage(
                 f"Jumped to frame {frame_index}. Click video to annotate target for selected track."
@@ -602,18 +616,29 @@ class MainWindow(QMainWindow):
         return self._workspace
 
     def setWorkspace(self, workspace: str) -> None:
-        """切换工作区；不取消任务、不改变采用结果、不触发计算。"""
+        """切换工作区；分析参照视频只读，不改变采用结果或触发计算。"""
         if workspace == self._workspace and self._workspaceStack.currentIndex() == (
                 1 if workspace == WORKSPACE_ANALYSIS else 0):
             self.workflowHeader.setWorkspace(workspace)
             return
         if workspace == WORKSPACE_ANALYSIS:
+            self._exitExperimentGuide()
+            self.videoView.set_annotation_mode(False)
+            self.videoView.set_calibration_mode(None)
+            self.drawScaleButton.setChecked(False)
+            self.setOriginButton.setChecked(False)
             self._enterAnalysis()
             self.refreshAnalysisSourceBar()
         else:
             if self._workspace == WORKSPACE_ANALYSIS:
                 self._leaveAnalysis()
         self._workspace = workspace
+        if workspace == WORKSPACE_ACQUIRE:
+            if self._selected_track_id is not None:
+                self.videoView.set_annotation_mode(self._measurement_allowed and not self.projectActions.busy)
+            joint = getattr(self, "experimentInferenceActions", None)
+            if joint is not None and joint.is_correcting:
+                joint._sync_review(None, seek=False)
         if workspace == WORKSPACE_ANALYSIS:
             self._workspaceStack.setCurrentWidget(self._analysisPage)
         else:
@@ -636,6 +661,13 @@ class MainWindow(QMainWindow):
         """分析页顶部：当前输入来源 + 标定 + 时间依据（§11.2）。"""
         session = self.analysisSession
         track_id = self.selectedTrackId
+        experiment = self.currentPendulumExperiment() if session is not None else None
+        if experiment is not None:
+            source = ("adopted tip + manual corrections / fixed pivot; other landmarks are auxiliary"
+                      if experiment.active_infer_run_id is not None else
+                      "no active adopted joint inference — adopt a completed result first")
+            self._analysisSourceLabel.setText(f"Pendulum: {source} · θ rad · ω rad/s · reference energy s⁻²")
+            return
         if session is None or track_id is None:
             self._analysisSourceLabel.setText("No analysis source selected")
             return
@@ -745,6 +777,7 @@ class MainWindow(QMainWindow):
                       service: ProjectMediaService | None = None) -> None:
         """首帧/身份准备成功后提交预览；时序可后台继续，旧解码器异步释放。"""
 
+        self._exitExperimentGuide()
         self.stopPlayback()
         old_decoder = self._async
         self._delivery_generation = token
@@ -871,10 +904,11 @@ class MainWindow(QMainWindow):
             return
         self._requestFrame(snapshot.current_frame.frame_index + 1)
 
-    def _requestFrame(self, frame_index: int) -> None:
+    def _requestFrame(self, frame_index: int, *, source_frame: bool = False) -> None:
         self._has_pending_request = True
         self._last_requested_frame = frame_index
-        self._latest_request_id = self._async.request_frame(frame_index)
+        self._latest_request_id = (self._async.request_frame(frame_index, source_frame=True)
+                                   if source_frame else self._async.request_frame(frame_index))
         self.frameRequested.emit(frame_index)
 
     def _onDecodeCompleted(self, result: DecodeDelivery, generation: int) -> None:
@@ -1086,10 +1120,11 @@ class MainWindow(QMainWindow):
             self.drawScaleButton.setChecked(False)
             self.setOriginButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
-            self.videoView.set_annotation_mode(self._measurement_allowed and not self.projectActions.busy)
+            self.videoView.set_annotation_mode(self._measurement_allowed and not self.projectActions.busy and self._workspace != WORKSPACE_ANALYSIS)
             self.statusBar().showMessage(
-                "Annotation mode: click the video to mark; Esc or click an empty "
-                "list area to exit"
+                "Video reference is read-only; return to Acquire to label"
+                if self._workspace == WORKSPACE_ANALYSIS else
+                "Annotation mode: click the video to mark; Esc or click an empty list area to exit"
             )
         else:
             # HR 反馈(2026-09-29):joint 审核 Correct 等待点击时不因 track
@@ -1129,13 +1164,7 @@ class MainWindow(QMainWindow):
         if self.videoView.is_calibration_mode() in ("pivot", "vertical"):
             self.videoView.set_calibration_mode(None)
             self._hidePendulumGuide()
-        if self._guide_experiment_id is not None:
-            self._guide_experiment_id = None
-            self._guide_jump_target = None
-            self._guide_jump_timer.stop()
-            self._guide_skipped_roles.clear()
-            self._hidePendulumGuide()
-            self._refreshMarkers()
+        self._exitExperimentGuide()
         self.statusBar().showMessage("Browse mode")
 
     def _setCalibrationGuide(
@@ -1388,6 +1417,26 @@ class MainWindow(QMainWindow):
         self._afterPendulumChange(
             f"Release frame set to {self._presented_frame_index}")
 
+    def _setRadiusFromCurrentTip(self) -> None:
+        from math import hypot
+        session, experiment = self.analysisSession, self.currentPendulumExperiment()
+        frame_index = self.presentedFrameIndex
+        if session is None or experiment is None or frame_index is None:
+            return
+        pivot = experiment.geometry.fixed_pivot_px
+        point = next((p for p in session.effective_points(experiment.roles.tip)
+                      if p.frame_index == frame_index), None)
+        if pivot is None or point is None:
+            self.statusBar().showMessage("Set fixed pivot and label the tip on this frame first")
+            return
+        try:
+            session.set_tip_radius_reference(experiment.experiment_id,
+                hypot(point.pixel_x-pivot[0], point.pixel_y-pivot[1]))
+        except Exception as error:
+            self.statusBar().showMessage(str(error))
+            return
+        self._afterPendulumChange(f"Tip radius reference set from source frame {frame_index} (QC only)")
+
     def _afterPendulumChange(self, message: str) -> None:
         """pendulum 事实写入后的统一收敛：面板/卡片/标题同步。"""
 
@@ -1409,14 +1458,18 @@ class MainWindow(QMainWindow):
         if self._guide_experiment_id is None:
             return
         self._guide_experiment_id = None
+        self._guide_repair_tasks = ()
+        self._guide_repair_index = 0
+        self._guide_skipped_roles.clear()
         self._guide_jump_target = None
         self._guide_jump_timer.stop()
+        self.videoView.set_annotation_mode(False)
         self._hidePendulumGuide()
         self._refreshMarkers()
         self.statusBar().showMessage("Guided marking finished")
 
-    def beginExperimentAnnotation(self) -> None:
-        """进入四 role 顺序引导：点击按当前待标 role 路由，无需选 track。"""
+    def beginExperimentAnnotation(self, frames: tuple[int, ...] | None = None, *, tip_only: bool = False) -> None:
+        """复用四role引导；指定修复帧时重标四点并自动推进。"""
 
         session = self._annotation_session
         experiment = self.currentPendulumExperiment()
@@ -1426,9 +1479,29 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(
                 "Verify video timing before guided marking")
             return
-        worklist = frame_set_worklist(experiment)
+        if frames is not None:
+            from ai_physics_tracker.domain.pendulum import ROLE_ORDER
+
+            if not frames or self._timeline is None or any(
+                    type(frame) is not int or not self._timeline.working_zone[0] <= frame <= self._timeline.working_zone[1]
+                    for frame in frames):
+                self.statusBar().showMessage("Repair frames must be inside the working zone")
+                return
+            joint = getattr(self, "experimentInferenceActions", None)
+            if joint is not None and joint.review_open:
+                joint.finishReviewing()
+                self.statusBar().showMessage("Suggestions closed — start the analysis repair again after saving")
+                return
+            session.extend_experiment_frame_set(experiment.experiment_id, frames)
+            self.setWorkspace(WORKSPACE_ACQUIRE)
+        self._exitExperimentGuide()
+        self.stopPlayback()
+        self._guide_experiment_id = experiment.experiment_id
+        if frames is not None:
+            self._guide_repair_tasks = tuple((frame, role) for frame in frames for role in (("tip",) if tip_only else ROLE_ORDER))
+        worklist = frames if frames is not None else frame_set_worklist(experiment)
         if worklist:
-            target = next(
+            target = worklist[0] if frames is not None else next(
                 (frame for frame in worklist if not annotation_guide_state(
                     session.project, experiment, frame).frame_complete),
                 worklist[-1],
@@ -1504,6 +1577,21 @@ class MainWindow(QMainWindow):
             or experiment.experiment_id != self._guide_experiment_id
         ):
             self._exitExperimentGuide()
+            return
+        if self._guide_repair_tasks:
+            frame, role = self._guide_repair_tasks[self._guide_repair_index]
+            ready = self._presented_frame_index == frame and not self._has_pending_request
+            self.videoView.set_annotation_mode(ready)
+            role_count = len({role for _, role in self._guide_repair_tasks})
+            position = self._guide_repair_index // role_count + 1
+            total = len(self._guide_repair_tasks) // role_count
+            self._setCalibrationGuide(
+                f"Analysis repair {position}/{total} · source frame {frame} · "
+                f"point {self._guide_repair_index % role_count + 1}/{role_count}: click {role}. "
+                f"{total-position} frame(s) remain after this one. "
+                + ("Next frame automatically after marking. Esc keeps recorded points."
+                   if ready else f"Waiting for source frame {frame}; click is disabled."),
+                "guide_finish", "Stop repair (keep points)")
             return
         if self._presented_frame_index is None:
             self._setCalibrationGuide(
@@ -1985,6 +2073,9 @@ class MainWindow(QMainWindow):
         self.videoView.set_calibration(cal_view, image_height=h)
 
     def _onAnnotationClicked(self, view_pos: QPoint) -> None:
+        if self._workspace == WORKSPACE_ANALYSIS:
+            self.statusBar().showMessage("Video reference is read-only — use Repair suggested frames or Acquire to label")
+            return
         if not self._measurement_allowed or self.projectActions.busy or not self.videoView.is_annotation_mode():
             return
         if self._annotation_session is None:
@@ -2070,7 +2161,7 @@ class MainWindow(QMainWindow):
         state = annotation_guide_state(
             session.project, experiment, self._presented_frame_index
         )
-        if state.frame_complete:
+        if state.frame_complete and not self._guide_repair_tasks:
             self.statusBar().showMessage(
                 "This frame is complete (4/4); use Next frame or the timeline")
             return
@@ -2079,11 +2170,17 @@ class MainWindow(QMainWindow):
             for role in state.pending_roles
             if role not in self._guide_skipped_roles
         )
-        if not pending:
-            self.statusBar().showMessage(
-                "All remaining roles skipped for this frame; use Next frame")
-            return
-        role = pending[0]
+        if self._guide_repair_tasks:
+            frame, role = self._guide_repair_tasks[self._guide_repair_index]
+            if frame != self._presented_frame_index or self._has_pending_request:
+                self.statusBar().showMessage(f"Waiting for repair source frame {frame}; click ignored")
+                return
+        else:
+            if not pending:
+                self.statusBar().showMessage(
+                    "All remaining roles skipped for this frame; use Next frame")
+                return
+            role = pending[0]
         try:
             session.mark_point(
                 experiment.roles.track_id_for(role),
@@ -2091,12 +2188,23 @@ class MainWindow(QMainWindow):
                 pixel[0],
                 pixel[1],
             )
-        except ProjectSessionError as error:
+        except (ProjectSessionError, ValueError) as error:
             self.statusBar().showMessage(f"Point not saved: {error}")
             return
         self._refreshMarkers()
         self._refreshHistoryButtons()
         self._register_mark_for_autosave()
+        if self._guide_repair_tasks:
+            self._guide_repair_index += 1
+            if self._guide_repair_index == len(self._guide_repair_tasks):
+                self._exitExperimentGuide()
+                self.setWorkspace(WORKSPACE_ANALYSIS)
+                self.projectActions.autosave("analysis repair completed")
+                self.statusBar().showMessage("Repair complete — Compute pendulum analysis to check QC and update charts")
+                return
+            target = self._guide_repair_tasks[self._guide_repair_index][0]
+            if target != self._presented_frame_index:
+                self._beginGuideJump(target)
         if self._guide_skipped_roles:
             self._refreshAnnotationGuideForced()
         else:

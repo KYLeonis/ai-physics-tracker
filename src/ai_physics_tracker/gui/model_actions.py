@@ -14,6 +14,7 @@ import logging
 import sys
 from pathlib import Path
 from uuid import UUID
+from collections.abc import Callable
 
 from PySide6.QtCore import QObject, QTimer
 
@@ -65,6 +66,7 @@ class ModelActions(QObject):
         self._train_request = None
         self._job_dir: Path | None = None
         self._selftest_model_id: UUID | None = None
+        self._selftest_on_success: Callable[[], None] | None = None
         self._session = None                 # B1:启动时的 session 身份
         self._user_cancel = False            # M1:取消语义(强杀→cancelled 而非 failed)
         # HR 2026-09-28:模型任务接 Activity 区(Cancel 共用面板按钮)
@@ -105,6 +107,7 @@ class ModelActions(QObject):
         """窗口关闭:在途 job 取消并回收(取消是拒绝迟到 success 的唯一入口)。"""
 
         self._timer.stop()
+        self._selftest_on_success = None
         if self._handle is not None:
             self._handle.cancel()
 
@@ -235,7 +238,9 @@ class ModelActions(QObject):
             f"Fixed-check set frozen: {list(frames)}")
         self.window.projectActions.refresh()
 
-    def runSelftest(self, model_id: UUID) -> None:
+    def runSelftest(
+        self, model_id: UUID, *, on_success: Callable[[], None] | None = None,
+    ) -> None:
         from ai_physics_tracker.application.teacher_models import (
             build_model_selftest_payload,
         )
@@ -280,6 +285,7 @@ class ModelActions(QObject):
         self._handle = handle
         self._job_kind = "selftest"
         self._selftest_model_id = model_id
+        self._selftest_on_success = on_success
         self._job_dir = None   # selftest 无 job_dir 消费者(m5①);真实目录带 uuid 后缀
         self._session = session
         self._timer.start()
@@ -327,7 +333,7 @@ class ModelActions(QObject):
             else:
                 self._finish_failure(str(error))
             return
-        if result.get("status") == "cancelled":
+        if self._user_cancel or result.get("status") == "cancelled":
             self._finish_cancelled()
             return
         if result.get("status") == "failed":
@@ -380,6 +386,7 @@ class ModelActions(QObject):
             f"as unverified ({result.get('actual_device')}, "
             f"{completed.extra_fields.get('elapsed_s')}s)")
         self.window.projectActions.refresh()
+        self.runSelftest(reference.model_id)
 
     def _finish_selftest_success(self, result: dict) -> None:
         session = self.window.analysisSession
@@ -392,14 +399,18 @@ class ModelActions(QObject):
         except ProjectSessionError as error:
             self.window.statusBar().showMessage(
                 f"Self-test result rejected: {error}")
+            self._set_activity(f"Self-test rejected: {error}", running=False)
             self._reset()
             return
-        self._set_activity("Completed")
+        continuation = self._selftest_on_success
+        self._set_activity("Completed", running=False)
         self._reset()
         self.window.statusBar().showMessage(
             f"Model {model_id} is {updated.compatibility_state} "
             f"({result.get('actual_device')})")
         self.window.projectActions.refresh()
+        if updated.compatibility_state == "compatible" and continuation is not None:
+            continuation()
 
     def _finish_failure(self, message: str) -> None:
         session = self.window.analysisSession
@@ -440,6 +451,7 @@ class ModelActions(QObject):
         self._train_request = None
         self._job_dir = None
         self._selftest_model_id = None
+        self._selftest_on_success = None
 
     # ------------------------------------------------------------------
     # 教师导入入口

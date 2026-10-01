@@ -122,9 +122,9 @@ def check_extrema(rows: list[dict], trajectory: list[dict]) -> None:
 def check_profiles(directory: Path, source_ids: set[str]) -> None:
     """Validate provenance references and prevent ambiguous inheritance."""
     profiles = [strict_json(path.read_text(encoding='utf-8')) for path in sorted(directory.glob('*.json'))]
-    require(len(profiles) == 3, 'Expected three versioned profile documents')
-    require({p['id'] for p in profiles} == {'legacy-publication-v1', 'student-default-v1', 'diagnostics-v1'}, 'Profile IDs')
-    allowed = source_ids | {'policy-student-v1'}
+    require(len(profiles) == 4, 'Expected four versioned profile documents')
+    require({p['id'] for p in profiles} == {'legacy-publication-v1', 'student-default-v1', 'student-default-v2', 'diagnostics-v1'}, 'Profile IDs')
+    allowed = source_ids | {'policy-student-v1', 'policy-student-v2'}
     def walk(value: object) -> None:
         if isinstance(value, dict):
             if 'origin' in value:
@@ -147,6 +147,14 @@ def check_profiles(directory: Path, source_ids: set[str]) -> None:
     require(student['weighting']['manual_requires_ai_likelihood'] is False, 'Adopted manual points must not depend on AI likelihood')
     require(legacy['qc']['requires_tracked_pivot_finite'] is False, 'Legacy mask silently changed')
     require(student['qc']['requires_all_four_finite_coordinates'] is True, 'Student four-point QC missing')
+    current = next(p for p in profiles if p['id'] == 'student-default-v2')
+    require(current['qc']['requires_all_four_finite_coordinates'] is False, 'V2 auxiliary points must not gate angle')
+    require(current['qc']['required_roles'] == ['tip'], 'V2 angular QC requires tip only')
+    require('policy-student-v2' in current['ic']['sources'], 'V2 IC must reference tip-QC policy')
+    require('v2 tip-QC valid' in current['ic']['consecutive'], 'V2 IC consecutive frames must use tip-QC')
+    require(current['qc']['auxiliary_roles'] == ['body_top', 'body_bottom', 'pivot'], 'V2 auxiliary role identity')
+    require(current['weighting']['manual_requires_ai_likelihood'] is False, 'V2 manual points must not depend on AI likelihood')
+
 
 
 def verify(root: Path = ROOT, external_roots: dict[str, Path] | None = None) -> dict[str, int]:

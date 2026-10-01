@@ -80,6 +80,7 @@ class AsyncVideoSession:
         self._lock = threading.Lock()
         self._wakeup = threading.Condition(self._lock)
         self._pending_frame: int | None = None
+        self._pending_source_frame = False
         self._pending_open: Path | None = None
         self._pending_timeline: Timeline | None = None
         self._pending_initial_frame = 0
@@ -111,7 +112,7 @@ class AsyncVideoSession:
             self._wakeup.notify_all()
         return future
 
-    def request_frame(self, frame_index: int) -> int | None:
+    def request_frame(self, frame_index: int, *, source_frame: bool = False) -> int | None:
         """提交解码请求；覆盖尚未开始的旧请求（latest-wins）。
 
         返回该请求的编号；会话已停止或正在关闭时返回 None，不产生回调。
@@ -121,6 +122,7 @@ class AsyncVideoSession:
             if self._stopped or self._pending_close:
                 return
             self._pending_frame = frame_index
+            self._pending_source_frame = source_frame
             self._request_counter += 1
             self._pending_request_id = self._request_counter
             self._wakeup.notify_all()
@@ -180,6 +182,7 @@ class AsyncVideoSession:
                 open_future = self._pending_open_future
                 self._pending_open_future = None
                 frame_index = self._pending_frame
+                source_frame = self._pending_source_frame
                 request_id = self._pending_request_id
                 self._pending_frame = None
                 closing = self._pending_close
@@ -193,7 +196,7 @@ class AsyncVideoSession:
             if path is not None:
                 self._handle_open(path, open_future, timeline, initial_frame)
             elif frame_index is not None:
-                self._decode(frame_index, request_id)
+                self._decode(frame_index, request_id, source_frame=source_frame)
 
     def _handle_open(
         self, path: Path, future: Future[PlaybackSnapshot] | None,
@@ -219,14 +222,15 @@ class AsyncVideoSession:
         if future is not None:
             future.set_result(snapshot)
 
-    def _decode(self, frame_index: int, request_id: int) -> None:
+    def _decode(self, frame_index: int, request_id: int, *, source_frame: bool = False) -> None:
         # 不在解码期间持有任何锁：request_frame 必须能在慢速解码进行中
         # 覆盖 pending 槽，否则 latest-wins 退化为排队（见
         # test_latest_wins_coalesces_pending_requests）。worker 是唯一写者。
         try:
             if not self._session.is_open:
                 raise VideoError("no video is open")
-            frame = self._session.go_to_frame(frame_index)
+            frame = (self._session.go_to_source_frame(frame_index) if source_frame else
+                     self._session.go_to_frame(frame_index))
         except VideoError as error:
             self._emit_error(error, request_id, frame_index)
             return

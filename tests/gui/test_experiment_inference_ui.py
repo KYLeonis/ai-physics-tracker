@@ -309,6 +309,7 @@ class TestJointLadderCards:
     ):
         session, experiment = self._session(tmp_path, synthetic_video_path)
         state = self._state(session, experiment)
+        assert state.pendulum.missing == ("tip_radius_reference",)  # QC参考不能阻断训练/推理
         card = select_task_card(state)
         inference = next(
             a for a in card.secondary if a.action_id == "run_joint_inference")
@@ -739,3 +740,105 @@ class TestActivation:
         assert session.pendulum_experiment(
             experiment.experiment_id).active_infer_run_id is None
         assert session.project.observations == ()
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_unverified_model_checks_before_inference(qtbot, tmp_path, synthetic_video_path, monkeypatch, changed):
+    from dataclasses import replace
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    _inject_model(session, replace(model, compatibility_state="unverified", self_test_evidence=None))
+    controller = _install(window, _Runner())
+    callbacks = []
+    monkeypatch.setattr(window.modelActions, "runSelftest",
+                        lambda model_id, *, on_success: callbacks.append(on_success))
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6))
+    assert len(callbacks) == 1
+    assert not controller.busy
+    assert not session.tracking_runs()
+    _inject_model(session, model)
+    if changed:
+        monkeypatch.setattr(window, "currentPendulumExperiment", lambda: None)
+    callbacks[0]()
+    assert controller.busy is (not changed)
+    if not changed:
+        controller._poll()
+        assert len(session.tracking_runs()) == 1
+
+
+def test_model_chooser_dates_and_verify_action(qtbot, tmp_path, synthetic_video_path):
+    from dataclasses import replace
+    from datetime import timedelta
+    from types import SimpleNamespace
+    from ai_physics_tracker.gui.joint_inference_dialog import JointInferenceDialog
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    started = model.created_at - timedelta(minutes=30)
+    trained = replace(model, model_id=uuid4(), origin="trained", source_train_run_id=uuid4(),
+                      source_experiment_id=experiment.experiment_id,
+                      compatibility_state="unverified", self_test_evidence=None,
+                      created_at=model.created_at + timedelta(minutes=1))
+    dialog = JointInferenceDialog([model, trained], training_runs=[
+        SimpleNamespace(run_id=trained.source_train_run_id, created_at=started)])
+    qtbot.addWidget(dialog)
+    assert dialog.selected_model_id() == trained.model_id
+    assert dialog.modelList.item(0).text().startswith(started.astimezone().strftime("%Y-%m-%d %H:%M:%S"))
+    assert dialog._ok_button.isEnabled() and dialog._ok_button.text() == "Verify & run"
+    dialog.modelList.setCurrentRow(1)
+    assert dialog._ok_button.text() == "Run inference"
+
+
+def test_joint_candidate_preview_uses_role_and_refreshes_when_role_changes(qtbot, tmp_path, synthetic_video_path):
+    from PySide6.QtCore import Qt
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    _run_inference(controller, session, experiment, model)
+    window._refreshTrackList()
+    for role in ('body_bottom', 'tip', 'body_top'):
+        target = experiment.roles.track_id_for(role)
+        window.trackList.clearSelection()
+        row = next(i for i in range(window.trackList.count())
+                   if window.trackList.item(i).data(Qt.ItemDataRole.UserRole) == target)
+        window.trackList.setCurrentRow(row)
+        window.trackingActions._context_key = None
+        window.trackingActions.refresh()
+        qtbot.waitUntil(lambda: window.trackingActions._preview_loaded_key is not None
+                        and window.trackingActions._preview_loaded_key[-1] == role, timeout=5000)
+        markers = window.videoView.preview_marker_views()
+        assert len(markers) == session.project.videos[0].frame_count
+        assert sum(marker.color == '#ff6b6b' for marker in markers) == (1 if role == 'tip' else 0)
+        assert 'positions unavailable' not in window.videoView._preview_legend.text()
+    assert experiment.active_infer_run_id is None  # 预览不采用候选
+    run_id = window.trackingActions._current_workflow_state.trajectory.candidate.run_id
+    session.activate_experiment_candidate(experiment.experiment_id, run_id)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    assert window.videoView.preview_marker_views() == []
+    assert 'not adopted' not in window.workflowHeader.trajectoryLabel.text()
+    assert f'adopted run {str(run_id)[:8]}' in window.workflowHeader.trajectoryLabel.text()
+
+
+def test_joint_correct_survives_readonly_analysis_roundtrip(qtbot, tmp_path, synthetic_video_path):
+    from PySide6.QtCore import QPoint
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    run = _run_inference(controller, session, experiment, model)
+    controller.openReviewQueue(run.run_id)
+    window.trackList.clearSelection()
+    controller.startCorrect('tip')
+    _wait_presented(qtbot, window, controller._review_current)
+    qtbot.waitUntil(lambda: not window._has_pending_request)
+    assert controller.is_correcting and window.videoView.is_annotation_mode()
+    window.setWorkspace('analysis')
+    controller._sync_review(None, seek=False)  # 异步帧刷新也不能开启分析视频编辑。
+    assert controller.is_correcting and not window.videoView.is_annotation_mode()
+    before = session.project.observations
+    window._onAnnotationClicked(QPoint(10, 10))
+    assert session.project.observations == before
+    window.setWorkspace('acquire')
+    assert controller.is_correcting and window.videoView.is_annotation_mode()
+    window.videoView.mapScreenToPixel = lambda _pos: (10., 12.)
+    window._onAnnotationClicked(QPoint(10, 10))
+    assert len(session.manual_points(experiment.roles.tip)) == 1

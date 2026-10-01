@@ -113,6 +113,7 @@ logger = logging.getLogger(__name__)
 _SCOPED_REVIEW_KEYS = (SUGGESTED_FRAME_REVIEW_KEY, EXPERIMENT_REVIEW_KEY)
 
 if TYPE_CHECKING:
+    from ai_physics_tracker.application.pendulum_analysis import PendulumAnalysisResult
     from ai_physics_tracker.application.kinematics_job import KinematicsResult
     from ai_physics_tracker.application.tracking_job import TrackingCandidate
 
@@ -2164,6 +2165,32 @@ class ProjectSession:
                 f"Track is bound to pendulum experiment role '{role}'; "
                 f"use the pendulum workflow instead of {action}"
             )
+
+    def apply_pendulum_analysis_result(self, result: "PendulumAnalysisResult") -> None:
+        """完整 worker 结果一次提交；内存输入代际与 immutable 文件均复核。"""
+        from ai_physics_tracker.application.pendulum_analysis import (
+            ANALYSIS_KIND, CORE_VERSION, analysis_input_state, analysis_video_stamp,
+        )
+        from ai_physics_tracker.infrastructure.scientific_payload import read_scientific_payload
+
+        record = result.record
+        if (record.kind != ANALYSIS_KIND or record.core_version != CORE_VERSION
+                or record.freshness != "valid" or record.payload is None
+                or self.project_root is None):
+            raise ProjectSessionError("invalid pendulum analysis result")
+        if analysis_input_state(self, record.experiment_id) != result.captured_state:
+            raise ProjectSessionError("pendulum analysis inputs changed — recompute")
+        if analysis_video_stamp(self, record.experiment_id) != result.verified_video_stamp:
+            raise ProjectSessionError("analysis video changed after verification")
+        if any(r.result_id == record.result_id for r in self.project.scientific_results):
+            raise ProjectSessionError("scientific result ID already exists")
+        payload = read_scientific_payload(self.project_root, record.payload)
+        if (canonical_json_digest(payload) != canonical_json_digest(result.payload)
+                or payload.get("input_digest") != record.input_digest
+                or payload.get("contract") != ANALYSIS_KIND):
+            raise ProjectSessionError("pendulum result payload identity changed")
+        self._commit_project(replace(self.project,
+            scientific_results=(*self.project.scientific_results, record)))
 
     def _with_stale_results_for_experiment(
         self, project: Project, experiment_id: UUID

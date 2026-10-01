@@ -1,4 +1,4 @@
-"""P1.4-S4 联合推理启动对话框:选 compatible 模型与推理参数(Qt GUI 层)。
+"""P1.4-S4 联合推理启动对话框:选择模型与推理参数(Qt GUI 层)。
 
 只做选择与参数收集;真正的 prepare/start 由 ExperimentInferenceActions
 执行,启动时仍会 live 复核模型有效状态(这里的列表是静态字段快照)。
@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 from uuid import UUID
+
+from ai_physics_tracker.application.teacher_models import effective_compatibility_state
 
 from PySide6.QtWidgets import (
     QComboBox,
@@ -30,9 +32,9 @@ _ROLE_HINT = (
 
 
 class JointInferenceDialog(QDialog):
-    """选择一个 compatible 模型并设定 min confidence / batch size。"""
+    """选择模型与推理参数；未验证模型先真实自检再推理。"""
 
-    def __init__(self, model_references, parent=None) -> None:
+    def __init__(self, model_references, parent=None, *, training_runs=()) -> None:
         super().__init__(parent)
         self.setWindowTitle("Run joint inference")
         self.setMinimumWidth(460)
@@ -47,10 +49,13 @@ class JointInferenceDialog(QDialog):
             "you review and activate it."))
         self.modelList = QListWidget(self)
         self.modelList.setMaximumHeight(160)
-        for model in model_references:
-            state = model.compatibility_state
+        runs = {run.run_id: run for run in training_runs}
+        for model in sorted(model_references, key=lambda m: m.created_at, reverse=True):
+            state = effective_compatibility_state(model)
+            run = runs.get(model.source_train_run_id)
+            date = (run.created_at if run else model.created_at).astimezone().strftime("%Y-%m-%d %H:%M:%S")
             item = QListWidgetItem(
-                f"{model.origin} model {str(model.model_id)[:8]} — {state}"
+                f"{date} · {model.origin} model {str(model.model_id)[:8]} — {state}"
             )
             item.setData(0x0100, model.model_id)   # Qt.ItemDataRole.UserRole
             self.modelList.addItem(item)
@@ -91,12 +96,16 @@ class JointInferenceDialog(QDialog):
         layout.addWidget(buttons)
         self._ok_button: QPushButton = buttons.button(
             QDialogButtonBox.StandardButton.Ok)
+        if self.modelList.count():
+            self.modelList.setCurrentRow(0)
         self._refresh_ok()
 
     def _refresh_ok(self, *_args) -> None:
         model = self._selected_model()
-        compatible = model is not None and model.compatibility_state == "compatible"
-        self._ok_button.setEnabled(compatible)
+        state = effective_compatibility_state(model) if model else None
+        compatible = state == "compatible"
+        self._ok_button.setEnabled(state in ("compatible", "unverified"))
+        self._ok_button.setText("Run inference" if compatible else "Verify & run")
         if model is None:
             self.hintLabel.setText(
                 _ROLE_HINT if self._models else
@@ -106,8 +115,13 @@ class JointInferenceDialog(QDialog):
             self.hintLabel.setText(
                 "Ready: the model self-test passed on this machine. The "
                 "worker re-verifies every input file before running.")
+        elif state == "unverified":
+            self.hintLabel.setText(
+                "This model has not been checked yet. Verify & run loads it and "
+                "tests one frame, then starts inference automatically if successful. "
+                "Progress and Cancel appear in Activity.")
         else:
-            self.hintLabel.setText(_ROLE_HINT)
+            self.hintLabel.setText(f"Model is {state}; inference cannot start. Check its files or import a working model.")
 
     def _selected_model(self):
         item = self.modelList.currentItem()
@@ -128,7 +142,10 @@ def run_joint_inference_dialog(window, model_references) -> tuple | None:
 
     from ai_physics_tracker.application.tracking_types import InferenceParams
 
-    dialog = JointInferenceDialog(model_references, window)
+    session = window.analysisSession
+    dialog = JointInferenceDialog(
+        model_references, window,
+        training_runs=session.tracking_runs() if session else ())
     if dialog.exec() != QDialog.DialogCode.Accepted:
         return None
     model_id = dialog.selected_model_id()

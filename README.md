@@ -1,5 +1,7 @@
 # AI Physics Tracker
 
+> Publication线（2026-10-01）：P0/P1/P2已完成，P2.3用户整体交付验收通过；详见[publication/STATUS.md](publication/STATUS.md)。P3未启动。
+
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 
 AI Physics Tracker 结合现代深度学习视觉跟踪方法与传统运动学视频分析软件的使用方式，让用户能够从实验视频中快速获得准确的物体轨迹和物理数据。软件使用方式上对标 Tracker 等专业物理分析软件的桌面交互体验，技术上以 DeepLabCut 3.x（PyTorch 路线）作为核心跟踪基础。

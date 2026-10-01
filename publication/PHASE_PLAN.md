@@ -1,6 +1,10 @@
 # EJP Publication Platform — Master Phase Plan
 
-- 2026-09-19规划，2026-09-20文档收尾；状态（2026-09-30）：**P0/P1 完成并集成；P2.1 θ/QC core 完成；P2.2 完成；P2.3–P6 未完成；Windows验证经用户明确批准延期，进入P6前必过**。
+> 2026-09-30用户用途纠正：P2角运动默认改为student-default-v2（tip + fixed pivot，辅助点仅诊断），覆盖本计划原四点共同QC口径；见[ADR-0018](../docs/decisions/0018-tip-fixed-pivot-angular-qc.md)与scientific-profiles §8。四role训练/推理数据体系保留。
+
+> 2026-10-01：用户授权显式SG窗口/阶数覆盖，默认9/3与冻结profile不变；见[ADR-0019](../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。
+
+- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-01）：**P0/P1/P2完成；P2.3 Independent Review与用户整体交付验收通过、执行集成收尾；P3–P6 未启动；Windows验证经用户明确批准延期，进入P6前必过**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -105,12 +109,12 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P1.3 Joint training and teacher model import | 一次dataset/training，最小Import DLC Model与兼容验证 | 真实训练产物及外部教师config+model都可被正确解析；错误bodypart明确拒绝 |
 | P1.4 Joint inference, review and activation | 一次推理、逐点QC与四轨事务；困难帧修正 | 两条模型路径真实推理；candidate/active/manual一致；独立review+Human Review后收尾 |
 
-### P2 — Pendulum Reconstruction and Core Analysis
+### P2 — Pendulum Reconstruction and Core Analysis ✅
 
-用户于 2026-09-30 授权进入；实施计划见 [P2 plan](plans/p2-pendulum-analysis.md)，P2.1/P2.2 已完成；P2.3 计划见 [mini-plan](plans/p2.3-energy-analysis-ui.md)。
+用户于 2026-09-30 授权进入；实施计划见 [P2 plan](plans/p2-pendulum-analysis.md)，P2.1/P2.2 已完成；P2.3实现/独立复审通过，2026-10-01用户明确批准整体交付与收尾；见[mini-plan](plans/p2.3-energy-analysis-ui.md)。
 
-- **Goal**：从已采用四点观测得到可信、可解释的θ/phase/period/energy。
-- **Scope**：角度与时间、QC masks、SG9/3、extrema/period/tail、能量基础表示、scalar/phase图表与多输入失效。
+- **Goal**：从已采用tip + fixed pivot得到可解释的θ/phase/period/energy，辅助点仅作诊断。
+- **Scope**：角度与时间、tip QC/辅助诊断、默认SG9/3与显式自定义、extrema/period/tail、能量基础表示、scalar/phase图表与多输入失效。
 - **Non-goals**：参数反演、普适信号处理工具箱、未批准的自动插值/校准修正。
 - **Dependencies**：P1及P0 scientific profiles；纯数值开发可使用冻结输入，不以真实GPU训练完成作为写纯函数的前提。
 - **Major decisions**：几何量与物理L区分；derived内容按scalar/series语义承载，不伪装二维；不同diagnostic各自profile；fit-dependent energy在P3再接结果。
@@ -120,9 +124,9 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 | Subphase | 交付边界 | 完成判据 |
 | --- | --- | --- |
-| P2.1 θ and QC core | signed angle、release-relative arrays、QC原因/共同mask、输入签名 | 几何synthetic+frozen θ复核；pivot QC改变不偷偷移动θ原点 |
-| P2.2 Derivative, phase and periods | SG9/3、gap/short segment、extrema各profile、过零period/tail | 解析及封存数据核对；无跨缺口周期、无虚假频率 |
-| P2.3 Energy and analysis UI | reference potential/specific-energy primitives、analysis adapter/charts、保存 | energy identity测试；学生能识别单位、缺口、来源与stale；Human Review收尾 |
+| P2.1 θ and QC core ✅ | signed angle、release-relative arrays、QC原因/共同mask、输入签名 | 几何synthetic+frozen θ复核；pivot QC改变不偷偷移动θ原点 |
+| P2.2 Derivative, phase and periods ✅ | SG9/3、gap/short segment、extrema各profile、过零period/tail | 解析及封存数据核对；无跨缺口周期、无虚假频率 |
+| P2.3 Energy and analysis UI ✅ | reference potential/specific-energy primitives、analysis adapter/charts、保存 | energy identity测试；学生能识别单位、缺口、来源与stale；Human Review收尾 |
 
 ### P3 — Full-Trajectory ODE Fitting
 

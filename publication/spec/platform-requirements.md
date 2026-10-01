@@ -1,6 +1,6 @@
 # EJP Publication Platform Requirements
 
-- 日期：2026-09-19；状态：**requirements baseline；实施进度以 publication/STATUS.md 为准（P0/P1 已完成）**。
+- 日期：2026-09-19；状态：**requirements baseline；实施进度以 publication/STATUS.md 为准（P0/P1/P2 已完成）**。
 - 产品：**pendulum-focused undergraduate experiment platform**。
 - 分支：`publication/ejp-damped-pendulum`；worktree：`ai-physics-tracker-ejp`。
 - 科学依据：[Scientific Asset Inventory](scientific-asset-inventory.md)；交付顺序：[PHASE_PLAN](../PHASE_PLAN.md)。
