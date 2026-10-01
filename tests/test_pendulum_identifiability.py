@@ -158,8 +158,10 @@ def test_actual_objective_is_invariant_on_equivalent_starred_parameters_and_curv
     request, fitted = _request()
     raw = illustrative_raw_reference(fitted, alpha_a=0.0)
     transformed = transform_raw_parameters(raw, 1.12)
-    first = evaluate_objective(request, M1, lump_parameters(raw))
-    second = evaluate_objective(request, M1, lump_parameters(transformed))
+    # 变换回集总参数会有ULP舍入，改变自适应步长；等价性证明使用更高积分精度，保留原断言容差。
+    proof_request = replace(request, integration=IntegrationSettings(1e-12, 1e-14))
+    first = evaluate_objective(proof_request, M1, lump_parameters(raw))
+    second = evaluate_objective(proof_request, M1, lump_parameters(transformed))
     assert first.status == second.status == "success"
     assert first.cost_rad2 == pytest.approx(second.cost_rad2, abs=1e-11, rel=1e-8)
 
