@@ -34,6 +34,9 @@ def test_fit_export_full_precision_four_roles_and_historical_frozen_inputs(tmp_p
     assert set(f"{role}_pixel_x" for role in ("tip", "body_top", "body_bottom", "pivot")) <= rows[0].keys()
     assert provenance["units"]["theta_rad"] == "rad"
     assert provenance["units"]["m0_residual_rad"] == "rad"
+    assert rows[20]["body_bottom_missing_reason"] == "no_adopted_point"
+    assert "body_bottom:no_adopted_point" in json.loads(rows[20]["auxiliary_qc_reasons"])
+    assert rows[20]["pivot_missing_reason"] == "no_adopted_point"
     assert provenance["measurement"]["active_run_id"] == str(experiment.active_infer_run_id)
     assert provenance["current_at_export"] and session.project == before
     session.mark_point(experiment.roles.tip, 10, 9., 95.)

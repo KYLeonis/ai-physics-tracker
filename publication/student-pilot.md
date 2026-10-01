@@ -41,7 +41,7 @@ PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m ai
 
 | 文件 | 内容 |
 | --- | --- |
-| `observations.csv` | 源frame、absolute/relative time、四点像素坐标/likelihood/source、QC、θ/ω/参考能量或拟合预测/残差；空格单元=缺测，数组=JSON单元格 |
+| `observations.csv` | 源frame、absolute/relative time、四点像素坐标/likelihood/source/缺测原因、主/辅助QC、θ/ω/参考能量或拟合预测/残差；空单元格=缺测，数组=JSON单元格 |
 | `result.json` | 完整不可变结果，包括冻结测量、config/profile/versions、period/tail或参数/start diagnostics/comparison |
 | `provenance.json` | 单位、结果日期/身份、来源run/video/hash、current/historical原因与精度说明 |
 | `files.json` | 输出文件SHA-256清单 |

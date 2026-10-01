@@ -15,13 +15,14 @@ from uuid import UUID
 from ai_physics_tracker.application.adopted_measurement import AdoptedMeasurementSnapshot
 from ai_physics_tracker.application.pendulum_analysis import (
     ANALYSIS_KIND, COLUMNS as ANALYSIS_COLUMNS, analysis_signature,
-    load_analysis_result, resolved_analysis_config,
+    load_analysis_result, resolved_analysis_config, reconstruction_input_from_payload,
 )
 from ai_physics_tracker.application.pendulum_fit import FIT_KIND, load_fit_result
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.application.teacher_models import teacher_model_availability
 from ai_physics_tracker.domain.pendulum import ROLE_ORDER
 from ai_physics_tracker.domain.scientific_result import ScientificResult
+from ai_physics_tracker.domain.pendulum_reconstruction import reconstruct_pendulum
 from ai_physics_tracker.domain.types import canonical_json_digest, utc_now
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 from ai_physics_tracker.infrastructure.scientific_payload import read_scientific_payload
@@ -99,14 +100,26 @@ def export_rows(snapshot: ScientificExport) -> tuple[list[str], list[dict], dict
             name = f"{role}_{field}"
             columns.append(name)
             units[name] = "px" if field in ("pixel_x", "pixel_y") else None
-    frozen = {r["frame_index"]: r["points_by_role"] for r in snapshot.payload["measurement"]["frames"]}
+        columns.append(f"{role}_missing_reason")
+        units[f"{role}_missing_reason"] = None
+    measurement = snapshot.payload["measurement"]
+    frozen = {r["frame_index"]: r for r in measurement["frames"]}
+    auxiliary = {}
+    if "auxiliary_qc_reasons" not in columns:
+        columns.append("auxiliary_qc_reasons")
+        units["auxiliary_qc_reasons"] = None
+        reconstruction = reconstruct_pendulum(reconstruction_input_from_payload(measurement, canonical_json_digest(measurement)))
+        auxiliary = {r.frame_index: list(r.auxiliary_qc_reasons) for r in reconstruction.frames}
     rows = []
     for row in snapshot.payload["rows"]:
         flat = {name: row.get(name) for name in columns}
         for role in ROLE_ORDER:
-            point = frozen[row["frame_index"]][role]
+            point = frozen[row["frame_index"]]["points_by_role"][role]
             for field in point_fields:
                 flat[f"{role}_{field}"] = point.get(field) if point else None
+            flat[f"{role}_missing_reason"] = frozen[row["frame_index"]]["missing_reasons_by_role"][role]
+        if auxiliary:
+            flat["auxiliary_qc_reasons"] = auxiliary[row["frame_index"]]
         rows.append(flat)
     return columns, rows, units
 

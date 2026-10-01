@@ -176,9 +176,9 @@ class TrackingActions(QObject):
             reason = "Difficult frame mining is running"
         # P1.1 契约 §2:experiment-bound track 的单轨 AI 写入口 fail closed。
         # 在按钮层提前禁用并说明,而不是点击后才在 activity 区闪一条错误;
-        # joint 训练/推理属于 P1.3/P1.4,当前版本 bound track 尚无 AI 路径。
+        # bound track复用experiment级联合训练/推理与teacher入口。
         bound_reason = (
-            "Pendulum experiment — use joint training or an imported teacher model"
+            "Bound to pendulum experiment — use joint training or an imported teacher model"
             if (
                 session is not None
                 and track_id is not None
