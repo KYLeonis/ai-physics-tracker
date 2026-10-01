@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-02）：P0–P4完成；Windows CI修复已闭环。P5实施中，先建立[P5.1 mini-plan](../../publication/plans/p5.1-workflow-integration.md)，用户授权推进到最终HR。P6未启动；ADR-0020历史限制与P6前Windows真机门禁保留。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-02）：P0–P4完成；P5.1–P5.3实现与三项Independent Review通过，停在最终HR，工作分支`codex/ejp-p5-3-student-pilot`。下一步按[学生试用/HR步骤](../../publication/student-pilot.md)亲测并填写真实记录，修复blocking findings后再集成关闭P5；学生pilot及Windows副本重开未测，P6未启动。ADR-0020历史限制与P6前Windows真机门禁保留。完整证据见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 

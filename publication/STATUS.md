@@ -2,8 +2,19 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P5实施中，从[P5.1 mini-plan](plans/p5.1-workflow-integration.md)开始。用户授权连续推进P5各subphase，到最终HR再停止。Windows CI修复已闭环，P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
+- 当前：**P0–P4完成；P5.1–P5.3实现、三项Independent Review及双平台CI通过，停在Human Review。用户/非开发本科生实测尚未发生，P5未关闭，P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P5 delivery — 2026-10-02（最终HR待执行）
+
+- 每个subphase动手前已建mini-plan：[P5.1](plans/p5.1-workflow-integration.md)、[P5.2](plans/p5.2-scientific-export.md)、[P5.3](plans/p5.3-student-pilot.md)。主Agent实施，readonly gpt-6-luna/max只执行要求的Independent Review。
+- P5.1 `9f5cff7`：实验级科学状态、三工作区可见下一步、自训/教师导入两路径、Cancel/Retry/history；非收敛状态修复随`4238f8a`。P5.2 `4238f8a`：选定冻结结果的CSV/JSON/provenance/hash与独立Qt PNG/PDF、原子可携带副本；`ac53a8b`补逐角色missing reason/同源辅助QC并保留既有单轨禁用提示前缀。
+- P5.3 `d9d1da3`：rootless新实验入口、学生两支任务/恢复/证据模板；`5228537`修正首次可靠tip→半径参考的指南和Setup提示顺序。未改schema、依赖、数值算法或冻结资料。
+- 三项Independent Review均R2 Approve，各F1 Closed：[P5.1](../docs/reviews/publication-p5.1-review.md)、[P5.2](../docs/reviews/publication-p5.2-review.md)、[P5.3](../docs/reviews/publication-p5.3-review.md)。独立91/3工作流、18/1导出、2/1整合入口回归；真人体验尚未确认。
+- `ac53a8b`本地全量 **1350 passed / 1 existing strict xfailed / 9subtests（290.38s）**；最终Setup顺序修正定向 **37 passed（17.14s）**。冻结verifier15files/48fitrows/2cases、diff check通过；既有严格xfail不计作数值通过。
+- CI触发补`codex/**`。首轮36895120963暴露旧单轨禁用提示前缀断言，已修复；`ac53a8b` run[36896945833](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36896945833) **Windows1345passed/5skipped/1xfail（364.93s），macOS1347passed/3skipped/1xfail（176.01s），双平台success**。最终代码`5228537` run[36898549486](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36898549486) **Windows1346passed/5skipped/1xfail（375.95s），macOS1348passed/3skipped/1xfail（285.37s），双平台success**。后续仅文档同步，代码/测试与已验证SHA相同。
+- 当前交付分支`codex/ejp-p5-3-student-pilot`叠加P5.1/P5.2，已push；publication integration仍`e166f0a`，main未改。按HR门禁保持工作分支，不提前合并收尾。
+- 未满足：最终用户HR、非开发本科生独立自训/教师两支pilot、真实Windows工程副本重开；记录保持[not_run](student-pilot-record.md)。原省赛权重/标签仍待Windows提供，成功推理CSV不冒充模型；G1–G4按既定延期，P6不启动。
 
 ## Windows CI UTF-8 repair — 2026-10-01
 
@@ -162,7 +173,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P5.1实现/独立复审通过；P5.2科学导出与可携带副本已实现、独立审查在途；P5.3学生指南与最终HR准备中。先完成全量/CI和剩余Independent Review，修复finding后按[学生pilot与HR说明](student-pilot.md)发起最终真人验收并停止。不得虚构学生记录、不得关闭P5或进入P6。**
+**按[学生pilot与HR说明](student-pilot.md)执行最终用户Human Review，并请未参与开发本科生独立完成A/B两支，填写[记录](student-pilot-record.md)。当前停止开发等待真人反馈；修复blocking findings并复测、补齐真实Windows副本重开后才可集成关闭P5。不得虚构学生记录或进入P6。**
 
 ## P2.1 delivery (2026-09-30)
 

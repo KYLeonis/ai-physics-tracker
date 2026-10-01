@@ -1,6 +1,6 @@
 # AI Physics Tracker
 
-> Publication线（2026-10-02）：P0–P4完成；P5开发中，工作流/科学导出/可携带副本与学生pilot指南准备，最终HR待执行。P6未启动；历史M1限制及Windows真机门禁保留。权威状态见[publication/STATUS.md](publication/STATUS.md)。
+> Publication线（2026-10-02）：P0–P4完成；P5.1–P5.3实现与Independent Review通过，工作流/科学导出/可携带副本已交付到工作分支，停在最终HR。学生两支pilot及真实跨平台副本重开仍待实测，P5未关闭、P6未启动。[HR步骤](publication/student-pilot.md)；权威状态见[publication/STATUS.md](publication/STATUS.md)。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 
