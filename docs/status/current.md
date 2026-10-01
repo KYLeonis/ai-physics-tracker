@@ -1,5 +1,7 @@
 # Current Status
 
+> 2026-10-01维护修复：论文线Windows CI36810642925唯一失败为任务取消返回后子进程仍存活；main修复TaskHandle强杀后原生join确认退出；初版10s/TimeoutError方案55项及双平台CI通过，但审查要求避免新增异常，已简化最终实现。最终54项定向及独立复审Approve（独立7核心/13GUI）通过，最终跨平台CI待完成，见[mini-plan](windows-cancel-fix-plan.md)。Phase6仍未立项。
+
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 > 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
