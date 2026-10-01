@@ -90,7 +90,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**按[P3 handoff](plans/p3-handoff-2026-10-01.md)继续已授权的P3：核对P3.1最终集成/remote/clean状态，从publication切P3.2工作分支并记录mini-plan准确base，实施bounds/seed/multistart → synthetic/48项legacy refit → Independent Review。P3.3/P3.4进入前各自新建mini-plan，P3.4等待用户Human Review，P3结束后停止。本轮在quota剩余5%写交接，P3.2代码尚未开始。**
+**按[P3 handoff](plans/p3-handoff-2026-10-01.md)继续已授权的P3：核对P3.1最终集成/remote/clean状态，从publication切P3.2工作分支并记录mini-plan准确base，实施bounds/seed/multistart → synthetic/48项legacy refit → Independent Review。P3.3/P3.4进入前各自新建mini-plan，P3.4等待用户Human Review，P3结束后停止。本轮在quota剩余5%写交接，用户继续授权后P3.2代码已开始，工作分支`codex/ejp-p3-2-multistart-fit`、base `fef9c4c`。**
 
 ## P2.1 delivery (2026-09-30)
 
@@ -188,3 +188,7 @@ main复审记录位于source `842460c:docs/reviews/task-cancel-windows-review.md
 - [Independent Review](../docs/reviews/publication-p3.1-review.md)三项Closed、R2 Approve；无GUI，不需Human Review。本轮quota读到used95%后写[handoff](plans/p3-handoff-2026-10-01.md)。P3.2已规划，P3整体仍进行中。
 
 - P3.1 integration：`7285658`；工作分支tip `25491a7`已push。源代码/测试与已测reviewed工作分支一致；集成分支最后状态commit后push。P3.2无代码，接续前记录实际HEAD作为base。
+
+## P3.2 start
+
+2026-10-01用户继续授权；五小时额度已刷新（used0%）。执行已建立mini-plan，先S1/S2纯数值，再24×2 E3/Independent Review。P3.1最终HEAD `fef9c4c`已push且clean。
