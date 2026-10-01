@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-01）：P3.3已集成38f6de5/push；P3.4实现4e4fe2d，全量1324 passed/1 strict xfailed/9subtests，33GUI定向与frozen verifier通过。Independent Review已Approve（gpt-6-luna/max），已按用户授权准备[省赛P011/P014测试工程](../notes/provincial-ui-test-2026-10-01.md)，含全片运动学/20秒M0拟合；省赛权重/原训练标签待Windows提供。按[P3.4计划](../../publication/plans/p3.4-fit-ui.md)发起真人HR，停止等反馈，不提前集成/P3收尾或进入P4。默认M1历史限制保持Accepted Limitation。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-01）：当前P3.4 HR反馈修复已实现，34 GUI定向及真实时序控制器最终8项通过，Independent Review R2 Approve（F1 Closed），等待用户修复复测；无handoff（用户本轮明确免除）。P3.3已集成38f6de5/push；P3.4实现4e4fe2d，全量1324 passed/1 strict xfailed/9subtests，33GUI定向与frozen verifier通过。Independent Review已Approve（gpt-6-luna/max），已按用户授权准备[省赛P011/P014测试工程](../notes/provincial-ui-test-2026-10-01.md)，含全片运动学/20秒M0拟合；省赛权重/原训练标签待Windows提供。按[P3.4计划](../../publication/plans/p3.4-fit-ui.md)发起真人HR，停止等反馈，不提前集成/P3收尾或进入P4。默认M1历史限制保持Accepted Limitation。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 

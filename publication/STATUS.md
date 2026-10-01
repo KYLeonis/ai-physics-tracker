@@ -6,6 +6,12 @@
 - 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
+## P3.4 真人反馈修复 checkpoint（2026-10-01）
+
+- 用户实际跑通P011 M0/M1后报告：时序确认入口在拟合页不可见、后台状态不明确、模型曲线难区分、JSON诊断不直观。当前修复仅GUI展示：拟合页直接复用原Use approximate timing确认，busy动态等待条/耗时/真实start数；设置滚动区与240px最小图高，异色/实线虚线、小透明观测点，拟合区间固定X范围与单独M1−M0预测差值（degree）；参数表/RMSE柱图、逐start cost星标/结果表，JSON移到Technical details。
+- 34项GUI定向通过（最终25.64s），真实TimingActions最终8项通过（18.92s），包含时序入口/验证中禁用/解除、后台等待条、已知模型差值、源时间X范围与诊断表；无算法/schema/源数据改动，不重复全量。Independent Review R1时序pending接口finding已修复，R2 Approve；真人修复复测未通过，不关闭/集成P3。用户明确本轮不写handoff。
+- 下一步：push当前工作分支checkpoint，用户重启按四项UI反馈复测；P4未开始。
+
 ## P3.4 HR 本地数据准备（2026-10-01）
 
 - 用户授权复用省赛成功结果，明确同意P011/P014的near-CFR平均FPS近似。两个独立工程在ignored `provincial_ui_test/`，视频/四点CSV/TOML/训练provenance字节SHA一致；不改旧科研原件或test1/test2。
@@ -114,7 +120,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**用户打开[省赛UI测试工程](../docs/notes/provincial-ui-test-2026-10-01.md)进行[P3.4真人HR](plans/p3.4-fit-ui.md)，停止等待反馈；无需重新训练或推理。模型/原训练标签等用户后续从Windows提供。HR通过后才集成/push并关闭P3；不开始P4。P3.2 Accepted Limitation保持明示。**
+**本轮四项UI反馈修复已通过Independent Review R2，用户重启打开[省赛UI测试工程](../docs/notes/provincial-ui-test-2026-10-01.md)进行[P3.4真人HR](plans/p3.4-fit-ui.md)，停止等待反馈；无需重新训练或推理。模型/原训练标签等用户后续从Windows提供。HR通过后才集成/push并关闭P3；不开始P4。P3.2 Accepted Limitation保持明示。**
 
 ## P2.1 delivery (2026-09-30)
 
