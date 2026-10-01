@@ -6,13 +6,11 @@
 - 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
-## P3.2 current checkpoint（2026-10-01）
+## P3.2 delivery（2026-10-01）
 
-- 工作分支`codex/ejp-p3-2-multistart-fit`（base `fef9c4c`）；core/seed/诊断/comparison及只读regression runner已实现，首提交`23950c8`，诊断硬化/完整证据checkpoint `16af211`。
-- 24输入SHA/48次fit覆盖完整；E3 M0 24/24、M1 6/24；固定归档参数E2 47/48。所有identity checks通过，但科学验收没有通过；[完整报告/摘要](evidence/regression/p3.2-summary-2026-10-01.md)。
-- 默认积分可能使M1有限差分Jacobian失稳；显式高精度synthetic恢复通过、P011控制显著减小cost。没有改变冻结值/历史输出或放宽容差，没有把optimizer success当参数精度证明。
-- [P3.2 Independent Review](../docs/reviews/publication-p3.2-review.md) Request Changes：F1/F2 Open。用户裁定选项已发出；回复前不合并、不关闭P3.2，不开始P3.3实现。
-- 全量1304 tests/9subtests与冻结verifier通过，随后Jacobian/报告保护补丁定向通过；科学E2/E3失败仍保留。五小时额度最近读取剩余75%，未到用户指定5%handoff阈值。
+- `23950c8`/`16af211` bounded multistart、逐start诊断、full-grid/comparison及48项只读报告；`e6266b3`记录用户裁定/ADR-0020。
+- E3仍M0 24/24、M1 6/24，E2仍47/48；默认M1恢复strict xfail保留。用户明确授权“没有问题，继续P3.3/P3.4”，F1/F2为Accepted Limitation，不是数值通过。
+- R2 fresh-context复审按修订AC条件性允许继续，54 passed/1xfail与冻结检查通过。P3.2集成后从P3.3 mini-plan开始，P3.4须Human Review。
 
 ## P1 planning
 
@@ -98,7 +96,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**先取得已发出的P3.2科学门禁裁定：是否保留历史E2/E3超限及默认M1精度限制，继续P3.3/P3.4并提供显式高精度设置。按裁定同步AC/必要ADR与Review finding，fresh-context复审后才收尾/集成P3.2；后续每subphase先建mini-plan，P3.4等用户Human Review，P3完成后停止。不得静默更改golden/profile/容差或冒称48项通过。**
+**用户已接受P3.2限制，R2条件性通过；按[P3.3 mini-plan](plans/p3.3-fit-execution-persistence.md)实施snapshot/core编排/取消/原子结果/重开，独立复审后进入P3.4（先建mini-plan）；P3.4提供显式高精度设置并等待用户Human Review。P3结束后停止，不开始P4。**
 
 ## P2.1 delivery (2026-09-30)
 

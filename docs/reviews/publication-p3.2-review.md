@@ -86,3 +86,37 @@
 - 默认M1恢复现在有明确strict xfail门禁test（F2 Open）；不把高精度测试冒称默认通过。定向ODE+fit最终54 passed / 1 xfailed，24.63s。
 - 逐start非有限Jacobian失败和report source-map保护两项新增回归通过；报告补齐48项identity和归档nfev/rank/condition，无需重复optimizer。
 - 全量1304 tests/9subtests在上述小型补丁前通过；后续只扩大到改动对应定向集。最终frozen verifier/diff check通过。P3.2仍为Request Changes checkpoint。
+
+
+## Re-review R2 — 2026-10-01 · Accepted Limitation
+
+- **Reviewer / mode**：fresh-context 独立只读复审；仅追加本 Review Record，未修改产品代码、测试、回归报告、冻结 evidence 或外部科研资产。
+- **范围 / 基线**：分支 `codex/ejp-p3-2-multistart-fit`；P3.2 base `fef9c4c`；实现及证据硬化 `23950c8..16af211`；用户裁定与修订 AC 记录 `e6266b3`；复核 `ADR-0020`、P3.2 mini-plan 的 revised AC1/AC7、R1 F1/F2。
+
+### R2 verification
+
+- 冻结回归报告仍诚实保留失败：48 行、`errors={}`、identity checks 全通过，E2 `47/48`，E3 `30/48`（M0 `24/24`、M1 `6/24`）；P026 M1 的 E2 最大 prediction 差仍为 `1.5211911513e-5 rad`，超过 `1e-5`。报告中的 `complete=true` 仅表示请求覆盖完整且无运行错误，不表示 E2/E3 科学门禁通过；脚本仍在任一 E2/E3 失败时返回退出码 1。
+- 冻结默认 M1 synthetic recovery 的严格门禁仍是有意的 xfail：`PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m pytest -q tests/test_pendulum_ode.py tests/test_pendulum_fit.py` → **54 passed, 1 xfailed**；未把 xfail 计为通过。
+- `16af211` 的硬化保持边界清晰：非有限 Jacobian 归档为 failed start；regression runner 增加 identity/source-map 输出保护并保留逐 start/归档诊断；未覆盖或重写失败数值。`source-map`、`golden` 和 `publication/profiles` 相对 P3.2 base 均未改变。
+- 本轮未发现新的 actionable bug、证据伪造或 frozen mutation。
+
+### Finding dispositions
+
+#### F1 — AC7 历史 E2/E3 数值门禁未通过
+
+- **Decision**：按 `ADR-0020` 记为 **Accepted Limitation**；用户在查看上述失败证据后明确授权：“没有问题，继续P3.3/P3.4”。
+- **Re-review**：用户授权关闭处置门，而非把失败改成通过。E2 仍 `47/48`、E3 仍 `30/48`；golden、profile 与容差保持冻结，Windows 精确历史环境复跑仍是后续平台门禁任务。
+- **Status**：**Closed by user-authorized disposition; numerical gate remains failed**。
+
+#### F2 — 冻结默认积分配置下 M1 synthetic recovery 缺口
+
+- **Decision**：按 `ADR-0020` 记为 **Accepted Limitation**；显式高精度 `rtol=2e-10/atol=2e-12` 的 synthetic recovery 作为修订 AC1 证据，冻结默认配置的严格 xfail 保留。
+- **Re-review**：optimizer success、显式高精度结果或历史回归覆盖均未被解释为默认 profile 数值正确；产品设置须继续明示 precision 与实际 resolved values。
+- **Status**：**Closed by user-authorized disposition; default-profile recovery remains unproven**。
+
+## R2 verdict
+
+- 原始 P3.2 数值 AC1/AC7 **未通过**：本复审不声称默认 M1 recovery 或 48/48 E2/E3 通过。
+- 按用户批准、并已记录于 `ADR-0020` 与 revised mini-plan AC1/AC7 的处置口径，P3.2 获得 **Conditional Approve to proceed to P3.3/P3.4**：继续工作以接受限制为前提，保持失败证据、冻结资产和显式高精度选择可追溯。
+- P3.2 AC8 的集成、最终文档同步与 push 仍待实现方完成；这不改变本 R2 对 P3.3/P3.4 的条件性放行结论。
+- 日期 / 依据轮次：2026-10-01 / R2
