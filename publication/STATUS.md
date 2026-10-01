@@ -9,7 +9,7 @@
 
 - 用户最终Human Review通过并明确授权收尾；P4.1–P4.3全部AC已核对，三项Independent Review无开放finding。模型批判/参数等价族UI及只读后台生命周期交付。
 - 既有全量1341 passed / 1 strict xfailed / 9subtests；最终显示边界GUI2项及Independent P4.3 3项通过。收尾仅更新文档，无产品代码变更；收尾补充exploration应用/GUI定向3 passed（10.38s）、frozen verifier15files/48fitrows/2trajectories通过；未重复全量或历史refit。
-- 工作分支P4.3收尾文档提交后，按--no-ff集成回publication并推送；最终merge与远程状态将在集成后记录。
+- Git集成：工作分支收尾47429b3；--no-ff merge8496a5a（parents8addd43 / 47429b3）已完成，集成回publication/ejp-damped-pendulum。源代码/测试与已测工作分支一致；本最终状态提交随两分支推送。
 - 启动命令及功能体验：[P4.3 mini-plan](plans/p4.3-valley-teaching-ui.md)。省赛本地工程保留用于测试，权重/标签仍待Windows提供。Windows G1–G4延期门禁及ADR-0020历史限制不改。
 - 下一步：停止，等待用户授权P5；获授权后再阅读AGENTS/状态/P5契约并建立首个subphase mini-plan。
 
