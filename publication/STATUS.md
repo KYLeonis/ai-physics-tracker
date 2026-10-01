@@ -9,7 +9,9 @@
 
 - 用户收到Actions失败邮件，要求先检查修复。失败run [36879865387](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36879865387)：macOS通过；Windows 1335 passed / 5 skipped / 1 existing strict xfailed / 1 failed。唯一失败是`test_archived_regression_parser_preserves_units_mask_and_rejects_changed_input`用默认cp1252读取包含中文路径的UTF-8 `source-map.json`，不是拟合数值失败；P3 run36841781340同一原因。
 - 修复`6a20ac6`：相关测试和回归脚本四处JSON读取显式`encoding="utf-8"`。Normal-risk局部编码bugfix，无算法/profile/golden/产品GUI修改，无独立/真人review触发；publication专用文件不在main，main工作树未改。
-- 本地6项定向通过（1.60s）；冻结verifier15files/48fitrows/2trajectories及diff check通过。远程双平台CI待本修复push后确认，不提前记为通过。
+- 本地6项定向通过（1.60s）；冻结verifier15files/48fitrows/2trajectories及diff check通过。编码修复分支run [36881913496](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36881913496)双平台通过（Windows1336passed/5skipped/1strictxfail；macOS1338passed/3skipped/1strictxfail），已集成905aa91。
+- 集成run [36882267010](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36882267010)编码用例通过，但暴露P4.2等价objective测试的跨平台浮点敏感：参数变换回集总值产生一个ULP差异，自适应积分后cost差2.75e−11，超出1e−11断言。修复`2e8b5a9`为高精度数学证明；R3要求补保留原request检查，`188bd47`按已有E4轨迹/mean objective预算核对原request及curve分母，并保留高精度1e−11断言。产品/profile/golden/既有E4门槛均不改。
+- 最终5项定向通过（20.97s）；[P4.2 Independent Review R4](../docs/reviews/publication-p4.2-review.md) Approve、F3 Closed，独立1项通过（5.44s）。中间`2e8b5a9` run [36884155783](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36884155783)双平台通过；最终含原request检查的集成CI待push后确认。
 - 下一步：push修复并确认双平台CI；修复完成后回到P5.1 mini-plan入口。
 
 ## P4 closeout — 2026-10-01
