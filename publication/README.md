@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-01）：P0–P3完成；P4.1/P4.2数值已交付、Independent Review通过，P4.3模型诊断/等价族UI与Independent Review通过，等待最后统一Human Review。P4未关闭，P5/P6未启动；ADR-0020历史数值限制保留。运行与验收见[P4.3 mini-plan](plans/p4.3-valley-teaching-ui.md)，权威进度见[STATUS](STATUS.md)。
+当前（2026-10-01）：P0–P4完成；P4数值/模型诊断/等价族UI的Independent Review通过，用户确认“HR通过”并授权收尾。P5/P6未启动，停止等待P5指令；ADR-0020历史限制与P6前Windows门禁保留。运行与体验见[P4.3 mini-plan](plans/p4.3-valley-teaching-ui.md)，权威进度见[STATUS](STATUS.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
@@ -29,7 +29,7 @@
 
 不做通用multi-object identity、多相机/3D/任意实验插件、通用model library、论文修改/投稿metadata/Zenodo deposit或新的论文科学补充分析。完整non-goals见requirements。
 
-P0已完成科学/数据/runtime合同与Mac探针；Windows验证经用户批准延至P6前，仍not_run。P1–P3已交付，P3.2历史数值差异为用户接受的限制；P3.4 Independent/Human Review通过。P4.1/P4.2已交付，P4.3最终Human Review前仅推送工作分支checkpoint，不提前关闭P4。P5/P6未启动。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
+P0已完成科学/数据/runtime合同与Mac探针；Windows验证经用户批准延至P6前，仍not_run。P1–P3已交付，P3.2历史数值差异为用户接受的限制；P3.4 Independent/Human Review通过。P4.1–P4.3已交付，独立审查及Human Review通过，P4已收尾。P5/P6未启动，等待用户授权。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
 
 当前角运动默认规则：student-default-v2，tip + calibrated fixed pivot，辅助role仅诊断。历史v1/legacy与golden不改；见[ADR-0018](../docs/decisions/0018-tip-fixed-pivot-angular-qc.md)、[scientific-profiles §8](spec/scientific-profiles.md)。
 

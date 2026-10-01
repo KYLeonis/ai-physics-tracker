@@ -2,25 +2,33 @@
 
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。用户授权继续P4至最终HR；P4.1数值交付04eaa35、独立R5 Approve；P4.2数值交付9fe8b42、R2 Approve，P4.3实现99402e9、Independent R1 Approve，已给统一Human Review，等待用户亲测；P4整体待最终HR，P5/P6未启动。**
+- 当前：**P0–P4完成；P4.1/P4.2/P4.3 Independent Review全部通过，用户2026-10-01确认“HR通过”并授权P4收尾。P5/P6未启动，停止等待用户授权P5。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍为ADR-0020 Accepted Limitation，不计为数值通过。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
 
-## P4.3 delivery checkpoint — 2026-10-01
+## P4 closeout — 2026-10-01
+
+- 用户最终Human Review通过并明确授权收尾；P4.1–P4.3全部AC已核对，三项Independent Review无开放finding。模型批判/参数等价族UI及只读后台生命周期交付。
+- 既有全量1341 passed / 1 strict xfailed / 9subtests；最终显示边界GUI2项及Independent P4.3 3项通过。收尾仅更新文档，无产品代码变更；收尾补充exploration应用/GUI定向3 passed（10.38s）、frozen verifier15files/48fitrows/2trajectories通过；未重复全量或历史refit。
+- 工作分支P4.3收尾文档提交后，按--no-ff集成回publication并推送；最终merge与远程状态将在集成后记录。
+- 启动命令及功能体验：[P4.3 mini-plan](plans/p4.3-valley-teaching-ui.md)。省赛本地工程保留用于测试，权重/标签仍待Windows提供。Windows G1–G4延期门禁及ADR-0020历史限制不改。
+- 下一步：停止，等待用户授权P5；获授权后再阅读AGENTS/状态/P5契约并建立首个subphase mini-plan。
+
+## P4.3 delivery — 2026-10-01
 
 - 工作分支codex/ejp-p4-3-teaching-ui；实现99402e9。Model criticism显示同源raw residual、early/full/late及SG速度分层、分段过零相位、q/length/tail/no-refit能量证据与缺证原因；Parameter equivalence显示raw/starred、可行λ、独立raw overlay/difference、非等价q+5%和同请求条件objective surface/直接cursor。
 - 教学只读，无schema/依赖/优化器新增。后台取消/实际222节点计数/耗时、去抖/cache、fit/input/video/project/close迟到拒收；cursor超raster仅扩展视窗且明确不外推，zero分母不造ratio。
 - 全量1341 passed / 1 existing strict xfailed / 9subtests（269.76s）；末次GUI显示边界2 passed（13.64s），Independent R1 Approve、独立3 passed（15.70s），无开放finding。冻结verifier15/48/2、diff通过；真实P011/P014只读接入raw差3.74e−9/3.22e−15rad，manifest SHA未变。ADR-0020历史失败未被记作通过。
-- P4.1/P4.2已--no-ff集成至8addd43并push；P4.3仅工作分支checkpoint。按[P4.3 mini-plan](plans/p4.3-valley-teaching-ui.md)最后5步骤等待用户Human Review；通过前不集成UI/关闭P4，不进入P5。main工作树clean且未改。
+- P4.1/P4.2已--no-ff集成至8addd43并push；P4.3统一Human Review已获用户明确通过并授权收尾；当前增量按既定流程集成，P4结束后不进入P5。main工作树clean且未改。
 
 ## P4.2 delivery — 2026-10-01
 
 - 9fe8b42：raw λ等价族/严格可行域、独立raw与lumped forward、固定starred damping/IC/sample/weight/loss的条件q曲线及曲面；直接节点使用同请求归一化基准，零分母明确不可用。
-- 5项定向（含P011 E4完整frozen对照）通过；Independent R2 Approve、F1/F2 Closed。P4.3数值gate通过，教学UI不保存为测得raw参数；最终HR前P4整体不关闭。
+- 5项定向（含P011 E4完整frozen对照）通过；Independent R2 Approve、F1/F2 Closed。P4.3数值gate通过，教学UI不保存为测得raw参数；最终HR已通过，P4整体收尾。
 
 ## P4.1 delivery — 2026-10-01
 
 - Qt-free共同输入/配置与convergence守卫、raw residual分层、同源段过零相位及tail/能量/长度诊断；SG只参与辅助证据。fit/辅助输出经无优化复核，数据不足有原因。
-- 实现04eaa35；Independent R5 Approve、三项Closed；18项定向与新增LEGACY回归通过，独立49项加该回归通过。P4.2已验证待集成；P4.3由主Agent实现，最后统一HR。
+- 实现04eaa35；Independent R5 Approve、三项Closed；18项定向与新增LEGACY回归通过，独立49项加该回归通过。P4.2已集成；P4.3由主Agent实现，统一HR已通过。
 
 ## P3 closeout — 2026-10-01
 
@@ -144,7 +152,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**等待用户按P4.3 mini-plan完成最终Human Review（Q1诊断与导航/Q2λ及非等价对照/Q3后台及来源，各答通过/需调整）；按反馈修复复审或经用户通过后--no-ff集成P4.3、文档收尾/push。HR前不关闭P4，不进入P5。**
+**P4已收尾，停止等待用户授权P5；获授权后先读AGENTS、当前状态、PHASE_PLAN P5与相关requirements，再建立P5首个subphase mini-plan。当前不进入P5。**
 
 ## P2.1 delivery (2026-09-30)
 
