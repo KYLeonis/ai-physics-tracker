@@ -2,8 +2,13 @@
 
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。用户授权继续P4至最终HR；P4.1数值交付04eaa35、独立R5 Approve；P4.2 core已验证/R2 Approve，P4.3 mini-plan已建立且主Agent正在实现界面；P4整体待最终HR，P5/P6未启动。**
+- 当前：**P0–P3完成；2026-10-01用户确认P3.4修复“通过，收尾”，Independent Review Approve、无开放finding。P3.2历史回归E3 30/48、E2 47/48及默认M1精度限制保留为Accepted Limitation（ADR-0020），不计为数值通过。用户授权继续P4至最终HR；P4.1数值交付04eaa35、独立R5 Approve；P4.2数值交付9fe8b42、R2 Approve，P4.3 mini-plan已建立且主Agent正在实现界面；P4整体待最终HR，P5/P6未启动。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P4.2 delivery — 2026-10-01
+
+- 9fe8b42：raw λ等价族/严格可行域、独立raw与lumped forward、固定starred damping/IC/sample/weight/loss的条件q曲线及曲面；直接节点使用同请求归一化基准，零分母明确不可用。
+- 5项定向（含P011 E4完整frozen对照）通过；Independent R2 Approve、F1/F2 Closed。P4.3数值gate通过，教学UI不保存为测得raw参数；最终HR前P4整体不关闭。
 
 ## P4.1 delivery — 2026-10-01
 
@@ -132,7 +137,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**完成P4.2数值集成；按已建立的P4.3 mini-plan完成诊断/等价族UI、后台生命周期验证与独立审查，最后统一Human Review；HR前不关闭P4，不进入P5。**
+**按已建立的P4.3 mini-plan完成诊断/等价族UI、后台生命周期验证与独立审查，最后统一Human Review；HR前不关闭P4，不进入P5。**
 
 ## P2.1 delivery (2026-09-30)
 
