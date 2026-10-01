@@ -1,6 +1,6 @@
 # Current Status
 
-> Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线权威入口为[publication/STATUS.md](../../publication/STATUS.md)。P0/P1/P2完成，P2.3独立复审Approve、用户接受当前增量并授权收尾；角运动tip+fixed pivot、辅助诊断、可调SG/四页图/immutable保存均已交付。最终全量1251 tests/9subtests、证据校验通过；publication已--no-ff集成（99f34b0），另会话Windows取消修复补充47项通过；图表外观改善为非阻断事项。用户已授权P3；P3.1已完成（独立复审Approve、最终1287 tests/9subtests），下一步P3.2按mini-plan/handoff接续，后续每subphase先建mini-plan；本页main状态不变。Windows门禁仍延期至P6前。
+> Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线权威入口为[publication/STATUS.md](../../publication/STATUS.md)。P0/P1/P2完成，P2.3独立复审Approve、用户接受当前增量并授权收尾；角运动tip+fixed pivot、辅助诊断、可调SG/四页图/immutable保存均已交付。最终全量1251 tests/9subtests、证据校验通过；publication已--no-ff集成（99f34b0），另会话Windows取消修复补充47项通过；图表外观改善为非阻断事项。用户已授权P3；P3.1已完成（独立复审Approve、最终1287 tests/9subtests），P3.2实现checkpoint（23950c8），48fit覆盖但E3仅30/48、E2 47/48，独立review Request Changes（F1/F2 Open）；待用户科学门禁裁定，未集成，后续每subphase先建mini-plan；本页main状态不变。Windows门禁仍延期至P6前。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

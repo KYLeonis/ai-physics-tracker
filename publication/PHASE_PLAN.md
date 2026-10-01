@@ -130,7 +130,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P3 — Full-Trajectory ODE Fitting 🔄
 
-2026-10-01用户授权进入；[P3.1 mini-plan](plans/p3.1-forward-objective.md)已完成并独立复审Approve；[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)已准备，尚未实现。
+2026-10-01用户授权进入；[P3.1 mini-plan](plans/p3.1-forward-objective.md)已完成并独立复审Approve；[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)已实现checkpoint；48项覆盖但E3 30/48、E2 47/48，独立审查F1/F2 Open，等待用户裁定后再进入P3.3。
 
 - **Goal**：以同一Qt-free core完成M0/M1全轨迹拟合与可追溯输出。
 - **Scope**：RHS/forward、sample/weights/IC/bounds/seeds、robust optimisation、FitRequest/Result、后台执行、Normal/Advanced UI、完整RMSE/overlay与诊断。

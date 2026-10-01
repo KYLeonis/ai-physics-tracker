@@ -1,6 +1,6 @@
 # Roadmap — AI Physics Tracker
 
-> Publication线（2026-10-01）：P0/P1/P2完成，P3.1已完成、P3整体进行中；本页Phase 0–10仍表示通用产品线。见[publication/STATUS.md](../publication/STATUS.md)。
+> Publication线（2026-10-01）：P0/P1/P2完成，P3.1已完成、P3整体进行中，P3.2科学门禁未通过（待用户裁定）；本页Phase 0–10仍表示通用产品线。见[publication/STATUS.md](../publication/STATUS.md)。
 
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始

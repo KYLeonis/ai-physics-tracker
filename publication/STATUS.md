@@ -6,6 +6,14 @@
 - 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
+## P3.2 current checkpoint（2026-10-01）
+
+- 工作分支`codex/ejp-p3-2-multistart-fit`（base `fef9c4c`）；core/seed/诊断/comparison及只读regression runner已实现，首提交`23950c8`，诊断硬化/完整证据checkpoint `16af211`。
+- 24输入SHA/48次fit覆盖完整；E3 M0 24/24、M1 6/24；固定归档参数E2 47/48。所有identity checks通过，但科学验收没有通过；[完整报告/摘要](evidence/regression/p3.2-summary-2026-10-01.md)。
+- 默认积分可能使M1有限差分Jacobian失稳；显式高精度synthetic恢复通过、P011控制显著减小cost。没有改变冻结值/历史输出或放宽容差，没有把optimizer success当参数精度证明。
+- [P3.2 Independent Review](../docs/reviews/publication-p3.2-review.md) Request Changes：F1/F2 Open。用户裁定选项已发出；回复前不合并、不关闭P3.2，不开始P3.3实现。
+- 全量1304 tests/9subtests与冻结verifier通过，随后Jacobian/报告保护补丁定向通过；科学E2/E3失败仍保留。五小时额度最近读取剩余75%，未到用户指定5%handoff阈值。
+
 ## P1 planning
 
 P1 最终验证（2026-09-30）：全量 **1154 passed, 9 subtests passed**，Independent/Human Review 均通过并已合并；macOS/Windows CI run 36674309852 通过。旧的 1151/待 Human Review 状态已由最终证据替代。
@@ -90,7 +98,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**按[P3 handoff](plans/p3-handoff-2026-10-01.md)继续已授权的P3：核对P3.1最终集成/remote/clean状态，从publication切P3.2工作分支并记录mini-plan准确base，实施bounds/seed/multistart → synthetic/48项legacy refit → Independent Review。P3.3/P3.4进入前各自新建mini-plan，P3.4等待用户Human Review，P3结束后停止。本轮在quota剩余5%写交接，用户继续授权后P3.2代码已开始，工作分支`codex/ejp-p3-2-multistart-fit`、base `fef9c4c`。**
+**先取得已发出的P3.2科学门禁裁定：是否保留历史E2/E3超限及默认M1精度限制，继续P3.3/P3.4并提供显式高精度设置。按裁定同步AC/必要ADR与Review finding，fresh-context复审后才收尾/集成P3.2；后续每subphase先建mini-plan，P3.4等用户Human Review，P3完成后停止。不得静默更改golden/profile/容差或冒称48项通过。**
 
 ## P2.1 delivery (2026-09-30)
 
@@ -192,3 +200,5 @@ main复审记录位于source `842460c:docs/reviews/task-cancel-windows-review.md
 ## P3.2 start
 
 2026-10-01用户继续授权；五小时额度已刷新（used0%）。执行已建立mini-plan，先S1/S2纯数值，再24×2 E3/Independent Review。P3.1最终HEAD `fef9c4c`已push且clean。
+
+最新定向复核：ODE+fit **54 passed / 1 strict xfailed**（冻结默认M1恢复F2 Open），24.63s；未将xfail计为科学验收通过。
