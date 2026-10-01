@@ -162,7 +162,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**Windows CI修复已完成。继续已授权P5.1时，先建立`publication/plans/p5.1-workflow-integration.md`（Context Pack/AC/Slices/Independent及Human Review Gate），再在独立工作分支实施Setup/Acquire/Analysis任务卡、训练/教师导入两路径和取消/重试/历史。用户本轮先处理CI，P5尚无代码实现；P6不进入。**
+**P5.1实现/独立复审通过；P5.2科学导出与可携带副本已实现、独立审查在途；P5.3学生指南与最终HR准备中。先完成全量/CI和剩余Independent Review，修复finding后按[学生pilot与HR说明](student-pilot.md)发起最终真人验收并停止。不得虚构学生记录、不得关闭P5或进入P6。**
 
 ## P2.1 delivery (2026-09-30)
 

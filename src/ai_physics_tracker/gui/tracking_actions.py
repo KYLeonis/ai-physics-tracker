@@ -350,7 +350,10 @@ class TrackingActions(QObject):
                             else state.execution.kind.replace("_", " ") + " is running" if state.execution.busy else "")
                 card = publication_task_card(session, experiment, state,
                     getattr(self.window, "_workspace", "acquire"), activity=activity)
-            self.window.workflowHeader.setTaskCard(card if experiment is not None else None)
+            # 新实验尚未创建时也保留Setup/Acquire下一步，否则任务面板在
+            # Setup隐藏后学生只看到无入口的空页。
+            self.window.workflowHeader.setTaskCard(card if (
+                experiment is not None or state.pendulum_creation_available or state.prerequisites) else None)
             if state.failed_run_id is not None:
                 failed_run = next(
                     (r for r in runs if r.run_id == state.failed_run_id), None)

@@ -177,7 +177,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 全量1341 passed / 1既有strict xfailed / 9subtests，最后显示边界GUI2项通过；P4收尾定向与冻结检查记录在[STATUS](STATUS.md)。未把ADR-0020历史失败记成通过；Windows门禁仍按用户批准延期至P6前。
 
-### P5 — Undergraduate End-to-End Workflow and Scientific Outputs
+### P5 — Undergraduate End-to-End Workflow and Scientific Outputs 🔄
 
 - **Goal**：把已有能力收为本科生可独立走通、可保存恢复和导出的单一实验流程。
 - **Scope**：publication workflow projection、教学说明、两条模型路径、错误恢复、最小科学导出、跨平台项目可携带性、外部学生实测。

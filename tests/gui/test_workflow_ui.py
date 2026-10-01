@@ -38,6 +38,7 @@ def test_three_workspaces_switch_without_touching_data(
     assert window.currentWorkspace == "acquire"
     assert window.trackingActions.panel.isVisible()
 
+
     # 切到分析：视频参照重挂、任务面板隐藏、图表可见
     window.setWorkspace("analysis")
     assert window.currentWorkspace == "analysis"
@@ -53,6 +54,19 @@ def test_three_workspaces_switch_without_touching_data(
     # 切回获取轨迹：视频视图回到原列
     window.setWorkspace("acquire")
     assert window.trackingActions.panel.isVisible()
+
+
+def test_rootless_video_has_pendulum_entry_in_setup_header(qtbot, synthetic_video_path):
+    window = _window()
+    qtbot.addWidget(window)
+    assert window.openVideo(synthetic_video_path, show_error=False)
+    session = window.analysisSession
+    assert session.project_root is None and not session.tracks
+    before = session.project
+    window.setWorkspace("setup")
+    actions = [button.property("actionId") for button in window.workflowHeader.nextStepButtons]
+    assert "create_experiment" in actions
+    assert session.project == before
 
 
 def test_acquire_panel_fits_1024_by_640_without_horizontal_clipping(

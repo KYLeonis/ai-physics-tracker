@@ -560,7 +560,6 @@ def project_workflow_state(
     pendulum_creation_available = (
         pendulum is None
         and bool(session.project.videos)
-        and session.project_root is not None
         and not session.project.required_capabilities
     )
 

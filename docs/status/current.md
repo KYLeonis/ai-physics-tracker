@@ -2,7 +2,7 @@
 
 # Current Status
 
-> Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线P0–P4已交付，Windows CI修复通过，下一步为已授权P5规划。Windows真机门禁仍延期至P6前；详见[publication/STATUS.md](../../publication/STATUS.md)。
+> Publication worktree note（2026-10-02）：本文件保留main通用线状态；论文线P0–P4已交付，P5本轮推进至最终HR。权威当前步骤、自动验证与未完成真人gate见[publication/STATUS.md](../../publication/STATUS.md)。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

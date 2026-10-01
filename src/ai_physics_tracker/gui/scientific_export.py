@@ -51,6 +51,7 @@ class ScientificExportDialog(QDialog):
             self.resultList.setCurrentRow(0)
         else:
             self.buttons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
+            hint.setText("No saved scientific result yet. In Analysis, compute kinematics or run an ODE fit, then return here to export.")
 
 
 def scientific_plot_data(snapshot: ScientificExport) -> list[tuple]:

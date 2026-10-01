@@ -1,6 +1,6 @@
 # Roadmap — AI Physics Tracker
 
-> Publication线（2026-10-01）：P0–P4完成；模型批判与参数等价族教学已通过独立审查及用户Human Review。全量1341 passed / 1既有strict xfailed / 9subtests；ADR-0020历史限制保留。P5/P6未启动，等待用户授权P5。权威状态见[publication/STATUS.md](../publication/STATUS.md)。
+> Publication线（2026-10-02）：P0–P4完成；P5开发中，自动验证与独立review后停在最终HR。未执行的学生pilot/跨平台真人测试不计通过，P6未启动。权威状态见[publication/STATUS.md](../publication/STATUS.md)。
 
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
