@@ -9,6 +9,29 @@ from ai_physics_tracker.application.workflow_projection import project_workflow_
 from test_pendulum_analysis import analysis_session
 from test_pendulum_fit_job import fit_session
 from ai_physics_tracker.application.pendulum_fit import prepare_fit_job, run_fit_job
+from ai_physics_tracker.domain.pendulum import PhysicalParameters
+from test_experiment_inference_job import _prepared
+
+
+def test_fresh_setup_acquires_tip_before_setting_radius(tmp_path, synthetic_video_path):
+    session, experiment, _, _ = _prepared(tmp_path, synthetic_video_path)
+    session.set_fixed_pivot(experiment.experiment_id, (0., 0.))
+    session.set_true_vertical(experiment.experiment_id, (0., 0.), (0., 1.))
+    session.confirm_true_vertical(experiment.experiment_id)
+    session.set_physical(experiment.experiment_id, PhysicalParameters(.5, 9.81, 'ruler', 'standard'))
+    session.set_release_frame(experiment.experiment_id, 0)
+    session.add_calibration(experiment.video_id, (0., 0.), (0., 100.), .5, 'm')
+
+    def setup_card():
+        current = session.pendulum_experiment(experiment.experiment_id)
+        state = project_workflow_state(session, None, session.tracking_runs(), experiment=current)
+        return publication_task_card(session, current, state, "setup")
+
+    assert setup_card().primary.action_id == "view_acquire"
+    session.mark_point(experiment.roles.tip, 0, 0., 100.)
+    assert setup_card().primary.action_id == "view_setup"
+    session.set_tip_radius_reference(experiment.experiment_id, 100.)
+    assert setup_card().primary.action_id == "view_acquire"
 
 
 def test_scientific_state_uses_tip_and_invalidates_after_manual_edit(tmp_path, synthetic_video_path):

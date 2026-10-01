@@ -19,15 +19,15 @@ PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m ai
 
 ### A. 自己训练
 
-1. `File → Open video (new session)…`，再`Create Pendulum experiment…`。选择新工程目录；按Setup标定尺、fixed pivot、竖直top→bottom并确认、L/g、release frame。根据可靠tip帧设置radius reference。
+1. `File → Open video (new session)…`，再`Create Pendulum experiment…`。选择新工程目录；按Setup标定尺、fixed pivot、竖直top→bottom并确认、L/g、release frame。暂不设置radius reference：它需要当前帧已有可靠tip点。
 2. 时序显示near-CFR时，先阅读误差说明，再明确选择`Use approximate timing`；不能接受近似时停止测量。这项授权每次重开重新检查。
-3. `Acquire`选择代表帧，按引导每帧标四点；冻结fixed-check，再`Run joint training`。记录开始/完成/取消时间；Activity显示在途状态，Cancel可停止。
+3. `Acquire`选择代表帧，按引导每帧标四点。标出首个可靠tip后保持在该帧，回`Setup → Use current tip as radius reference`，再回Acquire冻结fixed-check并`Run joint training`。记录开始/完成/取消时间；Activity显示在途状态，Cancel可停止。
 4. 选择带日期的训练模型，`Verify & run`或`Run inference`。候选出现后检查建议帧，必要时小批修正并训练；满意后`Activate candidate`。候选未采用时不进入科学分析。
 5. `Analysis`计算Kinematics，按需要调整SG并重新计算；运行M0/M1拟合，查看残差、未收敛/不足说明与模型诊断。SG不阻断raw θ拟合；辅助点不阻断tip+fixed pivot分析。
 
 ### B. 教师模型
 
-新建另一个实验工程，完成同样Setup；`Import teacher model…`选择完整模型目录并检查四角色映射，然后选择`Verify & run inference`。**这一支不需要标训练集、冻结fixed-check或先训练**。之后同A检查/采用、分析与导出。
+新建另一个实验工程，完成同样Setup，暂不设置radius reference；`Import teacher model…`选择完整模型目录并检查四角色映射，然后选择`Verify & run inference`。**这一支不需要标训练集、冻结fixed-check或先训练**。检查并采用候选后，导航到有可靠采用tip的帧（缺点或位置不可靠时先在Acquire手工补正），再回`Setup → Use current tip as radius reference`。之后同A分析与导出；未采用的preview点不能作为半径参考。
 
 ### 两支都要完成的保存与恢复
 

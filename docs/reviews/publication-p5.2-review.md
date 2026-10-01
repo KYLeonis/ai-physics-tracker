@@ -2,7 +2,7 @@
 
 - 日期：2026-10-02；reviewer：gpt-6-luna/max；主实现方：root。
 - 首轮范围：`9f5cff7..4238f8a`科学导出/可携带副本/native PNG/PDF/ProjectActions取消事务。
-- 最终Verdict：待复审；F1修复已实施、未凭主Agent自查关闭。最终用户/学生HR未发生。
+- 最终Verdict：R2 **Approve**，F1 Closed。最终用户/学生HR未发生。
 
 ## R1 — Request Changes
 
@@ -18,4 +18,6 @@ Reviewer独立18项定向通过（13.58s），只读审查。完整JSON已保留
 
 ## R2
 
-待复审。
+- 复审范围：`ac53a8b`的冻结逐角色missing reason与辅助QC修复。
+- Reviewer确认四个`*_missing_reason`直接来自冻结测量；fit的`auxiliary_qc_reasons`由同一冻结测量重建，未改原始`result.json`。
+- 独立实际fit回归 **1 passed**，覆盖frame20缺body_bottom/pivot及JSON未变；F1 Closed，无开放blocking finding。

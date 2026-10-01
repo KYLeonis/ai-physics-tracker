@@ -189,3 +189,5 @@ P3.4通过同一Analysis宿主的Kinematics/ODE fitting页签隔离SG与fit；Pe
 
 
 P4复用已验证的fit typed inputs；Qt-free pendulum_criticism按共同来源给出残差/相位与辅助物理证据，SG输出按明确配置重算核对。pendulum_identifiability独立raw RHS积分与lumped对照，固定starred damping/IC/sample/weight/loss的一维q扫描投影为条件曲面。FitExploration是只读临时状态，不新增科学结果或schema；PendulumExplorationActions用单executor、取消事件与fit/项目/视频身份拒收迟到，缓存随来源失效。Model criticism与Parameter equivalence页共用Analysis宿主，用户2026-10-01确认最终Human Review通过，P4已交付。
+
+P5的publication_workflow从既有实验、模型任务与科学结果派生三个工作区的状态和下一步，复用WorkflowHeader/TaskCard及原执行入口，不新增工作流存储。scientific_export校验选定不可变payload，输出全精度CSV、原始JSON、单位/来源provenance和文件hash；显式历史导出保留当时冻结测量。PNG/PDF由Qt原生绘图独立生成，区别于通用图表显示快照。导出与可携带工程副本复用ProjectActions后台取消，在自有临时目录准备、验证后原子发布新目录；副本收纳视频和managed assets，原工程不变。没有新增schema、依赖或数值算法；最终用户/学生HR仍待执行。

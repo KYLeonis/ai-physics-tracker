@@ -63,7 +63,11 @@ def publication_task_card(session: ProjectSession, experiment: PendulumExperimen
     if workspace == "setup":
         gaps = pendulum_setup_status(session.project, experiment).missing_for_analysis
         if gaps:
-            if gaps[0] == "tip_radius_reference":
+            if gaps == ("tip_radius_reference",):
+                if not session.effective_points(experiment.roles.tip):
+                    return TaskCard("setup", "Next: acquire a reliable tip point",
+                                    ("Label a tip in Acquire, or infer and adopt a teacher-model candidate; then return to Setup to set the radius reference.",),
+                                    ActionSpec("view_acquire", "Acquire tip observations"))
                 return TaskCard("setup", "Next: set the tip radius reference",
                                 ("Select a reliable tip frame, then use 'Use current tip as radius reference' in Setup.",),
                                 ActionSpec("view_setup", "Go to Setup"))
