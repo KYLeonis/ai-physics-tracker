@@ -1,3 +1,5 @@
+> Publication工作树（2026-10-01）：P3.3完成，R1三项Closed/R2 Approve；全量1311 passed/1 strict xfailed/9subtests，独立41/1xfail。执行已提前建立的[P3.4 mini-plan](../../publication/plans/p3.4-fit-ui.md)，最终等待用户HR。默认M1历史限制保持Accepted Limitation；P3整体未结束。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+
 # Current Status
 
 > Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线权威入口为[publication/STATUS.md](../../publication/STATUS.md)。P0/P1/P2完成，P2.3独立复审Approve、用户接受当前增量并授权收尾；角运动tip+fixed pivot、辅助诊断、可调SG/四页图/immutable保存均已交付。最终全量1251 tests/9subtests、证据校验通过；publication已--no-ff集成（99f34b0），另会话Windows取消修复补充47项通过；图表外观改善为非阻断事项。用户已授权P3；P3.1已完成（独立复审Approve、最终1287 tests/9subtests），P3.2实现checkpoint（23950c8），48fit覆盖但E3仅30/48、E2 47/48，R2条件性通过，F1/F2 Accepted Limitation；用户授权继续P3.3/P3.4，后续每subphase先建mini-plan；本页main状态不变。Windows门禁仍延期至P6前。
