@@ -64,6 +64,8 @@ def resolve_student_initial_condition(
     explicit: InitialCondition | None = None,
 ) -> InitialCondition | None:
     """scientific-profiles §3/§8；None明确表示needs_explicit_IC，不取首观测。"""
+    if not isinstance(series, AngularSeries):
+        raise ValueError("IC requires a validated AngularSeries")
     if type(rest_confirmed) is not bool or type(release_frame_index) is not int or release_frame_index < 0:
         raise ValueError("IC requires an explicit rest boolean and a non-negative release frame")
     if explicit is not None:
@@ -153,6 +155,9 @@ def simulate_pendulum(
     time_s: tuple[float, ...], settings: IntegrationSettings = IntegrationSettings(),
 ) -> ForwardResult:
     """从0持续积分到最后真实观测时间；gap既不重启IC，也不补成观测。"""
+    if (not isinstance(parameters, PendulumParameters) or not isinstance(initial_condition, InitialCondition)
+            or not isinstance(settings, IntegrationSettings)):
+        raise ValueError("forward requires validated parameters, initial_condition and integration settings")
     _validate_model(model, parameters)
     if (not isinstance(time_s, tuple) or any(not _finite_number(t) or t < 0 for t in time_s)
             or any(b <= a for a, b in zip(time_s, time_s[1:]))):
@@ -174,7 +179,7 @@ def simulate_pendulum(
                 t_eval=np.asarray(time_s, dtype=float), rtol=settings.rtol, atol=settings.atol,
                 max_step=np.inf if settings.max_step_s is None else settings.max_step_s,
                 first_step=settings.first_step_s, vectorized=False, dense_output=False, events=None)
-    except (FloatingPointError, OverflowError, ValueError) as exc:
+    except (FloatingPointError, OverflowError, ValueError, RuntimeError) as exc:
         # 已校验请求；这里只把求解器的数值失败转成可诊断结果，不吞编程错误。
         return ForwardResult("failed", f"integration_failed: {exc}", (), (), 0)
     if not solution.success or np.shape(solution.y) != (2, len(time_s)):
@@ -202,15 +207,19 @@ class ObjectiveRequest:
     integration: IntegrationSettings = IntegrationSettings()
 
     def __post_init__(self) -> None:
+        if (not isinstance(self.series, AngularSeries) or not isinstance(self.initial_condition, InitialCondition)
+                or not isinstance(self.integration, IntegrationSettings)):
+            raise ValueError("objective requires validated series, initial_condition and integration settings")
         if self.profile_id not in (STUDENT, LEGACY):
             raise ValueError("unsupported ODE profile")
         if (type(self.release_frame_index) is not int or self.release_frame_index < 0
+                or self.release_frame_index not in self.series.frame_indices
                 or type(self.end_frame_index) is not int or self.end_frame_index < self.release_frame_index
                 or self.end_frame_index not in self.series.frame_indices):
             raise ValueError("fit interval requires valid release and observed source end frame")
         for f, t in zip(self.series.frame_indices, self.series.time_release_relative_s):
             if ((f < self.release_frame_index and t >= 0) or (f > self.release_frame_index and t <= 0)
-                    or (f == self.release_frame_index and abs(t) > TIME_COMPARISON_TOLERANCE_S)):
+                    or (f == self.release_frame_index and (t < 0 or abs(t) > TIME_COMPARISON_TOLERANCE_S))):
                 raise ValueError("frame/time release identity is inconsistent")
         if not isinstance(self.relative_weights, tuple) or len(self.relative_weights) != len(self.series.frame_indices):
             raise ValueError("relative weights must be an immutable source-aligned tuple")

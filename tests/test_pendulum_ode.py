@@ -252,3 +252,44 @@ def test_empty_zero_time_and_invalid_parameters_or_tolerances():
         PendulumParameters(-.1, 40.)
     with pytest.raises(ValueError, match="first_step"):
         simulate_pendulum(M0, parameters, ic, (.1,), IntegrationSettings(first_step_s=.2))
+
+
+def test_missing_release_source_frame_is_rejected_but_missing_release_observation_is_allowed():
+    request = _request(release=50)
+    indices = tuple(i for i in range(101) if i != 50)
+    series = replace(request.series,
+        frame_indices=tuple(request.series.frame_indices[i] for i in indices),
+        time_release_relative_s=tuple(request.series.time_release_relative_s[i] for i in indices),
+        theta_rad=tuple(request.series.theta_rad[i] for i in indices), qc_valid=(True,)*100)
+    with pytest.raises(ValueError, match="release"):
+        replace(request, series=series, relative_weights=(1.,)*100)
+    theta = list(request.series.theta_rad); theta[50] = None
+    qc = list(request.series.qc_valid); qc[50] = False
+    weights = list(request.relative_weights); weights[50] = None
+    request = replace(request, series=replace(request.series, theta_rad=tuple(theta), qc_valid=tuple(qc)),
+                      relative_weights=tuple(weights))
+    evaluation = evaluate_objective(request, M0, PendulumParameters(.02, 40.))
+    assert evaluation.status == "success"
+    assert evaluation.prediction.theta_rad[0] != pytest.approx(request.initial_condition.theta0_rad, abs=1e-3)
+
+
+@pytest.mark.parametrize("changes", [{"initial_condition": None}, {"series": None}, {"integration": {}}])
+def test_invalid_collaborator_types_are_value_errors(changes):
+    with pytest.raises(ValueError, match="validated"):
+        replace(_request(), **changes)
+    with pytest.raises(ValueError, match="validated"):
+        simulate_pendulum(M0, PendulumParameters(.02, 40.), None, (.1,))
+
+
+def test_solver_runtime_error_is_structured_for_objective_and_full_trajectory(monkeypatch):
+    import ai_physics_tracker.domain.pendulum_ode as core
+    def failing_solver(*args, **kwargs):
+        raise RuntimeError("synthetic solver crash")
+    monkeypatch.setattr(core, "solve_ivp", failing_solver)
+    request, parameters = _request(), PendulumParameters(.02, 40.)
+    objective = evaluate_objective(request, M0, parameters)
+    full = evaluate_trajectory(request, M0, parameters)
+    assert objective.status == full.status == "failed"
+    assert "synthetic solver crash" in objective.reason
+    assert objective.cost_rad2 is None and full.rmse_rad is None
+    assert objective.prediction.theta_rad == full.prediction.theta_rad == ()
