@@ -1,9 +1,10 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
 - 最后更新：2026-10-01。
-- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。P2.1/P2.2 完成；P2.2 merge `4ec09b6` 已推送；当前 `feat/p2.3-energy-analysis-ui`（base `4ec09b6`）。
-- 当前：**P1.4 全部完成(2026-09-30):S1–S6 交付,三道 Independent Review(S3 事务/S5 科学语义/S6 终审)与六轮 Human Review 全部通过;trained 与 imported 两条真实全链 smoke 存证;P1.4 全部 11 条 AC 勾选;全量 1154 passed。** 交互最终形态:训练帧推荐(分批 Suggest N、总困难池仅信息)+ 连续四点重标 + Done-labeling-train 直达训练;P2 adopted measurement handoff(Qt-free 只读快照)就绪。P1.1–P1.4 全部合并并推送；用户已授权进入 P2，P2.1 θ/QC core 完成（1187 passed/9 subtests，Independent Review approve）；P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 已建立 [mini-plan](plans/p2.3-energy-analysis-ui.md)，S1–S4 实现并复审 Approve；Q4/Q5用户确认通过；HR主线再次反馈已定位：tip补标未补齐共同QC所需四点；用户纠正分析依赖，当前默认student-default-v2：tip + fixed pivot，辅助点仅诊断；tip-only自动修复Independent Review已Approve；2026-10-01用户反馈test1最长8帧被SG9阻断，现已实现显式SG窗口/阶数与7/3、5/2快捷设置，本轮独立复审Approve，待Human Review，P2尚未关闭。
-- P0已完成且Independent Review PASS；Windows G1–G4经用户明确批准延期至P6之前，证据仍not_run。**P1/P2.1/P2.2 已完成；P2.3 实现/代码审查通过，等待Human Review；P2尚未完成**；main通用线状态仍在[docs/status/current.md](../docs/status/current.md)。本线科学开发不等待main Phase6。
+- Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
+- 当前：**P0/P1/P2完成；P2.3用户于2026-10-01确认图表已出现、当前增量可交付并明确授权收尾。Independent Review全部finding Closed、最终Approve；正在完成最终验证、--no-ff集成与push。** 当前角运动为tip + fixed pivot，辅助role仅诊断；默认SG9/3，支持显式7/3、5/2及自定义窗口/阶数，配置随结果保存。
+- P3–P6未启动；本阶段结束后停止，等待用户下一条指令。图表外观一般已记为非阻断改善事项，不在本轮追加实现。
+- Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
 ## P1 planning
 
@@ -89,7 +90,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**保存/关闭旧app，重新启动当前P2.3分支、打开test1 → 重新Compute → 选7/3或5/2看预计覆盖并Compute，确认局部ω/phase/energy → 检查图点源帧与保存重开恢复SG参数。Q4/Q5已通过；本轮Q9及原Q2/Q3未通过前不集成、不关闭P2、不进入P3。**
+**P2收尾后停止，等待用户授权进入P3。届时先核对集成分支/status，阅读P3 requirements、master plan与相关profile/IC契约，并在每个subphase进入前建立mini-plan。本次未开始P3规划或实现。**
 
 ## P2.1 delivery (2026-09-30)
 

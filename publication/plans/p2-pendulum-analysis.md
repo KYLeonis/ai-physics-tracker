@@ -8,7 +8,7 @@
 
 ## Goal / Scope
 
-采用四点测量 → 可解释的 θ / ω / phase / period / reference energy。保留源帧、缺口、单位、来源及输入失效。无参数反演、自动插值、通用信号处理框架或新依赖。
+采用tip + fixed pivot（其余landmark为辅助诊断）→ 可解释的 θ / ω / phase / period / reference energy。保留源帧、缺口、单位、来源及输入失效。无参数反演、自动插值、通用信号处理框架或新依赖。
 
 ## P1 completion audit
 
@@ -45,4 +45,16 @@
 
 ## Result
 
-- P1 完成核对通过；P2.1 完成：1187 tests/9 subtests、Independent Review approve、QC与摘要保存重开验证通过。P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 mini-plan 已实施，energy/typed保存/scalar GUI与代码审查通过，等待真人验收，不声称 P2 完成。
+- P1 完成核对通过；P2.1 完成：1187 tests/9 subtests、Independent Review approve、QC与摘要保存重开验证通过。P2.2 完成（1207 tests/9 subtests，Independent Review approve）；P2.3 mini-plan实施、全部独立审查finding关闭且Approve；2026-10-01用户确认已有图、可交付并明确批准收尾，P2.3/P2整体验收接受。图表外观一般记为非阻断后续事项，不将本次确认冒称每个历史HR问题都有单独测试反馈。
+
+
+## P2 final acceptance audit（2026-10-01）
+
+- [x] θ符号、roll/fixed pivot、release/源时间与tip QC、辅助诊断：reconstruction解析/边界回归，P2.1与v2规则复审通过。
+- [x] 默认SG9/3封存ω/信息extrema/period/tail容差对照；自定义SG解析导数、时间异常、branch、gap与edge：angular_analysis及evidence回归通过。
+- [x] 无阻尼reference energy恒等式、代理单位s⁻²、缺测不造值：energy/analysis回归通过。
+- [x] 多输入签名/stale、immutable结果、取消/迟到、Undo、保存重开/Save As与历史SG恢复：application/GUI回归及独立审查通过。
+- [x] 用户确认图表已出现并明确接受当前subphase交付、授权收尾；图表外观改善非阻断保留，不虚构历史问题逐题现场实测。
+- [x] 全量1251 tests/9subtests（80.80s）、evidence15/48/2、diff通过；全部Independent Review findings Closed。
+
+P2.1–P2.3全部交付，按--no-ff集成并push后停止；P3尚未开始。运行与体验步骤见P2.3 mini-plan。Windows安装/运行门禁仍是P6前已批准延期项，未据此标记发行通过。

@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前：P1 完成；[P2 analysis plan](plans/p2-pendulum-analysis.md) 已立项，P2.1 θ/QC core 与 P2.2 导数/周期 core 完成；P2.3 energy/UI 已实现并通过代码审查，等待真人验收；P2尚未关闭。
+当前（2026-10-01）：P0/P1/[P2](plans/p2-pendulum-analysis.md)完成；P2.3数值/保存/图表、Independent Review及用户整体交付验收通过，执行集成收尾。P3尚未开始，等待下一条指令。图表外观改善记录为非阻断后续事项。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
@@ -29,7 +29,7 @@
 
 不做通用multi-object identity、多相机/3D/任意实验插件、通用model library、论文修改/投稿metadata/Zenodo deposit或新的论文科学补充分析。完整non-goals见requirements。
 
-P0已完成科学/数据/runtime合同与Mac探针；Windows验证经用户批准延至P6前，仍not_run。未实现P1–P6功能。后续每Phase通过科学/工程Independent Review及适用Human Review后收尾，并停止等待下一条指令。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
+P0已完成科学/数据/runtime合同与Mac探针；Windows验证经用户批准延至P6前，仍not_run。P1/P2已交付，P3–P6尚未实现。后续每Phase通过科学/工程Independent Review及适用Human Review后收尾，并停止等待下一条指令。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
 
 当前角运动默认规则：student-default-v2，tip + calibrated fixed pivot，辅助role仅诊断。历史v1/legacy与golden不改；见[ADR-0018](../docs/decisions/0018-tip-fixed-pivot-angular-qc.md)、[scientific-profiles §8](spec/scientific-profiles.md)。
 

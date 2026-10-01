@@ -64,3 +64,10 @@ IC修复最终主会话53定向/3subtests、evidence15/48/2、diff check通过�
 - F1/P1：payload/manifest匹配不足以验证完整config/provenance，同步伪造来源后仍被标valid。FIX：resolved_analysis_config统一当前展开值，签名/发布/读回共用；payload与manifest均须等于expected；伪造来源负向回归通过。Closed。
 - F2/P2：undo到历史record时控件未恢复。FIX：按result_id变化恢复保存end/window/order；同一record刷新仍保留用户待应用设置；undo/redo9/3↔7/3回归通过。Closed。
 - 复审Approve，独立51 analysis/domain/UI定向通过，diff通过，零开放finding；首轮独立49 analysis/UI与44 evidence/reconstruction通过。未编辑/触碰用户项目。最终主会话65定向/3subtests与evidence15/48/2通过；全量1249/9subtests在上述两项修复前通过，修复后以完整受影响定向验证收口。
+
+
+## Human Review / delivery acceptance — 2026-10-01
+
+用户确认已有图、虽外观一般但当前subphase可交付，并明确要求收尾。整体交付验收接受；不把未逐题回复的Q2/Q3伪记为各项现场实测。已有自动化/独立审查覆盖源帧、stale、参数保存重开/历史恢复。图表外观改善是非阻断后续事项，无开放blocking finding，允许--no-ff集成并收尾P2。
+
+阶段收尾最终验证：1251 passed、9 subtests passed（80.80s）；冻结evidence15/48/2、diff check通过。无需新增独立代码审查，本轮只同步交付文档与集成已审查代码。
