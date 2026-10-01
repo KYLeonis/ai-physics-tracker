@@ -124,7 +124,7 @@ def fit_config(request: ObjectiveRequest, settings: FitSettings) -> dict[str, ob
     overrides = {key: value for key, value in resolved.items() if value != defaults[key]}
     return {"core_version": CORE_VERSION, "objective": objective_config(request),
         "settings": resolved, "resolved_overrides": {"source": "user-settings", "values": overrides} if overrides else {},
-        "optimizer": {"method": "trf", "jac": "2-point", "x_scale": "jac", "loss": "soft_l1",
+        "optimizer": {"method": "trf", "jac": "2-point", "x_scale": "jac", "loss": request.loss,
             "f_scale_rad": request.f_scale_rad, "max_nfev": settings.max_nfev,
             "ftol": settings.ftol, "xtol": settings.xtol, "gtol": settings.gtol,
             "diff_step": None, "tr_solver": "exact", "tr_options": {}, "jac_sparsity": None},
@@ -173,7 +173,7 @@ def _run_start(request, model, settings, start, lower, upper, check_cancel):
     try:
         result = least_squares(residuals, x0=start, bounds=(lower, upper),
             method="trf", jac="2-point", ftol=settings.ftol, xtol=settings.xtol, gtol=settings.gtol,
-            x_scale="jac", loss="soft_l1", f_scale=request.f_scale_rad, max_nfev=settings.max_nfev,
+            x_scale="jac", loss=request.loss, f_scale=request.f_scale_rad, max_nfev=settings.max_nfev,
             diff_step=None, tr_solver="exact", tr_options={}, jac_sparsity=None, verbose=0)
     except (ValueError, RuntimeError, FloatingPointError, OverflowError) as error:
         return StartDiagnostic(start, None, "failed", False, None, 0, str(error), failures, (), None, None)

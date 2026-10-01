@@ -205,6 +205,7 @@ class ObjectiveRequest:
     maximum_samples: int = DEFAULT_MAXIMUM_SAMPLES
     f_scale_rad: float = DEFAULT_F_SCALE_RAD
     integration: IntegrationSettings = IntegrationSettings()
+    loss: str = "soft_l1"
 
     def __post_init__(self) -> None:
         if (not isinstance(self.series, AngularSeries) or not isinstance(self.initial_condition, InitialCondition)
@@ -212,6 +213,8 @@ class ObjectiveRequest:
             raise ValueError("objective requires validated series, initial_condition and integration settings")
         if self.profile_id not in (STUDENT, LEGACY):
             raise ValueError("unsupported ODE profile")
+        if self.loss not in ("soft_l1", "linear"):
+            raise ValueError("fit loss must be soft_l1 or linear")
         if (type(self.release_frame_index) is not int or self.release_frame_index < 0
                 or self.release_frame_index not in self.series.frame_indices
                 or type(self.end_frame_index) is not int or self.end_frame_index < self.release_frame_index
@@ -262,7 +265,7 @@ def objective_config(request: ObjectiveRequest) -> dict[str, object]:
                         "vectorized": False, "dense_output": False, "events": None},
         "sampling": {"maximum": request.maximum_samples, "rounding": "nearest_ties_to_even",
                      "algorithm": "valid_index_linspace_rint_unique"},
-        "objective": {"loss": "soft_l1", "f_scale_rad": request.f_scale_rad,
+        "objective": {"loss": request.loss, "f_scale_rad": request.f_scale_rad,
                       "residual": "sqrt(relative_weight)*(predicted_rad-observed_rad)",
                       "integration_failure_residual_rad": INTEGRATION_FAILURE_RESIDUAL_RAD},
         "eligibility": {"minimum_valid_frames": MINIMUM_VALID_FRAMES,
@@ -355,7 +358,8 @@ def evaluate_objective(request: ObjectiveRequest, model: str,
         return ObjectiveEvaluation("failed", prediction.reason or "no_valid_samples", residual, None, prediction)
     residual = tuple(sqrt(request.relative_weights[i]) * (pred - request.series.theta_rad[i])
                      for i, pred in zip(indices, prediction.theta_rad))
-    return ObjectiveEvaluation("success", None, residual, soft_l1_cost(residual, request.f_scale_rad), prediction)
+    cost = soft_l1_cost(residual, request.f_scale_rad) if request.loss == "soft_l1" else .5*float(np.dot(residual, residual))
+    return ObjectiveEvaluation("success", None, residual, cost, prediction)
 
 
 @dataclass(frozen=True)
