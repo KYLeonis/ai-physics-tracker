@@ -3,7 +3,7 @@
 - 最后更新：2026-10-01。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P0/P1/P2完成；P2.3用户于2026-10-01确认图表已出现、当前增量可交付并明确授权收尾。Independent Review全部finding Closed、最终Approve；最终验证1251 tests/9subtests及冻结证据通过；--no-ff merge `99f34b0`已完成，提交最终状态后推送。** 当前角运动为tip + fixed pivot，辅助role仅诊断；默认SG9/3，支持显式7/3、5/2及自定义窗口/阶数，配置随结果保存。
-- 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。当前执行subphase集成/push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
+- 用户于2026-10-01授权进入P3；P3.1 Forward/objective已完成：35 core tests、最终全量1287 tests/9subtests，Independent Review F1–F3 Closed、R2 Approve。已--no-ff集成`7285658`（parents `970bd95`/`25491a7`），最终文档同步后push；[P3.1 mini-plan](plans/p3.1-forward-objective.md)与[P3.2 mini-plan](plans/p3.2-bounded-multistart-fit.md)均已建立。P4–P6未启动；图表外观改善仍为后续非阻断事项。
 - Windows G1–G4仍按用户既有决定延期至P6前、证据not_run；main通用产品线状态不随本次P2完成改变。
 
 ## P1 planning
@@ -186,3 +186,5 @@ main复审记录位于source `842460c:docs/reviews/task-cancel-windows-review.md
 - 保留tip+fixed pivot与辅助诊断边界，SG不参与fit；rest确认且恰好前5有效帧才估IC，否则明确explicit IC；gap不重启/不补观测。
 - Commit `7d8ee0b` + review fix `3278ef8`。35定向、全量**1287 passed / 9subtests（81.52s）**；E2两offline case×两模型及frozen verifier通过；外部24 trajectory SHA只读核验通过，未运行48项refit。
 - [Independent Review](../docs/reviews/publication-p3.1-review.md)三项Closed、R2 Approve；无GUI，不需Human Review。本轮quota读到used95%后写[handoff](plans/p3-handoff-2026-10-01.md)。P3.2已规划，P3整体仍进行中。
+
+- P3.1 integration：`7285658`；工作分支tip `25491a7`已push。源代码/测试与已测reviewed工作分支一致；集成分支最后状态commit后push。P3.2无代码，接续前记录实际HEAD作为base。
