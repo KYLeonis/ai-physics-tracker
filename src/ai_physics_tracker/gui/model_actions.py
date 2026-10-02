@@ -189,7 +189,27 @@ class ModelActions(QObject):
     # runtime 自检
     # ------------------------------------------------------------------
 
-    def freezeFixedCheck(self) -> None:
+    def trainWithCurrentLabels(self) -> None:
+        """显式训练按钮：必要时确认检查帧，确认后继续同一训练入口。"""
+
+        session = self.window.analysisSession
+        experiment = self.window.currentPendulumExperiment()
+        if session is None or experiment is None:
+            return
+        if self.busy or self.window.projectActions.busy or any(
+                getattr(self.window, name, None) is not None and getattr(self.window, name).busy
+                for name in ("frameSelectionActions", "experimentInferenceActions")):
+            self.window.statusBar().showMessage("Finish or cancel the active task first")
+            return
+        from ai_physics_tracker.application.annotation_join import fixed_check_status
+
+        if not fixed_check_status(session.project, experiment)[0]:
+            if not self.freezeFixedCheck():
+                return
+        self.window._exitExperimentGuide()
+        self.runJointTraining()
+
+    def freezeFixedCheck(self) -> bool:
         """冻结共享固定检查帧集(P1.3-S6 最小 GUI 入口,C1 预选+用户确认)。
 
         P1.2 S4 只交付了 session 动作;无入口则联合训练(fixed check 是
@@ -200,10 +220,10 @@ class ModelActions(QObject):
         session = self.window.analysisSession
         experiment = self.window.currentPendulumExperiment()
         if session is None or experiment is None:
-            return
+            return False
         if self.busy or self.window.projectActions.busy:
             self.window.statusBar().showMessage("A model task is running")
-            return
+            return False
         from ai_physics_tracker.application.annotation_join import (
             join_complete_frames,
         )
@@ -218,7 +238,7 @@ class ModelActions(QObject):
         if not complete:
             self.window.statusBar().showMessage(
                 "No complete (4/4) frames to freeze; finish guided marking first")
-            return
+            return False
         frames = preselect_fixed_check_frames(complete)
         answer = QMessageBox.question(
             self.window, "Freeze fixed-check frames",
@@ -230,15 +250,16 @@ class ModelActions(QObject):
             QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
-            return
+            return False
         try:
             session.freeze_experiment_fixed_check(experiment.experiment_id, frames)
         except ProjectSessionError as error:
             self.window.statusBar().showMessage(f"Cannot freeze: {error}")
-            return
+            return False
         self.window.statusBar().showMessage(
             f"Fixed-check set frozen: {list(frames)}")
         self.window.projectActions.refresh()
+        return True
 
     def runSelftest(
         self, model_id: UUID, *, on_success: Callable[[], None] | None = None,

@@ -51,10 +51,8 @@ def test_scientific_state_uses_tip_and_invalidates_after_manual_edit(tmp_path, s
 
 
 def test_teacher_path_does_not_require_labels_or_fixed_check_and_busy_keeps_cancel(tmp_path, synthetic_video_path):
-    session, experiment = analysis_session(tmp_path, synthetic_video_path)
-    # _prepared fixture已登记模型；无frame-set/fixed-check仍可先verify/infer。
-    session._project = replace(session.project, experiments=(replace(experiment, active_infer_run_id=None),))
-    experiment = session.pendulum_experiment(experiment.experiment_id)
+    session, experiment, _, _ = _prepared(tmp_path, synthetic_video_path)
+    # 已登记教师模型；没有label/frame-set/fixed-check仍可先verify/infer。
     state = project_workflow_state(session, None, (), experiment=experiment)
     card = publication_task_card(session, experiment, state, "acquire")
     assert card.primary.action_id == "run_joint_inference"
@@ -64,6 +62,50 @@ def test_teacher_path_does_not_require_labels_or_fixed_check_and_busy_keeps_canc
     assert busy.primary.action_id == "cancel_task"
     assert "preserves" in busy.explanation[1]
     assert session.project.scientific_results == ()
+
+
+def test_training_cycle_tracks_labels_and_latest_model(tmp_path, synthetic_video_path):
+    from ai_physics_tracker.application.annotation_join import canonical_label_digest, join_complete_frames
+    from ai_physics_tracker.domain.pendulum import ExperimentFrameSet, ROLE_ORDER
+    from ai_physics_tracker.domain.tracking_run import create_tracking_run, mark_run_completed
+    from ai_physics_tracker.domain.types import utc_now
+
+    session, experiment, _, _ = _prepared(tmp_path, synthetic_video_path)
+    teacher = session.project.model_references[0]
+    session._project = replace(session.project, model_references=(), tracking_runs=())
+
+    def card():
+        current = session.pendulum_experiment(experiment.experiment_id)
+        state = project_workflow_state(session, None, session.tracking_runs(), experiment=current)
+        return publication_task_card(session, current, state, "acquire")
+
+    assert card().primary.action_id == "pick_landmark_frames"
+    session.set_experiment_frame_set(experiment.experiment_id,
+                                    ExperimentFrameSet((1, 2), "uniform", utc_now()))
+    assert card().primary.action_id == "guided_marking"
+    for frame in (1, 2):
+        for role in ROLE_ORDER:
+            session.mark_point(experiment.roles.track_id_for(role), frame, 10., 20.)
+    assert card().primary.action_id == "train_current_labels"
+    train = mark_run_completed(create_tracking_run(
+        experiment.video_id, experiment.roles.track_ids(), "train",
+        experiment_id=experiment.experiment_id, role_bindings=experiment.roles,
+        config={"label_digest": canonical_label_digest(join_complete_frames(session.project, experiment))}))
+    session.record_tracking_run(train)
+    trained = replace(teacher, origin="trained", source_train_run_id=train.run_id,
+                      source_experiment_id=experiment.experiment_id)
+    session._project = replace(session.project, model_references=(trained,))
+    assert card().primary.action_id == "run_joint_inference"
+    infer = mark_run_completed(create_tracking_run(
+        experiment.video_id, experiment.roles.track_ids(), "infer",
+        experiment_id=experiment.experiment_id, role_bindings=experiment.roles,
+        config={"model_id": str(trained.model_id)}))
+    session.record_tracking_run(infer)
+    assert card().primary.action_id == "review_joint_candidate"
+    assert len(card().secondary) == 5  # 原有六个按钮持续提供完整循环
+    session.mark_point(experiment.roles.tip, 1, 11., 20.)
+    assert card().primary.action_id == "train_current_labels"
+    assert "Labels changed" in card().explanation[1]
 
 
 def test_nonconverged_fit_is_visible_alone_and_with_successful_kinematics(tmp_path, synthetic_video_path):

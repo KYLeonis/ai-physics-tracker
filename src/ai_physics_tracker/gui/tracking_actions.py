@@ -763,6 +763,12 @@ class TrackingActions(QObject):
             window.setWorkspace("acquire")
             window.frameSelectionActions.requestSuggestion(10, "kmeans")
             return
+        if action_id == "pick_landmark_frames":
+            from ai_physics_tracker.application.publication_workflow import INITIAL_LANDMARK_FRAME_COUNT
+
+            window.setWorkspace("acquire")
+            window.frameSelectionActions.requestSuggestion(INITIAL_LANDMARK_FRAME_COUNT, "kmeans")
+            return
         if action_id == "create_track":
             window.addTrackButton.click()
             return
@@ -783,6 +789,13 @@ class TrackingActions(QObject):
             return
         if action_id == "run_joint_training":
             window.modelActions.runJointTraining()
+            return
+        if action_id == "train_current_labels":
+            joint = getattr(window, "experimentInferenceActions", None)
+            if joint is not None and joint.review_open:
+                joint.doneLabelingTrain()
+            else:
+                window.modelActions.trainWithCurrentLabels()
             return
         if action_id == "freeze_fixed_check":
             window.modelActions.freezeFixedCheck()
@@ -1458,6 +1471,8 @@ class FrameSelectionActions(QObject):
             or self.window.trackingActions.pending
             or self.window.projectActions.busy
             or (hasattr(self.window, "reviewActions") and self.window.reviewActions.busy)
+            or any(getattr(self.window, name, None) is not None and getattr(self.window, name).busy
+                   for name in ("modelActions", "experimentInferenceActions"))
         ):
             return
         session = self.window.analysisSession
@@ -1506,6 +1521,7 @@ class FrameSelectionActions(QObject):
         self.panel.setSuggestResult(None)
         self.panel.setSuggestStatus("Working…")
         self.panel.setSuggestEnabled(False, "Frame selection running")
+        self.window.trackingActions.refresh()
         self._start_future = self._executor.submit(self._backend.start, job_request, request_id)
 
     def _poll(self) -> None:
@@ -1566,17 +1582,28 @@ class FrameSelectionActions(QObject):
             session = self.window.analysisSession
             if session is not None:
                 try:
+                    experiment = session.pendulum_experiment(self._running_experiment_id)
+                    existing = experiment.frame_set
+                    # 推荐只追加；当前手工帧（含partial）也保留为可继续标注的工作项。
+                    frames = set(result.suggested_frames) | set(existing.frames if existing else ())
+                    request = self._job_request.selection_request
+                    frames.update(p.frame_index for track_id in experiment.roles.track_ids()
+                                  for p in session.manual_points(track_id)
+                                  if request.zone_start <= p.frame_index <= request.zone_end)
                     session.set_experiment_frame_set(
                         self._running_experiment_id,
                         ExperimentFrameSet(
-                            frames=tuple(result.suggested_frames),
+                            frames=tuple(sorted(frames)),
                             algorithm=result.request_algorithm,
                             created_at=utc_now(),
+                            source_video_sha256=existing.source_video_sha256 if existing else None,
+                            extra_fields=existing.extra_fields if existing else {},
                         ),
                     )
                     self.panel.setSuggestStatus(
                         f"Saved as shared frame set "
-                        f"({len(result.suggested_frames)} frames, undoable)")
+                        f"({len(result.suggested_frames)} new suggestions; {len(frames)} total, undoable)")
+                    self.window._afterPendulumChange(self.panel.suggestStatusLabel.text())
                 except Exception as error:
                     self.panel.setSuggestStatus(
                         f"Saved result could not persist: {error}")
@@ -1628,10 +1655,11 @@ class FrameSelectionActions(QObject):
 
     def _onSelectedTrackChanged(self, *_args) -> None:
         """按 track 恢复/隐藏建议帧；同一 track 重复点击不破坏状态，切走再切回可恢复。"""
-        current = self.window.selectedTrackId
+        experiment = self.window.currentPendulumExperiment()
+        current = experiment.experiment_id if experiment is not None else self.window.selectedTrackId
         if self.busy and current != self._running_track_id:
             self._cancel_active_task()
-            self._reset()
+            self._finish_cancelled()
         if current == self._result_track_id and self._cached_result is not None:
             self.panel.setSuggestResult(self._cached_result)
             self.panel.setSuggestStatus(self._cached_status)
@@ -1671,7 +1699,10 @@ class FrameSelectionActions(QObject):
             self.panel.setSuggestEnabled(False, "Difficult frame mining running")
         elif self.window.projectActions.busy:
             self.panel.setSuggestEnabled(False, "Project operation in progress")
-        elif session is None or track_id is None:
+        elif any(getattr(self.window, name, None) is not None and getattr(self.window, name).busy
+                 for name in ("modelActions", "experimentInferenceActions")):
+            self.panel.setSuggestEnabled(False, "A model or inference task is running")
+        elif session is None or (track_id is None and self.window.currentPendulumExperiment() is None):
             self.panel.setSuggestEnabled(False, "Select a track first")
         elif session.project_root is None:
             # 首次选帧必须先保存项目：tooltip 之外给出可见提示（用户 HR 反馈）
@@ -1680,6 +1711,7 @@ class FrameSelectionActions(QObject):
                 hint=True)
         else:
             self.panel.setSuggestEnabled(True)
+        self.window.trackingActions.refresh()
 
     def shutdown(self) -> None:
         self._closed = True

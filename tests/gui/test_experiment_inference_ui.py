@@ -621,6 +621,7 @@ class TestReviewQueue:
         models.freezeFixedCheck = lambda: frozen.append(True)
         try:
             controller.doneLabelingTrain()
+            qtbot.waitUntil(lambda: frozen == [True], timeout=4000)
         finally:
             models.freezeFixedCheck = original_freeze
         assert frozen == [True]
@@ -786,6 +787,23 @@ def test_model_chooser_dates_and_verify_action(qtbot, tmp_path, synthetic_video_
     assert dialog._ok_button.isEnabled() and dialog._ok_button.text() == "Verify & run"
     dialog.modelList.setCurrentRow(1)
     assert dialog._ok_button.text() == "Run inference"
+
+
+def test_inference_entry_prefers_latest_training_of_current_experiment(qtbot, tmp_path, synthetic_video_path, monkeypatch):
+    from dataclasses import replace
+    from datetime import timedelta
+    from ai_physics_tracker.gui.joint_inference_dialog import JointInferenceDialog, run_joint_inference_dialog
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    trained = replace(model, model_id=uuid4(), origin="trained", source_train_run_id=uuid4(),
+                      source_experiment_id=experiment.experiment_id,
+                      created_at=model.created_at + timedelta(minutes=1))
+    unrelated = replace(trained, model_id=uuid4(), source_experiment_id=uuid4(),
+                        created_at=trained.created_at + timedelta(minutes=1))
+    monkeypatch.setattr(JointInferenceDialog, "exec", lambda self: self.DialogCode.Accepted)
+    selected, _ = run_joint_inference_dialog(window, [model, unrelated, trained])
+    assert selected == trained.model_id
+    assert not session.tracking_runs()  # 选模型本身不启动推理
 
 
 def test_joint_candidate_preview_uses_role_and_refreshes_when_role_changes(qtbot, tmp_path, synthetic_video_path):

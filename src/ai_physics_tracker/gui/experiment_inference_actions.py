@@ -9,6 +9,7 @@ Correct 的落点在主窗口视频上点击(对话框非模态保持可见)。
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -674,27 +675,21 @@ class ExperimentInferenceActions(QObject):
 
         self._relabel_tasks = ()
         self._relabel_index = 0
-        self.finishReviewing()
-        self._launch_training_flow()
-
-    def _launch_training_flow(self) -> None:
         session = self.window.analysisSession
         experiment = self.window.currentPendulumExperiment()
-        models = getattr(self.window, "modelActions", None)
-        if session is None or experiment is None or models is None:
-            return
-        from ai_physics_tracker.application.annotation_join import fixed_check_status
 
-        ok, _reason = fixed_check_status(session.project, experiment)
-        if ok:
-            self.window.statusBar().showMessage(
-                "Labels ready — starting joint training")
-            models.runJointTraining()
-        else:
-            self.window.statusBar().showMessage(
-                "New labels invalidate the fixed-check set — confirm the "
-                "preselection first, then press 'Train with updated labels'")
-            models.freezeFixedCheck()
+        def train_after_save() -> None:
+            current = self.window.currentPendulumExperiment()
+            if self.window.analysisSession is session and experiment is not None \
+                    and current is not None and current.experiment_id == experiment.experiment_id:
+                self._launch_training_flow()
+
+        self.finishReviewing(after=train_after_save)
+
+    def _launch_training_flow(self) -> None:
+        models = getattr(self.window, "modelActions", None)
+        if models is not None:
+            models.trainWithCurrentLabels()
 
     def startRelabelSelected(self) -> None:
         """冻结勾选帧为本次任务；每帧四次点击，不进入另一套帧导航。"""
@@ -792,11 +787,10 @@ class ExperimentInferenceActions(QObject):
         self._relabel_index = (self._relabel_index // 4 + 1) * 4
         self._continue_relabeling()
 
-    def finishReviewing(self) -> None:
+    def finishReviewing(self, *, after: Callable[[], None] | None = None) -> None:
         """关闭推荐列表;保留候选和已写 manual 点。"""
 
         self._cancel_correct_quietly()
-        self.window.projectActions.autosave("relabeling closed")
         self._relabel_tasks = ()
         self._relabel_index = 0
         self._relabel_message = ""
@@ -813,6 +807,7 @@ class ExperimentInferenceActions(QObject):
         self.window.videoView.set_preview_markers([], "")
         self.window.statusBar().showMessage("Suggestions closed; candidate kept for later")
         self._refresh_workflow()
+        self.window.projectActions.autosave("relabeling closed", after=after)
 
     # ------------------------------------------------------------------
     # 四轨激活/替换/清除(P1.4-S4c)

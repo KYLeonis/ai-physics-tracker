@@ -3,11 +3,14 @@
 from dataclasses import replace
 
 from ai_physics_tracker.application.project_session import ProjectSession
+from ai_physics_tracker.application.annotation_join import canonical_label_digest, join_complete_frames
 from ai_physics_tracker.domain.pendulum import PendulumExperiment
 from ai_physics_tracker.application.pendulum_setup import pendulum_setup_status
 from ai_physics_tracker.application.workflow_projection import (
     ActionSpec, AnalysisFacts, TaskCard, WorkflowState, select_task_card,
 )
+
+INITIAL_LANDMARK_FRAME_COUNT = 20
 
 
 def publication_analysis_facts(session: ProjectSession, experiment: PendulumExperiment) -> AnalysisFacts:
@@ -90,23 +93,64 @@ def publication_task_card(session: ProjectSession, experiment: PendulumExperimen
                         ActionSpec("compute_pendulum", "Compute / update kinematics"),
                         (ActionSpec("export_scientific", "Export scientific results…"),
                          ActionSpec("view_acquire", "Correct tip observations")))
-    attempts = [r for r in session.tracking_runs()
-                if r.config.get("experiment_id") == str(experiment.experiment_id)]
-    last_attempt = max(attempts, key=lambda r: r.created_at, default=None)
-    if last_attempt is not None and last_attempt.status in ("failed", "cancelled"):
-        return TaskCard("blocked", f"Current: last {last_attempt.task_type} {last_attempt.status}",
-                        ("Adopted observations and manual corrections are preserved. Open history for the error/log, then retry.",),
-                        ActionSpec("run_joint_training" if last_attempt.task_type == "train" else "run_joint_inference", "Retry task"),
-                        (ActionSpec("view_history", "Results & history"), ActionSpec("view_analysis", "View saved analysis")))
-    if state.joint and (state.joint.candidate_run_id or state.joint.active_run_id or state.joint.pending_run_id):
-        return replace(base, secondary=base.secondary + (ActionSpec("import_teacher", "Import teacher model…"),))
+    # 六个既有按钮承载恒定循环；步骤由标签digest/run身份派生，不另存流程状态。
+    joined = join_complete_frames(session.project, experiment)
+    attempts = sorted((r for r in session.tracking_runs() if r.experiment_id == experiment.experiment_id),
+                      key=lambda r: r.created_at)
+    train = next((r for r in reversed(attempts) if r.task_type == "train" and r.status == "completed"), None)
+    infer = next((r for r in reversed(attempts) if r.task_type == "infer" and r.status == "completed"), None)
     models = [m for m in session.project.model_references if m.compatibility_state in ("compatible", "unverified")]
-    secondary = tuple(a for a in base.secondary if a.action_id != "run_joint_inference")
-    if models:
-        primary = ActionSpec("run_joint_inference", "Choose model · verify & run inference")
-        secondary = (ActionSpec("guided_marking", "Label frames for my own training"), *secondary)
+    blocked = "Save the project first" if session.project_root is None else (
+        "Authorize video timing in Setup first" if not session.can_measure(experiment.video_id) else None)
+    has_frames = bool(experiment.frame_set and experiment.frame_set.frames)
+    train_reason = blocked or ("Label at least two complete four-point frames first" if len(joined.complete) < 2 else None)
+    steps = (
+        ActionSpec("pick_landmark_frames", f"1 · Recommend {INITIAL_LANDMARK_FRAME_COUNT} frames", not blocked, blocked),
+        ActionSpec("guided_marking", "2 · Label recommended frames", has_frames and not blocked,
+                   blocked or (None if has_frames else "Recommend frames first")),
+        ActionSpec("train_current_labels", "3 · Train / retrain with current labels", not train_reason, train_reason),
+        ActionSpec("run_joint_inference", "4 · Verify & run inference", bool(models) and not blocked,
+                   blocked or (None if models else "Train or import a teacher model first")),
+        ActionSpec("review_joint_candidate", "5 · Mine difficult frames / choose a batch", infer is not None and not blocked,
+                   blocked or (None if infer else "Run inference first")),
+    )
+    changed = train is not None and train.config.get("label_digest") != canonical_label_digest(joined)
+    trained_models = {str(m.model_id) for m in models if train is not None and m.source_train_run_id == train.run_id}
+    needs_inference = train is not None and (infer is None or infer.config.get("model_id") not in trained_models)
+    if changed:
+        index = 2 if len(joined.complete) >= 2 else 1
+    elif needs_inference:
+        index = 3
+    elif infer is not None:
+        index = 4
+    elif has_frames:
+        index = 1 if state.frame_set and state.frame_set.next_frame is not None else 2
+    elif models and not joined.complete:
+        index = 3
     else:
-        primary = base.primary
-    return replace(base, primary=primary, secondary=(ActionSpec("import_teacher", "Import teacher model…"), *secondary)[:5],
-                   explanation=("Two paths: label representative frames and train your own model, or import a teacher model and verify it before inference.",
-                                *base.explanation))
+        index = 0
+    primary = steps[index]
+    last = attempts[-1] if attempts else None
+    if last is not None and last.status in ("failed", "cancelled"):
+        index = 2 if last.task_type == "train" else 3
+        primary = replace(steps[index], label=f"Retry {last.task_type} · {steps[index].label}")
+        extra = ActionSpec("view_history", "Results & history")
+    elif state.joint and state.joint.candidate_run_id:
+        extra = ActionSpec("replace_experiment" if state.joint.active_run_id else "activate_experiment",
+                           "Use candidate for analysis")
+    elif experiment.active_infer_run_id:
+        extra = ActionSpec("view_analysis", "View current analysis")
+    else:
+        extra = ActionSpec("import_teacher", "Import teacher model…")
+    progress = state.frame_set
+    explanation = (
+        "Recommend → label four points per frame → train → infer → choose a small difficult-frame batch → relabel → retrain.",
+        f"Complete four-point labels: {len(joined.complete)}. " +
+        (f"Recommended set: {progress.done}/{progress.total} complete. " if progress else "No recommended frame set yet. ") +
+        ("Labels changed since training; retrain to use them." if changed else "Choose how many frames to relabel each round."),
+        train_reason or "Training confirms the fixed-check split when needed, then continues. Imported teachers can also run directly at step 4.",
+    )
+    if last is not None and last.status in ("failed", "cancelled"):
+        explanation += (f"Last {last.task_type}: {last.status}. Adopted measurements stay; see Results & history for details.",)
+    return TaskCard("setup", f"Next: {primary.label}", explanation, primary,
+                    tuple(step for step in steps if step.action_id != primary.action_id) + (extra,), base.evidence)

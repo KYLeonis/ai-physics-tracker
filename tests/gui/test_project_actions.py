@@ -233,3 +233,19 @@ class TestAutosave:
         window._register_mark_for_autosave()  # 第 10 个
         assert calls == ["10 new annotations"]
         assert window._marks_since_autosave == 0
+
+    def test_continue_after_inflight_autosave_preserves_new_labels(self, qtbot, opened, tmp_path):
+        import json
+
+        session = opened.analysisSession
+        session.save_as(tmp_path / "proj")
+        session.mark_point(opened.selectedTrackId, 2, 11., 12.)
+        opened.projectActions.autosave("first batch")
+        assert opened.projectActions.busy
+        session.mark_point(opened.selectedTrackId, 3, 13., 14.)
+        continued = []
+        opened.projectActions.autosave("finish batch", lambda: continued.append(session.is_dirty))
+        qtbot.waitUntil(lambda: continued == [False], timeout=5000)
+        assert not opened.projectActions.busy
+        saved = json.loads((session.project_root / "project.json").read_text(encoding="utf-8"))
+        assert {2, 3} <= {point["frame_index"] for point in saved["observations"]}

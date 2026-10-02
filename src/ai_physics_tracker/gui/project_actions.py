@@ -227,6 +227,18 @@ class ProjectActions(QObject):
         """
         session = self.window._annotation_session
         if self.busy or session is None:
+            # 标注批次可能正在自动保存；再保存期间新增的标签后才继续。
+            # 仅串接同一项目的静默自动保存，其他文件操作不接管该请求。
+            if after is not None and session is not None and self.busy \
+                    and self._progress is None and self._prior_session is session and self._completion is not None:
+                previous = self._completion
+
+                def continue_autosave(saved: ProjectSession) -> None:
+                    previous(saved)
+                    if self.window._annotation_session is session:
+                        self.autosave(reason, after)
+
+                self._completion = continue_autosave
             return
         if session.project_root is None or not session.is_dirty:
             if after is not None:

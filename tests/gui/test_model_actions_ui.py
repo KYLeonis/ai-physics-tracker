@@ -503,6 +503,22 @@ class TestS6ReviewRegressions:
 
 
 class TestFreezeFixedCheck:
+    @pytest.mark.parametrize("accept", [False, True])
+    def test_train_button_confirms_split_then_continues(self, qtbot, tmp_path, long_video_path, monkeypatch, accept):
+        from PySide6.QtWidgets import QMessageBox
+
+        window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+        session.clear_experiment_fixed_check(experiment.experiment_id)
+        calls = []
+        before = session.project.observations
+        monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k:
+            QMessageBox.StandardButton.Yes if accept else QMessageBox.StandardButton.No))
+        monkeypatch.setattr(window.modelActions, "runJointTraining", lambda: calls.append(True))
+        window.modelActions.trainWithCurrentLabels()
+        assert calls == ([True] if accept else [])
+        assert (session.pendulum_experiment(experiment.experiment_id).fixed_check is not None) == accept
+        assert session.project.observations == before
+
     def test_freeze_via_confirmation(self, qtbot, tmp_path, long_video_path, monkeypatch):
         from PySide6.QtWidgets import QMessageBox
 

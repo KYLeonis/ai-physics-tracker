@@ -1492,6 +1492,10 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(
                 "Verify video timing before guided marking")
             return
+        if frames is None and not frame_set_worklist(experiment):
+            # 首轮标注先给出代表帧，避免无范围引导退化成逐帧视频标注。
+            self.trackingActions._onCardAction("pick_landmark_frames")
+            return
         if frames is not None:
             from ai_physics_tracker.domain.pendulum import ROLE_ORDER
 

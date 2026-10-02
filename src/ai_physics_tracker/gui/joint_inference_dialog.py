@@ -34,7 +34,7 @@ _ROLE_HINT = (
 class JointInferenceDialog(QDialog):
     """选择模型与推理参数；未验证模型先真实自检再推理。"""
 
-    def __init__(self, model_references, parent=None, *, training_runs=()) -> None:
+    def __init__(self, model_references, parent=None, *, training_runs=(), preferred_model_id=None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Run joint inference")
         self.setMinimumWidth(460)
@@ -97,7 +97,9 @@ class JointInferenceDialog(QDialog):
         self._ok_button: QPushButton = buttons.button(
             QDialogButtonBox.StandardButton.Ok)
         if self.modelList.count():
-            self.modelList.setCurrentRow(0)
+            preferred_row = next((row for row in range(self.modelList.count())
+                                  if self.modelList.item(row).data(0x0100) == preferred_model_id), 0)
+            self.modelList.setCurrentRow(preferred_row)
         self._refresh_ok()
 
     def _refresh_ok(self, *_args) -> None:
@@ -143,9 +145,14 @@ def run_joint_inference_dialog(window, model_references) -> tuple | None:
     from ai_physics_tracker.application.tracking_types import InferenceParams
 
     session = window.analysisSession
+    experiment = window.currentPendulumExperiment()
+    trained = [model for model in model_references if experiment is not None
+               and model.source_experiment_id == experiment.experiment_id]
+    latest = max(trained or list(model_references), key=lambda model: model.created_at, default=None)
     dialog = JointInferenceDialog(
         model_references, window,
-        training_runs=session.tracking_runs() if session else ())
+        training_runs=session.tracking_runs() if session else (),
+        preferred_model_id=latest.model_id if latest else None)
     if dialog.exec() != QDialog.DialogCode.Accepted:
         return None
     model_id = dialog.selected_model_id()

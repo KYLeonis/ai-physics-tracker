@@ -21,9 +21,10 @@ PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m ai
 
 1. `File → Open video (new session)…`，再`Create Pendulum experiment…`。选择新工程目录；按Setup标定尺、fixed pivot、竖直top→bottom并确认、L/g、release frame。暂不设置radius reference：它需要当前帧已有可靠tip点。
 2. 时序显示near-CFR时，先阅读误差说明，再明确选择`Use approximate timing`；不能接受近似时停止测量。这项授权每次重开重新检查。
-3. `Acquire`选择代表帧，按引导每帧标四点。导航回已标好可靠tip的帧，回`Setup → Use current tip as radius reference`，再回Acquire冻结fixed-check并`Run joint training`。记录开始/完成/取消时间；Activity显示在途状态，Cancel可停止。
-4. 选择带日期的训练模型，`Verify & run`或`Run inference`。候选出现后检查建议帧，必要时小批修正并训练；满意后`Activate candidate`。候选未采用时不进入科学分析。
-5. `Analysis`计算Kinematics，按需要调整SG并重新计算；运行M0/M1拟合，查看残差、未收敛/不足说明与模型诊断。SG不阻断raw θ拟合；辅助点不阻断tip+fixed pivot分析。
+3. `Acquire → 1 · Recommend 20 frames`先生成代表帧，再点`2 · Label recommended frames`。每帧按提示标`tip → body_top → body_bottom → pivot`，四点完成自动跳到下一推荐帧；已标点和之前的帧集保留。首次点击其他标注入口也会先推荐帧。导航回可靠tip所在帧，回`Setup → Use current tip as radius reference`，再回Acquire。
+4. 点`3 · Train / retrain with current labels`；需要fixed-check时先显示预选帧确认，选择Yes后继续训练，No不启动。记录开始/完成/取消时间；Activity显示在途状态，Cancel可停止。完成后点`4 · Verify & run inference`，窗口默认选本实验最新训练模型，仍可自行选择带日期的其他模型。
+5. 点`5 · Mine difficult frames / choose a batch`，程序从最新联合推理自动推荐困难帧。调整推荐数量、取消勾选不想标的帧，再开始选中批次；每帧补齐四点后自动下一帧。只标自己选择的几组，点`Done labeling — train with these labels`结束并重训；需要重新确认fixed-check时，Yes后直接继续。之后再次点4、5，按结果重复。五个编号操作持续可见，任务卡突出建议下一步；修改标签后提示重训。满意后`Use candidate for analysis`明确采用，候选未采用时不进入科学分析。
+6. `Analysis`计算Kinematics，按需要调整SG并重新计算；运行M0/M1拟合，查看残差、未收敛/不足说明与模型诊断。SG不阻断raw θ拟合；辅助点不阻断tip+fixed pivot分析。
 
 ### B. 教师模型
 
@@ -70,3 +71,13 @@ CSV/JSON保留存储浮点精度，图上tick文本会简写。参考能量单�
 5. 一名未参与开发本科生是否独立完成A、B两支并提交记录？（是/否）
 
 用[pilot记录模板](student-pilot-record.md)填写真实证据。任何blocking问题先修复再复测；问题5未完成时P5仍不能标完成。
+
+## 本轮训练循环修复 HR（2026-10-02）
+
+保存P012后退出并用上方命令重启，打开`P012_teacher_test`。这次修复不代改已有工程数据。
+
+1. 点1推荐帧，等待Activity结束，再点2；应看到推荐帧进度和当前角色，四次点击后跳到下一推荐帧，原来标过的帧仍保留。
+2. 标好几帧后点3、确认检查帧并训练；完成后点4，应默认选择本实验新模型，允许验证后推理。
+3. 推理完成点5，只勾选少量推荐帧；每帧四点后自动继续，结束并训练应在保存/确认后继续；再推理、再挖掘仍可重复。
+
+回复：推荐与四点推进是否正常、训练→新模型推理是否正常、小批重标→重训循环是否正常（各项通过/需调整）。本轮复测通过也不等于外部学生pilot或Windows真机门禁完成。
