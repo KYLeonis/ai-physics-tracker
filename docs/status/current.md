@@ -1,8 +1,8 @@
-> Publication工作树（2026-10-02）：P6.1/P6.2已集成，双平台CI及Mac HR通过。用户决定Mac优先；[P6.3 Mac mini-plan](../../publication/plans/p6.3-mac-release-candidate.md)已建立，执行未开始，等待用户指定GLM执行Slice。下一步建议S1候选核对/S4已有证据整理及真人任务准备；Windows真机仍not_run，P6.4签名/公证待补，公开tag/Release等用户说“发”。[权威状态](../../publication/STATUS.md)。用户原工程/视频只读、main与共享venv不修改。
+> Publication工作树（2026-10-02）：P6.3执行开始——S1候选核对与S4自动证据完成：RC=HEAD `9d40eb3`的CI artifact（DMG SHA `4ebfd2bb…`，tests/packaging双平台success），包内核对全过（adhoc签名未公证归P6.4），frozen verifier 15/48/2一致，R01–R12三栏证据表见[p6.3-mac-validation](../../publication/evidence/runtime/p6.3-mac-validation.md)。S2/S3/S5真人任务材料就绪（[HR入口](../../publication/plans/p6.3-mac-human-review.md)），停在等用户亲测；Windows真机仍not_run，公开tag/Release等用户说“发”。[权威状态](../../publication/STATUS.md)。用户原工程/视频只读、main与共享venv不修改。
 
 # Current Status
 
-> Publication worktree note（2026-10-02）：以下保留main通用线状态；论文线当前为P6.3 Mac规划就绪、执行未开始，权威步骤与门禁见[publication/STATUS.md](../../publication/STATUS.md)。
+> Publication worktree note（2026-10-02）：以下保留main通用线状态；论文线当前为P6.3 Mac——S1/S4自动部分已完成，等用户按HR材料亲测S2干净安装与S3两条实际任务，权威步骤与门禁见[publication/STATUS.md](../../publication/STATUS.md)。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

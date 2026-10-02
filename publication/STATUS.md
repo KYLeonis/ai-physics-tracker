@@ -5,6 +5,15 @@
 - 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，已集成回publication（2f0fc98）。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
+## P6.3 execution start — 2026-10-02（S1 + S4 自动部分）
+
+- 用户授权"开始执行"，按计划建议顺序完成 **S1 候选核对**与 **S4 自动证据整理**；S2/S3/S5 真人任务材料就绪，停在 HR 入口。证据表：[p6.3-mac-validation](evidence/runtime/p6.3-mac-validation.md)；HR 材料：[p6.3-mac-human-review](plans/p6.3-mac-human-review.md)。
+- RC 候选 = **HEAD `9d40eb3` 自身的 CI artifact**：[tests 37029692932](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37029692932)（macOS 1438 passed/4 skipped/1 xfail、Windows 1436/6/1，双平台 success）与 [packaging 37029692879](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37029692879) 双平台 success；DMG 142776145 bytes、SHA256 `4ebfd2bbf88761f276072ac68c97e27817964d1f97f143284cad5449498be0ad`（artifact id 11236264016；本地 ignored `build/p6.3-mac-rc/ci-artifact/`）。与 P6.2 验收包 `11af5f8b…77fe2` 为同一产品树（`c890b5b`，`git diff` 为空）的两次独立构建，构建不可复现、SHA 不同，替代关系已如实记录。
+- 包内核对全过：0.1.0 / 最低 macOS 14.0 / **adhoc 签名**（无 Developer ID、未公证，spctl 拒绝——P6.4 处理）；host 无 torch/DLC 编译产物（runtime dist-info 仅许可文本）；随包 ffprobe 7.1.1 实测 `--disable-gpl --disable-nonfree`（LGPL 构建）；licenses 20 项 + LICENSE/NOTICE/manifest 齐全；worker-src 与 src 逐字节一致，worker 入口 SHA `f6826c16…` 与 P6.2 记录一致。
+- S4 自动部分：frozen verifier 只读复核 15 files/48 fit rows/2 cases 与冻结基线一致（源码核对，非安装版验收）。R01–R12 已按 自动/RC安装版/真人 三栏立表：自动列 pass（R07 附 ADR-0020 limitation），安装版列 pending，R02 学生 not_run、R12 审查 pending；Windows 缺项保持 not_run。
+- 环境观察（只读，未做任何修改）：leonis 账号 `~/Library/Application Support/KYLeonis/AI Physics Tracker/` 已有 runtime-cache 与一个 2026-10-02 23:19 创建、无 `active.txt` 的 install 目录 ⇒ **当前账号非干净环境**；S2 冷装需另一台 Mac 或本机新账号，隔离要求已写入 HR 材料。本机无 `AI_PHYSICS_*` 覆盖、`/Applications` 无同名 app。
+- S3 素材就绪：`build/p6.3-mac-rc/synthetic-pendulum-36f.mp4`（36 帧，SHA256 `f7132464…cc45`）；Mac AI runtime 下载量按 manifest 实算约 415 MB（87 工件）。S2/S3/S5/S6 未执行，对应 R 行保持 pending/not_run。
+
 ## P6.3 Mac-first planning — 2026-10-02
 
 - 用户决定先完成Mac release，本轮仅要求建立[P6.3 Mac mini-plan](plans/p6.3-mac-release-candidate.md)，后续会交GLM执行部分工作。**计划就绪，执行未开始**；规划基线`5af3a6b`，没有构建/安装/训练/代码改动或发布。
@@ -272,7 +281,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P6.1/P6.2开发交付收尾完成，停止等待后续指令或Windows实测反馈。用户可按[Windows指南](plans/p6-windows-machine-check.md)下载已通过CI的便携包，在真机做CPU/CUDA验收并返回实际结果；记录前保持not_run。P6.3/P6.4尚未执行；公开tag/GitHub Release等用户说“发”。Windows真机G1–G4/G5、学生pilot、签名/公证与Inno仍单列pending，不以CI或Mac HR替代。**
+**P6.3 S1与S4自动部分已完成（见上方execution start节）。下一步：用户按[p6.3-mac-human-review](plans/p6.3-mac-human-review.md)亲测 S2 干净环境安装（另一台Mac或本机新账号）与 S3 两条实际任务，并回复封闭式问题；随后安排 S5 外部学生试用与 S6 Independent Review。S2/S3/S5/S6 未完成前对应 R 行保持 pending/not_run，Windows 真机仍 not_run。公开tag/GitHub Release等用户说”发”。用户原工程/视频只读，main与共享venv不修改。**
 
 ## P2.1 delivery (2026-09-30)
 
