@@ -67,6 +67,17 @@ def _run_selftest_runtime(request: dict[str, Any], result: dict[str, Any]) -> No
     if not torch.isfinite(tensor.grad).all().item():
         raise RuntimeError("Nonfinite tensor self-test")
     result["actual_device"] = str(tensor.device)
+    if request.get("verify_dlc"):
+        # 新安装环境必须证明 DLC 可导入；tensor 可用本身不代表 AI 环境完整。
+        os.environ["DLClight"] = "True"
+        import deeplabcut
+        import torchvision
+        import numpy
+
+        result["versions"].update({name: importlib.metadata.version(name)
+                                   for name in ("deeplabcut", "torchvision", "numpy")})
+        result["devices"] = {"cpu": True, "cuda": torch.cuda.is_available(),
+                             "mps": bool(hasattr(torch.backends, "mps") and torch.backends.mps.is_available())}
 
 
 class _MarkerCancelEvent:

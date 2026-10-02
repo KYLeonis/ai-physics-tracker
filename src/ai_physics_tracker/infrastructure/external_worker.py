@@ -16,6 +16,7 @@ from pathlib import Path
 import re
 import signal
 import subprocess
+from threading import Lock
 from typing import IO, Any, Sequence
 from uuid import UUID
 
@@ -74,6 +75,52 @@ _ENV_ALLOWLIST: tuple[str, ...] = (
     "PROCESSOR_ARCHITECTURE",
     "PROCESSOR_ARCHITEW6432",
 )
+
+
+_SPAWN_LOCK = Lock()
+
+
+def clean_python_environment() -> dict[str, str]:
+    """独立 Python 不继承冻结宿主的库路径、Python配置或包搜索路径。"""
+    environment = {key: os.environ[key] for key in _ENV_ALLOWLIST if key in os.environ}
+    import sys
+
+    bundle = getattr(sys, "_MEIPASS", None)
+    if bundle:
+        root = Path(bundle).resolve()
+        paths = []
+        for entry in environment.get("PATH", "").split(os.pathsep):
+            if entry and not Path(entry).resolve().is_relative_to(root):
+                paths.append(entry)
+        environment["PATH"] = os.pathsep.join(paths)
+    environment["PYTHONUTF8"] = "1"
+    environment["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    return environment
+
+
+def start_python_process(argv: list[str], *, env: dict[str, str], log: IO[bytes]) -> subprocess.Popen:
+    """冻结 Windows host 的 DLL 搜索状态也会被子进程继承，spawn期间清理并恢复。"""
+    import sys
+
+    with _SPAWN_LOCK:
+        dll = None
+        previous = None
+        if os.name == "nt" and getattr(sys, "frozen", False):
+            import ctypes
+
+            dll = ctypes.windll.kernel32
+            length = dll.GetDllDirectoryW(0, None)
+            buffer = ctypes.create_unicode_buffer(length + 1)
+            dll.GetDllDirectoryW(length + 1, buffer)
+            previous = buffer.value or None
+            if not dll.SetDllDirectoryW(None):
+                raise ExternalWorkerError("Could not reset frozen DLL search path")
+        try:
+            return subprocess.Popen(argv, stdout=log, stderr=subprocess.STDOUT, env=env,
+                                    shell=False, start_new_session=os.name == "posix")
+        finally:
+            if dll is not None and not dll.SetDllDirectoryW(previous):
+                logger.error("Could not restore frozen DLL search path")
 
 
 def _default_package_root() -> Path:
@@ -230,7 +277,7 @@ class ExternalWorkerRunner:
         self._python_path_extra = [Path(entry).resolve() for entry in python_path_extra]
 
     def _build_environment(self) -> dict[str, str]:
-        environment = {key: os.environ[key] for key in _ENV_ALLOWLIST if key in os.environ}
+        environment = clean_python_environment()
         python_path = os.pathsep.join(
             [str(self._package_root), *(str(entry) for entry in self._python_path_extra)]
         )
@@ -263,15 +310,7 @@ class ExternalWorkerRunner:
             str(request_path),
         ]
         try:
-            process = subprocess.Popen(
-                argv,
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-                env=self._build_environment(),
-                shell=False,
-                # POSIX 独立 session,使 worker 及其子孙进程同组,可 killpg 整组回收
-                start_new_session=os.name == "posix",
-            )
+            process = start_python_process(argv, env=self._build_environment(), log=log_file)
         except Exception:
             log_file.close()
             raise
@@ -300,6 +339,7 @@ class ExternalJobHandle:
         self._job_dir = job_dir
         self._grace_s = grace_s
         self._expected_digest = canonical_json_digest(request)
+        self._verify_dlc = request.get("verify_dlc") is True
         self._job_id = request["job_id"]
         self._operation = request["operation"]
         self._device = request.get("device")
@@ -584,6 +624,11 @@ class ExternalJobHandle:
             raise ExternalWorkerError(
                 f"selftest_runtime result misses versions['torch'] (log: {self.worker_log_path})"
             )
+        if self._verify_dlc and any(
+            not isinstance(versions.get(name), str) or not versions[name]
+            for name in ("deeplabcut", "torchvision", "numpy")
+        ):
+            raise ExternalWorkerError("AI runtime self-test is missing DLC dependency versions")
         actual_device = result.get("actual_device")
         # runtime-boundary:请求的是 backend;cuda:0/mps:0 等带索引的 actual_device
         # 必须与 backend 匹配,不得用字符串相等错误拒绝

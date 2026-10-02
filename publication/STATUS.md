@@ -5,6 +5,11 @@
 - 当前：**P6.1 原生构建 + 许可定标（MIT）已完成于 `feat/p6.1-native-builds` 分支：macOS DMG（118MB，含 LGPL ffprobe 与 20 份许可文本）本地验证、全量 1404 passed；双平台 CI 待本轮 push 复验。v0.1 发布候选准备中（HR/集成/打 tag/Release 待用户确认）。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
+## P6.2 start — 2026-10-02
+
+- 用户明确选择完整 P6.2 并授权“开始”；新 [mini-plan](plans/p6.2-managed-runtime.md) 已在代码实施前建立。工作分支 `feat/p6.2-managed-runtime`，base `df920f4`，叠加未集成 P6.1；不提前合并或发布。
+- 当前 S1：独立 Python/bootstrap 与完整依赖锁取证，然后安装事务、GUI、真实小闭环、Independent Review/HR。Windows 真机按 ADR-0021 延期，main/共享 venv/用户工程视频不修改。P6.1 的基础 HR/Review 仍待核对，不虚构完成。
+
 ## P6.1 许可复查与 MIT 定标 — 2026-10-02（第二轮）
 
 - 用户裁定：**源码 License 定为 MIT**；要求第三方清单复查。复查结论（详见 `packaging/NOTICE-third-party.md`）：

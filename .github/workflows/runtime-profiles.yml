@@ -1,0 +1,35 @@
+name: Runtime profile locks
+on:
+  push:
+    branches: ['feat/p6.2-managed-runtime']
+    paths: ['scripts/prepare_runtime_manifest.py', 'packaging/runtime_constraints.txt', '.github/workflows/runtime-profiles.yml']
+  workflow_dispatch:
+jobs:
+  resolve:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            system: Windows
+            device: cpu
+            index: https://download.pytorch.org/whl/cpu
+          - os: windows-latest
+            system: Windows
+            device: cuda
+            index: https://download.pytorch.org/whl/cu130
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Resolve native profile
+        run: python -m pip install --dry-run --ignore-installed --report report.json -c packaging/runtime_constraints.txt --extra-index-url ${{ matrix.index }} "deeplabcut==3.0.1" "torch==2.13.0" "torchvision==0.28.0" "numpy==1.26.4" "opencv-python==4.11.0.86" "opencv-python-headless==4.11.0.86" "setuptools==84.0.0" "wheel==0.47.0"
+      - name: Write manifest
+        run: python scripts/prepare_runtime_manifest.py --report report.json --system ${{ matrix.system }} --device ${{ matrix.device }} --output profile.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-profile-${{ matrix.system }}-${{ matrix.device }}
+          path: profile.json
