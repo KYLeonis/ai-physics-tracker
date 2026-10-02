@@ -1,8 +1,8 @@
 # Publication P5.3 Independent Review
 
 - 日期：2026-10-02；reviewer：gpt-6-luna/max；主实现方：root；reviewer只读。
-- 范围：P5.3新项目入口、三工作区整链接线、恢复/保存指引、学生任务、真实推理进度与未完成gate；P5.2科学导出内部由其专项review负责。
-- 最终Verdict：R5 **Approve**，零开放finding；F1/F2 Closed，训练循环三项用户HR通过。新进度视觉HR、非开发学生pilot及Windows副本重开待执行。
+- 范围：P5.3新项目入口、三工作区整链接线、恢复/保存指引、学生任务、真实推理进度、设备路由与未完成gate；P5.2科学导出内部由其专项review负责。
+- 最终Verdict：R6 **Approve**，零开放finding；F1/F2 Closed，训练循环三项用户HR通过。新进度/设备视觉HR、非开发学生pilot及Windows副本重开待执行。
 
 ## R1 — Request Changes
 
@@ -45,3 +45,11 @@ Reviewer独立入口/工作区导航测试 **2 passed**；确认radius不阻断�
 - 新视觉必须用户亲测；前轮用户三个训练循环HR通过不替代此项或外部学生/Windows真机gate。
 
 - 最终源码`827f31f` CI run[36972340803](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36972340803) Windows/macOS success；后续文档同步无代码/测试变更。
+
+## R6 — automatic device routing / Approve
+
+- 范围：`ba09af5..5ada419`；[High-risk mini-plan](../../publication/plans/p5.3-hr-device-routing.md)；root实现，gpt-6-luna/max只读review。
+- 零finding。Reviewer确认auto先由真实单帧self-test解析backend，再以相同backend推理；Advanced训练参数与实际设备记录贯通。self-test失败/取消/session切换不续跑，不覆盖已有兼容性证据。结果按输入身份及预期设备校验；协议接受auto请求，但拒绝未解析auto结果、未知设备和设备不匹配。
+- 独立23 passed（6.06s），覆盖设备选择、Advanced参数、自检失败/取消/session swap及worker设备拒绝。主定向145 passed（25.58s），diff check通过。
+- 真实P012 auto模型自检成功actual_device=mps；同4帧MPS约1.88倍CPU吞吐，compile/autocast未改善速度，未自动开启或写用户模型。短样测速不能代表全片精度、Windows GPU或用户视觉HR。
+- 最终源码`5ada419` CI run[36987949483](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36987949483) Windows/macOS success；后续仅文档同步，源码/测试保持与审查及CI相同。

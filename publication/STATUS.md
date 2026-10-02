@@ -2,15 +2,23 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P5训练循环三项用户HR通过。真实推理进度补充`827f31f`已实现，Independent R5 Approve、最终Windows/macOS CI通过，进度视觉HR待测试。非开发本科生pilot与Windows副本重开仍未执行，P5未关闭、P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
+- 当前：**P0–P4完成；P5训练循环三项用户HR通过。真实推理进度`827f31f`、auto设备路由`5ada419`已实现，Independent R6 Approve、最终Windows/macOS CI通过；实际P012模型auto→MPS自检成功，进度/设备视觉HR待测试。非开发本科生pilot与Windows副本重开仍未执行，P5未关闭、P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P5.3 HR follow-up — automatic device routing（2026-10-02）
+
+- 用户要求Advanced auto正确选择GPU，按[mini-plan](plans/p5.3-hr-device-routing.md)由主Agent实施。`5ada419`将Advanced训练参数及推理设备贯通，协议接受auto并在worker runtime按CUDA→MPS→CPU解析；auto先做真实模型自检，再在同一backend推理，记录requested/actual device。失败、取消、换session不续跑、不覆盖旧CPU证据，推理仍须原hash/digest/runtime验证；无隐式GPU失败→CPU重跑。
+- Independent R6 Approve、零finding；独立23 passed（6.06s），主定向145 passed（25.58s），diff check通过。无新依赖/数据schema/科学算法改动；Windows无CUDA时当前已接入backend的fallback只有CPU，CUDA真机仍not_run。
+- 最终源码`5ada419` CI run[36987949483](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36987949483) Windows/macOS均success；后续只做文档同步，源码/测试与已测审查SHA一致，工作分支已push；不提前集成或标HR通过。
+- P012原CPU任务已16:34:54返回success，3320帧约4小时17分；随后在隔离临时目录对实际040模型执行生产auto self-test，actual_device=mps success。4帧/batch1测速MPS FP32约CPU的1.88倍，compile/autocast未提速，两项保持false。小样速度不能外推全片精度或其他硬件；用户工程/模型未修改，临时目录已清理。证据见[核查记录](../docs/notes/p012-training-check-2026-10-02.md)。
+- 下一步：用户在GUI确认已完成结果并保存、重启后按[设备HR](student-pilot.md#本轮自动设备-hr2026-10-02)选择auto、batch1–2检查实际mps与帧数/ETA/取消。工作分支保持，integration仍`e166f0a`，main未改；学生pilot/Windows副本重开未完成，P5不关闭、P6不启动。
 
 ## P5.3 HR follow-up — inference progress（2026-10-02）
 
 - 用户确认前轮训练循环三个HR项均通过；[原mini-plan](plans/p5.3-hr-training-loop.md)闭环。新增[推理进度mini-plan](plans/p5.3-hr-inference-progress.md)，主Agent实现，readonly gpt-6-luna/max Independent R5 Approve，无finding；独立6 passed（11.21s）。
 - `827f31f`：保留既有DLC后处理TaskProgress计数，以run ID/总帧数校验并有界读取最近64KiB日志。Activity显示真实帧数/百分比、耗时、累计速度与约ETA；首批等待、预测完成后的保存/验证明确区分。100%预测不能充当任务成功或自动采用。换项目/新run清空计数；取消先于终态poll时拒收迟到success。
 - 本地定向60 passed（37.30s），最终针对parser/进度与换项目3 passed（10.74s）；无新增依赖/schema/数值算法改动。最终源码`827f31f` CI run[36972340803](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36972340803) Windows/macOS均success；之后仅文档同步，源码/测试与已验证SHA一致。
-- P012只读核查：[训练检查记录](../docs/notes/p012-training-check-2026-10-02.md)。21完整帧、17训练/4检查、50epoch，最佳snapshot040与自检success；14:11日志约37%，CPU worker仍存活，无result。当前worker运行旧代码，完成后保存并重启GUI，下一次推理才显示新进度。[新进度HR](student-pilot.md#本轮推理进度-hr2026-10-02)待用户亲测；保持当前推理运行，不写用户工程。
+- P012只读核查：[训练检查记录](../docs/notes/p012-training-check-2026-10-02.md)。21完整帧、17训练/4检查、50epoch，最佳snapshot040与自检success；14:11核查时旧CPU worker约37%、尚无result，之后16:34:54成功完成3320帧。用户确认结果后保存并重启GUI，下一次推理才显示新进度。[新进度HR](student-pilot.md#本轮推理进度-hr2026-10-02)待用户亲测；不写用户工程。
 - 工作分支保持，integration仍`e166f0a`，main未改；外部学生pilot、Windows真实重开及P6前真机门禁仍未完成，P5不合并/不关闭，不进入P6。
 
 ## P5.3 HR follow-up — explicit training loop（2026-10-02）

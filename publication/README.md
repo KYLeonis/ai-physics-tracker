@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过；真实推理进度补充已实现于`827f31f`、Independent R5 Approve，停在新进度视觉HR，工作分支`codex/ejp-p5-3-student-pilot`。mini-plan见[工作流](plans/p5.1-workflow-integration.md)、[保存/科学导出](plans/p5.2-scientific-export.md)、[学生pilot](plans/p5.3-student-pilot.md)、[训练循环](plans/p5.3-hr-training-loop.md)、[推理进度](plans/p5.3-hr-inference-progress.md)。[HR步骤](student-pilot.md)、[实测记录](student-pilot-record.md)；非开发学生两支/真实Windows副本重开未测，P5未关闭、P6未启动。ADR-0020历史限制和Windows门禁保留。权威进度见[STATUS](STATUS.md)。
+当前（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过，真实进度/auto设备路由已实现，Independent R6 Approve、实际P012 auto→MPS自检成功；工作分支`codex/ejp-p5-3-student-pilot`停在[进度/设备HR](student-pilot.md#本轮自动设备-hr2026-10-02)。mini-plan见[工作流](plans/p5.1-workflow-integration.md)、[科学导出](plans/p5.2-scientific-export.md)、[学生pilot](plans/p5.3-student-pilot.md)、[训练循环](plans/p5.3-hr-training-loop.md)、[进度](plans/p5.3-hr-inference-progress.md)、[设备路由](plans/p5.3-hr-device-routing.md)。[实测记录](student-pilot-record.md)保持真实；学生两支/Windows副本重开未测，P5未关闭、P6未启动。ADR-0020和Windows门禁保留；权威进度见[STATUS](STATUS.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。

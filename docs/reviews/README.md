@@ -14,7 +14,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | --- | --- | --- | --- |
 | Publication P5.1 | [publication-p5.1-review.md](publication-p5.1-review.md) | R2 Approve，nonconverged F1 Closed；最终HR待执行 | 2026-10-02 |
 | Publication P5.2 | [publication-p5.2-review.md](publication-p5.2-review.md) | R2 Approve，冻结逐角色缺测原因/辅助QC F1 Closed；最终HR待执行 | 2026-10-02 |
-| Publication P5.3 | [publication-p5.3-review.md](publication-p5.3-review.md) | R5 Approve，F1/F2 Closed；训练循环三项HR通过、新进度HR待测，学生pilot未执行 | 2026-10-02 |
+| Publication P5.3 | [publication-p5.3-review.md](publication-p5.3-review.md) | R6 Approve，F1/F2 Closed；训练循环三项HR通过，进度/设备HR待测，学生pilot未执行 | 2026-10-02 |
 | 4.3 | [phase-4.3-plan.md](../status/phase-4.3-plan.md) Result 节（机制建立前的记录） | 修改后通过；3 项 finding 已修复并复审确认 | 2026-08-31 |
 | 4.4 | [phase-4.4-plan.md](../status/phase-4.4-plan.md) Result 节（机制建立前的记录） | 修改后通过；2 项 finding 已修复并复审确认 | 2026-09-01 |
 | 4.5 | [phase-4.5-review.md](phase-4.5-review.md) | 通过（R1 对抗性自查 + R2 独立 code-reviewer 复审 approve-with-comments；7 项 finding 全部 Closed，R2 的 4 项 Suggestion 已修复） | 2026-09-01 |

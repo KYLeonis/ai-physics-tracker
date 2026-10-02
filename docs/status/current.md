@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过；真实推理进度已实现于`827f31f`，Independent R5 Approve、最终Windows/macOS CI通过，工作分支`codex/ejp-p5-3-student-pilot`。下一步：保持当前P012推理运行；完成后保存、重启GUI，按[新进度HR步骤](../../publication/student-pilot.md#本轮推理进度-hr2026-10-02)亲测。学生pilot及Windows副本重开未测，P5未关闭、P6未启动。ADR-0020历史限制与P6前Windows真机门禁保留。完整证据见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过，真实进度/auto设备路由已实现于827f31f/5ada419，Independent R6 Approve。P012 CPU任务已成功结束；下一步保存并重启GUI，用auto、batch1–2检查实际mps及[进度/设备HR](../../publication/student-pilot.md#本轮自动设备-hr2026-10-02)。工作分支`codex/ejp-p5-3-student-pilot`，P5/学生pilot/Windows重开尚未关闭，P6未启动。ADR-0020及P6前Windows门禁保留；完整证据见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 
