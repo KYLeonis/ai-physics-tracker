@@ -866,7 +866,7 @@ class TestPendulumSetupProjection:
         # P1.3,单轨 AI 卡不再出现——用户反馈的 Start learning 无反应修复)
         assert card.title == "Current: pendulum measurement"
         assert card.primary.action_id == ACTION_GUIDED_MARKING
-        assert "P1.3" in card.explanation[0]
+        assert "tip + fixed pivot" in card.explanation[0]
         # fixed check 未冻结 → 联合训练禁用且原因邻接(S6 HR 用户反馈)
         training = next(
             spec for spec in card.secondary

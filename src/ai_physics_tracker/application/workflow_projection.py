@@ -438,7 +438,7 @@ def project_workflow_state(
     prerequisites: list[str] = []
     if not session.project.videos:
         prerequisites.append("add an experiment video")
-    if track_id is None:
+    if track_id is None and experiment is None:
         prerequisites.append("select or create a track")
     if session.project_root is None:
         prerequisites.append("save the project before AI tasks")
@@ -542,8 +542,8 @@ def project_workflow_state(
         )
 
     pendulum = None
-    if track_id is not None:
-        experiment = session.experiment_for_track(track_id)
+    if experiment is not None or track_id is not None:
+        experiment = experiment or session.experiment_for_track(track_id)
         if experiment is not None:
             from ai_physics_tracker.application.pendulum_setup import (
                 pendulum_setup_status,
@@ -555,10 +555,11 @@ def project_workflow_state(
                 missing=status.missing_for_analysis,
                 can_analyze=status.can_analyze,
             )
+            from ai_physics_tracker.application.publication_workflow import publication_analysis_facts
+            analysis = publication_analysis_facts(session, experiment)
     pendulum_creation_available = (
         pendulum is None
         and bool(session.project.videos)
-        and session.project_root is not None
         and not session.project.required_capabilities
     )
 
@@ -877,9 +878,8 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                     f"next missing: frame {progress.next_frame} "
                     f"({progress.next_role}). Marking resumes there.")
         explanation = [
-            "All four landmark roles are bound to this track. Single-track "
-            "learning is disabled for experiment tracks; joint training "
-            "trains all four roles together (P1.3).",
+            "Label four landmarks per representative frame to train your model. "
+            "Analysis uses tip + fixed pivot; the other landmarks are auxiliary.",
         ]
         if frame_set_line is not None:
             explanation.append(frame_set_line)

@@ -182,6 +182,71 @@ def _install(window, runner):
     return window.experimentInferenceActions
 
 
+def test_joint_inference_real_progress_eta_and_terminal_reset(qtbot, tmp_path, synthetic_video_path):
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6, device="cpu"))
+    controller._timer.stop()
+    handle = controller._handle
+    handle._alive_count = 10
+    handle.elapsed_s_value = 30.
+    panel = window.trackingActions.panel
+    total = controller._request.frame_count
+    assert total == 5
+    assert panel.progressBar.maximum() == total and panel.progressBar.value() == 0
+    assert "Waiting for the first" in panel.metricsLabel.text()
+    log = controller._job_dir / "worker.log"
+    step = total // 2
+    log.write_text(f"APT_PROGRESS {controller._run.run_id} {step}/{total} Frames predicted\n", encoding="utf-8")
+    controller._poll()
+    assert panel.progressBar.value() == step
+    assert f"{step}/{total}" in panel.progressBar.format()
+    assert "2/5 frames (40%)" in panel.metricsLabel.text()
+    assert "0.07 frames/s" in panel.metricsLabel.text()
+    assert "ETA ≈ 00:45" in panel.metricsLabel.text()
+    # 坏/回退记录保留最后已知进度，不把旧run的百分比混进来。
+    log.write_text(f"APT_PROGRESS {uuid4()} {total}/{total} Frames predicted\n", encoding="utf-8")
+    controller._poll()
+    assert panel.progressBar.value() == step
+    log.write_text(f"APT_PROGRESS {controller._run.run_id} {total}/{total} Frames predicted\n", encoding="utf-8")
+    controller._poll()
+    assert panel.stageLabel.text() == "Saving / checking predictions"
+    assert session.tracking_runs()[-1].status == "running"  # 100%帧不等于成功
+    handle._alive_count = 0
+    controller._poll()
+    assert session.tracking_runs()[-1].status == "completed"
+    assert panel.progressBar.format() == "%p%" and panel.metricsLabel.text() == ""
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6, device="cpu"))
+    controller._timer.stop()
+    assert panel.progressBar.value() == 0 and controller._predicted_frames == 0
+    controller.cancel()
+    controller._poll()
+    assert panel.stageLabel.text() == "Cancelled" and panel.progressBar.value() == 0
+
+
+def test_progress_and_late_success_discarded_after_session_swap(qtbot, tmp_path, synthetic_video_path):
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6, device="cpu"))
+    controller._timer.stop()
+    handle = controller._handle
+    handle._alive_count = 1
+    total = controller._request.frame_count
+    (controller._job_dir / "worker.log").write_text(
+        f"APT_PROGRESS {controller._run.run_id} {total}/{total} Frames predicted\n", encoding="utf-8")
+    replacement = session.detached()
+    window._annotation_session = replacement
+    panel = window.trackingActions.panel
+    controller._poll()
+    assert controller._predicted_frames == 0 and panel.progressBar.value() == 0
+    controller._poll()
+    assert handle.cancelled and not controller.busy
+    assert panel.stageLabel.text() == "Discarded (project changed)"
+    assert panel.progressBar.maximum() == 1 and panel.progressBar.value() == 0
+    assert replacement.project == session.project  # 新会话没有收到候选
+    assert session.tracking_runs()[-1].status == "running"
+
+
 def _experiment_window(qtbot, tmp_path, synthetic_video_path):
     from ai_physics_tracker.gui.main_window import MainWindow
     from ai_physics_tracker.infrastructure.ffprobe_timing import FFprobeTimingProbe
@@ -621,6 +686,7 @@ class TestReviewQueue:
         models.freezeFixedCheck = lambda: frozen.append(True)
         try:
             controller.doneLabelingTrain()
+            qtbot.waitUntil(lambda: frozen == [True], timeout=4000)
         finally:
             models.freezeFixedCheck = original_freeze
         assert frozen == [True]
@@ -751,8 +817,8 @@ def test_unverified_model_checks_before_inference(qtbot, tmp_path, synthetic_vid
     controller = _install(window, _Runner())
     callbacks = []
     monkeypatch.setattr(window.modelActions, "runSelftest",
-                        lambda model_id, *, on_success: callbacks.append(on_success))
-    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6))
+                        lambda model_id, *, device, on_success: callbacks.append(on_success))
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6, device="cpu"))
     assert len(callbacks) == 1
     assert not controller.busy
     assert not session.tracking_runs()
@@ -786,6 +852,23 @@ def test_model_chooser_dates_and_verify_action(qtbot, tmp_path, synthetic_video_
     assert dialog._ok_button.isEnabled() and dialog._ok_button.text() == "Verify & run"
     dialog.modelList.setCurrentRow(1)
     assert dialog._ok_button.text() == "Run inference"
+
+
+def test_inference_entry_prefers_latest_training_of_current_experiment(qtbot, tmp_path, synthetic_video_path, monkeypatch):
+    from dataclasses import replace
+    from datetime import timedelta
+    from ai_physics_tracker.gui.joint_inference_dialog import JointInferenceDialog, run_joint_inference_dialog
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    trained = replace(model, model_id=uuid4(), origin="trained", source_train_run_id=uuid4(),
+                      source_experiment_id=experiment.experiment_id,
+                      created_at=model.created_at + timedelta(minutes=1))
+    unrelated = replace(trained, model_id=uuid4(), source_experiment_id=uuid4(),
+                        created_at=trained.created_at + timedelta(minutes=1))
+    monkeypatch.setattr(JointInferenceDialog, "exec", lambda self: self.DialogCode.Accepted)
+    selected, _ = run_joint_inference_dialog(window, [model, unrelated, trained])
+    assert selected == trained.model_id
+    assert not session.tracking_runs()  # 选模型本身不启动推理
 
 
 def test_joint_candidate_preview_uses_role_and_refreshes_when_role_changes(qtbot, tmp_path, synthetic_video_path):
@@ -842,3 +925,61 @@ def test_joint_correct_survives_readonly_analysis_roundtrip(qtbot, tmp_path, syn
     window.videoView.mapScreenToPixel = lambda _pos: (10., 12.)
     window._onAnnotationClicked(QPoint(10, 10))
     assert len(session.manual_points(experiment.roles.tip)) == 1
+
+
+@pytest.mark.parametrize("requested, actual", [("auto", "mps"), ("auto", "cuda:0"),
+                                               ("auto", "cpu"), ("mps", "mps"), ("cuda", "cuda")])
+def test_selected_inference_device_is_checked_then_used(qtbot, tmp_path, synthetic_video_path,
+                                                       monkeypatch, requested, actual):
+    from dataclasses import replace
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    launched = []
+    class Runner(_Runner):
+        def start_inference(self, project_root, request, *, device):
+            launched.append(device)
+            def result_factory(request, job_dir):
+                result = _infer_result(request, job_dir)
+                result["actual_device"] = actual
+                return result
+            self.result_factory = result_factory
+            return super().start_inference(project_root, request, device=device)
+    controller = _install(window, Runner())
+    callbacks = []
+    monkeypatch.setattr(window.modelActions, "runSelftest",
+                        lambda mid, *, device, on_success: callbacks.append((device, on_success)))
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6, device=requested))
+    assert callbacks[0][0] == requested and not launched and not session.tracking_runs()
+    evidence = {**model.self_test_evidence,
+                "runtime": {**model.self_test_evidence["runtime"], "device": actual}}
+    _inject_model(session, replace(model, self_test_evidence=evidence))
+    callbacks[0][1]()
+    controller._timer.stop()
+    assert launched == [actual.split(":")[0]]
+    assert controller._request.expected_device == actual
+    assert f"Device {actual}" in window.trackingActions.panel.metricsLabel.text()
+    assert controller._run.config["requested_device"] == requested
+    controller._poll()
+    assert session.tracking_runs()[-1].status == "completed"
+    assert session.pendulum_experiment(experiment.experiment_id).active_infer_run_id is None
+
+
+def test_inference_dialog_inherits_advanced_settings_and_cancel_preserves_them(
+        qtbot, tmp_path, synthetic_video_path, monkeypatch):
+    from ai_physics_tracker.gui.joint_inference_dialog import JointInferenceDialog, run_joint_inference_dialog
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    panel = window.trackingActions.panel
+    panel.deviceComboBox.setCurrentText("mps")
+    panel.batchSizeSpinBox.setValue(2)
+    panel.confidenceSpinBox.setValue(0.3)
+    def accept(dialog):
+        assert dialog.deviceComboBox.currentText() == "mps"
+        assert dialog.inference_parameters() == (0.3, 2)
+        dialog.deviceComboBox.setCurrentText("auto")
+        return dialog.DialogCode.Accepted
+    monkeypatch.setattr(JointInferenceDialog, "exec", accept)
+    _, params = run_joint_inference_dialog(window, [model])
+    assert params.device == "auto" and params.batch_size == 2 and params.min_confidence == 0.3
+    assert panel.deviceComboBox.currentText() == "auto"
+    monkeypatch.setattr(JointInferenceDialog, "exec", lambda d: d.DialogCode.Rejected)
+    assert run_joint_inference_dialog(window, [model]) is None
+    assert panel.deviceComboBox.currentText() == "auto" and not session.tracking_runs()

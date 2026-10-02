@@ -579,3 +579,14 @@ def test_mock_engine_adapter_train(tmp_path: Path) -> None:
     outcome_failed = adapter.train(uuid4(), q, cancel_evt, cfg_path, params_fail)
     assert outcome_failed.status == "failed"
     assert outcome_failed.error_message == "Out of memory"
+
+
+@pytest.mark.parametrize("cuda, mps, expected", [(True, True, "cuda"), (True, False, "cuda"),
+                                                (False, True, "mps"), (False, False, "cpu")])
+def test_auto_device_uses_supported_available_backend(monkeypatch, cuda, mps, expected):
+    import sys
+    from types import SimpleNamespace
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(
+        cuda=SimpleNamespace(is_available=lambda: cuda),
+        backends=SimpleNamespace(mps=SimpleNamespace(is_available=lambda: mps))))
+    assert detect_device() == expected

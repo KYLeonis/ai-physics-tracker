@@ -10,6 +10,14 @@ worker exit约定success/cancelled→0、failed→1；host自行forced cancellat
 
 取消：先发marker并给有限grace；不能响应的native training强制回收整个进程树。POSIX独立session+killpg；Windows需要Job Object或经真机验证的taskkill /T /F；child被留下即失败，不能仅杀worker parent冒称支持取消。stderr traceback和依赖日志保留，失败不清理诊断。硬终止后partial模型只作为failed产物，不作teacher模型/active结果。
 
+## 产品adapter设备扩展（2026-10-02，Protocol v1兼容）
+
+`5ada419`使产品runtime/train/model-self-test/infer请求接受`auto`，在实际worker解释器内按CUDA→MPS→CPU探测。显式CPU/MPS/CUDA请求保留原行为；成功的self-test/infer/train必须报告明确且合法的`actual_device`，`auto`/未知backend/缺设备不能作为成功证据，显式请求与结果backend不符仍拒绝。
+
+GUI联合训练读取Advanced参数；联合推理继承Advanced设备。auto每次先做真实模型单帧self-test，再以其明确backend启动推理，保留requested/actual设备；显式设备已有同backend有效证据可复用。自检失败、取消、换session不续跑，失败不覆盖原CPU兼容证据；结果原有hash/digest/runtime校验继续有效。没有自动GPU失败→CPU重跑：用户明确选CPU可重试。Windows无CUDA时当前已接入的可用fallback只有CPU，未提供DirectML/XPU。
+
+本机P012真实auto→MPS自检成功及4帧测速见[核查记录](../../docs/notes/p012-training-check-2026-10-02.md)。这不升级历史P0 frozen-host或Windows/CUDA真机证据，G1–G4仍按原记录判定。
+
 ## Installer / dependency selection合同（未正式实现）
 
 轻量host与AI runtime两条依赖闭包；现有pyproject强制DLC需要未来拆分optional worker依赖，不直接改现有环境。安装到用户数据目录的versioned staging，校验Python/ABI/architecture、wheel来源/hash、Torch及DLC约束、执行selftest后才atomic切换active runtime pointer。失败保留旧runtime可用并给阶段/错误/日志路径/重试建议；取消不发布半安装环境。磁盘空间、网络/proxy、中断恢复、长路径/Unicode权限均需真实验证。

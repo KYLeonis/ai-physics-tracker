@@ -137,6 +137,10 @@ def _guided_window(qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path,
     _experiment_via_menu(
         qtbot, monkeypatch, window, tracks, tmp_path / "publication-copy")
     assert window._measurement_allowed
+    # 已有代表帧时直接进入引导；首次推荐由专门回归覆盖。
+    session = window.analysisSession
+    session.set_experiment_frame_set(window.currentPendulumExperiment().experiment_id,
+        ExperimentFrameSet(frames=(2,), algorithm="uniform", created_at=utc_now()))
     window.beginExperimentAnnotation()
     assert window.experiment_guide_active
     return window, window.analysisSession
@@ -145,6 +149,24 @@ def _guided_window(qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path,
 # ---------------------------------------------------------------------------
 # Fake 后端（复制自 tests/gui/test_frame_selection_actions.py）
 # ---------------------------------------------------------------------------
+
+def test_fresh_training_entry_recommends_twenty_before_marking(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+):
+    window = _opened_window(qtbot, synthetic_video_path)
+    _wait_presented(qtbot, window)
+    tracks = _four_tracks(window.analysisSession, window.activeVideoId)
+    _experiment_via_menu(qtbot, monkeypatch, window, tracks, tmp_path / "first-round")
+    window.setWorkspace("acquire")
+    calls = []
+    monkeypatch.setattr(window.frameSelectionActions, "requestSuggestion",
+                        lambda count, algorithm: calls.append((count, algorithm)))
+    before = window.analysisSession.project.observations
+    assert window.trackingActions.panel._primary_action_id == "pick_landmark_frames"
+    window.beginExperimentAnnotation()
+    assert calls == [(20, "kmeans")]
+    assert not window.experiment_guide_active
+    assert window.analysisSession.project.observations == before
 
 class _FakeHandle:
     def __init__(self) -> None:
@@ -204,7 +226,14 @@ def test_guide_lifecycle_enter_and_escape(
     _experiment_via_menu(
         qtbot, monkeypatch, window, tracks, tmp_path / "publication-copy")
 
+    from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+    from ai_physics_tracker.domain.types import utc_now
+
+    window.analysisSession.set_experiment_frame_set(
+        window.currentPendulumExperiment().experiment_id,
+        ExperimentFrameSet((window.presentedFrameIndex,), "uniform", utc_now()))
     window.beginExperimentAnnotation()
+    qtbot.waitUntil(lambda: window.videoView.is_annotation_mode())
 
     # 引导激活：标注模式开启、无需选中 track、引导条给出第一个待标 role
     assert window.experiment_guide_active
@@ -257,7 +286,7 @@ def test_guided_click_writes_current_role_track(
     window._onGuidedAnnotationClicked((14.0, 24.0))
     assert len(session.project.observations) == before
     assert "complete (4/4)" in window.statusBar().currentMessage()
-    # 无 frame_set → 完成后引导条给出 finish 出口
+    # 唯一推荐帧已完成 → 引导条给出finish出口。
     assert window.calibrationGuideButton.text() == "Finish guided marking"
 
 
@@ -497,6 +526,9 @@ def test_frame_selection_actions_persist_shared_frame_set(
     assert actions._running_experiment_id == experiment.experiment_id
     assert actions._job_request.selection_request.experiment_id == experiment.experiment_id
     assert actions._job_request.selection_request.excluded_frames == frozenset({0})
+    # 清空/改变所选role不会取消同一实验的推荐任务。
+    actions._onSelectedTrackChanged()
+    assert actions.busy
 
     # 模拟 worker 写结果并退出
     req_id = actions._request_id
@@ -518,7 +550,7 @@ def test_frame_selection_actions_persist_shared_frame_set(
     # 结果回写为 experiment 共享帧集（可撤销事务），状态栏明示
     saved = window.currentPendulumExperiment()
     assert saved.frame_set is not None
-    assert saved.frame_set.frames == (2, 4)
+    assert saved.frame_set.frames == (0, 2, 4)
     assert saved.frame_set.algorithm == "uniform"
     assert "Saved as shared frame set" in panel.suggestStatusLabel.text()
 
@@ -564,7 +596,7 @@ def test_analysis_repair_four_roles_auto_advance_and_readonly_reference(
     assert window.currentWorkspace == 'analysis'
     assert not window.experiment_guide_active and not window._guide_repair_tasks
     assert not window.videoView.is_annotation_mode()
-    assert session.pendulum_experiment(experiment.experiment_id).frame_set.frames == (2, 4)
+    assert {2, 4}.issubset(session.pendulum_experiment(experiment.experiment_id).frame_set.frames)
 
     window.beginExperimentAnnotation((1,))
     qtbot.waitUntil(lambda: window.presentedFrameIndex == 1 and not window._has_pending_request)

@@ -110,6 +110,9 @@ class TaskPanel(QDockWidget):
         self.batchSizeSpinBox.setValue(8)
         self.deviceComboBox = QComboBox()
         self.deviceComboBox.addItems(["auto", "cpu", "mps", "cuda"])
+        self.deviceComboBox.setToolTip(
+            "Auto: available CUDA → Apple MPS → CPU. GPU inference requires a model self-test. "
+            "Windows without CUDA uses CPU; other GPU backends are not installed by this app.")
 
         # Phase 5.5：Restart/Resume 模式与 Advisor 摘要（ADR-0015）
         self.trainingModeComboBox = QComboBox()
@@ -281,6 +284,7 @@ class TaskPanel(QDockWidget):
         self.cancelButton = QPushButton("Cancel")
         self.cancelButton.setEnabled(False)
         self.stageLabel = QLabel("Idle")
+        self.stageLabel.setWordWrap(True)
         self.progressBar = QProgressBar()
         self.progressBar.setRange(0, 1)
         self.progressBar.setValue(0)
@@ -721,10 +725,11 @@ class TaskPanel(QDockWidget):
         """显示任务阶段、可选进度及训练指标；未知分母使用忙碌条。"""
 
         self.stageLabel.setText(stage.strip() or "Working")
+        self.progressBar.setFormat("%p%")
         if step is not None and total is not None and total > 0:
             self.progressBar.setRange(0, total)
             self.progressBar.setValue(max(0, min(step, total)))
-        elif stage in {"Idle", "Completed", "Cancelled"} or stage.startswith(("Failed", "Cannot start")):
+        elif stage in {"Idle", "Completed", "Cancelled"} or stage.startswith(("Failed", "Cannot start", "Discarded")):
             self.progressBar.setRange(0, 1)
             self.progressBar.setValue(1 if stage == "Completed" else 0)
         else:

@@ -503,6 +503,22 @@ class TestS6ReviewRegressions:
 
 
 class TestFreezeFixedCheck:
+    @pytest.mark.parametrize("accept", [False, True])
+    def test_train_button_confirms_split_then_continues(self, qtbot, tmp_path, long_video_path, monkeypatch, accept):
+        from PySide6.QtWidgets import QMessageBox
+
+        window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+        session.clear_experiment_fixed_check(experiment.experiment_id)
+        calls = []
+        before = session.project.observations
+        monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k:
+            QMessageBox.StandardButton.Yes if accept else QMessageBox.StandardButton.No))
+        monkeypatch.setattr(window.modelActions, "runJointTraining", lambda: calls.append(True))
+        window.modelActions.trainWithCurrentLabels()
+        assert calls == ([True] if accept else [])
+        assert (session.pendulum_experiment(experiment.experiment_id).fixed_check is not None) == accept
+        assert session.project.observations == before
+
     def test_freeze_via_confirmation(self, qtbot, tmp_path, long_video_path, monkeypatch):
         from PySide6.QtWidgets import QMessageBox
 
@@ -604,3 +620,76 @@ class TestHrFeedback:
         assert labels and all(
             _re.match(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d · ", label) for label in labels
         ), labels[:3]
+
+
+@pytest.mark.parametrize("device", ["auto", "mps", "cuda", "cpu"])
+def test_joint_training_uses_advanced_parameters(qtbot, tmp_path, long_video_path, device):
+    window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+    panel = window.trackingActions.panel
+    panel.deviceComboBox.setCurrentText(device)
+    panel.batchSizeSpinBox.setValue(2)
+    panel.epochsSpinBox.setValue(7)
+    captured = []
+    class Runner:
+        def start_training(self, root, request, *, device):
+            captured.append((request, device))
+            return _FakeHandle({"status": "cancelled"}, alive_first_polls=10)
+    window.modelActions.deleteLater()
+    window.modelActions = ModelActions(window, runner_factory=Runner)
+    window.modelActions.runJointTraining()
+    request, actual_request = captured[0]
+    assert request.params_config["epochs"] == 7
+    assert request.params_config["batch_size"] == 2
+    assert request.params_config["device"] == actual_request == device
+    window.modelActions.cancel()
+    window.modelActions._poll()
+    assert session.tracking_runs()[-1].status == "cancelled"
+
+
+@pytest.mark.parametrize("outcome", ["failed", "cancelled", "cancel_before_poll", "session_swap"])
+def test_gpu_selftest_does_not_continue_or_destroy_cpu_compatibility(
+        qtbot, tmp_path, long_video_path, outcome):
+    window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+    # 复用真实导入/自检证据构造；本模型已有CPU兼容证据。
+    import yaml
+    bundle = tmp_path / "gpu-check-model"
+    bundle.mkdir()
+    (bundle / "config.yaml").write_text(yaml.safe_dump({
+        "Task": "t", "multianimalproject": False, "identity": False,
+        "project_path": str(bundle), "bodyparts": list(ROLE_ORDER),
+        "cropping": False, "engine": "pytorch"}), encoding="utf-8")
+    (bundle / "snapshot.pt").write_bytes(b"weights")
+    (bundle / "pose_cfg.yaml").write_text("net: resnet_50\n", encoding="utf-8")
+    model = session.import_teacher_model(bundle, "config.yaml", "snapshot.pt",
+                                         tuple((r, r) for r in ROLE_ORDER), extra_files=("pose_cfg.yaml",))
+    by_name = {Path(e.relative_path).name: e for e in model.manifest}
+    result = {"status": "success", "actual_device": "cpu", "model_selftest": {
+        "config_sha256": by_name["config.yaml"].sha256,
+        "checkpoint_sha256": by_name["snapshot.pt"].sha256,
+        "pose_cfg_sha256": by_name["pose_cfg.yaml"].sha256,
+        "frame_sha256": "f" * 64, "frame_index": 0, "bodyparts_found": list(ROLE_ORDER),
+        "versions": {"deeplabcut": "3.0.1", "torch": "2"}}}
+    session.apply_model_selftest(model.model_id, result)
+    before = session.project.model_references[-1].self_test_evidence
+    if outcome in ("failed", "cancelled"):
+        result = {"status": outcome, "error": {"message": "GPU unavailable"}}
+    else:
+        result["actual_device"] = "mps"
+    continued = []
+    devices = []
+    class Runner:
+        def start_selftest(self, root, model_id, fields, *, device):
+            devices.append(device)
+            return _FakeHandle(result)
+    window.modelActions.deleteLater()
+    window.modelActions = ModelActions(window, runner_factory=Runner)
+    window.modelActions.runSelftest(model.model_id, device="mps", on_success=lambda: continued.append(True))
+    if outcome == "cancel_before_poll":
+        window.modelActions.cancel()
+    elif outcome == "session_swap":
+        window._annotation_session = session.detached()
+    window.modelActions._poll()
+    assert devices == ["mps"] and not continued
+    assert session.project.model_references[-1].self_test_evidence == before
+    assert session.project.model_references[-1].compatibility_state == "compatible"
+    assert not window.modelActions.busy

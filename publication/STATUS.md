@@ -1,9 +1,60 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-01。
+- 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P4.1/P4.2/P4.3 Independent Review全部通过，用户确认最终HR通过。P5已获授权；按用户“稍等”优先处理的Windows CI修复已完成，最终论文分支双平台CI通过。P5停在mini-plan入口、无代码实现，P6未启动。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍为ADR-0020 Accepted Limitation，不计为数值通过。**
+- 当前：**P0–P5开发交付已获用户整体HR通过；最终源码98bfd25及工作分支b49a6da双平台CI均通过，P5执行集成收尾。外部学生pilot/Windows副本重开保持not_run、发行前待补；P6未启动，进入P6前Windows G1–G4门禁及ADR-0020不变。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P5 closeout — 2026-10-02
+
+- 用户明确“HR通过，目前可以收尾P5，需要等待CI在双平台都通过”。当前开发验收据此关闭；未参与开发本科生独立两支pilot/Windows副本重开仍not_run，作为发行前待补，不改写成实测通过。该当前用户裁定覆盖原P5学生试用关闭gate；Windows G1–G4进入P6前门禁保持。
+- P5.1工作流/恢复、P5.2科学与可携带导出、P5.3新手入口/任务/训练循环、真实进度与auto设备及拟合图像反馈修复已核对。规定Independent Review全部通过，无开放finding；图像列映射/版式按Normal-risk Self-review，最终6 passed（5.13s）、实际PDF渲染与用户HR通过。
+- 最终源码98bfd25 [CI36991011627](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36991011627) Windows1380passed/6skipped/1existing xfailed（381.21s）、macOS1382passed/4skipped/1existing xfailed（283.64s），均success；工作分支b49a6da [CI36991291008](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36991291008)双平台success，source/test树相同。既有strict xfail为ADR-0020，不计数值通过。
+- 本次只做验收核对/文档/集成：冻结verifier15files/48fitrows/2offlinecases及diff check通过，phase内profile/golden无变动。已有充分定向/全量/独立验证，不重跑训练或数值拟合。main工作树clean、未修改；用户视频/工程/训练权重与导出保留，未入Git，无本次临时文件。
+- Git：收尾文档提交后按--no-ff集成至publication/ejp-damped-pendulum并推送；最终SHA及集成CI补记于下。启动/体验说明见[student-pilot](student-pilot.md)，本地P012修复图在scientific-results-corrected。
+- 下一步：完成集成双平台CI确认后停止；等待用户下一条指令。不开始P6；下一次若获授权，先核实P6前Windows G1–G4，学生pilot/副本重开仍作为发行验收待办。
+
+## P5.3 HR follow-up — ODE exported figures（2026-10-02）
+
+- 用户P012导出residual.pdf空白。实际所选结果M0/M1均success，各3243个finite残差；root发现绘图把完整模型ID的小写当作列前缀，读不到已有m0/m1列，angle预测曲线也遗漏。[Normal-risk mini-plan](plans/p5.3-hr-fit-export.md)在实施前建立，主Agent修复`2fca191`；`98bfd25`调整纵轴标题/tick间距。
+- 回归先复现两种模式失败，再在修复版本6项通过；最终6 passed（5.13s）、Self-review及diff check通过。无数值、数据格式、结果身份或发布事务改动；[最终源码CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36991011627)仍执行，不记为通过。
+- 同一结果`84e7e7b7-3f89-414a-ba47-3d2ec17131c2`经原prepare/publish校验生成本地ignored `P012_teacher_test/scientific-results-corrected`，current=true。新residual/angle PDF经Poppler渲染检查曲线恢复、文字无重叠；原导出全部文件及manifest SHA不变，新CSV/JSON字节一致。仅本轮中间导出和渲染临时文件清理。
+- 下一步：用户直接打开新目录residual.pdf、angle.pdf，确认两条残差和三条角度曲线（通过/需调整）；无需重训/拟合。后续GUI导出保存重启后仍选同一结果、新输出目录。P5保持工作分支，整体用户/学生/Windows门禁未关闭，不进入P6。
+
+## P5.3 HR follow-up — automatic device routing（2026-10-02）
+
+- 用户要求Advanced auto正确选择GPU，按[mini-plan](plans/p5.3-hr-device-routing.md)由主Agent实施。`5ada419`将Advanced训练参数及推理设备贯通，协议接受auto并在worker runtime按CUDA→MPS→CPU解析；auto先做真实模型自检，再在同一backend推理，记录requested/actual device。失败、取消、换session不续跑、不覆盖旧CPU证据，推理仍须原hash/digest/runtime验证；无隐式GPU失败→CPU重跑。
+- Independent R6 Approve、零finding；独立23 passed（6.06s），主定向145 passed（25.58s），diff check通过。无新依赖/数据schema/科学算法改动；Windows无CUDA时当前已接入backend的fallback只有CPU，CUDA真机仍not_run。
+- 最终源码`5ada419` CI run[36987949483](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36987949483) Windows/macOS均success；后续只做文档同步，源码/测试与已测审查SHA一致，工作分支已push；不提前集成或标HR通过。
+- P012原CPU任务已16:34:54返回success，3320帧约4小时17分；随后在隔离临时目录对实际040模型执行生产auto self-test，actual_device=mps success。4帧/batch1测速MPS FP32约CPU的1.88倍，compile/autocast未提速，两项保持false。小样速度不能外推全片精度或其他硬件；用户工程/模型未修改，临时目录已清理。证据见[核查记录](../docs/notes/p012-training-check-2026-10-02.md)。
+- 下一步：用户在GUI确认已完成结果并保存、重启后按[设备HR](student-pilot.md#本轮自动设备-hr2026-10-02)选择auto、batch1–2检查实际mps与帧数/ETA/取消。工作分支保持，integration仍`e166f0a`，main未改；学生pilot/Windows副本重开未完成，P5不关闭、P6不启动。
+
+## P5.3 HR follow-up — inference progress（2026-10-02）
+
+- 用户确认前轮训练循环三个HR项均通过；[原mini-plan](plans/p5.3-hr-training-loop.md)闭环。新增[推理进度mini-plan](plans/p5.3-hr-inference-progress.md)，主Agent实现，readonly gpt-6-luna/max Independent R5 Approve，无finding；独立6 passed（11.21s）。
+- `827f31f`：保留既有DLC后处理TaskProgress计数，以run ID/总帧数校验并有界读取最近64KiB日志。Activity显示真实帧数/百分比、耗时、累计速度与约ETA；首批等待、预测完成后的保存/验证明确区分。100%预测不能充当任务成功或自动采用。换项目/新run清空计数；取消先于终态poll时拒收迟到success。
+- 本地定向60 passed（37.30s），最终针对parser/进度与换项目3 passed（10.74s）；无新增依赖/schema/数值算法改动。最终源码`827f31f` CI run[36972340803](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36972340803) Windows/macOS均success；之后仅文档同步，源码/测试与已验证SHA一致。
+- P012只读核查：[训练检查记录](../docs/notes/p012-training-check-2026-10-02.md)。21完整帧、17训练/4检查、50epoch，最佳snapshot040与自检success；14:11核查时旧CPU worker约37%、尚无result，之后16:34:54成功完成3320帧。用户确认结果后保存并重启GUI，下一次推理才显示新进度。[新进度HR](student-pilot.md#本轮推理进度-hr2026-10-02)待用户亲测；不写用户工程。
+- 工作分支保持，integration仍`e166f0a`，main未改；外部学生pilot、Windows真实重开及P6前真机门禁仍未完成，P5不合并/不关闭，不进入P6。
+
+## P5.3 HR follow-up — explicit training loop（2026-10-02）
+
+- 用户P012新实验没有frame_set，旧标注入口退化为无推荐范围的逐帧模式。本轮按[mini-plan](plans/p5.3-hr-training-loop.md)修复；用户工程数据只读，加入ignore以保留本地训练数据。
+- `916adeb`：Acquire恒定五步按钮，首轮推荐20帧→逐帧四点→训练/重训→最新模型推理→最新run困难帧推荐/勾选小批；任务卡按标签digest/run提示下一步。重标后可结束并训练，fixed-check确认Yes后继续、No不启动；不自动采用候选。
+- 共享帧集追加推荐并保留原帧/partial手工标注；辅助轨切换不取消同一实验选帧。复用既有autosave完成回调，保存期间新增标注再次保存后才继续训练；换session/experiment不续跑。
+- `916adeb`定向114 passed（37.66s）、全量1357 passed / 1 existing strict xfailed / 9subtests（198.08s）；冻结verifier15/48/2与diff通过。Independent R3发现失败/取消盖过标签变化的retrain建议，`87d5e89`修复；21定向通过（6.17s），R4 Approve、F2 Closed，独立failed/cancelled参数化回归2 passed（1.86s）。xfail仍为ADR-0020历史限制，不计为数值通过。
+- `916adeb` CI run[36958915318](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36958915318)及最终源码`87d5e89` run[36959385212](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36959385212)均Windows/macOS success；随后只同步文档，源码/测试与最终已验证SHA一致。[本轮三项HR复测](student-pilot.md#本轮训练循环修复-hr2026-10-02)已由用户明确全部通过。P5保持工作分支，integration仍`e166f0a`、main clean，无本次临时文件；不合并、不进入P6。
+
+## P5 delivery — 2026-10-02（原交付checkpoint）
+
+- 每个subphase动手前已建mini-plan：[P5.1](plans/p5.1-workflow-integration.md)、[P5.2](plans/p5.2-scientific-export.md)、[P5.3](plans/p5.3-student-pilot.md)。主Agent实施，readonly gpt-6-luna/max只执行要求的Independent Review。
+- P5.1 `9f5cff7`：实验级科学状态、三工作区可见下一步、自训/教师导入两路径、Cancel/Retry/history；非收敛状态修复随`4238f8a`。P5.2 `4238f8a`：选定冻结结果的CSV/JSON/provenance/hash与独立Qt PNG/PDF、原子可携带副本；`ac53a8b`补逐角色missing reason/同源辅助QC并保留既有单轨禁用提示前缀。
+- P5.3 `d9d1da3`：rootless新实验入口、学生两支任务/恢复/证据模板；`5228537`修正首次可靠tip→半径参考的指南和Setup提示顺序。未改schema、依赖、数值算法或冻结资料。
+- 三项Independent Review均R2 Approve，各F1 Closed：[P5.1](../docs/reviews/publication-p5.1-review.md)、[P5.2](../docs/reviews/publication-p5.2-review.md)、[P5.3](../docs/reviews/publication-p5.3-review.md)。独立91/3工作流、18/1导出、2/1整合入口回归；真人体验尚未确认。
+- `ac53a8b`本地全量 **1350 passed / 1 existing strict xfailed / 9subtests（290.38s）**；最终Setup顺序修正定向 **37 passed（17.14s）**。冻结verifier15files/48fitrows/2cases、diff check通过；既有严格xfail不计作数值通过。
+- CI触发补`codex/**`。首轮36895120963暴露旧单轨禁用提示前缀断言，已修复；`ac53a8b` run[36896945833](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36896945833) **Windows1345passed/5skipped/1xfail（364.93s），macOS1347passed/3skipped/1xfail（176.01s），双平台success**。最终代码`5228537` run[36898549486](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36898549486) **Windows1346passed/5skipped/1xfail（375.95s），macOS1348passed/3skipped/1xfail（285.37s），双平台success**。后续仅文档同步，代码/测试与已验证SHA相同。
+- 当前交付分支`codex/ejp-p5-3-student-pilot`叠加P5.1/P5.2，已push；publication integration仍`e166f0a`，main未改。按HR门禁保持工作分支，不提前合并收尾。
+- 未满足：最终用户HR、非开发本科生独立自训/教师两支pilot、真实Windows工程副本重开；记录保持[not_run](student-pilot-record.md)。原省赛权重/标签仍待Windows提供，成功推理CSV不冒充模型；G1–G4按既定延期，P6不启动。
 
 ## Windows CI UTF-8 repair — 2026-10-01
 
@@ -162,7 +213,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**Windows CI修复已完成。继续已授权P5.1时，先建立`publication/plans/p5.1-workflow-integration.md`（Context Pack/AC/Slices/Independent及Human Review Gate），再在独立工作分支实施Setup/Acquire/Analysis任务卡、训练/教师导入两路径和取消/重试/历史。用户本轮先处理CI，P5尚无代码实现；P6不进入。**
+**先保存P012并重启，按[本轮训练循环三项HR](student-pilot.md#本轮训练循环修复-hr2026-10-02)复测推荐20帧/四点自动推进、训练后新模型推理、小批困难帧重标后继续重训。当前修复交付后停止等待真人反馈。之后仍需未参与开发本科生独立A/B pilot及真实Windows副本重开，填写[记录](student-pilot-record.md)，才可集成关闭P5；P6未启动。**
 
 ## P2.1 delivery (2026-09-30)
 

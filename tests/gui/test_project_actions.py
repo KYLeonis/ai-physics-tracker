@@ -51,6 +51,21 @@ def test_first_save_reopen_restores_points_frame_and_paused_state(opened, qtbot,
     assert window.videoView.marker_count() == 1
 
 
+def test_late_cancel_after_output_publication_still_reports_saved_directory(opened, tmp_path):
+    output = tmp_path / "published-output"
+    output.mkdir()
+    completed = []
+    actions = opened.projectActions
+    actions._run(lambda _cancel: output, completed.append, cancellable=True,
+                 completion_after_cancel=True, progress_label="Exporting…")
+    actions._future.result(timeout=5)
+    # worker已原子发布并返回：晚到的Cancel不能假称输出被撤销。
+    actions._cancel.set()
+    actions._poll()
+    assert completed == [output] and output.is_dir()
+    assert not actions.busy
+
+
 def test_reopen_uses_saved_fps_zone_and_does_not_request_clamped_old_spinbox(opened, qtbot, tmp_path):
     session = opened._annotation_session.detached()
     timeline = replace(session.project.timelines[0], fps_nominal=20.0, working_zone=(1, 3))
@@ -219,3 +234,18 @@ class TestAutosave:
         assert calls == ["10 new annotations"]
         assert window._marks_since_autosave == 0
 
+    def test_continue_after_inflight_autosave_preserves_new_labels(self, qtbot, opened, tmp_path):
+        import json
+
+        session = opened.analysisSession
+        session.save_as(tmp_path / "proj")
+        session.mark_point(opened.selectedTrackId, 2, 11., 12.)
+        opened.projectActions.autosave("first batch")
+        assert opened.projectActions.busy
+        session.mark_point(opened.selectedTrackId, 3, 13., 14.)
+        continued = []
+        opened.projectActions.autosave("finish batch", lambda: continued.append(session.is_dirty))
+        qtbot.waitUntil(lambda: continued == [False], timeout=5000)
+        assert not opened.projectActions.busy
+        saved = json.loads((session.project_root / "project.json").read_text(encoding="utf-8"))
+        assert {2, 3} <= {point["frame_index"] for point in saved["observations"]}

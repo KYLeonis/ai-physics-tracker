@@ -13,7 +13,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 ## 2. 当前 Roadmap（概要）
 
-论文发布线（2026-10-01）：P0–P4完成；P4.1/P4.2/P4.3 Independent Review均通过，用户确认“HR通过”并授权P4收尾。P3历史E3 30/48、E2 47/48及默认M1严格xfail仍为ADR-0020 Accepted Limitation，不计为数值通过。P5/P6未启动，停止等待用户授权P5；Windows门禁仍延期至P6前。权威状态见`publication/STATUS.md`；下表为通用产品线。
+论文发布线（2026-10-02）：P0–P5开发交付通过用户HR，P5执行集成收尾；最终源码98bfd25 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保留not_run、作为发行前验收待办；进入P6前Windows G1–G4门禁不变，P6未启动。权威状态见`publication/STATUS.md`；下表为通用产品线。
 
 | 阶段 | 名称 | 一句话目标 |
 | --- | --- | --- |

@@ -9,6 +9,7 @@ Correct 的落点在主窗口视频上点击(对话框非模态保持可见)。
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -25,6 +26,7 @@ from ai_physics_tracker.application.experiment_inference_job import (
 from ai_physics_tracker.application.model_worker import (
     ModelWorkerError,
     ModelWorkerRunner,
+    read_inference_progress,
 )
 from ai_physics_tracker.application.project_session import (
     ProjectSession,
@@ -73,6 +75,8 @@ class ExperimentInferenceActions(QObject):
         self._job_dir: Path | None = None
         self._session: ProjectSession | None = None
         self._user_cancel = False
+        self._predicted_frames = 0
+        self._progress_phase = "Loading model"
 
         # 审核会话态(不持久化;queue/records 本身在 run extras)
         self._dialog = None
@@ -158,7 +162,7 @@ class ExperimentInferenceActions(QObject):
     # 联合推理(P1.4-S4a)
     # ------------------------------------------------------------------
 
-    def runJointInference(self, model_id: UUID, params) -> None:
+    def runJointInference(self, model_id: UUID, params, *, _device_checked: bool = False) -> None:
         session = self.window.analysisSession
         experiment = self.window.currentPendulumExperiment()
         if session is None or experiment is None:
@@ -175,16 +179,21 @@ class ExperimentInferenceActions(QObject):
 
         model = next((m for m in session.project.model_references
                       if m.model_id == model_id), None)
-        if model is not None and effective_compatibility_state(model) == "unverified":
+        checked_device = str(((model.self_test_evidence or {}).get("runtime") or {}).get("device", "")) if model else ""
+        # auto必须在worker运行环境重新探测；CPU自检不能证明GPU可用。
+        needs_device_check = (params.device == "auto" and not _device_checked) or (
+            params.device != "auto" and checked_device.split(":")[0] != params.device)
+        if model is not None and (effective_compatibility_state(model) == "unverified" or needs_device_check):
             experiment_id = experiment.experiment_id
 
             def continue_inference():
                 current = self.window.currentPendulumExperiment()
                 if (self.window.analysisSession is session and current is not None
                         and current.experiment_id == experiment_id):
-                    self.runJointInference(model_id, params)
+                    self.runJointInference(model_id, params, _device_checked=True)
 
-            self.window.modelActions.runSelftest(model_id, on_success=continue_inference)
+            self.window.modelActions.runSelftest(
+                model_id, device=params.device, on_success=continue_inference)
             return
         try:
             run, request = prepare_experiment_inference(
@@ -199,7 +208,7 @@ class ExperimentInferenceActions(QObject):
             return
         try:
             handle = self._runner_factory().start_inference(
-                session.project_root, request, device="cpu",
+                session.project_root, request, device=request.expected_device.split(":")[0],
             )
         except (ModelWorkerError, OSError) as error:
             # prepare 已登记 pending run;启动失败必须回写 failed(死端守卫)
@@ -216,9 +225,9 @@ class ExperimentInferenceActions(QObject):
         self._job_dir = session.project_root / "data" / "engines" / str(run.run_id)
         self._session = session
         self._timer.start()
-        self._set_activity("Inferring (external worker)")
+        self._refresh_inference_progress()
         self.window.statusBar().showMessage(
-            f"Joint inference run {run.run_id} started on cpu "
+            f"Joint inference run {run.run_id} started: {params.device} → {request.expected_device} "
             "(external worker; logs in the run directory)")
         self.window.projectActions.refresh()
 
@@ -234,7 +243,10 @@ class ExperimentInferenceActions(QObject):
 
     def _poll(self) -> None:
         handle = self._handle
-        if handle is None or handle.is_alive():
+        if handle is None:
+            return
+        if handle.is_alive():
+            self._refresh_inference_progress()
             return
         self._timer.stop()
         if self._session is not None and self.window.analysisSession is not self._session:
@@ -242,6 +254,10 @@ class ExperimentInferenceActions(QObject):
             handle.cancel()
             self._set_activity("Discarded (project changed)", running=False)
             self._reset_job()
+            return
+        if self._user_cancel:
+            # worker可能已退出但终态尚未poll；用户取消仍拒收迟到success。
+            self._finish_cancelled()
             return
         try:
             result = handle.read_result()
@@ -258,7 +274,44 @@ class ExperimentInferenceActions(QObject):
             error = (result.get("error") or {}).get("message", "inference failed")
             self._finish_failure(error)
             return
+        self._refresh_inference_progress()
+        self.window.trackingActions.panel.setActivity(
+            "Verifying prediction result", step=self._predicted_frames, total=self._request.frame_count)
         self._finish_success(result, handle)
+
+    def _refresh_inference_progress(self) -> None:
+        """真实已后处理帧数；ETA用累计吞吐估算，未出首批不猜时间。"""
+
+        if self._handle is None or self._request is None or self._job_dir is None or self._run is None:
+            return
+        if self.window.analysisSession is not self._session:
+            return
+        total = self._request.frame_count
+        progress = read_inference_progress(self._job_dir, self._run.run_id, total)
+        if progress is not None and progress[0] >= self._predicted_frames:
+            self._predicted_frames, self._progress_phase = progress
+        step = self._predicted_frames
+        elapsed = max(0., self._handle.elapsed_s)
+        minutes, seconds = divmod(int(elapsed), 60)
+        stage = "Saving / checking predictions" if step == total else (
+            "Inferring" if step else self._progress_phase)
+        panel = self.window.trackingActions.panel
+        panel.setActivity(stage, step=step, total=total)
+        panel.progressBar.setFormat(f"%p% · {step}/{total} frames")
+        # macOS原生进度条可能不绘制format文本；标签保证帧数/百分比可见。
+        details = [f"Device {self._request.expected_device}", f"{step}/{total} frames ({step / total:.0%})",
+                   f"Elapsed {minutes:02d}:{seconds:02d}"]
+        if 0 < step < total and elapsed > 0:
+            rate = step / elapsed
+            remaining = int((total - step) / rate)
+            mins, secs = divmod(remaining, 60)
+            details.extend((f"{rate:.2f} frames/s", f"ETA ≈ {mins:02d}:{secs:02d}"))
+        elif step == 0:
+            details.append("Waiting for the first predicted batch; ETA unavailable")
+        else:
+            details.append("All frames predicted; result not confirmed yet")
+        panel.metricsLabel.setText(" · ".join(details))
+        panel.cancelButton.setEnabled(True)
 
     def _finish_success(self, result: dict, handle) -> None:
         session = self.window.analysisSession
@@ -323,6 +376,8 @@ class ExperimentInferenceActions(QObject):
         self._job_dir = None
         self._session = None
         self._user_cancel = False
+        self._predicted_frames = 0
+        self._progress_phase = "Loading model"
 
     # ------------------------------------------------------------------
     # 审核队列(P1.4-S4b)
@@ -674,27 +729,21 @@ class ExperimentInferenceActions(QObject):
 
         self._relabel_tasks = ()
         self._relabel_index = 0
-        self.finishReviewing()
-        self._launch_training_flow()
-
-    def _launch_training_flow(self) -> None:
         session = self.window.analysisSession
         experiment = self.window.currentPendulumExperiment()
-        models = getattr(self.window, "modelActions", None)
-        if session is None or experiment is None or models is None:
-            return
-        from ai_physics_tracker.application.annotation_join import fixed_check_status
 
-        ok, _reason = fixed_check_status(session.project, experiment)
-        if ok:
-            self.window.statusBar().showMessage(
-                "Labels ready — starting joint training")
-            models.runJointTraining()
-        else:
-            self.window.statusBar().showMessage(
-                "New labels invalidate the fixed-check set — confirm the "
-                "preselection first, then press 'Train with updated labels'")
-            models.freezeFixedCheck()
+        def train_after_save() -> None:
+            current = self.window.currentPendulumExperiment()
+            if self.window.analysisSession is session and experiment is not None \
+                    and current is not None and current.experiment_id == experiment.experiment_id:
+                self._launch_training_flow()
+
+        self.finishReviewing(after=train_after_save)
+
+    def _launch_training_flow(self) -> None:
+        models = getattr(self.window, "modelActions", None)
+        if models is not None:
+            models.trainWithCurrentLabels()
 
     def startRelabelSelected(self) -> None:
         """冻结勾选帧为本次任务；每帧四次点击，不进入另一套帧导航。"""
@@ -792,11 +841,10 @@ class ExperimentInferenceActions(QObject):
         self._relabel_index = (self._relabel_index // 4 + 1) * 4
         self._continue_relabeling()
 
-    def finishReviewing(self) -> None:
+    def finishReviewing(self, *, after: Callable[[], None] | None = None) -> None:
         """关闭推荐列表;保留候选和已写 manual 点。"""
 
         self._cancel_correct_quietly()
-        self.window.projectActions.autosave("relabeling closed")
         self._relabel_tasks = ()
         self._relabel_index = 0
         self._relabel_message = ""
@@ -813,6 +861,7 @@ class ExperimentInferenceActions(QObject):
         self.window.videoView.set_preview_markers([], "")
         self.window.statusBar().showMessage("Suggestions closed; candidate kept for later")
         self._refresh_workflow()
+        self.window.projectActions.autosave("relabeling closed", after=after)
 
     # ------------------------------------------------------------------
     # 四轨激活/替换/清除(P1.4-S4c)

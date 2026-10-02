@@ -1,8 +1,8 @@
-> Publication工作树（2026-10-01）：P0–P4完成，P4独立/真人验收通过。用户优先处理的Windows CI修复已闭环：6a20ac6/2e8b5a9/188bd47，R4 Approve；集成0feb196的run36887110342双平台success（Win1336/Mac1338passed，各1既有strictxfail）。P5已获授权，保留在P5.1 mini-plan入口、无代码实现；P6未启动。ADR-0020历史限制与P6前Windows门禁保留。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-02）：P0–P5开发交付通过用户HR，P5执行集成收尾；最终源码98bfd25 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保留not_run、作为发行前验收待办；进入P6前Windows G1–G4门禁不变，P6未启动。下一步完成P5集成/推送及双平台CI确认后停止，等待用户新指令。完整证据见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 
-> Publication worktree note（2026-10-01）：本文件保留main通用线状态；论文线P0–P4已交付，Windows CI修复通过，下一步为已授权P5规划。Windows真机门禁仍延期至P6前；详见[publication/STATUS.md](../../publication/STATUS.md)。
+> Publication worktree note（2026-10-02）：本文件保留main通用线状态；论文线P0–P4已交付，P5本轮推进至最终HR。权威当前步骤、自动验证与未完成真人gate见[publication/STATUS.md](../../publication/STATUS.md)。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

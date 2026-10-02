@@ -89,6 +89,8 @@ class ModelActions(QObject):
     def _set_activity(self, text: str, *, running: bool | None = None) -> None:
         self._activity_text = text
         if self._panel is not None:
+            self.window.trackingActions._context_key = None
+            self.window.trackingActions.refresh()
             self._panel.setActivity(text)
             # running 缺省跟随当前 busy;终态文案(Completed/Failed/Cancelled)
             # 由调用方传 running=False,避免 reset 顺序把 Cancel 留在可用态
@@ -140,7 +142,8 @@ class ModelActions(QObject):
             return
         try:
             run, request = prepare_experiment_training(
-                session, experiment.experiment_id
+                session, experiment.experiment_id,
+                params=self.window.trackingActions.panel.trainingParameters(),
             )
         except ProjectSessionError as error:
             # HR 反馈(2026-09-28):状态栏消息一闪而过被读作"死按钮";
@@ -152,8 +155,6 @@ class ModelActions(QObject):
             return
         params = dict(request.params_config)
         device = params.pop("device", "cpu")
-        if device == "auto":
-            device = "cpu"  # GUI 默认 CPU;mps/cuda 经高级设置接入属后续
         try:
             handle = self._runner_factory().start_training(
                 session.project_root, request, device=device
@@ -187,7 +188,27 @@ class ModelActions(QObject):
     # runtime 自检
     # ------------------------------------------------------------------
 
-    def freezeFixedCheck(self) -> None:
+    def trainWithCurrentLabels(self) -> None:
+        """显式训练按钮：必要时确认检查帧，确认后继续同一训练入口。"""
+
+        session = self.window.analysisSession
+        experiment = self.window.currentPendulumExperiment()
+        if session is None or experiment is None:
+            return
+        if self.busy or self.window.projectActions.busy or any(
+                getattr(self.window, name, None) is not None and getattr(self.window, name).busy
+                for name in ("frameSelectionActions", "experimentInferenceActions")):
+            self.window.statusBar().showMessage("Finish or cancel the active task first")
+            return
+        from ai_physics_tracker.application.annotation_join import fixed_check_status
+
+        if not fixed_check_status(session.project, experiment)[0]:
+            if not self.freezeFixedCheck():
+                return
+        self.window._exitExperimentGuide()
+        self.runJointTraining()
+
+    def freezeFixedCheck(self) -> bool:
         """冻结共享固定检查帧集(P1.3-S6 最小 GUI 入口,C1 预选+用户确认)。
 
         P1.2 S4 只交付了 session 动作;无入口则联合训练(fixed check 是
@@ -198,10 +219,10 @@ class ModelActions(QObject):
         session = self.window.analysisSession
         experiment = self.window.currentPendulumExperiment()
         if session is None or experiment is None:
-            return
+            return False
         if self.busy or self.window.projectActions.busy:
             self.window.statusBar().showMessage("A model task is running")
-            return
+            return False
         from ai_physics_tracker.application.annotation_join import (
             join_complete_frames,
         )
@@ -216,7 +237,7 @@ class ModelActions(QObject):
         if not complete:
             self.window.statusBar().showMessage(
                 "No complete (4/4) frames to freeze; finish guided marking first")
-            return
+            return False
         frames = preselect_fixed_check_frames(complete)
         answer = QMessageBox.question(
             self.window, "Freeze fixed-check frames",
@@ -228,18 +249,20 @@ class ModelActions(QObject):
             QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
-            return
+            return False
         try:
             session.freeze_experiment_fixed_check(experiment.experiment_id, frames)
         except ProjectSessionError as error:
             self.window.statusBar().showMessage(f"Cannot freeze: {error}")
-            return
+            return False
         self.window.statusBar().showMessage(
             f"Fixed-check set frozen: {list(frames)}")
         self.window.projectActions.refresh()
+        return True
 
     def runSelftest(
-        self, model_id: UUID, *, on_success: Callable[[], None] | None = None,
+        self, model_id: UUID, *, device: str = "cpu",
+        on_success: Callable[[], None] | None = None,
     ) -> None:
         from ai_physics_tracker.application.teacher_models import (
             build_model_selftest_payload,
@@ -277,7 +300,7 @@ class ModelActions(QObject):
             return
         try:
             handle = self._runner_factory().start_selftest(
-                session.project_root, model.model_id, payload_fields, device="cpu"
+                session.project_root, model.model_id, payload_fields, device=device
             )
         except ModelWorkerError as error:
             self.window.statusBar().showMessage(f"Cannot start: {error}")
@@ -289,9 +312,9 @@ class ModelActions(QObject):
         self._job_dir = None   # selftest 无 job_dir 消费者(m5①);真实目录带 uuid 后缀
         self._session = session
         self._timer.start()
-        self._set_activity("Self-testing model")
+        self._set_activity(f"Self-testing model ({device})")
         self.window.statusBar().showMessage(
-            f"Compatibility self-test for model {model.model_id} running (cpu)")
+            f"Compatibility self-test for model {model.model_id} running ({device})")
         self.window.projectActions.refresh()
 
     # ------------------------------------------------------------------
@@ -386,7 +409,7 @@ class ModelActions(QObject):
             f"as unverified ({result.get('actual_device')}, "
             f"{completed.extra_fields.get('elapsed_s')}s)")
         self.window.projectActions.refresh()
-        self.runSelftest(reference.model_id)
+        self.runSelftest(reference.model_id, device=str(result["actual_device"]).split(":")[0])
 
     def _finish_selftest_success(self, result: dict) -> None:
         session = self.window.analysisSession
