@@ -26,6 +26,7 @@ from ai_physics_tracker.application.experiment_inference_job import (
 from ai_physics_tracker.application.model_worker import (
     ModelWorkerError,
     ModelWorkerRunner,
+    read_inference_progress,
 )
 from ai_physics_tracker.application.project_session import (
     ProjectSession,
@@ -74,6 +75,8 @@ class ExperimentInferenceActions(QObject):
         self._job_dir: Path | None = None
         self._session: ProjectSession | None = None
         self._user_cancel = False
+        self._predicted_frames = 0
+        self._progress_phase = "Loading model"
 
         # 审核会话态(不持久化;queue/records 本身在 run extras)
         self._dialog = None
@@ -217,7 +220,7 @@ class ExperimentInferenceActions(QObject):
         self._job_dir = session.project_root / "data" / "engines" / str(run.run_id)
         self._session = session
         self._timer.start()
-        self._set_activity("Inferring (external worker)")
+        self._refresh_inference_progress()
         self.window.statusBar().showMessage(
             f"Joint inference run {run.run_id} started on cpu "
             "(external worker; logs in the run directory)")
@@ -235,7 +238,10 @@ class ExperimentInferenceActions(QObject):
 
     def _poll(self) -> None:
         handle = self._handle
-        if handle is None or handle.is_alive():
+        if handle is None:
+            return
+        if handle.is_alive():
+            self._refresh_inference_progress()
             return
         self._timer.stop()
         if self._session is not None and self.window.analysisSession is not self._session:
@@ -243,6 +249,10 @@ class ExperimentInferenceActions(QObject):
             handle.cancel()
             self._set_activity("Discarded (project changed)", running=False)
             self._reset_job()
+            return
+        if self._user_cancel:
+            # worker可能已退出但终态尚未poll；用户取消仍拒收迟到success。
+            self._finish_cancelled()
             return
         try:
             result = handle.read_result()
@@ -259,7 +269,43 @@ class ExperimentInferenceActions(QObject):
             error = (result.get("error") or {}).get("message", "inference failed")
             self._finish_failure(error)
             return
+        self._refresh_inference_progress()
+        self.window.trackingActions.panel.setActivity(
+            "Verifying prediction result", step=self._predicted_frames, total=self._request.frame_count)
         self._finish_success(result, handle)
+
+    def _refresh_inference_progress(self) -> None:
+        """真实已后处理帧数；ETA用累计吞吐估算，未出首批不猜时间。"""
+
+        if self._handle is None or self._request is None or self._job_dir is None or self._run is None:
+            return
+        if self.window.analysisSession is not self._session:
+            return
+        total = self._request.frame_count
+        progress = read_inference_progress(self._job_dir, self._run.run_id, total)
+        if progress is not None and progress[0] >= self._predicted_frames:
+            self._predicted_frames, self._progress_phase = progress
+        step = self._predicted_frames
+        elapsed = max(0., self._handle.elapsed_s)
+        minutes, seconds = divmod(int(elapsed), 60)
+        stage = "Saving / checking predictions" if step == total else (
+            "Inferring" if step else self._progress_phase)
+        panel = self.window.trackingActions.panel
+        panel.setActivity(stage, step=step, total=total)
+        panel.progressBar.setFormat(f"%p% · {step}/{total} frames")
+        # macOS原生进度条可能不绘制format文本；标签保证帧数/百分比可见。
+        details = [f"{step}/{total} frames ({step / total:.0%})", f"Elapsed {minutes:02d}:{seconds:02d}"]
+        if 0 < step < total and elapsed > 0:
+            rate = step / elapsed
+            remaining = int((total - step) / rate)
+            mins, secs = divmod(remaining, 60)
+            details.extend((f"{rate:.2f} frames/s", f"ETA ≈ {mins:02d}:{secs:02d}"))
+        elif step == 0:
+            details.append("Waiting for the first predicted batch; ETA unavailable")
+        else:
+            details.append("All frames predicted; result not confirmed yet")
+        panel.metricsLabel.setText(" · ".join(details))
+        panel.cancelButton.setEnabled(True)
 
     def _finish_success(self, result: dict, handle) -> None:
         session = self.window.analysisSession
@@ -324,6 +370,8 @@ class ExperimentInferenceActions(QObject):
         self._job_dir = None
         self._session = None
         self._user_cancel = False
+        self._predicted_frames = 0
+        self._progress_phase = "Loading model"
 
     # ------------------------------------------------------------------
     # 审核队列(P1.4-S4b)

@@ -85,7 +85,13 @@ class _ResultLogQueue:
     """
 
     def put(self, message: Any) -> None:
+        from ai_physics_tracker.application.tracking_types import TaskProgress
+
         text = getattr(message, "message", None)
+        if isinstance(message, TaskProgress):
+            # 仅观测日志，终态result协议仍是唯一成功证据。
+            phase = str(text or "Working").replace("\n", " ").replace("\r", " ")[:160]
+            text = f"APT_PROGRESS {message.run_id} {message.step}/{message.total_steps} {phase}"
         if text:
             try:
                 os.write(2, (str(text).rstrip()[:4096] + "\n").encode("utf-8", "replace"))

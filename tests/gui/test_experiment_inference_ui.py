@@ -182,6 +182,71 @@ def _install(window, runner):
     return window.experimentInferenceActions
 
 
+def test_joint_inference_real_progress_eta_and_terminal_reset(qtbot, tmp_path, synthetic_video_path):
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6))
+    controller._timer.stop()
+    handle = controller._handle
+    handle._alive_count = 10
+    handle.elapsed_s_value = 30.
+    panel = window.trackingActions.panel
+    total = controller._request.frame_count
+    assert total == 5
+    assert panel.progressBar.maximum() == total and panel.progressBar.value() == 0
+    assert "Waiting for the first" in panel.metricsLabel.text()
+    log = controller._job_dir / "worker.log"
+    step = total // 2
+    log.write_text(f"APT_PROGRESS {controller._run.run_id} {step}/{total} Frames predicted\n", encoding="utf-8")
+    controller._poll()
+    assert panel.progressBar.value() == step
+    assert f"{step}/{total}" in panel.progressBar.format()
+    assert "2/5 frames (40%)" in panel.metricsLabel.text()
+    assert "0.07 frames/s" in panel.metricsLabel.text()
+    assert "ETA ≈ 00:45" in panel.metricsLabel.text()
+    # 坏/回退记录保留最后已知进度，不把旧run的百分比混进来。
+    log.write_text(f"APT_PROGRESS {uuid4()} {total}/{total} Frames predicted\n", encoding="utf-8")
+    controller._poll()
+    assert panel.progressBar.value() == step
+    log.write_text(f"APT_PROGRESS {controller._run.run_id} {total}/{total} Frames predicted\n", encoding="utf-8")
+    controller._poll()
+    assert panel.stageLabel.text() == "Saving / checking predictions"
+    assert session.tracking_runs()[-1].status == "running"  # 100%帧不等于成功
+    handle._alive_count = 0
+    controller._poll()
+    assert session.tracking_runs()[-1].status == "completed"
+    assert panel.progressBar.format() == "%p%" and panel.metricsLabel.text() == ""
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6))
+    controller._timer.stop()
+    assert panel.progressBar.value() == 0 and controller._predicted_frames == 0
+    controller.cancel()
+    controller._poll()
+    assert panel.stageLabel.text() == "Cancelled" and panel.progressBar.value() == 0
+
+
+def test_progress_and_late_success_discarded_after_session_swap(qtbot, tmp_path, synthetic_video_path):
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    controller.runJointInference(model.model_id, InferenceParams(min_confidence=0.6))
+    controller._timer.stop()
+    handle = controller._handle
+    handle._alive_count = 1
+    total = controller._request.frame_count
+    (controller._job_dir / "worker.log").write_text(
+        f"APT_PROGRESS {controller._run.run_id} {total}/{total} Frames predicted\n", encoding="utf-8")
+    replacement = session.detached()
+    window._annotation_session = replacement
+    panel = window.trackingActions.panel
+    controller._poll()
+    assert controller._predicted_frames == 0 and panel.progressBar.value() == 0
+    controller._poll()
+    assert handle.cancelled and not controller.busy
+    assert panel.stageLabel.text() == "Discarded (project changed)"
+    assert panel.progressBar.maximum() == 1 and panel.progressBar.value() == 0
+    assert replacement.project == session.project  # 新会话没有收到候选
+    assert session.tracking_runs()[-1].status == "running"
+
+
 def _experiment_window(qtbot, tmp_path, synthetic_video_path):
     from ai_physics_tracker.gui.main_window import MainWindow
     from ai_physics_tracker.infrastructure.ffprobe_timing import FFprobeTimingProbe

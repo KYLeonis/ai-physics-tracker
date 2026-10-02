@@ -6,6 +6,7 @@
 """
 
 from pathlib import Path
+import re
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -22,6 +23,26 @@ from ai_physics_tracker.infrastructure.external_worker import (
 )
 
 ModelWorkerError = ExternalWorkerError
+
+
+def read_inference_progress(job_dir: Path, run_id: UUID, frame_count: int) -> tuple[int, str] | None:
+    """只读该run最近64KiB日志中的后处理计数；坏/截断记录不影响任务。"""
+
+    try:
+        with (job_dir / "worker.log").open("rb") as stream:
+            stream.seek(0, 2)
+            stream.seek(max(0, stream.tell() - 65536))
+            lines = stream.read(65536).decode("utf-8", errors="replace").split("\n")[:-1]
+    except OSError:
+        return None
+    pattern = re.compile(rf"APT_PROGRESS {run_id} (\d{{1,10}})/(\d{{1,10}}) (.*)")
+    for line in reversed(lines):
+        match = pattern.fullmatch(line.rstrip("\r"))
+        if match is not None:
+            step, total = int(match[1]), int(match[2])
+            if total == frame_count and 0 <= step <= total:
+                return step, match[3][:160]
+    return None
 
 
 class ModelWorkerRunner:
