@@ -1,6 +1,6 @@
 # Roadmap — AI Physics Tracker
 
-> Publication线（2026-10-02）：P0–P4完成；P5.1–P5.3实现与独立review通过，停在[最终HR](../publication/student-pilot.md)。学生pilot/真实跨平台副本重开未测，P5不标完成，P6未启动。权威状态见[publication/STATUS.md](../publication/STATUS.md)。
+> Publication线（2026-10-02）：P0–P4完成；P5.1–P5.3实现与独立review通过，训练循环三项用户HR通过；新增真实推理进度停在[视觉HR](../publication/student-pilot.md#本轮推理进度-hr2026-10-02)。学生pilot/真实跨平台副本重开未测，P5不标完成，P6未启动。权威状态见[publication/STATUS.md](../publication/STATUS.md)。
 
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始

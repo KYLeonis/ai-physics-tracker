@@ -1,8 +1,8 @@
 # Publication P5.3 Independent Review
 
 - 日期：2026-10-02；reviewer：gpt-6-luna/max；主实现方：root；reviewer只读。
-- 范围：P5.3新项目入口、三工作区整链接线、恢复/保存指引、学生任务与未完成gate；P5.2科学导出内部由其专项review负责。
-- 最终Verdict：R4 **Approve**，F1/F2 Closed；用户已提交训练循环HR反馈，修复待真人复测；非开发学生pilot与Windows副本重开仍未执行。
+- 范围：P5.3新项目入口、三工作区整链接线、恢复/保存指引、学生任务、真实推理进度与未完成gate；P5.2科学导出内部由其专项review负责。
+- 最终Verdict：R5 **Approve**，零开放finding；F1/F2 Closed，训练循环三项用户HR通过。新进度视觉HR、非开发学生pilot及Windows副本重开待执行。
 
 ## R1 — Request Changes
 
@@ -36,3 +36,12 @@ Reviewer独立入口/工作区导航测试 **2 passed**；确认radius不阻断�
 - 复审`87d5e89`；F2 Closed，零开放blocking finding。
 - Reviewer确认failed/cancelled只在标签不变时覆盖主步骤；changed保留digest派生的Train/Label顺序，history仍存在。独立参数化failed/cancelled回归2 passed（1.86s）。
 - 最终GUI HR待复测；不得将自动化/Independent Review等同于学生pilot或Windows真机验收。
+
+## R5 — inference progress / Approve
+
+- 范围：`59acdf7..827f31f`；[High-risk mini-plan](../../publication/plans/p5.3-hr-inference-progress.md)；root实现，gpt-6-luna/max只读review。
+- 无finding。Reviewer确认计数来自后处理帧，run/分母一致且有界读取；坏/截断记录忽略；新run重置、100%仍running直到结果验证、取消后拒收迟到success，session切换后进度/结果均不应用。
+- 独立定向6 passed（11.21s）。Root定向60 passed（37.30s），最终parser/进度/session swap三项3 passed（10.74s）。
+- 新视觉必须用户亲测；前轮用户三个训练循环HR通过不替代此项或外部学生/Windows真机gate。
+
+- 最终源码`827f31f` CI run[36972340803](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36972340803) Windows/macOS success；后续文档同步无代码/测试变更。

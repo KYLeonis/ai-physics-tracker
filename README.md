@@ -1,6 +1,6 @@
 # AI Physics Tracker
 
-> Publication线（2026-10-02）：P0–P4完成；P5训练循环HR反馈已修复，Acquire提供推荐20帧→四点标注→训练→推理→困难帧小批重标的编号按钮；Independent Review和Windows/macOS CI通过，停在HR复测。学生两支pilot及真实跨平台副本重开仍待实测，P5未关闭、P6未启动。[HR步骤](publication/student-pilot.md)；权威状态见[publication/STATUS.md](publication/STATUS.md)。
+> Publication线（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过，新增真实推理帧数/百分比、耗时、速度和约剩余时间，Independent R5通过，待新进度HR。外部学生pilot及Windows副本重开仍待实测，P5未关闭、P6未启动。[HR步骤](publication/student-pilot.md)；[进度mini-plan](publication/plans/p5.3-hr-inference-progress.md)；权威状态见[publication/STATUS.md](publication/STATUS.md)。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 

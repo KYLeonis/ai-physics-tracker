@@ -2,8 +2,16 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P5用户HR发现的首次推荐/训练循环缺口已修复，Independent R4及最终双平台CI通过，停在三项真人复测。非开发本科生pilot仍未执行，P5未关闭，P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
+- 当前：**P0–P4完成；P5训练循环三项用户HR通过。真实推理进度补充`827f31f`已实现，Independent R5 Approve、最终Windows/macOS CI通过，进度视觉HR待测试。非开发本科生pilot与Windows副本重开仍未执行，P5未关闭、P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P5.3 HR follow-up — inference progress（2026-10-02）
+
+- 用户确认前轮训练循环三个HR项均通过；[原mini-plan](plans/p5.3-hr-training-loop.md)闭环。新增[推理进度mini-plan](plans/p5.3-hr-inference-progress.md)，主Agent实现，readonly gpt-6-luna/max Independent R5 Approve，无finding；独立6 passed（11.21s）。
+- `827f31f`：保留既有DLC后处理TaskProgress计数，以run ID/总帧数校验并有界读取最近64KiB日志。Activity显示真实帧数/百分比、耗时、累计速度与约ETA；首批等待、预测完成后的保存/验证明确区分。100%预测不能充当任务成功或自动采用。换项目/新run清空计数；取消先于终态poll时拒收迟到success。
+- 本地定向60 passed（37.30s），最终针对parser/进度与换项目3 passed（10.74s）；无新增依赖/schema/数值算法改动。最终源码`827f31f` CI run[36972340803](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36972340803) Windows/macOS均success；之后仅文档同步，源码/测试与已验证SHA一致。
+- P012只读核查：[训练检查记录](../docs/notes/p012-training-check-2026-10-02.md)。21完整帧、17训练/4检查、50epoch，最佳snapshot040与自检success；14:11日志约37%，CPU worker仍存活，无result。当前worker运行旧代码，完成后保存并重启GUI，下一次推理才显示新进度。[新进度HR](student-pilot.md#本轮推理进度-hr2026-10-02)待用户亲测；保持当前推理运行，不写用户工程。
+- 工作分支保持，integration仍`e166f0a`，main未改；外部学生pilot、Windows真实重开及P6前真机门禁仍未完成，P5不合并/不关闭，不进入P6。
 
 ## P5.3 HR follow-up — explicit training loop（2026-10-02）
 
@@ -11,7 +19,7 @@
 - `916adeb`：Acquire恒定五步按钮，首轮推荐20帧→逐帧四点→训练/重训→最新模型推理→最新run困难帧推荐/勾选小批；任务卡按标签digest/run提示下一步。重标后可结束并训练，fixed-check确认Yes后继续、No不启动；不自动采用候选。
 - 共享帧集追加推荐并保留原帧/partial手工标注；辅助轨切换不取消同一实验选帧。复用既有autosave完成回调，保存期间新增标注再次保存后才继续训练；换session/experiment不续跑。
 - `916adeb`定向114 passed（37.66s）、全量1357 passed / 1 existing strict xfailed / 9subtests（198.08s）；冻结verifier15/48/2与diff通过。Independent R3发现失败/取消盖过标签变化的retrain建议，`87d5e89`修复；21定向通过（6.17s），R4 Approve、F2 Closed，独立failed/cancelled参数化回归2 passed（1.86s）。xfail仍为ADR-0020历史限制，不计为数值通过。
-- `916adeb` CI run[36958915318](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36958915318)及最终源码`87d5e89` run[36959385212](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36959385212)均Windows/macOS success；随后只同步文档，源码/测试与最终已验证SHA一致。[本轮三项HR复测](student-pilot.md#本轮训练循环修复-hr2026-10-02)待用户确认。P5保持工作分支，integration仍`e166f0a`、main clean，无本次临时文件；不合并、不进入P6。
+- `916adeb` CI run[36958915318](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36958915318)及最终源码`87d5e89` run[36959385212](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36959385212)均Windows/macOS success；随后只同步文档，源码/测试与最终已验证SHA一致。[本轮三项HR复测](student-pilot.md#本轮训练循环修复-hr2026-10-02)已由用户明确全部通过。P5保持工作分支，integration仍`e166f0a`、main clean，无本次临时文件；不合并、不进入P6。
 
 ## P5 delivery — 2026-10-02（原交付checkpoint）
 
