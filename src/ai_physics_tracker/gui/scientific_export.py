@@ -94,7 +94,7 @@ def _draw_plot(painter: QPainter, snapshot: ScientificExport, plot: tuple, cance
     status = "CURRENT" if snapshot.current else "HISTORICAL / STALE"
     painter.drawText(QRectF(130, 65, 1200, 35), f"{status} · {snapshot.record.execution_status} · {snapshot.record.created_at.isoformat()}")
     painter.drawText(QRectF(130, 100, 1200, 35), f"Source result {snapshot.record.result_id} · {snapshot.record.core_version}")
-    bounds = QRectF(145, 180, 1170, 570)
+    bounds = QRectF(230, 180, 1085, 570)
     painter.drawRect(bounds)
     values = [(x, y) for _, xs, ys in curves for x, y in zip(xs, ys) if _finite(x) and _finite(y)]
     if not values:
@@ -115,8 +115,8 @@ def _draw_plot(painter: QPainter, snapshot: ScientificExport, plot: tuple, cance
         painter.drawLine(QPointF(bounds.left(), y), QPointF(bounds.right(), y))
         painter.setPen(Qt.GlobalColor.black)
         painter.drawText(QRectF(x-50, bounds.bottom()+10, 100, 30), Qt.AlignmentFlag.AlignCenter, f"{xmin+(xmax-xmin)*i/5:.5g}")
-        painter.drawText(QRectF(8, y-15, 125, 30), Qt.AlignmentFlag.AlignRight, f"{ymin+(ymax-ymin)*i/5:.5g}")
-    painter.drawText(QRectF(145, 820, 1170, 35), Qt.AlignmentFlag.AlignCenter, xlabel)
+        painter.drawText(QRectF(75, y-15, 140, 30), Qt.AlignmentFlag.AlignRight, f"{ymin+(ymax-ymin)*i/5:.5g}")
+    painter.drawText(QRectF(bounds.left(), 820, bounds.width(), 35), Qt.AlignmentFlag.AlignCenter, xlabel)
     painter.save(); painter.translate(34, 740); painter.rotate(-90)
     painter.drawText(QRectF(0, 0, 570, 35), Qt.AlignmentFlag.AlignCenter, ylabel); painter.restore()
     colors = ("#2456a6", "#d55e00", "#00845b")
