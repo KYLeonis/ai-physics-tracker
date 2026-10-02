@@ -1,6 +1,6 @@
 # AI Physics Tracker
 
-> Publication线（2026-10-02）：P0–P5已集成；P6.1原生封装与完整P6.2独立AI环境安装正在工作分支验收，尚未集成或发布。Mac新环境已验证训练、CPU/MPS推理及离线重开；Windows真机门禁按用户裁定延期，CI不替代真机。入口为应用菜单 **Settings → AI environment… → Install and use**；[mini-plan](publication/plans/p6.2-managed-runtime.md)、[权威状态](publication/STATUS.md)。
+> Publication线（2026-10-02）：P0–P5已集成；P6.1/P6.2源码双平台测试与打包CI通过、独立复审通过，最新Mac14+安装版等待[HR](publication/plans/p6.2-human-review.md)，尚未集成或发布。Mac独立AI环境已验证训练、CPU/MPS推理及离线重开；Windows真机门禁按裁定延期。入口为 **Settings → AI environment… → Install and use**；[mini-plan](publication/plans/p6.2-managed-runtime.md)、[权威状态](publication/STATUS.md)。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 

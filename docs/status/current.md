@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-02）：完整P6.2已按用户“开始”实施于`feat/p6.2-managed-runtime`，叠加未集成P6.1；安装GUI/事务/平台锁与Mac训练、CPU/MPS推理、离线验证已实现，Independent Review/最终CI/HR收口中。下一步核对[mini-plan](../../publication/plans/p6.2-managed-runtime.md)及[权威状态](../../publication/STATUS.md)，完成审查后交付最新DMG供用户HR；未过HR不合并，公开tag/Release等用户说“发”。用户工程/视频只读、main与共享venv不修改；Windows真机门禁按用户裁定延期。
+> Publication工作树（2026-10-02）：完整P6.2代码/自动验证完成于`feat/p6.2-managed-runtime`，叠加未集成P6.1；`c890b5b`双平台tests/packaging全绿，独立复审Approve with limitations。最新`dist/p6.2-final`安装版已启动，下一步停止等待用户[HR](../../publication/plans/p6.2-human-review.md)；[mini-plan](../../publication/plans/p6.2-managed-runtime.md)、[权威状态](../../publication/STATUS.md)。未过HR不合并，公开tag/Release等用户说“发”。用户工程/视频只读、main与共享venv不修改；Windows真机门禁按用户裁定延期。
 
 # Current Status
 
