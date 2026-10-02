@@ -28,12 +28,15 @@ powershell -File packaging\build_windows.ps1
 torch/torchvision/deeplabcut（`launch_context.FORBIDDEN_HOST_ROOTS`）、随包
 FFprobe 存在且可执行。冒烟失败即构建失败。
 
-## Frozen 形态行为（P6.1 边界）
+## Frozen 形态行为
 
 - AI 训练/自检/推理依赖外部 Python runtime（Protocol v1 worker）。frozen 且无
-  managed runtime 时，AI 入口显示"安装 AI 环境"占位并拒绝启动；**安装器属 P6.2**。
-  测试后门：`AI_PHYSICS_RUNTIME_PYTHON=<解释器绝对路径>`（或
-  `<AppDataLocation>/runtimes/active.txt` 指针文件）。
+  managed runtime 时，AI 入口打开 Settings → AI environment 安装界面（P6.2）。
+  安装自检成功后才原子发布 `<AppDataLocation>/runtimes/active.txt`，重开时要求
+  对应 `runtime-ready.json` 身份有效。高级覆盖：
+  `AI_PHYSICS_RUNTIME_PYTHON=<解释器绝对路径>`。
+- 本发行版 AI 流程从 Experiment setup 创建单摆实验后使用联合训练/推理。
+  通用单轨的旧 AI 入口在 frozen 下禁用并显示引导；手工单轨测量仍可用。
 - 手工标注、标定、运动学/ODE 拟合/批评、导出全部可用；FFprobe 用包内二进制
   （构建时 SHA-256 校验）。
 - 文件日志：`<AppDataLocation>/logs/app.log`（仅 frozen）。
@@ -47,4 +50,6 @@ FFprobe 存在且可执行。冒烟失败即构建失败。
   可运行即达标；Inno Setup 待后续）。
 - Windows G1–G4 真机门禁、G5 clean-machine、学生 pilot 按用户裁定延期至发行前
   （P6.3/P6.4），CI 通过不冒充真机验收。
-- AI runtime 无安装实现（P6.2）；frozen 版 AI 功能默认不可用。
+- macOS arm64 最低为 **14.0**（host 科学计算 wheels 与 AI profile 的要求）。
+- Windows CUDA profile 必须通过显式 CUDA tensor 自检；不可用时安装失败并
+  保留旧环境，用户可选择 CPU profile 重试。Windows 真机训练验证仍待补。

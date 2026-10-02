@@ -224,6 +224,33 @@ def test_joint_inference_real_progress_eta_and_terminal_reset(qtbot, tmp_path, s
     assert panel.stageLabel.text() == "Cancelled" and panel.progressBar.value() == 0
 
 
+def test_explicit_device_selftest_reused_until_runtime_changes(qtbot, tmp_path, synthetic_video_path, monkeypatch):
+    import sys
+
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    calls = []
+
+    def selftest(model_id, *, device, on_success):
+        calls.append((model_id, device))
+        on_success()
+
+    monkeypatch.setattr(window.modelActions, "runSelftest", selftest)
+    params = InferenceParams(min_confidence=0.6, device="cpu")
+    controller.set_runtime_python(sys.executable)
+    for _ in range(2):
+        controller.runJointInference(model.model_id, params)
+        assert controller.busy
+        controller._timer.stop()
+        controller._poll()
+    assert calls == [(model.model_id, "cpu")]
+    controller.set_runtime_python(sys.executable)
+    controller.runJointInference(model.model_id, params)
+    controller._timer.stop()
+    controller._poll()
+    assert calls == [(model.model_id, "cpu"), (model.model_id, "cpu")]
+
+
 def test_progress_and_late_success_discarded_after_session_swap(qtbot, tmp_path, synthetic_video_path):
     window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
     controller = _install(window, _Runner())

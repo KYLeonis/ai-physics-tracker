@@ -193,6 +193,25 @@ def test_runner_start_failure_marks_run_failed_and_clears_pending(
     assert "fake runner has no handle" in str(failed.error_message)
 
 
+@pytest.mark.parametrize("operation", ["train", "infer"])
+def test_frozen_generic_ai_is_disabled_before_any_run_is_created(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch, operation
+):
+    import sys
+
+    runner = _FakeRunner()
+    window, session, _track_id = _opened_window(qtbot, synthetic_video_path, tmp_path, runner)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    panel = window.trackingActions.panel
+    assert not panel.trainButton.isEnabled() and not panel.inferButton.isEnabled()
+    assert "Experiment setup" in panel.trainReasonLabel.text()
+    before = session.tracking_runs()
+    getattr(window.trackingActions, operation)()
+    assert session.tracking_runs() == before and runner.calls == 0
+
+
 @pytest.mark.parametrize("change", ["timing", "project_root", "generation"])
 def test_context_change_cancels_unified_task(
     qtbot,

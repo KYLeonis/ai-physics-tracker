@@ -26,6 +26,9 @@ from ai_physics_tracker.application import user_messages
 from ai_physics_tracker.application.refinement_history import extract_refinement_state
 from ai_physics_tracker.application.training_advisor import AdvisorInput, recommend_training_action
 from ai_physics_tracker.domain.pendulum import ExperimentFrameSet
+from ai_physics_tracker.gui.launch_context import is_frozen
+
+_FROZEN_TRACKING_REASON = "This edition supports AI through a pendulum experiment. Open Experiment setup, then use joint training / inference."
 from ai_physics_tracker.domain.tracking_run import mark_run_running, mark_run_failed, mark_run_cancelled
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.application.tracking_types import TaskProgress, TaskLog, TaskResult
@@ -186,10 +189,10 @@ class TrackingActions(QObject):
             )
             else None
         )
-        train_reason = reason or bound_reason
+        train_reason = (_FROZEN_TRACKING_REASON if is_frozen() else None) or reason or bound_reason
         if not train_reason and len(session.manual_points(track_id)) < 3:
             train_reason = "Mark at least 3 frames; cover different target positions"
-        infer_reason = reason or bound_reason
+        infer_reason = (_FROZEN_TRACKING_REASON if is_frozen() else None) or reason or bound_reason
         if not infer_reason and not any(run.track_id == track_id and run.task_type == "train"
                 and run.status == "completed" and run.model_snapshot for run in runs):
             infer_reason = "Train a model for this track first"
@@ -342,6 +345,12 @@ class TrackingActions(QObject):
                 state = self._workflow_state(session, track_id, runs)
             card = select_task_card(state)
             experiment = self.window.currentPendulumExperiment()
+            if (is_frozen() and experiment is None and card.primary is not None
+                    and card.primary.action_id in {"start_learning", "retry_learning", "continue_optimizing", "generate_trajectory"}):
+                from ai_physics_tracker.application.workflow_projection import ActionSpec
+
+                card = replace(card, explanation=(_FROZEN_TRACKING_REASON,),
+                               primary=ActionSpec("view_setup", "Open Experiment setup"), secondary=())
             if experiment is not None:
                 from ai_physics_tracker.application.publication_workflow import publication_task_card
                 model_actions = getattr(self.window, "modelActions", None)
@@ -1114,6 +1123,11 @@ class TrackingActions(QObject):
 
     def _start(self, parameters, training_run_id=None,
                training_mode: str = "restart", resume_from_run_id: UUID | None = None) -> None:
+        # frozen host 不带 AI 栈；本版只开放外置 worker 的 experiment 入口。
+        if is_frozen():
+            self.panel.setActivity(_FROZEN_TRACKING_REASON)
+            self.window.statusBar().showMessage(_FROZEN_TRACKING_REASON)
+            return
         if self.pending or self.window.projectActions.busy:
             return
         models = getattr(self.window, "modelActions", None)

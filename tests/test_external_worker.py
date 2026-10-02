@@ -162,6 +162,16 @@ def test_hello_success_returns_full_protocol_identity(tmp_path: Path) -> None:
     assert "operation=hello" in log_text
 
 
+def test_worker_cannot_be_shadowed_by_current_directory(tmp_path, monkeypatch):
+    shadow = tmp_path / "cwd/ai_physics_tracker"
+    shadow.mkdir(parents=True)
+    (shadow / "__init__.py").write_text("raise RuntimeError('shadow package loaded')", encoding="utf-8")
+    monkeypatch.chdir(shadow.parent)
+    _, handle, _ = _start_hello(tmp_path)
+    assert handle.join(timeout_s=JOIN_TIMEOUT_S)
+    assert handle.read_result()["status"] == "success"
+
+
 # --- 2. fail 操作:合法 failed 结果 --------------------------------------------
 
 

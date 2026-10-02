@@ -318,7 +318,9 @@ def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
         run_command([str(python), "-m", "pip", "check"], log_path, cancel)
         report(RuntimeProgress("Self-testing", "Torch forward/backward and DeepLabCut import"))
         versions = {a["name"]: a["version"] for a in profile["packages"] if a["name"] in {"torch", "torchvision", "deeplabcut", "numpy"}}
-        result = verify_runtime(python, folder / "selftest", package_root, cancel, expected_versions=versions)
+        device = "cuda" if profile["id"].endswith("-cuda") else "cpu" if profile["system"] == "Windows" else "auto"
+        result = verify_runtime(python, folder / "selftest", package_root, cancel,
+                                device=device, expected_versions=versions)
         evidence = {**journal, "status": "ready", "executable": str(python), "selftest": result}
         atomic_json(folder / "install-state.json", evidence)
         # 所有可能失败的持久化先完成，指针替换是最后一个提交点。

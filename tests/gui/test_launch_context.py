@@ -8,6 +8,7 @@ env 覆盖与占位提示逐分支验证。dev 行为必须与 P6.1 之前完全
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,19 @@ def dev_environment(monkeypatch):
     monkeypatch.delattr(sys, "_MEIPASS", raising=False)
     monkeypatch.delenv("AI_PHYSICS_RUNTIME_PYTHON", raising=False)
     monkeypatch.delenv("AI_PHYSICS_FFPROBE", raising=False)
+
+
+@pytest.fixture
+def ready_interpreter(monkeypatch, tmp_path):
+    data_dir = tmp_path / "appdata"
+    python = data_dir / "runtimes/installs/test/environment/bin/python"
+    python.parent.mkdir(parents=True)
+    python.touch()
+    (data_dir / "runtimes/active.txt").write_text(str(python) + "\n", encoding="utf-8")
+    (python.parent.parent / "runtime-ready.json").write_text(
+        json.dumps({"status": "ready", "executable": str(python)}), encoding="utf-8")
+    monkeypatch.setattr(launch_context, "app_data_dir", lambda: data_dir)
+    return python
 
 
 @pytest.fixture
@@ -75,14 +89,20 @@ class TestFrozenResolution:
         )
         assert runtime_python() is None
 
-    def test_pointer_with_existing_interpreter_wins(self, frozen_environment, monkeypatch, tmp_path):
-        data_dir = tmp_path / "appdata"
-        (data_dir / "runtimes").mkdir(parents=True)
-        (data_dir / "runtimes" / "active.txt").write_text(
-            f"{sys.executable}\n", encoding="utf-8"
-        )
-        monkeypatch.setattr(launch_context, "app_data_dir", lambda: data_dir)
-        assert runtime_python() == sys.executable
+    def test_pointer_with_verified_interpreter_wins(self, frozen_environment, ready_interpreter):
+        assert runtime_python() == str(ready_interpreter)
+
+    @pytest.mark.parametrize("evidence", [None, "invalid json", "null", "[]", '{"status":"failed"}',
+                                          '{"status":"ready","executable":"another python"}'])
+    def test_existing_interpreter_without_valid_ready_evidence_is_rejected(
+        self, frozen_environment, ready_interpreter, evidence
+    ):
+        path = ready_interpreter.parent.parent / "runtime-ready.json"
+        if evidence is None:
+            path.unlink()
+        else:
+            path.write_text(evidence, encoding="utf-8")
+        assert runtime_python() is None
 
     def test_pointer_referencing_missing_interpreter_returns_none(
         self, frozen_environment, monkeypatch, tmp_path
@@ -106,16 +126,10 @@ class TestFrozenResolution:
         assert runtime_python() == sys.executable
 
     def test_invalid_env_override_falls_back_to_pointer(
-        self, frozen_environment, monkeypatch, tmp_path
+        self, frozen_environment, monkeypatch, ready_interpreter
     ):
-        data_dir = tmp_path / "appdata"
-        (data_dir / "runtimes").mkdir(parents=True)
-        (data_dir / "runtimes" / "active.txt").write_text(
-            f"{sys.executable}\n", encoding="utf-8"
-        )
-        monkeypatch.setattr(launch_context, "app_data_dir", lambda: data_dir)
         monkeypatch.setenv("AI_PHYSICS_RUNTIME_PYTHON", "/no/such/file")
-        assert runtime_python() == sys.executable
+        assert runtime_python() == str(ready_interpreter)
 
     def test_bundled_ffprobe_resolves_platform_binary(self, frozen_environment):
         name = "ffprobe.exe" if sys.platform == "win32" else "ffprobe"

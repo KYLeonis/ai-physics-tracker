@@ -124,7 +124,8 @@ def test_macos_profile_rejects_old_os_before_downloading(monkeypatch):
     assert not runtime.profile_supported({"system": "Darwin", "machines": ["arm64"], "min_os_version": "14.0"})
 
 
-def test_runtime_verification_uses_protocol_identity(monkeypatch, tmp_path):
+@pytest.mark.parametrize("device", ["auto", "cpu", "cuda"])
+def test_runtime_verification_uses_protocol_identity(monkeypatch, tmp_path, device):
     python = tmp_path / "environment/bin/python"
 
     class Handle:
@@ -141,12 +142,33 @@ def test_runtime_verification_uses_protocol_identity(monkeypatch, tmp_path):
 
         def start(self, job, request):
             assert request["job_id"] and request["verify_dlc"] is True
+            assert request["device"] == device
             return Handle()
 
     monkeypatch.setattr(runtime, "ExternalWorkerRunner", Runner)
     result = runtime.verify_runtime(python, tmp_path / "check", None, Event(),
-                                    expected_versions={"deeplabcut": "3.0.1"})
+                                    device=device, expected_versions={"deeplabcut": "3.0.1"})
     assert result["status"] == "success"
+
+
+def test_cuda_profile_cannot_activate_after_cpu_fallback(monkeypatch, tmp_path):
+    pointer = tmp_path / runtime.POINTER_RELATIVE
+    pointer.parent.mkdir(parents=True)
+    pointer.write_text("old runtime\n", encoding="utf-8")
+    profile = {"id": "windows-x64-cuda", "system": "Windows", "python": artifact(), "packages": []}
+    monkeypatch.setattr(runtime, "profile_supported", lambda p: True)
+    monkeypatch.setattr(runtime, "download_artifact", lambda *args: tmp_path / "fake.tar.gz")
+    monkeypatch.setattr(runtime, "extract_python", lambda *args: None)
+    monkeypatch.setattr(runtime, "run_command", lambda *args: None)
+
+    def reject_cuda(*args, **kwargs):
+        assert kwargs["device"] == "cuda"
+        raise runtime.RuntimeInstallError("CUDA unavailable")
+
+    monkeypatch.setattr(runtime, "verify_runtime", reject_cuda)
+    with pytest.raises(runtime.RuntimeInstallError, match="CUDA unavailable"):
+        runtime.install_runtime(tmp_path, profile, None, runtime.RuntimeCancellation(), lambda p: None)
+    assert pointer.read_text(encoding="utf-8") == "old runtime\n"
 
 
 @pytest.mark.parametrize("error", [CancelledError(), runtime.RuntimeInstallError("injected installer failure")])

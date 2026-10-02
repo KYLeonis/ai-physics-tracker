@@ -9,6 +9,7 @@ Correct 的落点在主窗口视频上点击(对话框非模态保持可见)。
 from __future__ import annotations
 
 import logging
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -71,9 +72,12 @@ class ExperimentInferenceActions(QObject):
             str(runtime_python) if runtime_python is not None else None
         )
         # frozen 下 worker 源码根与 host 归档不同源,必须显式注入(P6.1)
-        from ai_physics_tracker.gui.launch_context import worker_package_root
+        from ai_physics_tracker.gui.launch_context import is_frozen, worker_package_root
 
         self._package_root = worker_package_root()
+        # managed/frozen 新会话首次验证各模型，避免沿用另一解释器的旧证据。
+        self._runtime_changed = is_frozen() or self._runtime_python != sys.executable
+        self._runtime_checked_models: set[tuple[UUID, str, str]] = set()
         # 测试缝:注入假 runner;产品恒为 ModelWorkerRunner(package_root 随 frozen)
         self._runner_factory = runner_factory or (
             lambda: ModelWorkerRunner(self._runtime_python, package_root=self._package_root)
@@ -132,6 +136,7 @@ class ExperimentInferenceActions(QObject):
             raise RuntimeError("Cannot replace the AI interpreter during a job")
         self._runtime_python = python
         self._runtime_changed = True
+        self._runtime_checked_models.clear()
 
     def _ensure_runtime(self) -> bool:
         """AI 任务启动前的 runtime 守卫：不可用则占位提示并拒绝（P6.1）。"""
@@ -215,8 +220,12 @@ class ExperimentInferenceActions(QObject):
                       if m.model_id == model_id), None)
         checked_device = str(((model.self_test_evidence or {}).get("runtime") or {}).get("device", "")) if model else ""
         # auto必须在worker运行环境重新探测；CPU自检不能证明GPU可用。
-        needs_device_check = (getattr(self, "_runtime_changed", False) and not _device_checked) or (params.device == "auto" and not _device_checked) or (
-            params.device != "auto" and checked_device.split(":")[0] != params.device)
+        runtime_key = (model_id, model.manifest_hash if model else "", params.device)
+        needs_device_check = not _device_checked and (
+            (self._runtime_changed and runtime_key not in self._runtime_checked_models)
+            or params.device == "auto"
+            or checked_device.split(":")[0] != params.device
+        )
         if model is not None and (effective_compatibility_state(model) == "unverified" or needs_device_check):
             experiment_id = experiment.experiment_id
 
@@ -224,6 +233,7 @@ class ExperimentInferenceActions(QObject):
                 current = self.window.currentPendulumExperiment()
                 if (self.window.analysisSession is session and current is not None
                         and current.experiment_id == experiment_id):
+                    self._runtime_checked_models.add(runtime_key)
                     self.runJointInference(model_id, params, _device_checked=True)
 
             self.window.modelActions.runSelftest(

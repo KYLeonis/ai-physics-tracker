@@ -93,7 +93,7 @@ if sys.platform == "darwin":
             "CFBundleShortVersionString": "0.1.0",
             "CFBundleVersion": "0.1.0",
             "NSHighResolutionCapable": True,
-            "LSMinimumSystemVersion": "11.0",
+            "LSMinimumSystemVersion": "14.0",
             # 首发未签名/未公证（P6.4 处理），不注册文件关联
             "CFBundleDocumentTypes": [],
         },

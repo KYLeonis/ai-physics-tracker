@@ -121,7 +121,7 @@ def runtime_python() -> str | None:
 
     if not is_frozen():
         # dev 首次仍使用当前解释器；用户主动完成安装后可立即使用验证过的环境。
-        managed = _managed_runtime_python(require_evidence=True)
+        managed = _managed_runtime_python()
         return managed or sys.executable
     override = os.environ.get("AI_PHYSICS_RUNTIME_PYTHON")
     if override:
@@ -131,10 +131,10 @@ def runtime_python() -> str | None:
         logger.warning(
             "AI_PHYSICS_RUNTIME_PYTHON=%s is not an existing file; ignoring", override
         )
-    return _managed_runtime_python(require_evidence=False)
+    return _managed_runtime_python()
 
 
-def _managed_runtime_python(*, require_evidence: bool) -> str | None:
+def _managed_runtime_python() -> str | None:
     pointer = app_data_dir() / RUNTIME_POINTER_RELATIVE
     try:
         first_line = pointer.read_text(encoding="utf-8").splitlines()[0].strip()
@@ -144,13 +144,13 @@ def _managed_runtime_python(*, require_evidence: bool) -> str | None:
         return None
     candidate = Path(first_line).expanduser()
     if candidate.is_absolute() and candidate.is_file():
-        if require_evidence:
-            try:
-                evidence = json.loads((candidate.parent.parent / "runtime-ready.json").read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                return None
-            if evidence.get("status") != "ready" or evidence.get("executable") != str(candidate):
-                return None
+        try:
+            evidence = json.loads((candidate.parent.parent / "runtime-ready.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        if (not isinstance(evidence, dict) or evidence.get("status") != "ready"
+                or evidence.get("executable") != str(candidate)):
+            return None
         return str(candidate)
     logger.warning(
         "managed runtime pointer %s references missing interpreter %s",
