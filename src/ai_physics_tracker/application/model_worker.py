@@ -46,10 +46,21 @@ def read_inference_progress(job_dir: Path, run_id: UUID, frame_count: int) -> tu
 
 
 class ModelWorkerRunner:
-    """联合训练/自检/联合推理的 external worker 启动器(依赖注入 runtime python)。"""
+    """联合训练/自检/联合推理的 external worker 启动器(依赖注入 runtime python)。
 
-    def __init__(self, runtime_python: str | Path) -> None:
-        self._runner = ExternalWorkerRunner(runtime_python)
+    P6.1 起 package_root 显式注入:frozen host 的 ``__file__`` 位于 PyInstaller
+    归档内,worker 源码哈希/子进程 PYTHONPATH 必须指向随包分发的受信源码根
+    (``launch_context.worker_package_root``);dev 传 None 走默认 src 树。
+    """
+
+    def __init__(
+        self,
+        runtime_python: str | Path,
+        *,
+        package_root: Path | None = None,
+    ) -> None:
+        self._package_root = package_root
+        self._runner = ExternalWorkerRunner(runtime_python, package_root=package_root)
 
     def start_training(
         self,
@@ -65,6 +76,7 @@ class ModelWorkerRunner:
             job_id=UUID(request.run_id),
             device=device,
             extra=request.to_payload(),
+            package_root=self._package_root,
         )
         job_dir = project_root / "data" / "engines" / request.run_id
         return self._runner.start(job_dir, payload)
@@ -83,6 +95,7 @@ class ModelWorkerRunner:
             job_id=UUID(request.run_id),
             device=device,
             extra=request.to_payload(),
+            package_root=self._package_root,
         )
         job_dir = project_root / "data" / "engines" / request.run_id
         return self._runner.start(job_dir, payload)
@@ -99,7 +112,11 @@ class ModelWorkerRunner:
 
         job_id = uuid4()
         payload, _digest = build_request(
-            "selftest_model", job_id=job_id, device=device, extra=payload_fields
+            "selftest_model",
+            job_id=job_id,
+            device=device,
+            extra=payload_fields,
+            package_root=self._package_root,
         )
         job_dir = (
             project_root / "data" / "engines" / f"selftest-{model_id}-{job_id.hex[:8]}"

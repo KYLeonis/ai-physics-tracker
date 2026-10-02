@@ -58,13 +58,25 @@ class ExperimentInferenceActions(QObject):
         runner_factory=None,
     ) -> None:
         super().__init__(window)
-        import sys
 
         self.window = window
-        self._runtime_python = str(runtime_python or sys.executable)
-        # 测试缝:注入假 runner;产品恒为 ModelWorkerRunner(经 application 层)
+        if runtime_python is None:
+            from ai_physics_tracker.gui.launch_context import (
+                runtime_python as _resolve_runtime_python,
+            )
+
+            runtime_python = _resolve_runtime_python()
+        # frozen 且无 managed runtime 时为 None:AI 入口显示安装占位,不启动 worker
+        self._runtime_python: str | None = (
+            str(runtime_python) if runtime_python is not None else None
+        )
+        # frozen 下 worker 源码根与 host 归档不同源,必须显式注入(P6.1)
+        from ai_physics_tracker.gui.launch_context import worker_package_root
+
+        self._package_root = worker_package_root()
+        # 测试缝:注入假 runner;产品恒为 ModelWorkerRunner(package_root 随 frozen)
         self._runner_factory = runner_factory or (
-            lambda: ModelWorkerRunner(self._runtime_python)
+            lambda: ModelWorkerRunner(self._runtime_python, package_root=self._package_root)
         )
         self._timer = QTimer(self)
         self._timer.setInterval(_POLL_INTERVAL_MS)
@@ -114,6 +126,16 @@ class ExperimentInferenceActions(QObject):
     @property
     def busy(self) -> bool:
         return self._handle is not None
+
+    def _ensure_runtime(self) -> bool:
+        """AI 任务启动前的 runtime 守卫：不可用则占位提示并拒绝（P6.1）。"""
+
+        if self._runtime_python and Path(self._runtime_python).is_file():
+            return True
+        from ai_physics_tracker.gui.launch_context import show_ai_runtime_missing
+
+        show_ai_runtime_missing(self.window)
+        return False
 
     @property
     def review_open(self) -> bool:
@@ -174,6 +196,8 @@ class ExperimentInferenceActions(QObject):
         blocked = self._others_busy()
         if blocked:
             self.window.statusBar().showMessage(blocked)
+            return
+        if not self._ensure_runtime():
             return
         from ai_physics_tracker.application.teacher_models import effective_compatibility_state
 

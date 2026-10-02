@@ -422,9 +422,12 @@ class MainWindow(QMainWindow):
         self.chartActions = ChartActions(self)
         self.trackingActions = TrackingActions(self)
         from ai_physics_tracker.gui.model_actions import ModelActions
-        # dev 环境 runtime python = 当前解释器;frozen 发布由安装器合同注入
-        import sys as _sys
-        self.modelActions = ModelActions(self, _sys.executable)
+        # runtime python 统一由 launch_context 解析(dev = 当前解释器;
+        # frozen = managed runtime / env 覆盖 / None→AI 入口显示安装占位)
+        from ai_physics_tracker.gui.launch_context import runtime_python
+
+        _runtime_python = runtime_python()
+        self.modelActions = ModelActions(self, _runtime_python)
         self.frameSelectionActions = FrameSelectionActions(
             self, self.trackingActions.panel
         )
@@ -437,7 +440,7 @@ class MainWindow(QMainWindow):
         )
 
         self.experimentInferenceActions = ExperimentInferenceActions(
-            self, _sys.executable
+            self, _runtime_python
         )
         self._installChartPanel(self.chartActions.panel)
         from ai_physics_tracker.gui.pendulum_analysis import PendulumAnalysisActions
