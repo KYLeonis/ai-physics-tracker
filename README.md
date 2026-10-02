@@ -1,6 +1,6 @@
 # AI Physics Tracker
 
-> Publication线（2026-10-02）：P0–P5开发交付通过用户HR，P5执行集成收尾；最终源码98bfd25 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保留not_run、作为发行前验收待办；进入P6前Windows G1–G4门禁不变，P6未启动。[运行与验收](publication/student-pilot.md)；[权威状态](publication/STATUS.md)。
+> Publication线（2026-10-02）：P0–P5开发交付已完成并集成；用户HR及最终集成355b375 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保持not_run、发行前待补；P6未启动，进入P6前Windows G1–G4门禁及ADR-0020保留。[运行说明](publication/student-pilot.md)；[权威状态](publication/STATUS.md)。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 
