@@ -53,3 +53,7 @@ Reviewer独立入口/工作区导航测试 **2 passed**；确认radius不阻断�
 - 独立23 passed（6.06s），覆盖设备选择、Advanced参数、自检失败/取消/session swap及worker设备拒绝。主定向145 passed（25.58s），diff check通过。
 - 真实P012 auto模型自检成功actual_device=mps；同4帧MPS约1.88倍CPU吞吐，compile/autocast未改善速度，未自动开启或写用户模型。短样测速不能代表全片精度、Windows GPU或用户视觉HR。
 - 最终源码`5ada419` CI run[36987949483](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36987949483) Windows/macOS success；后续仅文档同步，源码/测试保持与审查及CI相同。
+
+## P5 阶段HR与最终CI确认（2026-10-02）
+
+用户明确整体HR通过并授权收尾；独立审查既有verdict/finding不变。最终源码98bfd25双平台CI通过（macOS1382/Windows1380 passed，各1既有strict xfailed）；冻结15/48/2通过。收尾仅文档与集成，不修改已审代码或科学证据。外部学生pilot/Windows副本重开保持not_run，发行前待补，不把用户HR当作该实测。

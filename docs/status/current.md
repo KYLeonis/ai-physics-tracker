@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过，真实进度/auto设备路由已实现。最新P012导出残差空白已修复（2fca191/98bfd25），6项定向通过、同一已保存结果新PDF已渲染检查；源码CI执行中。下一步直接检查本地`P012_teacher_test/scientific-results-corrected`中的residual.pdf/angle.pdf，按[导出HR](../../publication/student-pilot.md#本轮拟合导出-hr2026-10-02)回复；无需重训/拟合。工作分支`codex/ejp-p5-3-student-pilot`，P5用户/学生/Windows门禁未关闭，P6未启动；完整证据见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-02）：P0–P5开发交付通过用户HR，P5执行集成收尾；最终源码98bfd25 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保留not_run、作为发行前验收待办；进入P6前Windows G1–G4门禁不变，P6未启动。下一步完成P5集成/推送及双平台CI确认后停止，等待用户新指令。完整证据见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 

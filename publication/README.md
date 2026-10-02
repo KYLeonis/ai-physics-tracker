@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过，真实进度/auto设备路由已实现，Independent R6 Approve、实际P012 auto→MPS自检成功；工作分支`codex/ejp-p5-3-student-pilot`停在[进度/设备HR](student-pilot.md#本轮自动设备-hr2026-10-02)。mini-plan见[工作流](plans/p5.1-workflow-integration.md)、[科学导出](plans/p5.2-scientific-export.md)、[学生pilot](plans/p5.3-student-pilot.md)、[训练循环](plans/p5.3-hr-training-loop.md)、[进度](plans/p5.3-hr-inference-progress.md)、[设备路由](plans/p5.3-hr-device-routing.md)。[实测记录](student-pilot-record.md)保持真实；学生两支/Windows副本重开未测，P5未关闭、P6未启动。ADR-0020和Windows门禁保留；权威进度见[STATUS](STATUS.md)。
+当前（2026-10-02）：P0–P5开发交付通过用户HR，P5执行集成收尾；最终源码98bfd25 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保留not_run、作为发行前验收待办；进入P6前Windows G1–G4门禁不变，P6未启动。[运行与HR](student-pilot.md)、[学生实测记录](student-pilot-record.md)、[权威状态](STATUS.md)。P5工作流/导出/训练循环/进度/设备/图像修复mini-plan均在plans/。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
@@ -29,7 +29,7 @@
 
 不做通用multi-object identity、多相机/3D/任意实验插件、通用model library、论文修改/投稿metadata/Zenodo deposit或新的论文科学补充分析。完整non-goals见requirements。
 
-P0已完成科学/数据/runtime合同与Mac探针；Windows验证经用户批准延至P6前，仍not_run。P1–P3已交付，P3.2历史数值差异为用户接受的限制；P3.4 Independent/Human Review通过。P4.1–P4.3已交付，独立审查及Human Review通过，P4已收尾。P5开发中，最终HR/非开发学生pilot仍待执行；P6未启动。未来软件release的构建、验证与版本冻结按P6执行；不提前创建论文submission/published标签或归档事项。
+P0–P5的科学、AI流程、教学交互和导出开发已获用户HR通过，按2026-10-02指令收尾。P3.2历史数值差异保持ADR-0020；学生pilot、Windows副本重开仍未测，发行验收待补；Windows G1–G4进入P6前必须完成。P6未启动，不创建论文submission/published标签。
 
 当前角运动默认规则：student-default-v2，tip + calibrated fixed pivot，辅助role仅诊断。历史v1/legacy与golden不改；见[ADR-0018](../docs/decisions/0018-tip-fixed-pivot-angular-qc.md)、[scientific-profiles §8](spec/scientific-profiles.md)。
 

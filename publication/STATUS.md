@@ -2,8 +2,17 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P5训练循环三项用户HR通过。真实推理进度`827f31f`、auto设备路由`5ada419`已实现，Independent R6 Approve、最终Windows/macOS CI通过；实际P012模型auto→MPS自检成功，进度/设备视觉HR待测试。非开发本科生pilot与Windows副本重开仍未执行，P5未关闭、P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
+- 当前：**P0–P5开发交付已获用户整体HR通过；最终源码98bfd25及工作分支b49a6da双平台CI均通过，P5执行集成收尾。外部学生pilot/Windows副本重开保持not_run、发行前待补；P6未启动，进入P6前Windows G1–G4门禁及ADR-0020不变。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P5 closeout — 2026-10-02
+
+- 用户明确“HR通过，目前可以收尾P5，需要等待CI在双平台都通过”。当前开发验收据此关闭；未参与开发本科生独立两支pilot/Windows副本重开仍not_run，作为发行前待补，不改写成实测通过。该当前用户裁定覆盖原P5学生试用关闭gate；Windows G1–G4进入P6前门禁保持。
+- P5.1工作流/恢复、P5.2科学与可携带导出、P5.3新手入口/任务/训练循环、真实进度与auto设备及拟合图像反馈修复已核对。规定Independent Review全部通过，无开放finding；图像列映射/版式按Normal-risk Self-review，最终6 passed（5.13s）、实际PDF渲染与用户HR通过。
+- 最终源码98bfd25 [CI36991011627](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36991011627) Windows1380passed/6skipped/1existing xfailed（381.21s）、macOS1382passed/4skipped/1existing xfailed（283.64s），均success；工作分支b49a6da [CI36991291008](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36991291008)双平台success，source/test树相同。既有strict xfail为ADR-0020，不计数值通过。
+- 本次只做验收核对/文档/集成：冻结verifier15files/48fitrows/2offlinecases及diff check通过，phase内profile/golden无变动。已有充分定向/全量/独立验证，不重跑训练或数值拟合。main工作树clean、未修改；用户视频/工程/训练权重与导出保留，未入Git，无本次临时文件。
+- Git：收尾文档提交后按--no-ff集成至publication/ejp-damped-pendulum并推送；最终SHA及集成CI补记于下。启动/体验说明见[student-pilot](student-pilot.md)，本地P012修复图在scientific-results-corrected。
+- 下一步：完成集成双平台CI确认后停止；等待用户下一条指令。不开始P6；下一次若获授权，先核实P6前Windows G1–G4，学生pilot/副本重开仍作为发行验收待办。
 
 ## P5.3 HR follow-up — ODE exported figures（2026-10-02）
 

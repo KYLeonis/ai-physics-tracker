@@ -4,7 +4,7 @@
 
 > 2026-10-01：用户授权显式SG窗口/阶数覆盖，默认9/3与冻结profile不变；见[ADR-0019](../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。
 
-- 2026-09-19规划，2026-09-20文档收尾；状态（2026-10-02）：**P0–P4完成；P5.1–P5.3实现、三项Independent Review及双平台CI通过，停在最终HR。用户与非开发本科生实测尚未执行，P5不可关闭；P6未启动。P3.2的ADR-0020 Accepted Limitation及进入P6前Windows真机门禁保留**。
+- 2026-09-19规划；当前（2026-10-02）：P0–P5开发交付通过用户HR，P5执行集成收尾；最终源码98bfd25 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保留not_run、作为发行前验收待办；进入P6前Windows G1–G4门禁不变，P6未启动。本次开发关闭口径按下方用户裁定，未测项不冒称通过。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -177,7 +177,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 全量1341 passed / 1既有strict xfailed / 9subtests，最后显示边界GUI2项通过；P4收尾定向与冻结检查记录在[STATUS](STATUS.md)。未把ADR-0020历史失败记成通过；Windows门禁仍按用户批准延期至P6前。
 
-### P5 — Undergraduate End-to-End Workflow and Scientific Outputs 🔄
+### P5 — Undergraduate End-to-End Workflow and Scientific Outputs ✅
 
 - **Goal**：把已有能力收为本科生可独立走通、可保存恢复和导出的单一实验流程。
 - **Scope**：publication workflow projection、教学说明、两条模型路径、错误恢复、最小科学导出、跨平台项目可携带性、外部学生实测。
@@ -185,7 +185,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 - **Dependencies**：P1–P4；runtime prototype用于整链测试。
 - **Major decisions**：状态来自事实不是新workflow数据库；科研输出和显示截图分开；不隐藏partial/stale或“未发现困难帧”的限制。
 - **AC**：未参与开发学生独立完成需求§2两条分支；四点校准/修正导致全部正确失效；中断后可恢复；CSV/JSON包含frame/time/unit/profile/source；PNG/PDF与选定数据一致；项目在另一平台重开无路径依赖丢失。
-- **Review gates**：状态/导出/错误恢复Independent Review；学生端到端Human Review是硬gate，不以开发者截图替代。
+- **Review gates**：状态/导出/错误恢复Independent Review、用户GUI HR已通过；学生端到端实测仍是发行验收gate，不以开发者截图或CI替代。2026-10-02用户明确授权以当前开发交付收尾P5，外部学生pilot/Windows副本重开保留未测。
 - **主要风险**：各模块局部可用但整链隐藏步骤多；教师模型导入后仍被“先训练”卡住；导出丢失单位/出处；耗时和失败恢复难以理解。
 
 | Subphase | 交付边界 | 完成判据 |
@@ -193,6 +193,20 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 | P5.1 Publication workflow integration | Setup/Acquire/Analysis任务卡与两路径、取消/重试/历史 | 每种状态当前/下一步/能否分析有答案；无需UUID/snapshot选择 |
 | P5.2 Save and scientific export | 项目重开、CSV/JSON/PNG/PDF、provenance、stale策略 | machine-readable round-trip/字段精度测试；跨平台项目样本核对 |
 | P5.3 Student pilot and integration close | 自有视频、train/import两支、故障恢复、教学文字 | 非开发本科生Human Review通过，blocking UX finding修复复测 |
+
+#### P5 最终验收与用户收尾裁定（2026-10-02）
+
+用户明确“HR通过，目前可以收尾P5，需要等待CI在双平台都通过”。据此当前开发交付可关闭；原P5学生pilot/跨平台副本重开门槛作为发行前待补，记录仍not_run，不能称已现场验收。P6前Windows G1–G4硬门禁保持。
+
+- [x] Setup/Acquire/Analysis状态及自训/教师两路径、推荐→四点→训练→推理→困难帧→重训循环、取消/历史/恢复实现并回归验证。
+- [x] 同一冻结结果CSV/JSON/provenance/hash及PNG/vector PDF、新目录原子发布、历史/stale策略、自动搬移重开验证。
+- [x] 真实进度/ETA、auto设备与模型自检同后端、失败/取消/session边界验证；P012真实CPU推理/auto MPS自检及小样测速有记录。
+- [x] 所有规定Independent Review通过，无开放finding；最终图像映射修复按Normal-risk Self-review、6项回归和PDF渲染核查；用户整体HR确认通过。
+- [x] 最终源码98bfd25双平台CI：macOS1382 passed/4 skipped/1 existing xfailed；Windows1380 passed/6 skipped/1 existing xfailed。冻结15files/48fitrows/2cases校验通过，未改profile/golden，xfail不算科学通过。
+- [ ] 未参与开发本科生独立完成两支pilot：未测，发行前待补。
+- [ ] Windows真机重开可携带工程副本：未测，发行前待补；不与CI或Mac自动测试混同。
+
+收尾提交/集成与最终CI见STATUS；完成后停止，不自行进入P6。
 
 ### P6 — Distribution and First Release
 
