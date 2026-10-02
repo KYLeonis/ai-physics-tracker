@@ -2,10 +2,18 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P4完成；P5.1–P5.3实现、三项Independent Review及双平台CI通过，停在Human Review。用户/非开发本科生实测尚未发生，P5未关闭，P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
+- 当前：**P0–P4完成；P5用户HR发现的首次推荐/训练循环缺口已修复，Independent R4及最终双平台CI通过，停在三项真人复测。非开发本科生pilot仍未执行，P5未关闭，P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
 
-## P5 delivery — 2026-10-02（最终HR待执行）
+## P5.3 HR follow-up — explicit training loop（2026-10-02）
+
+- 用户P012新实验没有frame_set，旧标注入口退化为无推荐范围的逐帧模式。本轮按[mini-plan](plans/p5.3-hr-training-loop.md)修复；用户工程数据只读，加入ignore以保留本地训练数据。
+- `916adeb`：Acquire恒定五步按钮，首轮推荐20帧→逐帧四点→训练/重训→最新模型推理→最新run困难帧推荐/勾选小批；任务卡按标签digest/run提示下一步。重标后可结束并训练，fixed-check确认Yes后继续、No不启动；不自动采用候选。
+- 共享帧集追加推荐并保留原帧/partial手工标注；辅助轨切换不取消同一实验选帧。复用既有autosave完成回调，保存期间新增标注再次保存后才继续训练；换session/experiment不续跑。
+- `916adeb`定向114 passed（37.66s）、全量1357 passed / 1 existing strict xfailed / 9subtests（198.08s）；冻结verifier15/48/2与diff通过。Independent R3发现失败/取消盖过标签变化的retrain建议，`87d5e89`修复；21定向通过（6.17s），R4 Approve、F2 Closed，独立failed/cancelled参数化回归2 passed（1.86s）。xfail仍为ADR-0020历史限制，不计为数值通过。
+- `916adeb` CI run[36958915318](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36958915318)及最终源码`87d5e89` run[36959385212](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36959385212)均Windows/macOS success；随后只同步文档，源码/测试与最终已验证SHA一致。[本轮三项HR复测](student-pilot.md#本轮训练循环修复-hr2026-10-02)待用户确认。P5保持工作分支，integration仍`e166f0a`、main clean，无本次临时文件；不合并、不进入P6。
+
+## P5 delivery — 2026-10-02（原交付checkpoint）
 
 - 每个subphase动手前已建mini-plan：[P5.1](plans/p5.1-workflow-integration.md)、[P5.2](plans/p5.2-scientific-export.md)、[P5.3](plans/p5.3-student-pilot.md)。主Agent实施，readonly gpt-6-luna/max只执行要求的Independent Review。
 - P5.1 `9f5cff7`：实验级科学状态、三工作区可见下一步、自训/教师导入两路径、Cancel/Retry/history；非收敛状态修复随`4238f8a`。P5.2 `4238f8a`：选定冻结结果的CSV/JSON/provenance/hash与独立Qt PNG/PDF、原子可携带副本；`ac53a8b`补逐角色missing reason/同源辅助QC并保留既有单轨禁用提示前缀。
@@ -173,7 +181,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**按[学生pilot与HR说明](student-pilot.md)执行最终用户Human Review，并请未参与开发本科生独立完成A/B两支，填写[记录](student-pilot-record.md)。当前停止开发等待真人反馈；修复blocking findings并复测、补齐真实Windows副本重开后才可集成关闭P5。不得虚构学生记录或进入P6。**
+**先保存P012并重启，按[本轮训练循环三项HR](student-pilot.md#本轮训练循环修复-hr2026-10-02)复测推荐20帧/四点自动推进、训练后新模型推理、小批困难帧重标后继续重训。当前修复交付后停止等待真人反馈。之后仍需未参与开发本科生独立A/B pilot及真实Windows副本重开，填写[记录](student-pilot-record.md)，才可集成关闭P5；P6未启动。**
 
 ## P2.1 delivery (2026-09-30)
 

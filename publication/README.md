@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-02）：P0–P4完成；P5.1–P5.3实现与三项Independent Review通过，停在最终HR，工作分支`codex/ejp-p5-3-student-pilot`。mini-plan见[工作流](plans/p5.1-workflow-integration.md)、[保存/科学导出](plans/p5.2-scientific-export.md)、[学生pilot](plans/p5.3-student-pilot.md)。[体验与HR步骤](student-pilot.md)、[实测记录](student-pilot-record.md)；非开发学生两支/真实Windows副本重开未测，P5未关闭、P6未启动。ADR-0020历史限制和Windows门禁保留。权威进度见[STATUS](STATUS.md)。
+当前（2026-10-02）：P0–P4完成；P5用户HR反馈的首次推荐/训练循环已修复，Independent R4与最终双平台CI通过，停在HR复测，工作分支`codex/ejp-p5-3-student-pilot`。mini-plan见[工作流](plans/p5.1-workflow-integration.md)、[保存/科学导出](plans/p5.2-scientific-export.md)、[学生pilot](plans/p5.3-student-pilot.md)、[训练循环HR修复](plans/p5.3-hr-training-loop.md)。[体验与HR步骤](student-pilot.md)、[实测记录](student-pilot-record.md)；非开发学生两支/真实Windows副本重开未测，P5未关闭、P6未启动。ADR-0020历史限制和Windows门禁保留。权威进度见[STATUS](STATUS.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
