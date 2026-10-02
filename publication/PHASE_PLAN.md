@@ -210,6 +210,8 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P6 — Distribution and First Release
 
+2026-10-02最新范围：用户决定先完成Mac release；[P6.3 Mac mini-plan](plans/p6.3-mac-release-candidate.md)已建立，执行未开始，后续由用户指定GLM的Slice。Windows真机/CUDA/跨平台重开继续not_run，不宣布双平台首发完成；签名/公证及最终下载HR仍在P6.4，公开发布必须等“发”。
+
 2026-10-02：P6.1/P6.2开发交付、独立复审和双平台CI已通过；用户确认[Mac安装版HR](plans/p6.2-human-review.md)三项均通过，已集成回publication（2f0fc98）；未公开发布。Windows G1–G4/G5保持not_run，按[便捷指南](plans/p6-windows-machine-check.md)另行实测。后续P6.3/P6.4尚未执行；[总计划](plans/p6-packaging-execution-plan.md)、[实施mini-plan](plans/p6.2-managed-runtime.md)、[STATUS](STATUS.md)。
 
 - **Goal**：在普通用户电脑上实际安装并运行完整平台。

@@ -4,7 +4,7 @@
 - Worktree：`/Users/leonis/Documents/ai-physics-tracker-ejp`。
 - Integration branch：`publication/ejp-damped-pendulum`；规划基线：`b0251cd`。
 - 这里的 P6 是论文产品线 Distribution and First Release，**不是 main 的 Phase 6 Advanced Physics Analysis**。
-- 当前授权：用户已选择并授权完整P6.2；Windows实机门禁按其后续裁定延期，不能标为通过。下一步Windows真机验证或等待用户授权P6.3；公开tag/GitHub Release必须等用户说“发”。
+- 当前授权：P6.2已交付；用户决定先完成Mac release，本轮只建立[P6.3 Mac mini-plan](p6.3-mac-release-candidate.md)，执行未开始，等待用户指定GLM范围。Windows实机门禁按其后续裁定延期，不能标为通过；公开tag/GitHub Release必须等用户说“发”。
 - 以下Windows前置时点、License待定、Qt锁、四profile和not_run等原规划描述由后续用户裁定、ADR-0021/0022和实施mini-plan覆盖：实际三份锁（Mac CPU/MPS共享一份），原生OS锁，源码MIT，DLC3.0.1 LGPL；额度只在需要时读取当前接口，不沿用旧快照。
 
 ## 1. 交付目标与实施顺序
@@ -140,6 +140,8 @@ PyInstaller 改动的 DLL 搜索状态会影响子进程。Windows 的 `SetDllDi
 
 <a id="p63-release-candidate-verification-mini-plan"></a>
 ## P6.3 Release candidate verification — mini-plan
+
+2026-10-02用户决定Mac优先：具体Slice/AC/GLM边界以[P6.3 Mac执行mini-plan](p6.3-mac-release-candidate.md)为准，目前只完成规划。以下保留双平台完整目标；Windows缺项单列not_run，Mac范围通过不等于双平台P6完成。
 
 **Goal**：同一候选 commit 的发行包在真实非开发环境完成完整链，证明 P0–P5 的科学与教学合同在冻结环境中仍成立。
 

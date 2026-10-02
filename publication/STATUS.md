@@ -5,6 +5,14 @@
 - 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，已集成回publication（2f0fc98）。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
+## P6.3 Mac-first planning — 2026-10-02
+
+- 用户决定先完成Mac release，本轮仅要求建立[P6.3 Mac mini-plan](plans/p6.3-mac-release-candidate.md)，后续会交GLM执行部分工作。**计划就绪，执行未开始**；规划基线`5af3a6b`，没有构建/安装/训练/代码改动或发布。
+- 计划明确同源RC/SHA、干净环境与CPU/MPS实际任务、teacher-import、科学/保存/导出/恢复、外部学生两支任务、Independent Review与HR；复用P6.2已通过证据，不把开发HR当干净机器或学生证据。
+- 集成HEAD `5af3a6b`：[tests37026892516](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37026892516) / [packaging37026892263](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37026892263)双平台success。现有本地DMG来自`c890b5b`相同产品树，执行者需重新核对RC来源，不能把旧包SHA归到新构建。
+- Windows真机/CUDA/跨平台重开仍not_run，不阻止本轮Mac范围规划，也不宣布双平台发行验收完成。Developer ID签名、公证和下载启动HR在P6.4；现有包未签名未公证，不能记成正常分发通过。
+- **Next Recommended Action**：等待用户指定GLM执行Slice；建议先S1候选核对及S4已有自动证据整理，准备S2/S3/S5真人任务，再停在明确HR入口。用户原工程/视频只读，main/shared venv不修改；公开tag/GitHub Release仍等用户说“发”。
+
 ## P6.2 start — 2026-10-02
 
 - 集成完成：工作分支收尾`b5e279b`，--no-ff merge `2f0fc98`（parents40db20d/b5e279b）回`publication/ejp-damped-pendulum`；集成树与已验收工作分支逐字节一致，产品/测试/打包资源与已通过CI的`c890b5b`一致。只补文档，不重复全量验证；main/shared venv/用户工程与视频未改，无tag/Release。
