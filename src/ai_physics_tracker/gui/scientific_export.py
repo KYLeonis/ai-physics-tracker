@@ -17,6 +17,7 @@ from ai_physics_tracker.application.pendulum_fit import FIT_KIND
 from ai_physics_tracker.application.scientific_export import (
     ScientificExport, prepare_scientific_export, publish_scientific_export, save_portable_copy,
 )
+from ai_physics_tracker.domain.pendulum_ode import M0, M1
 
 
 class ScientificExportDialog(QDialog):
@@ -69,10 +70,11 @@ def scientific_plot_data(snapshot: ScientificExport) -> list[tuple]:
              [("E reference", time, [r.get("energy_s_inv2") for r in rows])]),
         ]
     else:
+        prefixes = {M0: "m0", M1: "m1"}
         for model in snapshot.payload["fits"]:
-            plots[0][4].append((model, time, [r.get(f"{model.lower()}_theta_rad") for r in rows]))
+            plots[0][4].append((model, time, [r.get(f"{prefixes[model]}_theta_rad") for r in rows]))
         plots.append(("residual", "Raw residual: prediction − observation", "Time from release (s)", "Residual (rad)",
-                      [(model, time, [r.get(f"{model.lower()}_residual_rad") for r in rows]) for model in snapshot.payload["fits"]]))
+                      [(model, time, [r.get(f"{prefixes[model]}_residual_rad") for r in rows]) for model in snapshot.payload["fits"]]))
     return plots
 
 
