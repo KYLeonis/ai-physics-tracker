@@ -30,6 +30,9 @@ jobs:
       - name: Write manifest
         run: python scripts/prepare_runtime_manifest.py --report report.json --system ${{ matrix.system }} --device ${{ matrix.device }} --output profile.json
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: runtime-profile-${{ matrix.system }}-${{ matrix.device }}
-          path: profile.json
+          path: |
+            profile.json
+            report.json
