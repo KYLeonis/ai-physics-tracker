@@ -1,0 +1,13 @@
+# P6.1 host(GUI)运行时依赖：与 CI 集合 requirements.txt 同源锁定，去掉测试工具。
+# AI 栈(torch/DeepLabCut)不属于 host 闭包——外部 worker 经 managed runtime 运行；
+# 本文件只装进独立 build venv，构建产物由 PyInstaller 依赖闭包决定。
+numpy==2.4.6
+opencv-python-headless==4.14.0.94
+pandas==2.3.3
+packaging==26.3
+PySide6-Essentials==6.11.2
+pyqtgraph==0.13.7
+PyYAML==6.0.3
+scipy==1.17.1
+shiboken6==6.11.2
+typing_extensions==4.16.0
