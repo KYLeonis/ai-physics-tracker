@@ -2,6 +2,7 @@
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
 import json
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
@@ -24,18 +25,30 @@ def package_artifact(row: dict) -> dict:
         # 固定官方 wheel URL，编码 local-version 中的 +；不保留镜像临时 query。
         url = urlunsplit(("https", "download-r2.pytorch.org", quote(unquote(parsed.path), safe="/"), "", ""))
     filename = unquote(urlsplit(url).path.rsplit("/", 1)[-1])
-    sha = download["archive_info"]["hashes"]["sha256"]
+    sha = download.get("archive_info", {}).get("hashes", {}).get("sha256")
     with urlopen(f"https://pypi.org/pypi/{name}/{version.split('+')[0]}/json", timeout=30) as response:
         info = json.load(response)
     match = next((a for a in info["urls"] if a["filename"] == filename), None)
     if match:
-        assert match["digests"]["sha256"] == sha, filename
+        if sha and match["digests"]["sha256"] != sha:
+            raise ValueError(f"PyPI/report SHA mismatch: {filename}")
+        sha = match["digests"]["sha256"]
+        url = match["url"]
         size = match["size"]
     else:
         # 官方 PyTorch CPU/CUDA wheel 不在 PyPI；取其固定 wheel URL 的元数据。
         print("Reading official wheel size:", url, flush=True)
         with urlopen(Request(url, headers={"User-Agent": "pip/26.3"}), timeout=30) as response:
             size = int(response.headers["Content-Length"])
+            if not sha:
+                # 部分官方 index 无 hash fragment；锁生成时下载并记录固定 wheel 字节。
+                digest, received = hashlib.sha256(), 0
+                while block := response.read(1024 * 1024):
+                    digest.update(block)
+                    received += len(block)
+                if received != size:
+                    raise ValueError(f"Truncated official wheel: {filename}")
+                sha = digest.hexdigest()
     source = next((a for a in info["urls"] if a["packagetype"] == "sdist"), None)
     return {"name": name.lower().replace("_", "-"), "version": version, "filename": filename,
             "url": url, "size": size, "sha256": sha,
