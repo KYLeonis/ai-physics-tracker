@@ -2,8 +2,26 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P5开发交付已收尾，用户整体HR与最终集成355b375 Windows/macOS CI均通过；P6封装执行计划已就绪，实施未启动。外部学生pilot/Windows副本重开保持not_run、发行前待补；P6前Windows G1–G4门禁及ADR-0020不变。**
-- Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+- 当前：**P6.1 原生应用构建已在 `feat/p6.1-native-builds` 分支实现并本地验证（macOS DMG 已产出、全量 1404 passed）；Windows 真机门禁按用户 2026-10-02 裁定延期至发行前，以双平台 CI + Windows 冒烟为准。待 CI/HR 后集成。**
+- Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## P6.1 native builds — 2026-10-02（工作分支交付 checkpoint）
+
+- 用户本轮指令明确：**Windows 实机限制暂不考虑，GitHub CI 双平台通过、Windows 产物可运行无关键 bug 即可；优先封装 macOS 并产出 DMG**。该裁定调整 Windows G1–G4 的验收时点至发行前（P6.3/P6.4），不改变标准本身；ADR-0021 记录此决定。
+- 交付内容（分支 `feat/p6.1-native-builds`，基于 b0251cd 之后的 40db20d）：
+  - host/AI 依赖拆分：`deeplabcut` 移入 optional extra `ai`；host 构建锁定集 `packaging/host_requirements.txt`（无 torch/DLC）。
+  - `gui/launch_context.py`：frozen/dev 运行环境统一解析（frozen 检测、`_MEIPASS/resources` 资源根、随包 FFprobe、runtime python = env 覆盖 → managed runtime 指针 → None、AppDataLocation 日志目录、应用身份先行设置）。frozen 无 runtime 时 ModelActions/ExperimentInferenceActions 三个启动入口显示"安装 AI 环境"占位并拒绝启动；dev 行为零变化。
+  - `ModelWorkerRunner`/`build_request`/`ExternalWorkerRunner` 贯通 `package_root`：frozen host 显式指向包内 `resources/worker-src`（与 src 树字节一致，diff 验证），worker 源 SHA/PYTHONPATH 同源语义保持。
+  - 组合根：`__main__.main()` + `packaging/entry_point.py`（`freeze_support`、`--apt-smoke` 冒烟写 JSON 结果文件）；`multiprocessing` spawn 冻结引导就位。
+  - 打包：`packaging/ai_physics_tracker.spec`（onedir、无大清单 hiddenimports、excludes 仅兜底）+ `build_macos.sh`（独立 build venv → 冒烟 → .app → hdiutil DMG）+ `build_windows.ps1`（→ zip）+ `NOTICE-third-party.md` 诚实清单；CI `.github/workflows/packaging.yml` 双平台 build→smoke→artifact，与 tests.yml 分离。
+  - 修复实测 bug：应用身份设置晚于 QStandardPaths 解析会把日志写到通用目录（~/Library/Application Support/logs），已提取 `set_application_identity()` 先行调用并重建验证。
+- 本地验证（Mac arm64，python3.12 独立 build venv，未动共享开发环境）：
+  - 构建→冒烟→DMG 一次通过；`dist/AIPhysicsTracker-0.1.0-arm64.dmg`（.app 312MB，含 Applications 链接）。
+  - 冒烟断言通过：host 未加载 torch/torchvision/deeplabcut；随包 FFprobe 可执行。
+  - worker-src 与 src 树 `diff -rq` 逐字节一致；frozen 包内 worker 源码在外部解释器（主 venv）下真实执行 Protocol v1 hello 成功（fail-closed 源码自验通过）。
+  - 真实 GUI 启动（windowed、非 offscreen）进程稳定；文件日志落在 `~/Library/Application Support/KYLeonis/AI Physics Tracker/logs/app.log`。
+  - 全量回归 **1404 passed / 1 existing strict xfailed / 9 subtests**（ADR-0020 不计数值通过）；新增 `tests/gui/test_launch_context.py` 18 项覆盖 frozen resolver、守卫与 dev 不变量。
+- 未完成/限制（如实）：DMG/zip 未签名未公证（P6.4）；Windows 无 Inno 安装器（zip 便携目录）；AI runtime 安装器（P6.2）未实现，frozen 版 AI 功能默认占位；CI 与真人 HR 待跑/待测。
 
 ## P6 planning only — 2026-10-02
 
@@ -221,7 +239,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**本轮停在P6规划交付。用户授权接续执行后，GLM5.3读取[封装计划](plans/p6-packaging-execution-plan.md)，先补Windows G1–G4实机证据；通过后按P6.1起的mini-plan逐Slice推进。学生两分支pilot与Windows副本重开是发行前待补，P5开发交付已关闭。当前不开始任何P6实施。**
+**P6.1 工作分支 `feat/p6.1-native-builds` 已实现并本地验证。下一步：commit+push 后等待双平台 CI（tests + packaging 两个 workflow）通过；用户按 HR 步骤实测 DMG（下载/挂载 → 启动 → 打开视频/标注/保存重开 → 分析/导出 → AI 入口占位提示）；HR 通过后 `--no-ff` 集成回 publication 并更新本文件。Windows 真机 G1–G4、学生 pilot、签名/公证仍为发行前待补（P6.2 起）。**
 
 ## P2.1 delivery (2026-09-30)
 

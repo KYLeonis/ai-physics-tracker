@@ -1,12 +1,50 @@
 # packaging/
 
-Publication 产品线的 P6 封装规划见 [P6 execution plan](../publication/plans/p6-packaging-execution-plan.md)（含四个 mini-plan）。2026-10-02 仅完成规划，未创建构建/安装脚本；实施前需补 Windows G1–G4 实机门禁。以下是 main 通用产品线的 Phase 9 原约定。
+P6 论文产品线的原生封装资产。方案与决策见 [ADR-0021](../docs/decisions/0021-native-app-builds-pyinstaller-host-runtime-split.md)、总计划见 [P6 execution plan](../publication/plans/p6-packaging-execution-plan.md)；main 通用产品线的 Phase 9 原约定（PyInstaller/Nuitka 对比、Inno/NSIS、CUDA 分发策略）仍以该阶段为准，本目录当前服务于 publication 线 P6.1。
 
-Windows 打包与发布相关内容，Phase 9 起填充：
+## 结构
 
-- PyInstaller / Nuitka 打包配置（对比后择一，记 ADR）
-- Inno Setup / NSIS 安装脚本
-- CPU 版 / NVIDIA GPU 版（CUDA Runtime 分发）发布策略
-- PyTorch Runtime 与模型文件管理方案
+| 文件 | 用途 |
+| --- | --- |
+| `host_requirements.txt` | host（GUI）构建依赖锁定集：与 CI `requirements.txt` 同源，去掉测试工具、**不含 torch/DeepLabCut** |
+| `entry_point.py` | PyInstaller 入口：多进程 `freeze_support` + 组合根调用；`--apt-smoke` 冒烟模式（结果写 `APT_SMOKE_RESULT` 文件，windowed exe 不依赖 stdout） |
+| `ai_physics_tracker.spec` | onedir spec：资源布局（`resources/worker-src`、`resources/ffprobe`、LICENSE/NOTICE）、excludes 兜底；依赖分离的判定是冒烟运行时断言，不是 excludes |
+| `build_macos.sh` | macOS arm64：独立 build venv → PyInstaller → 冒烟 → `.app` + DMG（hdiutil UDZO） |
+| `build_windows.ps1` | Windows x64：同流程 → onedir zip（Inno Setup 安装器未做，见下） |
+| `NOTICE-third-party.md` | 随包第三方材料清单（P6.1 诚实清单，最终 material review 属 P6.4） |
 
-打包产物（`output/`、`dist/`、`build/`）已在 .gitignore 中忽略。
+产物在仓库根 `dist/`（已 gitignore）：macOS 为 `AIPhysicsTracker-<version>-arm64.dmg`，Windows 为 `AIPhysicsTracker-<version>-win64.zip`。CI：`.github/workflows/packaging.yml` 双平台构建并上传 artifact。
+
+## 构建方式
+
+```bash
+# macOS（本机 arm64，脚本自建独立 build venv，不碰开发环境）
+./packaging/build_macos.sh
+# Windows（原生 PowerShell，python 3.11+ 在 PATH）
+powershell -File packaging\build_windows.ps1
+```
+
+冒烟在构建脚本内自动执行：offscreen 构造完整 MainWindow、断言 host 未加载
+torch/torchvision/deeplabcut（`launch_context.FORBIDDEN_HOST_ROOTS`）、随包
+FFprobe 存在且可执行。冒烟失败即构建失败。
+
+## Frozen 形态行为（P6.1 边界）
+
+- AI 训练/自检/推理依赖外部 Python runtime（Protocol v1 worker）。frozen 且无
+  managed runtime 时，AI 入口显示"安装 AI 环境"占位并拒绝启动；**安装器属 P6.2**。
+  测试后门：`AI_PHYSICS_RUNTIME_PYTHON=<解释器绝对路径>`（或
+  `<AppDataLocation>/runtimes/active.txt` 指针文件）。
+- 手工标注、标定、运动学/ODE 拟合/批评、导出全部可用；FFprobe 用包内二进制
+  （构建时 SHA-256 校验）。
+- 文件日志：`<AppDataLocation>/logs/app.log`（仅 frozen）。
+
+## 已知限制（诚实清单）
+
+- DMG/zip **未签名未公证**（P6.4）：浏览器下载的 DMG 首次打开需右键 → 打开，
+  或 `xattr -dr com.apple.quarantine "AI Physics Tracker.app"` 去隔离；ffprobe
+  子进程同样受 Gatekeeper 影响。
+- Windows 为 zip 便携目录，无安装器/卸载器/文件关联（用户 2026-10-02 裁定 CI
+  可运行即达标；Inno Setup 待后续）。
+- Windows G1–G4 真机门禁、G5 clean-machine、学生 pilot 按用户裁定延期至发行前
+  （P6.3/P6.4），CI 通过不冒充真机验收。
+- AI runtime 无安装实现（P6.2）；frozen 版 AI 功能默认不可用。
