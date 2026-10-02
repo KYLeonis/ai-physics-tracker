@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过，真实进度/auto设备路由已实现于827f31f/5ada419，Independent R6 Approve。P012 CPU任务已成功结束；下一步保存并重启GUI，用auto、batch1–2检查实际mps及[进度/设备HR](../../publication/student-pilot.md#本轮自动设备-hr2026-10-02)。工作分支`codex/ejp-p5-3-student-pilot`，P5/学生pilot/Windows重开尚未关闭，P6未启动。ADR-0020及P6前Windows门禁保留；完整证据见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-02）：P0–P4完成；P5训练循环三项用户HR通过，真实进度/auto设备路由已实现。最新P012导出残差空白已修复（2fca191/98bfd25），6项定向通过、同一已保存结果新PDF已渲染检查；源码CI执行中。下一步直接检查本地`P012_teacher_test/scientific-results-corrected`中的residual.pdf/angle.pdf，按[导出HR](../../publication/student-pilot.md#本轮拟合导出-hr2026-10-02)回复；无需重训/拟合。工作分支`codex/ejp-p5-3-student-pilot`，P5用户/学生/Windows门禁未关闭，P6未启动；完整证据见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
 
 # Current Status
 

@@ -5,6 +5,13 @@
 - 当前：**P0–P4完成；P5训练循环三项用户HR通过。真实推理进度`827f31f`、auto设备路由`5ada419`已实现，Independent R6 Approve、最终Windows/macOS CI通过；实际P012模型auto→MPS自检成功，进度/设备视觉HR待测试。非开发本科生pilot与Windows副本重开仍未执行，P5未关闭、P6未启动；历史M1限制仍为ADR-0020 Accepted Limitation。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
 
+## P5.3 HR follow-up — ODE exported figures（2026-10-02）
+
+- 用户P012导出residual.pdf空白。实际所选结果M0/M1均success，各3243个finite残差；root发现绘图把完整模型ID的小写当作列前缀，读不到已有m0/m1列，angle预测曲线也遗漏。[Normal-risk mini-plan](plans/p5.3-hr-fit-export.md)在实施前建立，主Agent修复`2fca191`；`98bfd25`调整纵轴标题/tick间距。
+- 回归先复现两种模式失败，再在修复版本6项通过；最终6 passed（5.13s）、Self-review及diff check通过。无数值、数据格式、结果身份或发布事务改动；[最终源码CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36991011627)仍执行，不记为通过。
+- 同一结果`84e7e7b7-3f89-414a-ba47-3d2ec17131c2`经原prepare/publish校验生成本地ignored `P012_teacher_test/scientific-results-corrected`，current=true。新residual/angle PDF经Poppler渲染检查曲线恢复、文字无重叠；原导出全部文件及manifest SHA不变，新CSV/JSON字节一致。仅本轮中间导出和渲染临时文件清理。
+- 下一步：用户直接打开新目录residual.pdf、angle.pdf，确认两条残差和三条角度曲线（通过/需调整）；无需重训/拟合。后续GUI导出保存重启后仍选同一结果、新输出目录。P5保持工作分支，整体用户/学生/Windows门禁未关闭，不进入P6。
+
 ## P5.3 HR follow-up — automatic device routing（2026-10-02）
 
 - 用户要求Advanced auto正确选择GPU，按[mini-plan](plans/p5.3-hr-device-routing.md)由主Agent实施。`5ada419`将Advanced训练参数及推理设备贯通，协议接受auto并在worker runtime按CUDA→MPS→CPU解析；auto先做真实模型自检，再在同一backend推理，记录requested/actual device。失败、取消、换session不续跑、不覆盖旧CPU证据，推理仍须原hash/digest/runtime验证；无隐式GPU失败→CPU重跑。
