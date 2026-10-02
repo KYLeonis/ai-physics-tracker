@@ -21,7 +21,8 @@
   - worker-src 与 src 树 `diff -rq` 逐字节一致；frozen 包内 worker 源码在外部解释器（主 venv）下真实执行 Protocol v1 hello 成功（fail-closed 源码自验通过）。
   - 真实 GUI 启动（windowed、非 offscreen）进程稳定；文件日志落在 `~/Library/Application Support/KYLeonis/AI Physics Tracker/logs/app.log`。
   - 全量回归 **1404 passed / 1 existing strict xfailed / 9 subtests**（ADR-0020 不计数值通过）；新增 `tests/gui/test_launch_context.py` 18 项覆盖 frozen resolver、守卫与 dev 不变量。
-- 未完成/限制（如实）：DMG/zip 未签名未公证（P6.4）；Windows 无 Inno 安装器（zip 便携目录）；AI runtime 安装器（P6.2）未实现，frozen 版 AI 功能默认占位；CI 与真人 HR 待跑/待测。
+- 未完成/限制（如实）：DMG/zip 未签名未公证（P6.4）；Windows 无 Inno 安装器（zip 便携目录）；AI runtime 安装器（P6.2）未实现，frozen 版 AI 功能默认占位。
+- CI（最终源码 `833ee9f`）：[tests run 37000559026](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37000559026) Windows/macOS 均 success；[packaging run 37000559085](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37000559085) 双平台原生构建+冒烟 success，artifact 含 `AIPhysicsTracker-macos-arm64`(DMG) 与 `AIPhysicsTracker-windows-x64`(zip)。首个 packaging run 36999733160 暴露 PowerShell 不等待 windowed exe 的竞态，`833ee9f` 以 `Start-Process -Wait` 修复后全绿。待用户 HR 后 `--no-ff` 集成。
 
 ## P6 planning only — 2026-10-02
 
@@ -239,7 +240,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P6.1 工作分支 `feat/p6.1-native-builds` 已实现并本地验证。下一步：commit+push 后等待双平台 CI（tests + packaging 两个 workflow）通过；用户按 HR 步骤实测 DMG（下载/挂载 → 启动 → 打开视频/标注/保存重开 → 分析/导出 → AI 入口占位提示）；HR 通过后 `--no-ff` 集成回 publication 并更新本文件。Windows 真机 G1–G4、学生 pilot、签名/公证仍为发行前待补（P6.2 起）。**
+**P6.1 工作分支 `feat/p6.1-native-builds`（最终 `833ee9f`）双平台 CI 全绿（tests + packaging）。下一步：用户按 HR 步骤实测 DMG（挂载 → 启动 → 打开视频/标注/保存重开 → 分析/导出 → AI 入口占位提示，见 packaging/README"已知限制"）；HR 通过后 `--no-ff` 集成回 publication。Windows 真机 G1–G4、学生 pilot、签名/公证、Inno 安装器、P6.2 AI runtime 安装仍为后续待办。**
 
 ## P2.1 delivery (2026-09-30)
 
