@@ -2,10 +2,12 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，执行集成收尾。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
+- 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，已集成回publication（2f0fc98）。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
 ## P6.2 start — 2026-10-02
+
+- 集成完成：工作分支收尾`b5e279b`，--no-ff merge `2f0fc98`（parents40db20d/b5e279b）回`publication/ejp-damped-pendulum`；集成树与已验收工作分支逐字节一致，产品/测试/打包资源与已通过CI的`c890b5b`一致。只补文档，不重复全量验证；main/shared venv/用户工程与视频未改，无tag/Release。
 
 - 用户本轮确认“均通过”：Mac安装取消重试、独立环境重开自检与训练推理HR完成；P6.1/P6.2可按既有流程收尾。文档checkpoint `6bb0ff8` [tests37025219808](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37025219808) / [packaging37025219904](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37025219904)亦双平台success；Windows artifact id11234523951已核对未过期（约201MiB）。不要求pull源码；[真机指南](plans/p6-windows-machine-check.md)列CPU基线、CUDA、取消/离线与日志反馈。Windows没有实测前仍不勾选。
 - 最终源码`c890b5b`：[tests 37023438111](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37023438111) Windows1436passed/6skipped/1existingstrictxfail（377.01s）、Mac1438passed/4skipped/1existingstrictxfail（308.88s），双平台success；[packaging 37023439440](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37023439440)两平台原生构建/setup/external worker smoke均success。后续只同步文档，产品代码/测试与该SHA相同。
@@ -262,7 +264,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**完成本轮P6.1/P6.2集成收尾后停止。用户可按[Windows指南](plans/p6-windows-machine-check.md)下载已通过CI的便携包，在真机做CPU/CUDA验收并返回实际结果；记录前保持not_run。P6.3/P6.4尚未执行；公开tag/GitHub Release等用户说“发”。Windows真机G1–G4/G5、学生pilot、签名/公证与Inno仍单列pending，不以CI或Mac HR替代。**
+**P6.1/P6.2开发交付收尾完成，停止等待后续指令或Windows实测反馈。用户可按[Windows指南](plans/p6-windows-machine-check.md)下载已通过CI的便携包，在真机做CPU/CUDA验收并返回实际结果；记录前保持not_run。P6.3/P6.4尚未执行；公开tag/GitHub Release等用户说“发”。Windows真机G1–G4/G5、学生pilot、签名/公证与Inno仍单列pending，不以CI或Mac HR替代。**
 
 ## P2.1 delivery (2026-09-30)
 

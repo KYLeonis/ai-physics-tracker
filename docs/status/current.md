@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-02）：P6.1/P6.2代码/自动验证、独立复审和Mac HR三项均通过，执行集成收尾后停止；Windows真机仍not_run，用户可按[下载/验收指南](../../publication/plans/p6-windows-machine-check.md)直接使用Actions便携包。[mini-plan](../../publication/plans/p6.2-managed-runtime.md)、[权威状态](../../publication/STATUS.md)。P6.3/P6.4尚未执行，公开tag/Release等用户说“发”。用户工程/视频只读、main与共享venv不修改。
+> Publication工作树（2026-10-02）：P6.1/P6.2代码/自动验证、独立复审和Mac HR三项均通过，已集成回publication（2f0fc98），收尾后停止；Windows真机仍not_run，用户可按[下载/验收指南](../../publication/plans/p6-windows-machine-check.md)直接使用Actions便携包。[mini-plan](../../publication/plans/p6.2-managed-runtime.md)、[权威状态](../../publication/STATUS.md)。P6.3/P6.4尚未执行，公开tag/Release等用户说“发”。用户工程/视频只读、main与共享venv不修改。
 
 # Current Status
 
