@@ -473,8 +473,15 @@ def test_read_result_rejects_malformed_result_json(tmp_path: Path, content: str)
 # --- 7d. selftest device 不匹配 -------------------------------------------------
 
 
+@pytest.mark.parametrize("operation, requested, actual", [
+    ("selftest_runtime", "cpu", "cuda:0"),
+    ("selftest_model", "mps", "cpu"),
+    ("selftest_model", "auto", "auto"),
+    ("selftest_model", "auto", "unknown_gpu"),
+    ("selftest_model", "auto", None),
+])
 def test_selftest_actual_device_mismatch_is_rejected(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation, requested, actual
 ) -> None:
     stub_dir = tmp_path / "fastexit_stub"
     stub_dir.mkdir()
@@ -487,16 +494,16 @@ def test_selftest_actual_device_mismatch_is_rejected(
     )
     job_id = uuid4()
     request, digest = build_request(
-        "selftest_runtime", job_id=job_id, device="cpu", worker_module="selftest_forge_stub"
+        operation, job_id=job_id, device=requested, worker_module="selftest_forge_stub"
     )
     handle = runner.start(tmp_path / f"job-{job_id.hex}", request)
     try:
         assert handle.join(timeout_s=JOIN_TIMEOUT_S)
         assert handle.returncode == 0
 
-        forged = _forged_success_result(handle, digest, "selftest_runtime")
+        forged = _forged_success_result(handle, digest, operation)
         forged["versions"] = {"torch": "0.0.0-forged"}
-        forged["actual_device"] = "cuda:0"  # 请求 backend 是 cpu,不得被采信
+        forged["actual_device"] = actual  # 显式后端不符或auto未解析，均不得采信
         _write_forged_result(handle, forged)
         with pytest.raises(ExternalWorkerError, match="actual_device"):
             handle.read_result()
@@ -540,16 +547,21 @@ def test_build_request_rejects_invalid_device_and_reserved_extra() -> None:
     importlib.util.find_spec("torch") is None,
     reason="torch is not installed in the test runtime",
 )
-def test_selftest_runtime_reports_torch_identity(tmp_path: Path) -> None:
+@pytest.mark.parametrize("device", ["cpu", "auto"])
+def test_selftest_runtime_reports_torch_identity(tmp_path: Path, device: str) -> None:
     runner = ExternalWorkerRunner(RUNTIME_PYTHON)
     job_id = uuid4()
-    request, _ = build_request("selftest_runtime", job_id=job_id, device="cpu")
+    request, _ = build_request("selftest_runtime", job_id=job_id, device=device)
     handle = runner.start(tmp_path / f"job-{job_id.hex}", request)
 
     assert handle.join(timeout_s=120.0)
     result = handle.read_result()
     assert result["status"] == "success"
-    assert result["actual_device"] == "cpu"
+    if device == "cpu":
+        assert result["actual_device"] == "cpu"
+    else:
+        from ai_physics_tracker.infrastructure.dlc_adapter import detect_device
+        assert result["actual_device"].split(":")[0] == detect_device()
     assert result["versions"]["torch"]
     assert handle.returncode == 0
 

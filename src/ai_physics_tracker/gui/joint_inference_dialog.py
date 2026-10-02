@@ -34,7 +34,8 @@ _ROLE_HINT = (
 class JointInferenceDialog(QDialog):
     """选择模型与推理参数；未验证模型先真实自检再推理。"""
 
-    def __init__(self, model_references, parent=None, *, training_runs=(), preferred_model_id=None) -> None:
+    def __init__(self, model_references, parent=None, *, training_runs=(), preferred_model_id=None,
+                 device="auto", batch_size=8, min_confidence=0.60) -> None:
         super().__init__(parent)
         self.setWindowTitle("Run joint inference")
         self.setMinimumWidth(460)
@@ -66,15 +67,24 @@ class JointInferenceDialog(QDialog):
         layout.addWidget(self.hintLabel)
 
         form = QFormLayout()
+        self.deviceComboBox = QComboBox()
+        self.deviceComboBox.addItems(["auto", "cpu", "mps", "cuda"])
+        self.deviceComboBox.setCurrentText(device)
+        form.addRow("Inference device", self.deviceComboBox)
+        device_hint = QLabel("Auto checks available CUDA → Apple MPS → CPU in the worker runtime. "
+                            "The model is tested on the selected device before inference. "
+                            "If that test fails, select CPU to retry.")
+        device_hint.setWordWrap(True)
+        form.addRow(device_hint)
         self.confidenceSpin = QDoubleSpinBox(self)
         self.confidenceSpin.setRange(0.0, 1.0)
         self.confidenceSpin.setSingleStep(0.05)
         self.confidenceSpin.setDecimals(2)
-        self.confidenceSpin.setValue(0.60)
+        self.confidenceSpin.setValue(min_confidence)
         form.addRow("Min confidence (screening threshold)", self.confidenceSpin)
         self.batchSpin = QSpinBox(self)
         self.batchSpin.setRange(1, 64)
-        self.batchSpin.setValue(8)
+        self.batchSpin.setValue(batch_size)
         form.addRow("Batch size", self.batchSpin)
         layout.addLayout(form)
         self.thresholdLabel = QLabel(
@@ -149,8 +159,11 @@ def run_joint_inference_dialog(window, model_references) -> tuple | None:
     trained = [model for model in model_references if experiment is not None
                and model.source_experiment_id == experiment.experiment_id]
     latest = max(trained or list(model_references), key=lambda model: model.created_at, default=None)
+    panel = window.trackingActions.panel
+    settings = panel.inferenceParameters()
     dialog = JointInferenceDialog(
-        model_references, window,
+        model_references, window, device=settings.device,
+        batch_size=settings.batch_size, min_confidence=settings.min_confidence,
         training_runs=session.tracking_runs() if session else (),
         preferred_model_id=latest.model_id if latest else None)
     if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -159,5 +172,9 @@ def run_joint_inference_dialog(window, model_references) -> tuple | None:
     if model_id is None:
         return None
     min_confidence, batch_size = dialog.inference_parameters()
+    device = dialog.deviceComboBox.currentText()
+    panel.deviceComboBox.setCurrentText(device)
+    panel.batchSizeSpinBox.setValue(batch_size)
+    panel.confidenceSpinBox.setValue(min_confidence)
     return model_id, InferenceParams(
-        min_confidence=min_confidence, batch_size=batch_size, device="cpu")
+        min_confidence=min_confidence, batch_size=batch_size, device=device)

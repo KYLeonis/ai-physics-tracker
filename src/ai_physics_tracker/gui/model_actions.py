@@ -142,7 +142,8 @@ class ModelActions(QObject):
             return
         try:
             run, request = prepare_experiment_training(
-                session, experiment.experiment_id
+                session, experiment.experiment_id,
+                params=self.window.trackingActions.panel.trainingParameters(),
             )
         except ProjectSessionError as error:
             # HR 反馈(2026-09-28):状态栏消息一闪而过被读作"死按钮";
@@ -154,8 +155,6 @@ class ModelActions(QObject):
             return
         params = dict(request.params_config)
         device = params.pop("device", "cpu")
-        if device == "auto":
-            device = "cpu"  # GUI 默认 CPU;mps/cuda 经高级设置接入属后续
         try:
             handle = self._runner_factory().start_training(
                 session.project_root, request, device=device
@@ -262,7 +261,8 @@ class ModelActions(QObject):
         return True
 
     def runSelftest(
-        self, model_id: UUID, *, on_success: Callable[[], None] | None = None,
+        self, model_id: UUID, *, device: str = "cpu",
+        on_success: Callable[[], None] | None = None,
     ) -> None:
         from ai_physics_tracker.application.teacher_models import (
             build_model_selftest_payload,
@@ -300,7 +300,7 @@ class ModelActions(QObject):
             return
         try:
             handle = self._runner_factory().start_selftest(
-                session.project_root, model.model_id, payload_fields, device="cpu"
+                session.project_root, model.model_id, payload_fields, device=device
             )
         except ModelWorkerError as error:
             self.window.statusBar().showMessage(f"Cannot start: {error}")
@@ -312,9 +312,9 @@ class ModelActions(QObject):
         self._job_dir = None   # selftest 无 job_dir 消费者(m5①);真实目录带 uuid 后缀
         self._session = session
         self._timer.start()
-        self._set_activity("Self-testing model")
+        self._set_activity(f"Self-testing model ({device})")
         self.window.statusBar().showMessage(
-            f"Compatibility self-test for model {model.model_id} running (cpu)")
+            f"Compatibility self-test for model {model.model_id} running ({device})")
         self.window.projectActions.refresh()
 
     # ------------------------------------------------------------------
@@ -409,7 +409,7 @@ class ModelActions(QObject):
             f"as unverified ({result.get('actual_device')}, "
             f"{completed.extra_fields.get('elapsed_s')}s)")
         self.window.projectActions.refresh()
-        self.runSelftest(reference.model_id)
+        self.runSelftest(reference.model_id, device=str(result["actual_device"]).split(":")[0])
 
     def _finish_selftest_success(self, result: dict) -> None:
         session = self.window.analysisSession

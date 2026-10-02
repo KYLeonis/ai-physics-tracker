@@ -59,7 +59,10 @@ def _run_selftest_runtime(request: dict[str, Any], result: dict[str, Any]) -> No
     import torch
 
     result["versions"] = {"torch": importlib.metadata.version("torch")}
-    tensor = torch.ones(4, device=request["device"], requires_grad=True)
+    from ai_physics_tracker.infrastructure.dlc_adapter import detect_device
+
+    device = detect_device() if request["device"] == "auto" else request["device"]
+    tensor = torch.ones(4, device=device, requires_grad=True)
     (tensor * tensor).sum().backward()
     if not torch.isfinite(tensor.grad).all().item():
         raise RuntimeError("Nonfinite tensor self-test")

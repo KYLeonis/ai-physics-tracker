@@ -31,7 +31,7 @@ PROTOCOL_VERSION = 1
 WORKER_MODULE_DEFAULT = "ai_physics_tracker.worker"
 # 跨进程协议字面量,与 worker/__main__.py 的 HELLO_MESSAGE 保持一致
 HELLO_MESSAGE = "external worker ready"
-DEVICE_BACKENDS = ("cpu", "mps", "cuda")
+DEVICE_BACKENDS = ("cpu", "mps", "cuda", "auto")
 TERMINAL_STATUSES = ("success", "cancelled", "failed")
 REQUEST_FILE_NAME = "request.json"
 RESULT_FILE_NAME = "result.json"
@@ -541,17 +541,16 @@ class ExternalJobHandle:
             )
         if self._operation == "selftest_runtime":
             self._validate_selftest_payload(result)
-        if self._operation == "infer_experiment" and not result.get("actual_device"):
+        if self._operation in {"infer_experiment", "selftest_model"} and not result.get("actual_device"):
             raise ExternalWorkerError(
-                f"joint inference result misses actual_device (log: {self.worker_log_path})"
+                f"{self._operation} result misses actual_device (log: {self.worker_log_path})"
             )
-        if self._operation in {"train_experiment", "infer_experiment"} and result.get("actual_device"):
+        if self._operation in {"train_experiment", "infer_experiment", "selftest_model"} and result.get("actual_device"):
             actual = str(result["actual_device"])
             requested = str(self._device)
             # auto 由 worker 解析后如实上报;显式 backend 必须匹配(带索引可)
-            if requested != "auto" and not re.fullmatch(
-                re.escape(requested) + r"(?::[0-9]+)?", actual
-            ):
+            pattern = r"(?:cpu|mps|cuda)(?::[0-9]+)?" if requested == "auto" else re.escape(requested) + r"(?::[0-9]+)?"
+            if not re.fullmatch(pattern, actual):
                 raise ExternalWorkerError(
                     f"worker actual_device {actual!r} does not match the "
                     f"requested backend {requested!r} (log: {self.worker_log_path})"
@@ -588,9 +587,8 @@ class ExternalJobHandle:
         actual_device = result.get("actual_device")
         # runtime-boundary:请求的是 backend;cuda:0/mps:0 等带索引的 actual_device
         # 必须与 backend 匹配,不得用字符串相等错误拒绝
-        if not isinstance(actual_device, str) or not re.fullmatch(
-            re.escape(str(self._device)) + r"(?::[0-9]+)?", actual_device
-        ):
+        pattern = r"(?:cpu|mps|cuda)(?::[0-9]+)?" if self._device == "auto" else re.escape(str(self._device)) + r"(?::[0-9]+)?"
+        if not isinstance(actual_device, str) or not re.fullmatch(pattern, actual_device):
             raise ExternalWorkerError(
                 f"selftest_runtime actual_device {actual_device!r} does not match "
                 f"requested backend {self._device!r} (log: {self.worker_log_path})"

@@ -162,7 +162,7 @@ class ExperimentInferenceActions(QObject):
     # 联合推理(P1.4-S4a)
     # ------------------------------------------------------------------
 
-    def runJointInference(self, model_id: UUID, params) -> None:
+    def runJointInference(self, model_id: UUID, params, *, _device_checked: bool = False) -> None:
         session = self.window.analysisSession
         experiment = self.window.currentPendulumExperiment()
         if session is None or experiment is None:
@@ -179,16 +179,21 @@ class ExperimentInferenceActions(QObject):
 
         model = next((m for m in session.project.model_references
                       if m.model_id == model_id), None)
-        if model is not None and effective_compatibility_state(model) == "unverified":
+        checked_device = str(((model.self_test_evidence or {}).get("runtime") or {}).get("device", "")) if model else ""
+        # auto必须在worker运行环境重新探测；CPU自检不能证明GPU可用。
+        needs_device_check = (params.device == "auto" and not _device_checked) or (
+            params.device != "auto" and checked_device.split(":")[0] != params.device)
+        if model is not None and (effective_compatibility_state(model) == "unverified" or needs_device_check):
             experiment_id = experiment.experiment_id
 
             def continue_inference():
                 current = self.window.currentPendulumExperiment()
                 if (self.window.analysisSession is session and current is not None
                         and current.experiment_id == experiment_id):
-                    self.runJointInference(model_id, params)
+                    self.runJointInference(model_id, params, _device_checked=True)
 
-            self.window.modelActions.runSelftest(model_id, on_success=continue_inference)
+            self.window.modelActions.runSelftest(
+                model_id, device=params.device, on_success=continue_inference)
             return
         try:
             run, request = prepare_experiment_inference(
@@ -203,7 +208,7 @@ class ExperimentInferenceActions(QObject):
             return
         try:
             handle = self._runner_factory().start_inference(
-                session.project_root, request, device="cpu",
+                session.project_root, request, device=request.expected_device.split(":")[0],
             )
         except (ModelWorkerError, OSError) as error:
             # prepare 已登记 pending run;启动失败必须回写 failed(死端守卫)
@@ -222,7 +227,7 @@ class ExperimentInferenceActions(QObject):
         self._timer.start()
         self._refresh_inference_progress()
         self.window.statusBar().showMessage(
-            f"Joint inference run {run.run_id} started on cpu "
+            f"Joint inference run {run.run_id} started: {params.device} → {request.expected_device} "
             "(external worker; logs in the run directory)")
         self.window.projectActions.refresh()
 
@@ -294,7 +299,8 @@ class ExperimentInferenceActions(QObject):
         panel.setActivity(stage, step=step, total=total)
         panel.progressBar.setFormat(f"%p% · {step}/{total} frames")
         # macOS原生进度条可能不绘制format文本；标签保证帧数/百分比可见。
-        details = [f"{step}/{total} frames ({step / total:.0%})", f"Elapsed {minutes:02d}:{seconds:02d}"]
+        details = [f"Device {self._request.expected_device}", f"{step}/{total} frames ({step / total:.0%})",
+                   f"Elapsed {minutes:02d}:{seconds:02d}"]
         if 0 < step < total and elapsed > 0:
             rate = step / elapsed
             remaining = int((total - step) / rate)

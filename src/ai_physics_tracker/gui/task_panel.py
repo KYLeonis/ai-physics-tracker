@@ -110,6 +110,9 @@ class TaskPanel(QDockWidget):
         self.batchSizeSpinBox.setValue(8)
         self.deviceComboBox = QComboBox()
         self.deviceComboBox.addItems(["auto", "cpu", "mps", "cuda"])
+        self.deviceComboBox.setToolTip(
+            "Auto: available CUDA → Apple MPS → CPU. GPU inference requires a model self-test. "
+            "Windows without CUDA uses CPU; other GPU backends are not installed by this app.")
 
         # Phase 5.5：Restart/Resume 模式与 Advisor 摘要（ADR-0015）
         self.trainingModeComboBox = QComboBox()

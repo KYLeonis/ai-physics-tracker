@@ -155,6 +155,8 @@ def prepare_experiment_inference(
         config={"request_kind": "experiment-joint-inference-v1",
                 "model_id": str(model_id), "input_digest": request.input_digest,
                 "min_confidence": request.min_confidence,
+                "requested_device": params.device, "device": request.expected_device,
+                "batch_size": request.batch_size,
                 "bodypart_mapping": [list(pair) for pair in request.bodypart_mapping]},
         model_snapshot=model.checkpoint_path, run_id=resolved_id,
     )
@@ -172,6 +174,8 @@ def verify_experiment_inference_result(
         raise ProjectSessionError("Joint inference run identity or lifecycle changed")
     if (run.config.get("input_digest") != request.input_digest
             or run.config.get("min_confidence") != request.min_confidence
+            or run.config.get("device") != request.expected_device
+            or run.config.get("batch_size") != request.batch_size
             or run.config.get("bodypart_mapping") !=
             [list(pair) for pair in request.bodypart_mapping]):
         raise ProjectSessionError("Joint inference run configuration changed")
