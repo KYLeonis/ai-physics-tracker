@@ -40,8 +40,10 @@ Write-Host "==> frozen smoke (offscreen)"
 $SmokeResult = Join-Path $Work "smoke.json"
 $env:QT_QPA_PLATFORM = "offscreen"
 $env:APT_SMOKE_RESULT = $SmokeResult
-& $Bin --apt-smoke
-if ($LASTEXITCODE -ne 0) { throw "smoke failed with exit $LASTEXITCODE" }
+# windowed(console=False) exe 不能用 & 直呼:PowerShell 不等待 GUI 子系统进程,
+# 必须显式 -Wait 并读真实退出码
+$SmokeProcess = Start-Process -FilePath $Bin -ArgumentList "--apt-smoke" -Wait -PassThru
+if ($SmokeProcess.ExitCode -ne 0) { throw "smoke failed with exit $($SmokeProcess.ExitCode)" }
 $Status = (& $Python -c "import json;print(json.load(open(r'$SmokeResult'))['status'])")
 if ($Status -ne "ok") { throw "smoke status was $Status" }
 Write-Host "    smoke: $Status"
