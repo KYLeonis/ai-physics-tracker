@@ -9,6 +9,7 @@
 
 - 用户明确选择完整 P6.2 并授权“开始”；新 [mini-plan](plans/p6.2-managed-runtime.md) 已在代码实施前建立。工作分支 `feat/p6.2-managed-runtime`，base `df920f4`，叠加未集成 P6.1；不提前合并或发布。
 - 当前 S1：独立 Python/bootstrap 与完整依赖锁取证，然后安装事务、GUI、真实小闭环、Independent Review/HR。Windows 真机按 ADR-0021 延期，main/共享 venv/用户工程视频不修改。P6.1 的基础 HR/Review 仍待核对，不虚构完成。
+- CI 修复中：`b3c1722` 的 [tests 37012073135](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073135) 双平台均被 DLC 分层检查拦截（worker 直接导入 DLC）；改为复用 `DLCAdapter.engine_version()`。Windows [runtime locks 37012073288](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073288) CPU/CUDA 两项失败来自 pip report 的默认 cp1252 解码；读取改为显式 UTF-8。该提交的 [packaging 37012073114](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073114) 双平台通过。修复后重跑，未将失败或未完成验证记成通过。
 
 ## P6.1 许可复查与 MIT 定标 — 2026-10-02（第二轮）
 

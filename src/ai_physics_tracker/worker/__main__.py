@@ -70,7 +70,9 @@ def _run_selftest_runtime(request: dict[str, Any], result: dict[str, Any]) -> No
     if request.get("verify_dlc"):
         # 新安装环境必须证明 DLC 可导入；tensor 可用本身不代表 AI 环境完整。
         os.environ["DLClight"] = "True"
-        import deeplabcut
+        from ai_physics_tracker.infrastructure.dlc_adapter import DLCAdapter
+
+        DLCAdapter().engine_version()
         import torchvision
         import numpy
 

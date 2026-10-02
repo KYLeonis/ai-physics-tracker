@@ -47,7 +47,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     with ThreadPoolExecutor(max_workers=4) as pool:
-        packages = list(pool.map(package_artifact, json.loads(args.report.read_text())["install"]))
+        packages = list(pool.map(package_artifact, json.loads(args.report.read_text(encoding="utf-8"))["install"]))
     target, sha, size = BOOTSTRAPS[args.system]
     filename = f"cpython-3.12.15+20261001-{target}-install_only_stripped.tar.gz"
     windows = args.system == "Windows"
