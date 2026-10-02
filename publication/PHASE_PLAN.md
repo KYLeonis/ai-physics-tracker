@@ -210,7 +210,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P6 — Distribution and First Release
 
-2026-10-02：P6.1/P6.2代码及自动验证已在工作分支完成；独立复审通过、最终源码双平台CI全绿，等待[P6.2安装版HR](plans/p6.2-human-review.md)，尚未集成/发布。Windows G1–G4/G5按用户后续裁定延期并保持not_run。后续P6.3/P6.4尚未执行；[总计划](plans/p6-packaging-execution-plan.md)、[实施mini-plan](plans/p6.2-managed-runtime.md)、[STATUS](STATUS.md)。
+2026-10-02：P6.1/P6.2开发交付、独立复审和双平台CI已通过；用户确认[Mac安装版HR](plans/p6.2-human-review.md)三项均通过，执行集成收尾；未公开发布。Windows G1–G4/G5保持not_run，按[便捷指南](plans/p6-windows-machine-check.md)另行实测。后续P6.3/P6.4尚未执行；[总计划](plans/p6-packaging-execution-plan.md)、[实施mini-plan](plans/p6.2-managed-runtime.md)、[STATUS](STATUS.md)。
 
 - **Goal**：在普通用户电脑上实际安装并运行完整平台。
 - **Scope**：native build/installer/app/dmg、first-run setup/repair、硬件runtime matrix、版本锁定/下载、自检日志、干净机器验收、发行文档。

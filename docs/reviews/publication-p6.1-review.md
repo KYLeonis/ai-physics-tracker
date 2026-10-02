@@ -2,7 +2,7 @@
 
 - 日期：2026-10-02；reviewer gpt-6-luna/max，只读；主实现 root。
 - 范围：P6.1 `40db20d..df920f4` 的打包/启动/资源worker源码/FFprobe支撑层，以及P6.2对其修复 `c890b5b`；不重审P0–P5科学算法。
-- 最终代码结论：补充审查 **Approve with limitations**（`c890b5b`）；F1/F2 Closed，无开放major；尚未完成最新HR/集成。
+- 最终代码结论：补充审查 **Approve with limitations**（`c890b5b`）；F1/F2 Closed，无开放major；最新Mac安装版HR随P6.2已获用户2026-10-02三项均通过，准备集成。Windows真机不在该HR通过范围内。
 
 | ID | Finding | 修复与验证 | 复审状态 |
 | --- | --- | --- | --- |

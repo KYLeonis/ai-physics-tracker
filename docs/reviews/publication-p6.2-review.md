@@ -2,7 +2,7 @@
 
 - 日期：2026-10-02；主实现 root；reviewer gpt-6-luna/max，只读。
 - 范围：`df920f4..c890b5b`，完整 managed runtime 安装/取消/激活/GUI/诊断/随包依赖材料。P6.1 支撑层另记本目录 P6.1 record。
-- 最终代码结论：R3 **Approve with limitations**（`c890b5b`），无开放Blocking/Major；真人HR未测。Windows真机、CUDA训练与clean-machine仍not_run。Reviewer未核验新DMG成品；成品由root单独构建/冒烟验证。
+- 最终代码结论：R3 **Approve with limitations**（`c890b5b`），无开放Blocking/Major；用户2026-10-02确认本轮Mac HR三项均通过。Windows真机、CUDA训练与clean-machine仍not_run。Reviewer未核验新DMG成品；成品由root单独构建/冒烟验证并交用户HR。
 
 ## Findings / dispositions
 

@@ -12,8 +12,8 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 
 | Subphase | Review Record | 最终 Verdict | 日期 |
 | --- | --- | --- | --- |
-| Publication P6.1 | [publication-p6.1-review.md](publication-p6.1-review.md) | Approve with limitations；F1/F2 Closed，最新HR待补 | 2026-10-02 |
-| Publication P6.2 | [publication-p6.2-review.md](publication-p6.2-review.md) | R3 Approve with limitations；F1–F7 Closed，HR待补 | 2026-10-02 |
+| Publication P6.1 | [publication-p6.1-review.md](publication-p6.1-review.md) | Approve with limitations；F1/F2 Closed，最新Mac HR通过 | 2026-10-02 |
+| Publication P6.2 | [publication-p6.2-review.md](publication-p6.2-review.md) | R3 Approve with limitations；F1–F7 Closed，Mac三项HR通过 | 2026-10-02 |
 | Publication P5.1 | [publication-p5.1-review.md](publication-p5.1-review.md) | R2 Approve，nonconverged F1 Closed；用户整体HR通过，P5收尾 | 2026-10-02 |
 | Publication P5.2 | [publication-p5.2-review.md](publication-p5.2-review.md) | R2 Approve，逐角色QC F1 Closed；导出图修复Self-review及用户HR通过 | 2026-10-02 |
 | Publication P5.3 | [publication-p5.3-review.md](publication-p5.3-review.md) | R6 Approve，F1/F2 Closed；用户整体HR通过，学生pilot未测、发行前待补 | 2026-10-02 |

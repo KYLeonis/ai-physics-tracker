@@ -2,11 +2,12 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.2代码及自动验证完成于 `feat/p6.2-managed-runtime`，叠加未集成P6.1；`c890b5b`双平台tests/packaging CI全绿，独立复审Approve with limitations、无开放Major/Blocking。最新Mac安装版已打开，等待用户[HR](plans/p6.2-human-review.md)。尚未集成或发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
+- 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，执行集成收尾。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
 ## P6.2 start — 2026-10-02
 
+- 用户本轮确认“均通过”：Mac安装取消重试、独立环境重开自检与训练推理HR完成；P6.1/P6.2可按既有流程收尾。文档checkpoint `6bb0ff8` [tests37025219808](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37025219808) / [packaging37025219904](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37025219904)亦双平台success；Windows artifact id11234523951已核对未过期（约201MiB）。不要求pull源码；[真机指南](plans/p6-windows-machine-check.md)列CPU基线、CUDA、取消/离线与日志反馈。Windows没有实测前仍不勾选。
 - 最终源码`c890b5b`：[tests 37023438111](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37023438111) Windows1436passed/6skipped/1existingstrictxfail（377.01s）、Mac1438passed/4skipped/1existingstrictxfail（308.88s），双平台success；[packaging 37023439440](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37023439440)两平台原生构建/setup/external worker smoke均success。后续只同步文档，产品代码/测试与该SHA相同。
 - 独立复审：[P6.1](../docs/reviews/publication-p6.1-review.md)、[P6.2](../docs/reviews/publication-p6.2-review.md)均Approve with limitations、所有Major/Blocking Closed；主定向130passed、独立125passed。修复了ready证据守卫、cwd遮蔽、显式设备重复自检、CUDA误回退、Mac最低系统声明和frozen旧单轨AI路径；本发行版走单摆实验联合训练/推理，通用单轨旧AI明确禁用引导，手工测量可用。
 - 最新本地DMG：`dist/p6.2-final/AIPhysicsTracker-0.1.0-arm64.dmg`，143705710bytes、SHA256 `11af5f8b99953439ab30f8113859e706e26ed6458673b20db7909b76d4877fe2`；Mac14.0+。原生smoke与源码相同，host无AI栈；已启动供用户HR。实际坏wheel拒绝/安装进程树取消及网络/空间故障注入通过；重新离线MPS12帧推理通过。完整证据见runtime validation；体验HR、Windows实机缺项保留，P6.1/P6.2未集成。
@@ -261,7 +262,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**停止并等待用户按[P6.2 HR步骤](plans/p6.2-human-review.md)测试最新`dist/p6.2-final`安装版。HR通过后才按既有流程集成P6.1/P6.2到publication；进入P6.3/P6.4仍需后续指令，公开tag/GitHub Release等用户说“发”。Windows真机G1–G4/G5、学生pilot、签名/公证与Inno仍单列pending，不以CI或合成测试替代。**
+**完成本轮P6.1/P6.2集成收尾后停止。用户可按[Windows指南](plans/p6-windows-machine-check.md)下载已通过CI的便携包，在真机做CPU/CUDA验收并返回实际结果；记录前保持not_run。P6.3/P6.4尚未执行；公开tag/GitHub Release等用户说“发”。Windows真机G1–G4/G5、学生pilot、签名/公证与Inno仍单列pending，不以CI或Mac HR替代。**
 
 ## P2.1 delivery (2026-09-30)
 
