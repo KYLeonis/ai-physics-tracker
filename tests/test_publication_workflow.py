@@ -3,6 +3,8 @@
 from dataclasses import replace
 from threading import Event
 
+import pytest
+
 from ai_physics_tracker.application.pendulum_analysis import prepare_analysis_job, run_analysis_job
 from ai_physics_tracker.application.publication_workflow import publication_task_card
 from ai_physics_tracker.application.workflow_projection import project_workflow_state
@@ -64,10 +66,13 @@ def test_teacher_path_does_not_require_labels_or_fixed_check_and_busy_keeps_canc
     assert session.project.scientific_results == ()
 
 
-def test_training_cycle_tracks_labels_and_latest_model(tmp_path, synthetic_video_path):
+@pytest.mark.parametrize("retry_status", ["failed", "cancelled"])
+def test_training_cycle_tracks_labels_and_latest_model(tmp_path, synthetic_video_path, retry_status):
     from ai_physics_tracker.application.annotation_join import canonical_label_digest, join_complete_frames
     from ai_physics_tracker.domain.pendulum import ExperimentFrameSet, ROLE_ORDER
-    from ai_physics_tracker.domain.tracking_run import create_tracking_run, mark_run_completed
+    from ai_physics_tracker.domain.tracking_run import (
+        create_tracking_run, mark_run_cancelled, mark_run_completed, mark_run_failed,
+    )
     from ai_physics_tracker.domain.types import utc_now
 
     session, experiment, _, _ = _prepared(tmp_path, synthetic_video_path)
@@ -103,9 +108,15 @@ def test_training_cycle_tracks_labels_and_latest_model(tmp_path, synthetic_video
     session.record_tracking_run(infer)
     assert card().primary.action_id == "review_joint_candidate"
     assert len(card().secondary) == 5  # 原有六个按钮持续提供完整循环
+    retry = create_tracking_run(experiment.video_id, experiment.roles.track_ids(), "infer",
+                               experiment_id=experiment.experiment_id, role_bindings=experiment.roles)
+    session.record_tracking_run(mark_run_failed(retry, "worker error") if retry_status == "failed"
+                                else mark_run_cancelled(retry))
+    assert card().primary.action_id == "run_joint_inference"
     session.mark_point(experiment.roles.tip, 1, 11., 20.)
     assert card().primary.action_id == "train_current_labels"
     assert "Labels changed" in card().explanation[1]
+    assert any(action.action_id == "view_history" for action in card().secondary)
 
 
 def test_nonconverged_fit_is_visible_alone_and_with_successful_kinematics(tmp_path, synthetic_video_path):

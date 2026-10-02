@@ -132,8 +132,9 @@ def publication_task_card(session: ProjectSession, experiment: PendulumExperimen
     primary = steps[index]
     last = attempts[-1] if attempts else None
     if last is not None and last.status in ("failed", "cancelled"):
-        index = 2 if last.task_type == "train" else 3
-        primary = replace(steps[index], label=f"Retry {last.task_type} · {steps[index].label}")
+        if not changed:
+            index = 2 if last.task_type == "train" else 3
+            primary = replace(steps[index], label=f"Retry {last.task_type} · {steps[index].label}")
         extra = ActionSpec("view_history", "Results & history")
     elif state.joint and state.joint.candidate_run_id:
         extra = ActionSpec("replace_experiment" if state.joint.active_run_id else "activate_experiment",
