@@ -11,6 +11,9 @@ import multiprocessing
 import os
 import sys
 import traceback
+from pathlib import Path
+import tempfile
+from uuid import uuid4
 
 
 def _smoke() -> int:
@@ -32,6 +35,7 @@ def _smoke() -> int:
             FORBIDDEN_HOST_ROOTS,
             bundled_ffprobe,
             set_application_identity,
+            worker_package_root,
         )
         from ai_physics_tracker.gui.main_window import MainWindow
         from ai_physics_tracker.infrastructure.ffprobe_timing import FFprobeTimingProbe
@@ -51,6 +55,15 @@ def _smoke() -> int:
         )
         window.show()
         app.processEvents()
+        # P6.2 随包清单必须覆盖当前平台，并能实际打开 setup；不真实安装。
+        window.runtimeSetup.open()
+        app.processEvents()
+        report["runtime_profiles"] = [p["id"] for p in window.runtimeSetup.profiles]
+        if not report["runtime_profiles"]:
+            report["detail"] = window.runtimeSetup.manifest_error or "No compatible runtime profile"
+            window.close()
+            return _finish(4)
+        window.runtimeSetup.dialog.close()
         window.close()
 
         loaded = sorted(
@@ -70,6 +83,26 @@ def _smoke() -> int:
         if ffprobe is None or not os.access(ffprobe, os.X_OK):
             report["detail"] = "bundled ffprobe missing or not executable"
             return _finish(3)
+
+        # 真正从 frozen host 启动外部 Python，覆盖 Windows DLL 清理与随包源码身份。
+        external_python = os.environ.get("APT_SMOKE_PYTHON")
+        if external_python:
+            from ai_physics_tracker.infrastructure.external_worker import ExternalWorkerRunner, build_request
+
+            source_root = worker_package_root()
+            if source_root is None:
+                raise RuntimeError("Bundled worker source is missing")
+            request, _ = build_request("hello", job_id=uuid4(), package_root=source_root)
+            with tempfile.TemporaryDirectory(prefix="apt-frozen-worker-") as directory:
+                handle = ExternalWorkerRunner(Path(external_python), package_root=source_root).start(Path(directory), request)
+                if not handle.join(timeout_s=30):
+                    handle.cancel()
+                    raise RuntimeError("Frozen external worker timed out")
+                evidence = handle.read_result()
+                if evidence["status"] != "success":
+                    raise RuntimeError(f"Frozen external worker failed: {evidence.get('error')}")
+                report["external_worker"] = {"status": evidence["status"], "executable": evidence["executable"],
+                                             "worker_sha256": request["worker_sha256"]}
 
         report["status"] = "ok"
         return _finish(0)

@@ -29,6 +29,7 @@ if not ffprobe_path.is_file():
     raise SystemExit(f"ffprobe binary missing under {ffprobe_dir}")
 
 datas = [
+    (str(REPO_ROOT / "resources" / "runtime"), "resources/runtime"),
     (str(ffprobe_path), "resources/ffprobe"),
     (str(REPO_ROOT / "LICENSE"), "resources"),
     (str(REPO_ROOT / "packaging" / "NOTICE-third-party.md"), "resources"),

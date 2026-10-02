@@ -107,8 +107,13 @@ def start_python_process(argv: list[str], *, env: dict[str, str], log: IO[bytes]
         previous = None
         if os.name == "nt" and getattr(sys, "frozen", False):
             import ctypes
+            from ctypes import wintypes
 
             dll = ctypes.windll.kernel32
+            dll.GetDllDirectoryW.argtypes = [wintypes.DWORD, wintypes.LPWSTR]
+            dll.GetDllDirectoryW.restype = wintypes.DWORD
+            dll.SetDllDirectoryW.argtypes = [wintypes.LPCWSTR]
+            dll.SetDllDirectoryW.restype = wintypes.BOOL
             length = dll.GetDllDirectoryW(0, None)
             buffer = ctypes.create_unicode_buffer(length + 1)
             dll.GetDllDirectoryW(length + 1, buffer)

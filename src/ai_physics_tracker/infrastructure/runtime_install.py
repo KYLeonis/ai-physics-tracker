@@ -12,7 +12,7 @@ import shutil
 import signal
 import subprocess
 import tarfile
-from threading import Event
+from threading import Event, Lock
 import time
 from typing import Callable
 from urllib.parse import urlsplit
@@ -24,6 +24,27 @@ from ai_physics_tracker.infrastructure.external_worker import ExternalWorkerRunn
 
 class RuntimeInstallError(RuntimeError):
     """可恢复的 runtime 安装/验证错误，旧环境不被替换。"""
+
+
+class RuntimeCancellation(Event):
+    """取消与最终发布串行化：先取消则不发布，先提交则报告成功。"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._commit_lock = Lock()
+        self.committed = False
+
+    def set(self) -> None:
+        with self._commit_lock:
+            if not self.committed:
+                super().set()
+
+    def commit(self, action: Callable[[], None]) -> None:
+        with self._commit_lock:
+            if self.is_set():
+                raise CancelledError()
+            action()
+            self.committed = True
 
 
 @dataclass(frozen=True)
@@ -96,6 +117,16 @@ def load_profiles(path: Path) -> tuple[dict, ...]:
             if not artifact["filename"].endswith(".whl") and artifact["name"].lower() != "filterpy":
                 raise RuntimeInstallError("Runtime requires an unsupported source build")
     return tuple(profiles)
+
+
+def profile_supported(profile: dict) -> bool:
+    if profile["system"] != platform.system() or platform.machine().lower() not in profile["machines"]:
+        return False
+    if platform.system() == "Darwin":
+        actual = tuple(int(part) for part in platform.mac_ver()[0].split(".")[:2])
+        minimum = tuple(int(part) for part in profile["min_os_version"].split("."))
+        return actual >= minimum
+    return True
 
 
 def extract_python(archive: Path, destination: Path, cancel: Event) -> None:
@@ -188,7 +219,7 @@ def run_command(argv: list[str], log_path: Path, cancel: Event, *, timeout_s: fl
 
 def verify_runtime(python: Path, job_dir: Path, package_root: Path | None, cancel: Event,
                    *, device: str = "auto", expected_versions: dict | None = None) -> dict:
-    request, _ = build_request("selftest_runtime", device=device, package_root=package_root,
+    request, _ = build_request("selftest_runtime", job_id=uuid4(), device=device, package_root=package_root,
                                extra={"verify_dlc": True})
     handle = ExternalWorkerRunner(python, package_root=package_root).start(job_dir, request)
     deadline = time.monotonic() + 180
@@ -206,7 +237,7 @@ def verify_runtime(python: Path, job_dir: Path, package_root: Path | None, cance
         raise RuntimeInstallError(f"AI environment self-test failed: {result.get('error')}; see {handle.worker_log_path}")
     if Path(result["executable"]).absolute() != python.absolute():
         raise RuntimeInstallError("AI self-test used a different Python interpreter")
-    if not str(result["python"]).startswith("3.12."):
+    if expected_versions and not str(result["python"]).startswith("3.12."):
         raise RuntimeInstallError("AI runtime must use Python 3.12")
     for name, version in (expected_versions or {}).items():
         if result["versions"].get(name) != version:
@@ -214,7 +245,7 @@ def verify_runtime(python: Path, job_dir: Path, package_root: Path | None, cance
     return result
 
 
-def publish_runtime(data_root: Path, python: Path, evidence: dict, cancel: Event) -> None:
+def publish_runtime(data_root: Path, python: Path, evidence: dict, cancel: RuntimeCancellation) -> None:
     """先保存验证身份，最后原子替换小型指针；不移动含绝对路径的 venv。"""
     if cancel.is_set():
         raise CancelledError()
@@ -224,35 +255,42 @@ def publish_runtime(data_root: Path, python: Path, evidence: dict, cancel: Event
     temporary = pointer.with_name(f"active.{uuid4().hex}.tmp")
     try:
         temporary.write_text(str(python.absolute()) + "\n", encoding="utf-8")
-        if cancel.is_set():
-            raise CancelledError()
-        os.replace(temporary, pointer)
+        cancel.commit(lambda: os.replace(temporary, pointer))
     finally:
         temporary.unlink(missing_ok=True)
 
 
 def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
-                    cancel: Event, report: Callable[[RuntimeProgress], None]) -> Path:
+                    cancel: RuntimeCancellation, report: Callable[[RuntimeProgress], None]) -> Path:
     """在固定且独占的新版本目录安装，旧 active/runtime 原封不动保留。"""
-    from PySide6.QtCore import QLockFile
-
-    if profile["system"] != platform.system() or platform.machine().lower() not in profile["machines"]:
-        raise RuntimeInstallError("Runtime profile does not match this computer")
+    if not profile_supported(profile):
+        raise RuntimeInstallError("Runtime profile does not match this computer (Apple Silicon requires macOS 14+)")
     data_root = data_root.absolute()
     parent = data_root / "runtimes"
     parent.mkdir(parents=True, exist_ok=True)
-    lock = QLockFile(str(parent / "install.lock"))
-    if not lock.tryLock(0):
-        raise RuntimeInstallError("Another AI environment setup is running")
+    # OS 文件锁随句柄关闭/进程退出释放，不留下需要判断 PID 的陈旧锁。
+    lock = (parent / "install.lock").open("a+b")
     folder = parent / "installs" / (profile["id"] + "-" + uuid4().hex)
-    folder.mkdir(parents=True)
     log_path = folder / "install.log"
     digest = hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest()
     cache = data_root / "runtime-cache" / digest
-    cache.mkdir(parents=True, exist_ok=True)
     journal = {"status": "installing", "profile": profile["id"], "manifest_sha256": digest}
-    atomic_json(folder / "install-state.json", journal)
     try:
+        try:
+            if os.name == "nt":
+                import msvcrt
+                lock.write(b"0")
+                lock.flush()
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            raise RuntimeInstallError("Another AI environment setup is running") from error
+        folder.mkdir(parents=True)
+        cache.mkdir(parents=True, exist_ok=True)
+        atomic_json(folder / "install-state.json", journal)
         required = 3 * (profile["python"]["size"] + sum(a["size"] for a in profile["packages"])) + 512 * 1024**2
         if shutil.disk_usage(folder).free < required:
             raise RuntimeInstallError(f"Not enough free space; need approximately {required / 1024**3:.1f} GiB")
@@ -288,8 +326,9 @@ def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
         return python
     except BaseException as error:
         journal.update(status="cancelled" if isinstance(error, CancelledError) else "failed", error=str(error))
-        atomic_json(folder / "install-state.json", journal)
+        if folder.is_dir():
+            atomic_json(folder / "install-state.json", journal)
         # ponytail: 保留失败目录与日志便于诊断；需要时另做明确的旧环境清理入口。
         raise
     finally:
-        lock.unlock()
+        lock.close()

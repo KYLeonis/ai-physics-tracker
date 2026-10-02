@@ -2,13 +2,15 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.1 原生构建 + 许可定标（MIT）已完成于 `feat/p6.1-native-builds` 分支：macOS DMG（118MB，含 LGPL ffprobe 与 20 份许可文本）本地验证、全量 1404 passed；双平台 CI 待本轮 push 复验。v0.1 发布候选准备中（HR/集成/打 tag/Release 待用户确认）。**
+- 当前：**完整P6.2实施于 `feat/p6.2-managed-runtime`，叠加未集成P6.1。Mac独立环境已真实训练、CPU/MPS自检推理及离线重开；安装GUI与事务已实现，Independent Review/最终CI/HR待收口。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later（更正旧AGPL记录）。尚未集成或发布。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
 ## P6.2 start — 2026-10-02
 
 - 用户明确选择完整 P6.2 并授权“开始”；新 [mini-plan](plans/p6.2-managed-runtime.md) 已在代码实施前建立。工作分支 `feat/p6.2-managed-runtime`，base `df920f4`，叠加未集成 P6.1；不提前合并或发布。
-- 当前 S1：独立 Python/bootstrap 与完整依赖锁取证，然后安装事务、GUI、真实小闭环、Independent Review/HR。Windows 真机按 ADR-0021 延期，main/共享 venv/用户工程视频不修改。P6.1 的基础 HR/Review 仍待核对，不虚构完成。
+- S1–S3：固定CPython3.12.15/PBS20261001、DLC3.0.1/Torch2.13.0/torchvision0.28.0与Mac/Windows CPU/CUDA全部86项依赖锁；OS互斥、SHA缓存、安全解包、稳定UUID环境、pip check、真实worker自检、取消/提交串行化与原子pointer；Settings中的Install/Repair/Check/Cancel/诊断及AI入口守卫。Mac要求14+；Windows实机尚未验证。
+- S4/S5：Mac真实合成视频1epoch训练→CPU/MPS模型自检与12帧推理均success；已封锁Python socket后重开合成工程并成功MPS推理；无缓存全新bootstrap下载25023573字节SHA通过。全量1427 passed/1既有strict xfail/9subtests（追加事务负例另20定向通过），GUI5项通过；最终源码CI及独立复审/真人HR仍待补。证据见 `publication/evidence/runtime/p6.2-validation.md`。
+- CI修复阶段提交`0dcebc0`：[tests 37018570789](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37018570789)、[packaging 37018570751](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37018570751)、[runtime锁37018570942](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37018570942)均success。后续GUI/事务提交需重新核对最终源码，以上不冒充未提交增量CI。
 - CI 修复中：`b3c1722` 的 [tests 37012073135](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073135) 双平台均被 DLC 分层检查拦截（worker 直接导入 DLC）；改为复用 `DLCAdapter.engine_version()`。Windows [runtime locks 37012073288](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073288) CPU/CUDA 两项失败来自 pip report 的默认 cp1252 解码；读取改为显式 UTF-8。该提交的 [packaging 37012073114](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073114) 双平台通过。修复后重跑，未将失败或未完成验证记成通过。
 
 ## P6.1 许可复查与 MIT 定标 — 2026-10-02（第二轮）
@@ -256,7 +258,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**v0.1 发布路径（用户目标：随论文提交的可用软件）：①本轮 push 后确认双平台 CI（tests + packaging，新 ffprobe 管线）全绿；②用户对最新 DMG 完成 HR（Q1–Q4；AI 链路已由用户带 env 后门实测通过）；③`--no-ff` 集成回 publication；④按用户明确指令打 tag `v0.1.0` 并创建 GitHub Release（附 DMG/zip 与 release notes——公开动作，等用户说"发"）；⑤v0.1 scope 说明：AI 训练/推理需外部 Python runtime（P6.2 前属进阶功能）。Windows 真机 G1–G4、学生 pilot、签名/公证、Inno 安装器仍为后续待办。**
+**完成P6.2最终Independent Review与双平台tests/packaging CI，交付新DMG并停止等待用户HR。HR通过后才按既有流程集成P6.1/P6.2到publication；进入P6.3/P6.4仍需后续指令，公开tag/GitHub Release等用户说“发”。Windows真机G1–G4/G5、学生pilot、签名/公证与Inno仍单列pending，不以CI或合成测试替代。**
 
 ## P2.1 delivery (2026-09-30)
 

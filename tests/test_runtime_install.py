@@ -74,13 +74,13 @@ def test_failed_pointer_replace_preserves_old_environment(monkeypatch, tmp_path)
 
     monkeypatch.setattr(runtime.os, "replace", reject_pointer)
     with pytest.raises(OSError, match="file lock"):
-        runtime.publish_runtime(tmp_path, python, {"status": "ready"}, Event())
+        runtime.publish_runtime(tmp_path, python, {"status": "ready"}, runtime.RuntimeCancellation())
     assert pointer.read_text(encoding="utf-8") == "old python\n"
     assert not list(pointer.parent.glob("active.*.tmp"))
 
 
 def test_cancelled_install_does_not_publish_pointer(tmp_path):
-    cancel = Event()
+    cancel = runtime.RuntimeCancellation()
     cancel.set()
     with pytest.raises(CancelledError):
         runtime.publish_runtime(tmp_path, tmp_path / "environment/bin/python", {}, cancel)
@@ -91,9 +91,83 @@ def test_activation_keeps_stable_python_path(tmp_path):
     python = tmp_path / "中文 environment/bin/python"
     python.parent.mkdir(parents=True)
     python.touch()
-    runtime.publish_runtime(tmp_path, python, {"status": "ready"}, Event())
+    runtime.publish_runtime(tmp_path, python, {"status": "ready"}, runtime.RuntimeCancellation())
     assert (tmp_path / runtime.POINTER_RELATIVE).read_text(encoding="utf-8").strip() == str(python)
     assert (python.parent.parent / "runtime-ready.json").exists()
+
+
+def test_cancel_and_activation_have_one_commit_order(tmp_path):
+    from threading import Thread
+
+    cancel = runtime.RuntimeCancellation()
+    entered, release = Event(), Event()
+
+    def publish():
+        entered.set()
+        assert release.wait(2)
+
+    committing = Thread(target=lambda: cancel.commit(publish))
+    committing.start()
+    assert entered.wait(2)
+    cancelling = Thread(target=cancel.set)
+    cancelling.start()
+    release.set()
+    committing.join(2)
+    cancelling.join(2)
+    assert cancel.committed and not cancel.is_set()
+
+
+def test_macos_profile_rejects_old_os_before_downloading(monkeypatch):
+    monkeypatch.setattr(runtime.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(runtime.platform, "machine", lambda: "arm64")
+    monkeypatch.setattr(runtime.platform, "mac_ver", lambda: ("13.7", (), ""))
+    assert not runtime.profile_supported({"system": "Darwin", "machines": ["arm64"], "min_os_version": "14.0"})
+
+
+def test_runtime_verification_uses_protocol_identity(monkeypatch, tmp_path):
+    python = tmp_path / "environment/bin/python"
+
+    class Handle:
+        def is_alive(self):
+            return False
+
+        def read_result(self):
+            return {"status": "success", "executable": str(python), "python": "3.12.15",
+                    "versions": {"deeplabcut": "3.0.1"}}
+
+    class Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def start(self, job, request):
+            assert request["job_id"] and request["verify_dlc"] is True
+            return Handle()
+
+    monkeypatch.setattr(runtime, "ExternalWorkerRunner", Runner)
+    result = runtime.verify_runtime(python, tmp_path / "check", None, Event(),
+                                    expected_versions={"deeplabcut": "3.0.1"})
+    assert result["status"] == "success"
+
+
+@pytest.mark.parametrize("error", [CancelledError(), runtime.RuntimeInstallError("injected installer failure")])
+def test_install_failure_releases_lock_and_keeps_old_pointer(monkeypatch, tmp_path, error):
+    pointer = tmp_path / runtime.POINTER_RELATIVE
+    pointer.parent.mkdir(parents=True)
+    pointer.write_text("old runtime\n", encoding="utf-8")
+    profile = {"id": "test", "system": runtime.platform.system(),
+               "machines": [runtime.platform.machine().lower()], "min_os_version": "14.0",
+               "python": artifact(), "packages": []}
+    monkeypatch.setattr(runtime, "download_artifact", lambda *args: tmp_path / "fake.tar.gz")
+    monkeypatch.setattr(runtime, "extract_python", lambda *args: None)
+
+    def fail(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(runtime, "run_command", fail)
+    for _ in range(2):
+        with pytest.raises(type(error)):
+            runtime.install_runtime(tmp_path, profile, None, runtime.RuntimeCancellation(), lambda p: None)
+        assert pointer.read_text(encoding="utf-8") == "old runtime\n"
 
 
 def test_frozen_environment_removes_bundle_path_and_python_configuration(monkeypatch, tmp_path):

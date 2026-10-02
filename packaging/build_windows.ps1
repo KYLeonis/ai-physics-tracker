@@ -22,6 +22,8 @@ if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 # host 可导入即可，依赖由 host_requirements 锁定（--no-deps 防 DLC 回流）
 & $Python -m pip install --quiet --no-deps -e $RepoRoot
 if ($LASTEXITCODE -ne 0) { throw "editable install failed" }
+& $Python -m pip check
+if ($LASTEXITCODE -ne 0) { throw "host dependency check failed" }
 
 # LGPL ffprobe：BtbN 版本化 win64-lgpl 包（gyan.dev 全系 GPLv3，不采用）
 & powershell -File (Join-Path $RepoRoot "scripts\build_ffprobe_lgpl.ps1") $FfprobeDir
@@ -41,6 +43,7 @@ Write-Host "==> frozen smoke (offscreen)"
 $SmokeResult = Join-Path $Work "smoke.json"
 $env:QT_QPA_PLATFORM = "offscreen"
 $env:APT_SMOKE_RESULT = $SmokeResult
+$env:APT_SMOKE_PYTHON = $Python
 # windowed(console=False) exe 不能用 & 直呼:PowerShell 不等待 GUI 子系统进程,
 # 必须显式 -Wait 并读真实退出码
 $SmokeProcess = Start-Process -FilePath $Bin -ArgumentList "--apt-smoke" -Wait -PassThru

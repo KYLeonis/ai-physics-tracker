@@ -118,9 +118,18 @@ class ModelActions(QObject):
     def busy(self) -> bool:
         return self._handle is not None
 
+    def set_runtime_python(self, python: str) -> None:
+        if self.busy:
+            raise RuntimeError("Cannot replace the AI interpreter during a job")
+        self._runtime_python = python
+
     def _ensure_runtime(self) -> bool:
         """AI 任务启动前的 runtime 守卫：不可用则占位提示并拒绝（P6.1）。"""
 
+        setup = getattr(self.window, "runtimeSetup", None)
+        if setup is not None and setup.busy:
+            setup.open()
+            return False
         if self._runtime_python and Path(self._runtime_python).is_file():
             return True
         from ai_physics_tracker.gui.launch_context import show_ai_runtime_missing

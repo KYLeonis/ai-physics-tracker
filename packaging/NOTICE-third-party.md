@@ -13,6 +13,7 @@
 | FFprobe（时序探测，独立进程） | macOS: 7.1.1 源码自建 / Windows: BtbN n8.1.3-14 | LGPL（macOS 构建为 `--disable-gpl --disable-nonfree`，configure 确认 "LGPL version 2.1 or later"；Windows 为 BtbN FFmpeg-Builds win64-lgpl 包） | 见下"FFprobe 分发决定" |
 | NumPy | 2.4.6 | BSD-3-Clause（含捆绑组件） | `numpy-2.4.6.LICENSE.txt` + `numpy-2.4.6-extra-licenses/`（wheel 原件） |
 | SciPy | 1.17.1 | BSD-3-Clause（含捆绑组件） | `scipy-1.17.1.LICENSE.txt` |
+| scikit-learn / joblib / threadpoolctl | 1.9.0 / 1.5.3 / 3.6.0 | BSD-3-Clause（各包原文） | host 原已声明 scikit-learn，P6.2 补齐构建锁及 pip check；同版本原文在 `resources/runtime/licenses/macos/packages/` 的各 dist-info 中 |
 | pandas | 2.3.3 | BSD-3-Clause | `pandas-2.3.3.LICENSE` |
 | pyqtgraph | 0.13.7 | MIT | `pyqtgraph-0.13.7.LICENSE.txt` |
 | PyYAML | 6.0.3 | MIT | `pyyaml-6.0.3.LICENSE` |
@@ -48,10 +49,23 @@
 单元测试/开发 CI（tests.yml）仍可使用 ffmpeg-static 的 ffprobe（不随产物分发，
 无再分发问题）；`scripts/setup_ffprobe.py` 保留用于该用途。
 
-## AGPL 边界声明
+## P6.2 AI runtime（2026-10-02 复核）
 
-DeepLabCut（AGPL-3.0）与 PyTorch **不随本应用分发**：host 依赖闭包不含 AI 栈
-（构建冒烟断言 torch/torchvision/deeplabcut 不得加载），AI 功能所需的独立
-Python runtime 由用户自行获得。未来 P6.2 若实现"应用内安装 AI 环境"（随包或
-代下载分发 DLC），必须先做 AGPL 材料审查并更新本文件；届时 MIT 主程序与 AGPL
-组件的聚合方式、源码提供义务需重新评估。
+host 依赖闭包仍不含 Torch/DLC，构建冒烟检查这一点。应用内安装器从固定官方
+HTTPS URL 下载未修改的 Python/Torch/DLC 包，在独立环境中校验、安装、调用。
+主程序 MIT 许可不替代这些第三方组件的许可。
+
+**更正旧记录**：锁定的 DeepLabCut 3.0.1 的 wheel METADATA、原 LICENSE 与
+[上游 v3.0.1 LICENSE](https://github.com/DeepLabCut/DeepLabCut/blob/v3.0.1/LICENSE)
+一致为 **LGPL-3.0-or-later**，旧文档称 AGPL-3.0 不适用于此次锁定包。
+原 LICENSE/NOTICE.yml/AUTHORS 以及 GPL-3.0 引用文本随应用收录；DLC 对应
+sdist 的固定 URL/SHA 与其全部传递依赖的来源、版本、许可记录在
+`resources/runtime/manifest.json`，安装后 wheel 的原始许可文件保留在 runtime
+的 `*.dist-info` 中。Torch/torchvision 的原始许可及其第三方子组件文本同样保留。
+
+PBS 20261001 / CPython 3.12.15 的许可与 PYTHON.json 从官方 full archive
+收录：macOS SHA `55745a8e72464507c44db62d1a3b7fac2214601cb0c09b6f85364fab49977bc8`；
+Windows SHA `aaf7786ecc3fa0bf13259359de6545148e37038a378232609ca14fb9c875170d`。
+`scripts/prepare_runtime_licenses.py` 复核上述 SHA 后提取原文本，
+`resources/runtime/NOTICE.md` 记录源码与复现入口。安装器不改第三方代码；
+高级解释器覆盖入口仍可调用用户自行修改且接口兼容的 runtime。

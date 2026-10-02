@@ -442,6 +442,8 @@ class MainWindow(QMainWindow):
         self.experimentInferenceActions = ExperimentInferenceActions(
             self, _runtime_python
         )
+        from ai_physics_tracker.gui.runtime_setup import RuntimeSetupActions
+        self.runtimeSetup = RuntimeSetupActions(self)
         self._installChartPanel(self.chartActions.panel)
         from ai_physics_tracker.gui.pendulum_analysis import PendulumAnalysisActions
         self.pendulumAnalysisActions = PendulumAnalysisActions(self)
@@ -893,6 +895,11 @@ class MainWindow(QMainWindow):
         self.playButton.setText("Play")
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if self.runtimeSetup.busy:
+            self.runtimeSetup.cancel()
+            self.statusBar().showMessage("AI setup is stopping; close again after cancellation finishes")
+            event.ignore()
+            return
         if not self.projectActions.requestWindowClose():
             event.ignore()
             return
@@ -901,6 +908,7 @@ class MainWindow(QMainWindow):
         self.stopPlayback()
         self.closing.emit()
         self.modelActions.shutdown()
+        self.runtimeSetup.shutdown()
         self.timingActions.shutdown()
         self._async.close()
         self.projectActions.shutdown()

@@ -19,6 +19,7 @@ python3.12 -m venv "$BUILD_ENV"
 "$BUILD_ENV/bin/python" -m pip install --quiet -r "$REPO_ROOT/packaging/host_requirements.txt" "pyinstaller==6.22.3"
 # host 可导入即可，依赖由 host_requirements 锁定（--no-deps 防 DLC 回流）
 "$BUILD_ENV/bin/python" -m pip install --quiet --no-deps -e "$REPO_ROOT"
+"$BUILD_ENV/bin/python" -m pip check
 
 # LGPL ffprobe：源码固定版本自建（ffmpeg-static 的 macOS 二进制含 nonfree，不可再分发）
 bash "$REPO_ROOT/scripts/build_ffprobe_lgpl.sh" "$FFPROBE_DIR"
@@ -35,7 +36,7 @@ test -x "$BIN"
 
 echo "==> frozen smoke (offscreen)"
 SMOKE_RESULT="$WORK/smoke.json"
-QT_QPA_PLATFORM=offscreen APT_SMOKE_RESULT="$SMOKE_RESULT" "$BIN" --apt-smoke
+QT_QPA_PLATFORM=offscreen APT_SMOKE_RESULT="$SMOKE_RESULT" APT_SMOKE_PYTHON="$BUILD_ENV/bin/python" "$BIN" --apt-smoke
 test "$(python3 -c 'import json;print(json.load(open("'"$SMOKE_RESULT"'"))["status"])')" = "ok"
 echo "    smoke: $(cat "$SMOKE_RESULT")"
 

@@ -1,12 +1,12 @@
 """组合根的运行环境解析（P6.1：frozen 应用 / source dev 两形态）。
 
-dev（source checkout）形态：runtime python = 当前解释器；FFprobe 走 PATH
+dev（source checkout）形态：默认当前解释器；主动安装并验证后使用 managed runtime；FFprobe 走 PATH
 （``FFprobeTimingProbe(None)`` 的既有行为）。
 
 frozen（PyInstaller onedir）形态：
 - 资源根 = ``sys._MEIPASS/resources``（FFprobe 二进制、worker 源码、许可文本）；
 - runtime python 优先级：``AI_PHYSICS_RUNTIME_PYTHON``（测试后门/高级用户）
-  → managed runtime 指针（P6.2 安装器合同，本阶段只读不安装）
+  → managed runtime 指针（P6.2 安装器验证后原子发布）
   → ``None``（调用方显示"安装 AI 环境"占位，绝不用 frozen host 自身充当
     Python worker，也不导入开发 venv）。
 
@@ -16,6 +16,7 @@ setter 在 QApplication 构造前亦生效）。
 """
 
 import logging
+import json
 import os
 from pathlib import Path
 import sys
@@ -114,12 +115,14 @@ def app_data_dir() -> Path:
 def runtime_python() -> str | None:
     """解析 external worker 的解释器路径；frozen 且无可用 runtime 时为 ``None``。
 
-    dev 恒为 ``sys.executable``（现有行为的唯一来源）；frozen 只接受显式
+    dev 默认 ``sys.executable``；主动安装后读取验证身份。frozen 接受显式
     env 覆盖或 managed runtime 指针，二者都必须指向真实存在的文件。
     """
 
     if not is_frozen():
-        return sys.executable
+        # dev 首次仍使用当前解释器；用户主动完成安装后可立即使用验证过的环境。
+        managed = _managed_runtime_python(require_evidence=True)
+        return managed or sys.executable
     override = os.environ.get("AI_PHYSICS_RUNTIME_PYTHON")
     if override:
         candidate = Path(override).expanduser()
@@ -128,6 +131,10 @@ def runtime_python() -> str | None:
         logger.warning(
             "AI_PHYSICS_RUNTIME_PYTHON=%s is not an existing file; ignoring", override
         )
+    return _managed_runtime_python(require_evidence=False)
+
+
+def _managed_runtime_python(*, require_evidence: bool) -> str | None:
     pointer = app_data_dir() / RUNTIME_POINTER_RELATIVE
     try:
         first_line = pointer.read_text(encoding="utf-8").splitlines()[0].strip()
@@ -136,7 +143,14 @@ def runtime_python() -> str | None:
     if not first_line:
         return None
     candidate = Path(first_line).expanduser()
-    if candidate.is_file():
+    if candidate.is_absolute() and candidate.is_file():
+        if require_evidence:
+            try:
+                evidence = json.loads((candidate.parent.parent / "runtime-ready.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return None
+            if evidence.get("status") != "ready" or evidence.get("executable") != str(candidate):
+                return None
         return str(candidate)
     logger.warning(
         "managed runtime pointer %s references missing interpreter %s",
@@ -194,6 +208,10 @@ def configure_file_logging() -> Path | None:
 def show_ai_runtime_missing(window) -> None:
     """AI 入口在 frozen 且无可用 runtime 时的统一占位提示（P6.2 前的 setup 占位）。"""
 
+    setup = getattr(window, "runtimeSetup", None)
+    if setup is not None:
+        setup.open()
+        return
     from PySide6.QtWidgets import QMessageBox
 
     QMessageBox.information(

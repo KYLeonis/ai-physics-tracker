@@ -235,6 +235,7 @@ class TrackingActions(QObject):
         )
         models = getattr(self.window, "modelActions", None)
         model_busy = models is not None and models.busy
+        model_busy = model_busy or bool(getattr(self.window, "runtimeSetup", None) and self.window.runtimeSetup.busy)
         self.panel.setContext(video.display_name if video else "No video", track_display,
                               train_reason, infer_reason, self.pending,
                               project_busy=self.window.projectActions.busy,
