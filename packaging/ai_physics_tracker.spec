@@ -34,6 +34,10 @@ datas = [
     (str(REPO_ROOT / "packaging" / "NOTICE-third-party.md"), "resources"),
 ]
 
+# 第三方许可文本原件（P6.1 许可复查：NOTICE 逐项对应）
+licenses_dir = REPO_ROOT / "packaging" / "licenses"
+datas.append((str(licenses_dir), "resources/licenses"))
+
 # worker 源码树：显式排除 __pycache__，保持源码纯净（host 会做字节 SHA）
 for module_file in sorted((REPO_ROOT / "src" / "ai_physics_tracker").rglob("*.py")):
     relative = module_file.relative_to(REPO_ROOT / "src")

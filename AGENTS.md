@@ -55,7 +55,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 ├── README.md            # 面向所有人的项目介绍
 ├── AGENTS.md            # 本文件：Agent 开发指南
 ├── CODE_STANDARD.md     # 代码规范（写任何代码前先读）
-├── LICENSE              # 许可证（当前 TBD）
+├── LICENSE              # 许可证（MIT，2026-10-02 起）
 ├── docs/                # 项目文档
 │   ├── roadmap.md       # 详细路线图（各阶段目标/交付物/验收标准/风险）
 │   ├── architecture.md  # 高层架构设计
@@ -213,5 +213,5 @@ test: add pendulum synthetic data tests for kinematics
 ## 12. 其他注意事项
 
 - 本仓库刻意**不预生成**未来可能被修改的空 Python 文件；代码文件在需要实现时再创建。
-- License 尚为 TBD：引入 DeepLabCut（AGPL-3.0）等依赖后必须进行 license review（见 `docs/decisions/` 与 `LICENSE`）。
+- 源码许可为 MIT（2026-10-02 定）；DeepLabCut（AGPL-3.0）不随包分发，未来若随应用分发 AI runtime 必须先做 AGPL 材料审查并更新 `packaging/NOTICE-third-party.md`。
 - 开发模式是 **macOS (Apple Silicon) 开发 → Windows x64 发布（exe）→ 未来 macOS dmg**：PyInstaller/Nuitka 不支持交叉编译，Windows 构建走 GitHub Actions Windows runner，Windows 真机验收（含 CUDA）在自有的 NVIDIA GPU Windows 笔记本上进行；路径分隔符（`pathlib`）、UTF-8 显式编码、Windows 文件锁/路径长度/保留名、Qt 平台差异等规则见 `docs/development.md` §1.1。

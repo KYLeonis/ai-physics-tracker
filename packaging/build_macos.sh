@@ -9,7 +9,7 @@ VERSION="$(cd "$REPO_ROOT" && python3 -c 'import tomllib;print(tomllib.load(open
 DIST="${APT_DIST:-$REPO_ROOT/dist}"
 WORK="${APT_WORK:-$(mktemp -d /tmp/apt-p6-build-XXXXXX)}"
 BUILD_ENV="$WORK/venv"
-FFPROBE_DIR="$WORK/ffprobe"
+FFPROBE_DIR="${APT_FFPROBE_DIR:-$WORK/ffprobe}"   # 外部缓存可避免重复编译 ffmpeg
 
 echo "==> repo: $REPO_ROOT  version: $VERSION"
 echo "==> build env: $BUILD_ENV"
@@ -20,7 +20,8 @@ python3.12 -m venv "$BUILD_ENV"
 # host 可导入即可，依赖由 host_requirements 锁定（--no-deps 防 DLC 回流）
 "$BUILD_ENV/bin/python" -m pip install --quiet --no-deps -e "$REPO_ROOT"
 
-"$BUILD_ENV/bin/python" "$REPO_ROOT/scripts/setup_ffprobe.py" --directory "$FFPROBE_DIR"
+# LGPL ffprobe：源码固定版本自建（ffmpeg-static 的 macOS 二进制含 nonfree，不可再分发）
+bash "$REPO_ROOT/scripts/build_ffprobe_lgpl.sh" "$FFPROBE_DIR"
 
 echo "==> PyInstaller"
 APT_FFPROBE_DIR="$FFPROBE_DIR" "$BUILD_ENV/bin/python" -m PyInstaller \

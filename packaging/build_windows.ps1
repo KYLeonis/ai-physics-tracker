@@ -23,8 +23,9 @@ if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 & $Python -m pip install --quiet --no-deps -e $RepoRoot
 if ($LASTEXITCODE -ne 0) { throw "editable install failed" }
 
-& $Python (Join-Path $RepoRoot "scripts\setup_ffprobe.py") --directory $FfprobeDir
-if ($LASTEXITCODE -ne 0) { throw "ffprobe setup failed" }
+# LGPL ffprobe：BtbN 版本化 win64-lgpl 包（gyan.dev 全系 GPLv3，不采用）
+& powershell -File (Join-Path $RepoRoot "scripts\build_ffprobe_lgpl.ps1") $FfprobeDir
+if ($LASTEXITCODE -ne 0) { throw "ffprobe build failed" }
 
 Write-Host "==> PyInstaller"
 $env:APT_FFPROBE_DIR = $FfprobeDir

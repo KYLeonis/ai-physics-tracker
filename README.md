@@ -133,7 +133,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
-- ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
+- ✅ 源码许可定为 MIT（2026-10-02）；随包分发的第三方组件以 LGPL/Apache/BSD/MIT/PSF 为主，FFprobe 改用可再分发的 LGPL 构建，逐项清单见 `packaging/NOTICE-third-party.md`。DeepLabCut（AGPL-3.0）不随包分发；未来若随应用分发 AI runtime 需先做 AGPL 材料审查
 
 ## 文档索引
 

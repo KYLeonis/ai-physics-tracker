@@ -2,8 +2,18 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.1 原生应用构建已在 `feat/p6.1-native-builds` 分支实现并本地验证（macOS DMG 已产出、全量 1404 passed）；Windows 真机门禁按用户 2026-10-02 裁定延期至发行前，以双平台 CI + Windows 冒烟为准。待 CI/HR 后集成。**
+- 当前：**P6.1 原生构建 + 许可定标（MIT）已完成于 `feat/p6.1-native-builds` 分支：macOS DMG（118MB，含 LGPL ffprobe 与 20 份许可文本）本地验证、全量 1404 passed；双平台 CI 待本轮 push 复验。v0.1 发布候选准备中（HR/集成/打 tag/Release 待用户确认）。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## P6.1 许可复查与 MIT 定标 — 2026-10-02（第二轮）
+
+- 用户裁定：**源码 License 定为 MIT**；要求第三方清单复查。复查结论（详见 `packaging/NOTICE-third-party.md`）：
+  - **发现阻塞问题并已修复**：原随包 ffprobe（ffmpeg-static macOS arm64，osxexperts 构建）为 `--enable-gpl --enable-nonfree`，按 FFmpeg 官方政策 nonfree 构建**不可再分发**；Windows 来源 gyan.dev 全系 GPLv3。已替换为可再分发方案：macOS 从 ffmpeg.org 7.1.1 源码（SHA 独立二次下载核对）自建最小 LGPL 构建（configure 断言 LGPL-2.1+，缺确认即拒绝出货）；Windows 取 BtbN FFmpeg-Builds 版本化 win64-lgpl 资产（GitHub digest 锁定）。`scripts/setup_ffprobe.py` 保留仅供测试 CI（不随产物分发）。
+  - PySide6/Qt 6.11.2 按 LGPL-3.0 动态链接使用（wheel 不带许可文本，从 gnu.org 收录 LGPL-3.0/GPL-3.0 正本）；opencv-python 捆绑的 FFmpeg dylib 等以 wheel 原 `LICENSE-3RD-PARTY.txt` 逐项枚举；numpy/scipy/pandas/pyqtgraph/PyYAML/dateutil/pytz/six/typing_extensions/packaging/tzdata/CPython(PSF)/PyInstaller bootloader 例外条款全部以原件入包（`packaging/licenses/`，20 份，spec 打包进 `resources/licenses/`）。
+  - **AGPL 边界声明**：DeepLabCut（AGPL-3.0）/PyTorch 不随包分发（host 冒烟断言不含 AI 栈）；未来 P6.2 若随应用分发 AI runtime，须先做 AGPL 材料审查。
+- 用户在 frozen app 内实测：带 `AI_PHYSICS_RUNTIME_PYTHON`（指向开发 venv）启动后，P012 真实联合推理正常推进（run 5fe3fb93，auto→mps 解析、真实帧进度，用户随后主动取消）——frozen host + 外部 runtime 的完整 AI 链路首次得到真实验证；这也确认 DMG 本身**不含** AI 栈（推理能力来自被借用的外部解释器）。
+- 新 DMG（118MB，app 273MB）验证：包内 ffprobe 7.1.1 无 gpl/nonfree 标志；对真实 P012.mp4（H.264 MP4）与合成 MJPEG AVI 的时序探测输出与旧二进制等价（3320/12 帧）；licenses 全量入包；worker-src 与源码树仍逐字节一致。
+- 文档同步：LICENSE（MIT）、pyproject license 字段、README/AGENTS/roadmap 的 TBD 引用全部更新。
 
 ## P6.1 native builds — 2026-10-02（工作分支交付 checkpoint）
 
@@ -240,7 +250,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P6.1 工作分支 `feat/p6.1-native-builds`（最终 `833ee9f`）双平台 CI 全绿（tests + packaging）。下一步：用户按 HR 步骤实测 DMG（挂载 → 启动 → 打开视频/标注/保存重开 → 分析/导出 → AI 入口占位提示，见 packaging/README"已知限制"）；HR 通过后 `--no-ff` 集成回 publication。Windows 真机 G1–G4、学生 pilot、签名/公证、Inno 安装器、P6.2 AI runtime 安装仍为后续待办。**
+**v0.1 发布路径（用户目标：随论文提交的可用软件）：①本轮 push 后确认双平台 CI（tests + packaging，新 ffprobe 管线）全绿；②用户对最新 DMG 完成 HR（Q1–Q4；AI 链路已由用户带 env 后门实测通过）；③`--no-ff` 集成回 publication；④按用户明确指令打 tag `v0.1.0` 并创建 GitHub Release（附 DMG/zip 与 release notes——公开动作，等用户说"发"）；⑤v0.1 scope 说明：AI 训练/推理需外部 Python runtime（P6.2 前属进阶功能）。Windows 真机 G1–G4、学生 pilot、签名/公证、Inno 安装器仍为后续待办。**
 
 ## P2.1 delivery (2026-09-30)
 

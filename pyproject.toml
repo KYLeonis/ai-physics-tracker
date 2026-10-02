@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Desktop video tracking and physics analysis foundation"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
+license = "MIT"
 authors = [{ name = "Leonis" }]
 dependencies = [
     "numpy>=1.24,<3",
