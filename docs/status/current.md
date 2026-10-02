@@ -1,8 +1,8 @@
-> Publication工作树（2026-10-02）：P0–P5开发交付已完成并集成，用户HR及最终355b375双平台CI通过；[P6封装计划及四个mini-plan](../../publication/plans/p6-packaging-execution-plan.md)已就绪，实施未启动。本轮按用户指令只写计划。用户授权GLM接续后先补Windows G1–G4；学生pilot/Windows副本重开仍为发行前待补，ADR-0020保留。权威状态见[publication/STATUS.md](../../publication/STATUS.md)。以下为通用产品线状态。
+> Publication工作树（2026-10-02）：P6.1/P6.2代码/自动验证、独立复审和Mac HR三项均通过，执行集成收尾后停止；Windows真机仍not_run，用户可按[下载/验收指南](../../publication/plans/p6-windows-machine-check.md)直接使用Actions便携包。[mini-plan](../../publication/plans/p6.2-managed-runtime.md)、[权威状态](../../publication/STATUS.md)。P6.3/P6.4尚未执行，公开tag/Release等用户说“发”。用户工程/视频只读、main与共享venv不修改。
 
 # Current Status
 
-> Publication worktree note（2026-10-02）：本文件保留main通用线状态；论文线P0–P5开发交付已收尾，P6仅规划。论文线权威当前步骤与未完成门禁见[publication/STATUS.md](../../publication/STATUS.md)。
+> Publication worktree note（2026-10-02）：以下保留main通用线状态；论文线当前为P6.2验收，权威步骤与门禁见[publication/STATUS.md](../../publication/STATUS.md)。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

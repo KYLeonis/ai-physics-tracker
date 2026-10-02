@@ -1,37 +1,27 @@
-AI Physics Tracker
-Copyright (c) 2026 KYLeonis
+MIT License
 
-LICENSE: TBD (To Be Determined)
+Copyright (c) 2026 Leonis (KYLeonis)
 
-This project is currently in the research and development stage and does
-not yet have a final license.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-IMPORTANT — Pending license review:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-The project is expected to depend on the following third-party components
-(among others), whose licenses MUST be reviewed before choosing and
-publishing a final license for this project:
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
-  - DeepLabCut 3.x ......... AGPL-3.0 (may impose copyleft obligations on
-                             the combined work; requires careful review)
-  - PyTorch ................ BSD-3-Clause
-  - PySide6 / Qt 6 ........ LGPL-3.0 / GPL (LGPL compliance required for
-                             dynamic linking; Qt licensing reviewed at
-                             packaging time)
-  - OpenCV ................ Apache-2.0 (opencv-python is Apache-2.0;
-                             note some contrib modules differ)
-  - FFmpeg ................ LGPL-2.1+ / GPL (depends on build
-                             configuration)
-  - NumPy / SciPy / Pandas . BSD-3-Clause (NumPy/SciPy),
-                             BSD-3-Clause (Pandas)
-  - Model weights .......... license of each pretrained model must be
-                             checked individually
-
-A license decision is tracked as a roadmap task (see
-docs/decisions/ and docs/roadmap.md). Until the license review is
-complete, all rights are reserved by the copyright holder, and the
-repository is intended to remain private.
-
-Do NOT distribute this source code or any derived binaries publicly
-before the license is finalized and third-party license obligations
-(especially DeepLabCut's AGPL-3.0) are resolved.
+------------------------------------------------------------------------------
+Third-party components distributed with the application releases are licensed
+under their own terms; see packaging/NOTICE-third-party.md and the license
+texts shipped under resources/licenses/ in each build. The MIT license above
+covers this project's own source code only.

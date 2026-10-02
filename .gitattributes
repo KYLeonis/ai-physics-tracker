@@ -13,3 +13,6 @@
 /publication/evidence/golden/** -text
 /publication/profiles/*.json text eol=lf
 /publication/evidence/golden/formal-fit48.csv whitespace=cr-at-eol
+
+# 上游许可原文同样保持原始 CRLF/LF，收录时不改写其字节。
+/resources/runtime/licenses/** -text whitespace=-trailing-space,cr-at-eol

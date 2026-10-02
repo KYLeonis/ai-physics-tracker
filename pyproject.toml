@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Desktop video tracking and physics analysis foundation"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
+license = "MIT"
 authors = [{ name = "Leonis" }]
 dependencies = [
     "numpy>=1.24,<3",
@@ -16,10 +17,12 @@ dependencies = [
     "scipy>=1.12,<2.0",
     "scikit-learn>=1.2,<2",
     "pyqtgraph>=0.13,<0.14",
-    "deeplabcut>=3.0,<4.0",
 ]
 
 [project.optional-dependencies]
+# ai = external worker 进程所需的完整 DeepLabCut 栈(P6.1 起 host/worker 依赖
+# 分离:GUI host 安装不再强制 DLC;开发环境需要训练/推理时安装 `.[ai]`)。
+ai = ["deeplabcut>=3.0,<4.0"]
 test = ["pytest==9.1.1", "pytest-qt==4.5.0"]
 
 [tool.setuptools.packages.find]

@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-02）：P0–P5开发交付已完成并集成；用户HR及最终集成355b375 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保持not_run、发行前待补；P6未启动，进入P6前Windows G1–G4门禁及ADR-0020保留。[运行与HR](student-pilot.md)、[学生实测记录](student-pilot-record.md)、[权威状态](STATUS.md)。各P5 mini-plan在plans/。
+当前（2026-10-02）：P0–P5已集成；P6.1/P6.2双平台CI、独立复审和Mac HR三项通过，执行开发交付收尾。未公开发布；Windows真机及学生pilot保持not_run，可从[Windows下载/验收指南](plans/p6-windows-machine-check.md)直接使用Actions便携包；ADR-0020保留。[学生实测记录](student-pilot-record.md)、[权威状态](STATUS.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。

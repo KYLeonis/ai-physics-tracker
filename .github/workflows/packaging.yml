@@ -1,0 +1,49 @@
+name: packaging
+
+# P6.1 原生构建 CI：双平台 PyInstaller onedir + 冒烟 + artifact。
+# 与 tests.yml 分离：本工作流不重复 pytest，只验证可安装形态（构建日志里
+# 单独记录冒烟）。真实 Windows 真机验收（G1–G4）另行按用户裁定延期。
+
+on:
+  push:
+    branches: [main, "publication/**", "feat/p6*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: native build / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Build, smoke-test and package (macOS)
+        if: runner.os == 'macOS'
+        run: bash packaging/build_macos.sh
+      - name: Build, smoke-test and package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\packaging\build_windows.ps1
+      - name: Upload artifact (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AIPhysicsTracker-macos-arm64
+          path: dist/*.dmg
+          if-no-files-found: error
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AIPhysicsTracker-windows-x64
+          path: dist/*.zip
+          if-no-files-found: error

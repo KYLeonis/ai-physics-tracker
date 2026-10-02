@@ -1,11 +1,11 @@
 # P6 — 封装与首发执行计划（供 GLM5.3 接续）
 
-- 日期：2026-10-02；状态：**仅规划，所有实施 Slice 均未执行**。
+- 日期：2026-10-02；当前状态：**P6.1/P6.2已在工作分支实现，最新代码审查通过，真人HR待补；尚未集成或发布。** 下面未更新的原始Slice清单保留为规划记录，实施状态以[STATUS](../STATUS.md)和[P6.2 mini-plan](p6.2-managed-runtime.md)为准。
 - Worktree：`/Users/leonis/Documents/ai-physics-tracker-ejp`。
 - Integration branch：`publication/ejp-damped-pendulum`；规划基线：`b0251cd`。
 - 这里的 P6 是论文产品线 Distribution and First Release，**不是 main 的 Phase 6 Advanced Physics Analysis**。
-- 当前授权：本轮只写计划。GLM 接到用户执行指令后才开始；不得因读到此文自动安装、构建或发布。
-- 五小时额度接口本轮显示已用 95%，reset 为 **2026-10-02 20:11:32 Asia/Shanghai**；这是读取时的快照，不是保证后续额度可用。
+- 当前授权：用户已选择并授权完整P6.2；Windows实机门禁按其后续裁定延期，不能标为通过。下一步先HR；公开tag/GitHub Release必须等用户说“发”。
+- 以下Windows前置时点、License待定、Qt锁、四profile和not_run等原规划描述由后续用户裁定、ADR-0021/0022和实施mini-plan覆盖：实际三份锁（Mac CPU/MPS共享一份），原生OS锁，源码MIT，DLC3.0.1 LGPL；额度只在需要时读取当前接口，不沿用旧快照。
 
 ## 1. 交付目标与实施顺序
 

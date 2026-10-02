@@ -13,7 +13,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 ## 2. 当前 Roadmap（概要）
 
-论文发布线（2026-10-02）：P0–P5开发交付已完成并集成；用户HR及最终集成355b375 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保持not_run、发行前待补；P6未启动，进入P6前Windows G1–G4门禁及ADR-0020保留。权威状态见`publication/STATUS.md`；下表为通用产品线。
+论文发布线（2026-10-02）：P0–P5已集成；P6.1/P6.2开发交付、独立审查和双平台CI通过，用户确认Mac HR三项均通过，按流程集成收尾。Windows真机G1–G4/G5、CUDA与外部学生pilot按既有裁定延期并保持not_run；P6.3/P6.4尚未执行，公开tag/Release必须等用户说“发”，ADR-0020保留。权威状态见`publication/STATUS.md`；下表为通用产品线。
 
 | 阶段 | 名称 | 一句话目标 |
 | --- | --- | --- |
@@ -55,7 +55,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 ├── README.md            # 面向所有人的项目介绍
 ├── AGENTS.md            # 本文件：Agent 开发指南
 ├── CODE_STANDARD.md     # 代码规范（写任何代码前先读）
-├── LICENSE              # 许可证（当前 TBD）
+├── LICENSE              # 许可证（MIT，2026-10-02 起）
 ├── docs/                # 项目文档
 │   ├── roadmap.md       # 详细路线图（各阶段目标/交付物/验收标准/风险）
 │   ├── architecture.md  # 高层架构设计
@@ -213,5 +213,5 @@ test: add pendulum synthetic data tests for kinematics
 ## 12. 其他注意事项
 
 - 本仓库刻意**不预生成**未来可能被修改的空 Python 文件；代码文件在需要实现时再创建。
-- License 尚为 TBD：引入 DeepLabCut（AGPL-3.0）等依赖后必须进行 license review（见 `docs/decisions/` 与 `LICENSE`）。
+- 源码许可为 MIT（2026-10-02 定）；P6.2 锁定 DLC 3.0.1 的原包许可为 LGPL-3.0-or-later（旧 AGPL 记录已更正）。host 不内嵌 AI 栈；独立 runtime 下载、许可文本及来源见 `packaging/NOTICE-third-party.md`、`resources/runtime/NOTICE.md`。
 - 开发模式是 **macOS (Apple Silicon) 开发 → Windows x64 发布（exe）→ 未来 macOS dmg**：PyInstaller/Nuitka 不支持交叉编译，Windows 构建走 GitHub Actions Windows runner，Windows 真机验收（含 CUDA）在自有的 NVIDIA GPU Windows 笔记本上进行；路径分隔符（`pathlib`）、UTF-8 显式编码、Windows 文件锁/路径长度/保留名、Qt 平台差异等规则见 `docs/development.md` §1.1。

@@ -422,9 +422,12 @@ class MainWindow(QMainWindow):
         self.chartActions = ChartActions(self)
         self.trackingActions = TrackingActions(self)
         from ai_physics_tracker.gui.model_actions import ModelActions
-        # dev 环境 runtime python = 当前解释器;frozen 发布由安装器合同注入
-        import sys as _sys
-        self.modelActions = ModelActions(self, _sys.executable)
+        # runtime python 统一由 launch_context 解析(dev = 当前解释器;
+        # frozen = managed runtime / env 覆盖 / None→AI 入口显示安装占位)
+        from ai_physics_tracker.gui.launch_context import runtime_python
+
+        _runtime_python = runtime_python()
+        self.modelActions = ModelActions(self, _runtime_python)
         self.frameSelectionActions = FrameSelectionActions(
             self, self.trackingActions.panel
         )
@@ -437,8 +440,10 @@ class MainWindow(QMainWindow):
         )
 
         self.experimentInferenceActions = ExperimentInferenceActions(
-            self, _sys.executable
+            self, _runtime_python
         )
+        from ai_physics_tracker.gui.runtime_setup import RuntimeSetupActions
+        self.runtimeSetup = RuntimeSetupActions(self)
         self._installChartPanel(self.chartActions.panel)
         from ai_physics_tracker.gui.pendulum_analysis import PendulumAnalysisActions
         self.pendulumAnalysisActions = PendulumAnalysisActions(self)
@@ -890,6 +895,11 @@ class MainWindow(QMainWindow):
         self.playButton.setText("Play")
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if self.runtimeSetup.busy:
+            self.runtimeSetup.cancel()
+            self.statusBar().showMessage("AI setup is stopping; close again after cancellation finishes")
+            event.ignore()
+            return
         if not self.projectActions.requestWindowClose():
             event.ignore()
             return
@@ -898,6 +908,7 @@ class MainWindow(QMainWindow):
         self.stopPlayback()
         self.closing.emit()
         self.modelActions.shutdown()
+        self.runtimeSetup.shutdown()
         self.timingActions.shutdown()
         self._async.close()
         self.projectActions.shutdown()

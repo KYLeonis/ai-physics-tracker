@@ -2,8 +2,49 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P5开发交付已收尾，用户整体HR与最终集成355b375 Windows/macOS CI均通过；P6封装执行计划已就绪，实施未启动。外部学生pilot/Windows副本重开保持not_run、发行前待补；P6前Windows G1–G4门禁及ADR-0020不变。**
-- Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+- 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，执行集成收尾。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
+- Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## P6.2 start — 2026-10-02
+
+- 用户本轮确认“均通过”：Mac安装取消重试、独立环境重开自检与训练推理HR完成；P6.1/P6.2可按既有流程收尾。文档checkpoint `6bb0ff8` [tests37025219808](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37025219808) / [packaging37025219904](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37025219904)亦双平台success；Windows artifact id11234523951已核对未过期（约201MiB）。不要求pull源码；[真机指南](plans/p6-windows-machine-check.md)列CPU基线、CUDA、取消/离线与日志反馈。Windows没有实测前仍不勾选。
+- 最终源码`c890b5b`：[tests 37023438111](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37023438111) Windows1436passed/6skipped/1existingstrictxfail（377.01s）、Mac1438passed/4skipped/1existingstrictxfail（308.88s），双平台success；[packaging 37023439440](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37023439440)两平台原生构建/setup/external worker smoke均success。后续只同步文档，产品代码/测试与该SHA相同。
+- 独立复审：[P6.1](../docs/reviews/publication-p6.1-review.md)、[P6.2](../docs/reviews/publication-p6.2-review.md)均Approve with limitations、所有Major/Blocking Closed；主定向130passed、独立125passed。修复了ready证据守卫、cwd遮蔽、显式设备重复自检、CUDA误回退、Mac最低系统声明和frozen旧单轨AI路径；本发行版走单摆实验联合训练/推理，通用单轨旧AI明确禁用引导，手工测量可用。
+- 最新本地DMG：`dist/p6.2-final/AIPhysicsTracker-0.1.0-arm64.dmg`，143705710bytes、SHA256 `11af5f8b99953439ab30f8113859e706e26ed6458673b20db7909b76d4877fe2`；Mac14.0+。原生smoke与源码相同，host无AI栈；已启动供用户HR。实际坏wheel拒绝/安装进程树取消及网络/空间故障注入通过；重新离线MPS12帧推理通过。完整证据见runtime validation；体验HR、Windows实机缺项保留，P6.1/P6.2未集成。
+- 用户明确选择完整 P6.2 并授权“开始”；新 [mini-plan](plans/p6.2-managed-runtime.md) 已在代码实施前建立。工作分支 `feat/p6.2-managed-runtime`，base `df920f4`，叠加未集成 P6.1；不提前合并或发布。
+- S1–S3：固定CPython3.12.15/PBS20261001、DLC3.0.1/Torch2.13.0/torchvision0.28.0与Mac/Windows CPU/CUDA全部86项依赖锁；OS互斥、SHA缓存、安全解包、稳定UUID环境、pip check、真实worker自检、取消/提交串行化与原子pointer；Settings中的Install/Repair/Check/Cancel/诊断及AI入口守卫。Mac要求14+；Windows实机尚未验证。
+- S4/S5：Mac真实合成视频1epoch训练→CPU/MPS模型自检与12帧推理均success；已封锁Python socket后重开合成工程并成功MPS推理；无缓存全新bootstrap下载25023573字节SHA通过。早期全量1427 passed/1既有strict xfail/9subtests，GUI5项通过；最终CI/独立复审已补见上，真人HR待补。证据见 `publication/evidence/runtime/p6.2-validation.md`。
+- CI修复阶段提交`0dcebc0`：[tests 37018570789](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37018570789)、[packaging 37018570751](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37018570751)、[runtime锁37018570942](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37018570942)均success。后续GUI/事务提交需重新核对最终源码，以上不冒充未提交增量CI。
+- CI 修复中：`b3c1722` 的 [tests 37012073135](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073135) 双平台均被 DLC 分层检查拦截（worker 直接导入 DLC）；改为复用 `DLCAdapter.engine_version()`。Windows [runtime locks 37012073288](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073288) CPU/CUDA 两项失败来自 pip report 的默认 cp1252 解码；读取改为显式 UTF-8。该提交的 [packaging 37012073114](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37012073114) 双平台通过。修复后重跑，未将失败或未完成验证记成通过。
+
+## P6.1 许可复查与 MIT 定标 — 2026-10-02（第二轮）
+
+- 用户裁定：**源码 License 定为 MIT**；要求第三方清单复查。复查结论（详见 `packaging/NOTICE-third-party.md`）：
+  - **发现阻塞问题并已修复**：原随包 ffprobe（ffmpeg-static macOS arm64，osxexperts 构建）为 `--enable-gpl --enable-nonfree`，按 FFmpeg 官方政策 nonfree 构建**不可再分发**；Windows 来源 gyan.dev 全系 GPLv3。已替换为可再分发方案：macOS 从 ffmpeg.org 7.1.1 源码（SHA 独立二次下载核对）自建最小 LGPL 构建（configure 断言 LGPL-2.1+，缺确认即拒绝出货）；Windows 取 BtbN FFmpeg-Builds 版本化 win64-lgpl 资产（GitHub digest 锁定）。`scripts/setup_ffprobe.py` 保留仅供测试 CI（不随产物分发）。
+  - PySide6/Qt 6.11.2 按 LGPL-3.0 动态链接使用（wheel 不带许可文本，从 gnu.org 收录 LGPL-3.0/GPL-3.0 正本）；opencv-python 捆绑的 FFmpeg dylib 等以 wheel 原 `LICENSE-3RD-PARTY.txt` 逐项枚举；numpy/scipy/pandas/pyqtgraph/PyYAML/dateutil/pytz/six/typing_extensions/packaging/tzdata/CPython(PSF)/PyInstaller bootloader 例外条款全部以原件入包（`packaging/licenses/`，20 份，spec 打包进 `resources/licenses/`）。
+  - **AGPL 边界声明**：DeepLabCut（AGPL-3.0）/PyTorch 不随包分发（host 冒烟断言不含 AI 栈）；未来 P6.2 若随应用分发 AI runtime，须先做 AGPL 材料审查。
+- 用户在 frozen app 内实测：带 `AI_PHYSICS_RUNTIME_PYTHON`（指向开发 venv）启动后，P012 真实联合推理正常推进（run 5fe3fb93，auto→mps 解析、真实帧进度，用户随后主动取消）——frozen host + 外部 runtime 的完整 AI 链路首次得到真实验证；这也确认 DMG 本身**不含** AI 栈（推理能力来自被借用的外部解释器）。
+- 新 DMG（118MB，app 273MB）验证：包内 ffprobe 7.1.1 无 gpl/nonfree 标志；对真实 P012.mp4（H.264 MP4）与合成 MJPEG AVI 的时序探测输出与旧二进制等价（3320/12 帧）；licenses 全量入包；worker-src 与源码树仍逐字节一致。
+- 文档同步：LICENSE（MIT）、pyproject license 字段、README/AGENTS/roadmap 的 TBD 引用全部更新。
+
+## P6.1 native builds — 2026-10-02（工作分支交付 checkpoint）
+
+- 用户本轮指令明确：**Windows 实机限制暂不考虑，GitHub CI 双平台通过、Windows 产物可运行无关键 bug 即可；优先封装 macOS 并产出 DMG**。该裁定调整 Windows G1–G4 的验收时点至发行前（P6.3/P6.4），不改变标准本身；ADR-0021 记录此决定。
+- 交付内容（分支 `feat/p6.1-native-builds`，基于 b0251cd 之后的 40db20d）：
+  - host/AI 依赖拆分：`deeplabcut` 移入 optional extra `ai`；host 构建锁定集 `packaging/host_requirements.txt`（无 torch/DLC）。
+  - `gui/launch_context.py`：frozen/dev 运行环境统一解析（frozen 检测、`_MEIPASS/resources` 资源根、随包 FFprobe、runtime python = env 覆盖 → managed runtime 指针 → None、AppDataLocation 日志目录、应用身份先行设置）。frozen 无 runtime 时 ModelActions/ExperimentInferenceActions 三个启动入口显示"安装 AI 环境"占位并拒绝启动；dev 行为零变化。
+  - `ModelWorkerRunner`/`build_request`/`ExternalWorkerRunner` 贯通 `package_root`：frozen host 显式指向包内 `resources/worker-src`（与 src 树字节一致，diff 验证），worker 源 SHA/PYTHONPATH 同源语义保持。
+  - 组合根：`__main__.main()` + `packaging/entry_point.py`（`freeze_support`、`--apt-smoke` 冒烟写 JSON 结果文件）；`multiprocessing` spawn 冻结引导就位。
+  - 打包：`packaging/ai_physics_tracker.spec`（onedir、无大清单 hiddenimports、excludes 仅兜底）+ `build_macos.sh`（独立 build venv → 冒烟 → .app → hdiutil DMG）+ `build_windows.ps1`（→ zip）+ `NOTICE-third-party.md` 诚实清单；CI `.github/workflows/packaging.yml` 双平台 build→smoke→artifact，与 tests.yml 分离。
+  - 修复实测 bug：应用身份设置晚于 QStandardPaths 解析会把日志写到通用目录（~/Library/Application Support/logs），已提取 `set_application_identity()` 先行调用并重建验证。
+- 本地验证（Mac arm64，python3.12 独立 build venv，未动共享开发环境）：
+  - 构建→冒烟→DMG 一次通过；`dist/AIPhysicsTracker-0.1.0-arm64.dmg`（.app 312MB，含 Applications 链接）。
+  - 冒烟断言通过：host 未加载 torch/torchvision/deeplabcut；随包 FFprobe 可执行。
+  - worker-src 与 src 树 `diff -rq` 逐字节一致；frozen 包内 worker 源码在外部解释器（主 venv）下真实执行 Protocol v1 hello 成功（fail-closed 源码自验通过）。
+  - 真实 GUI 启动（windowed、非 offscreen）进程稳定；文件日志落在 `~/Library/Application Support/KYLeonis/AI Physics Tracker/logs/app.log`。
+  - 全量回归 **1404 passed / 1 existing strict xfailed / 9 subtests**（ADR-0020 不计数值通过）；新增 `tests/gui/test_launch_context.py` 18 项覆盖 frozen resolver、守卫与 dev 不变量。
+- 未完成/限制（如实）：DMG/zip 未签名未公证（P6.4）；Windows 无 Inno 安装器（zip 便携目录）；AI runtime 安装器（P6.2）未实现，frozen 版 AI 功能默认占位。
+- CI（最终源码 `833ee9f`）：[tests run 37000559026](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37000559026) Windows/macOS 均 success；[packaging run 37000559085](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37000559085) 双平台原生构建+冒烟 success，artifact 含 `AIPhysicsTracker-macos-arm64`(DMG) 与 `AIPhysicsTracker-windows-x64`(zip)。首个 packaging run 36999733160 暴露 PowerShell 不等待 windowed exe 的竞态，`833ee9f` 以 `Start-Process -Wait` 修复后全绿。待用户 HR 后 `--no-ff` 集成。
 
 ## P6 planning only — 2026-10-02
 
@@ -221,7 +262,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**本轮停在P6规划交付。用户授权接续执行后，GLM5.3读取[封装计划](plans/p6-packaging-execution-plan.md)，先补Windows G1–G4实机证据；通过后按P6.1起的mini-plan逐Slice推进。学生两分支pilot与Windows副本重开是发行前待补，P5开发交付已关闭。当前不开始任何P6实施。**
+**完成本轮P6.1/P6.2集成收尾后停止。用户可按[Windows指南](plans/p6-windows-machine-check.md)下载已通过CI的便携包，在真机做CPU/CUDA验收并返回实际结果；记录前保持not_run。P6.3/P6.4尚未执行；公开tag/GitHub Release等用户说“发”。Windows真机G1–G4/G5、学生pilot、签名/公证与Inno仍单列pending，不以CI或Mac HR替代。**
 
 ## P2.1 delivery (2026-09-30)
 

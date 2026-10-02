@@ -1,6 +1,6 @@
 # AI Physics Tracker
 
-> Publication线（2026-10-02）：P0–P5开发交付已完成并集成；用户HR及最终集成355b375 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保持not_run、发行前待补；P6未启动，进入P6前Windows G1–G4门禁及ADR-0020保留。[运行说明](publication/student-pilot.md)；[权威状态](publication/STATUS.md)。
+> Publication线（2026-10-02）：P6.1/P6.2双平台tests/packaging CI、独立复审和Mac HR三项通过，进入开发交付收尾；尚未公开发布。独立AI环境已验证CPU训练、CPU/MPS推理及离线重开；[Windows真机指南与下载入口](publication/plans/p6-windows-machine-check.md)，Windows实测仍待补。入口为 **Settings → AI environment… → Install and use**；[mini-plan](publication/plans/p6.2-managed-runtime.md)、[权威状态](publication/STATUS.md)。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 
@@ -133,7 +133,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
-- ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
+- ✅ 源码许可定为 MIT（2026-10-02）；FFprobe 使用 LGPL 构建。P6.2 安装器下载独立 AI runtime；锁定的 DLC 3.0.1 经原包复核为 LGPL-3.0-or-later，许可文本及来源见 `packaging/NOTICE-third-party.md` 与 `resources/runtime/NOTICE.md`。
 
 ## 文档索引
 

@@ -17,7 +17,7 @@
 
 **Deliverables**
 - 仓库基础结构（docs/、src/、tests/、scripts/、resources/、examples/、packaging/）
-- README.md（项目介绍）、AGENTS.md（Agent 开发指南）、.gitignore、LICENSE（TBD）
+- README.md（项目介绍）、AGENTS.md（Agent 开发指南）、.gitignore、LICENSE（MIT，2026-10-02 起）
 - docs/：roadmap.md、architecture.md、development.md、decisions/（ADR）
 - Git 仓库初始化、GitHub 远程仓库（Private）、首次提交与推送
 
@@ -272,4 +272,4 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 - Python 3.11（2026-08 确定）：DeepLabCut 3.x 官方支持 Python 3.10–3.12，PyTorch/PySide6 在 3.11 上轮子最成熟。详见 [development.md](development.md) 与 [decisions/0002](decisions/0002-choose-python-3.11.md)。
 - GUI 框架（PySide6）与交互绘图（PyQtGraph）为"优先评估"项，最终确认分别在 Phase 2 / Phase 3 前完成并记录 ADR。
-- License：TBD，须在发布前完成第三方依赖（DeepLabCut AGPL-3.0、Qt LGPL、FFmpeg 等）license review。
+- License：源码 MIT（2026-10-02 定）。随包第三方材料 review 已完成（packaging/NOTICE-third-party.md，ffprobe 已换 LGPL 构建）；DeepLabCut AGPL 不随包分发，若未来随应用分发 AI runtime 需再做 AGPL 审查。
