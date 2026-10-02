@@ -2,8 +2,14 @@
 
 - 最后更新：2026-10-02。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P0–P5开发交付已收尾，用户整体HR与最终集成355b375 Windows/macOS CI均通过；P6未启动。外部学生pilot/Windows副本重开保持not_run、发行前待补；P6前Windows G1–G4门禁及ADR-0020不变。**
+- 当前：**P0–P5开发交付已收尾，用户整体HR与最终集成355b375 Windows/macOS CI均通过；P6封装执行计划已就绪，实施未启动。外部学生pilot/Windows副本重开保持not_run、发行前待补；P6前Windows G1–G4门禁及ADR-0020不变。**
 - Windows G1–G4仍按用户决定延期至P6前、证据not_run；main通用产品线未修改。
+
+## P6 planning only — 2026-10-02
+
+- 用户本轮明确“完成封装计划，不执行”，供GLM5.3接续；已写[执行计划与四个subphase mini-plan](plans/p6-packaging-execution-plan.md)。规划基线b0251cd；本轮没有改代码、装依赖、构建产物或运行训练/测试。
+- 计划包含Windows前置G1–G4、轻量native host、独立版本化AI runtime/首次setup与修复、R01–R12及学生/双平台真实验收、签名/许可/首发候选。PyInstaller/Inno/Python bootstrap为待实施核实与必要裁定的建议，不冒称已经完成技术选型。
+- 接续先由用户授权GLM执行，再按计划补Windows门禁；无真机证据不进入P6产品实现。本轮额度接口已用95%、reset2026-10-02 20:11:32 Asia/Shanghai；转交时重新核对额度。handoff字段和copyable prompt已在计划内，不自动发送其他聊天或创建定时任务。
 
 ## P5 closeout — 2026-10-02
 
@@ -215,7 +221,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**先保存P012并重启，按[本轮训练循环三项HR](student-pilot.md#本轮训练循环修复-hr2026-10-02)复测推荐20帧/四点自动推进、训练后新模型推理、小批困难帧重标后继续重训。当前修复交付后停止等待真人反馈。之后仍需未参与开发本科生独立A/B pilot及真实Windows副本重开，填写[记录](student-pilot-record.md)，才可集成关闭P5；P6未启动。**
+**本轮停在P6规划交付。用户授权接续执行后，GLM5.3读取[封装计划](plans/p6-packaging-execution-plan.md)，先补Windows G1–G4实机证据；通过后按P6.1起的mini-plan逐Slice推进。学生两分支pilot与Windows副本重开是发行前待补，P5开发交付已关闭。当前不开始任何P6实施。**
 
 ## P2.1 delivery (2026-09-30)
 

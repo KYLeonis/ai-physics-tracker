@@ -210,6 +210,8 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P6 — Distribution and First Release
 
+2026-10-02：[封装执行计划（含P6.1–P6.4 mini-plan与GLM接续步骤）](plans/p6-packaging-execution-plan.md)已就绪；本轮仅规划，实施未启动。先完成既定Windows G1–G4门禁，再实施native build/setup/RC/首发候选。
+
 - **Goal**：在普通用户电脑上实际安装并运行完整平台。
 - **Scope**：native build/installer/app/dmg、first-run setup/repair、硬件runtime matrix、版本锁定/下载、自检日志、干净机器验收、发行文档。
 - **Non-goals**：巨型offline bundle、所有OS/GPU版本、云runtime服务、Zenodo/投稿/科学补充材料。

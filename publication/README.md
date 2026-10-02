@@ -13,6 +13,7 @@
 - [Experiment/run/result contract](spec/experiment-run-derived-contracts.md)与[ADR-0017](../docs/decisions/0017-publication-project-contract.md)：用户批准的schema2与Save As边界。
 - [Runtime contract/evidence](evidence/runtime/README.md)：Mac冻结程序探针，Windows未验证；不是正式installer。
 - [PHASE_PLAN](PHASE_PLAN.md)：P0–P6边界、Subphases、依赖、review gates与发行风险。
+- [P6封装执行计划](plans/p6-packaging-execution-plan.md)：P6.1–P6.4 mini-plan、Windows前置门禁与GLM5.3接续/转交步骤；仅规划，未实施。
 
 ## Baseline
 
