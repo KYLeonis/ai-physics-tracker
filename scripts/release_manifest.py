@@ -77,6 +77,9 @@ def provenance() -> dict:
         "version": tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"],
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "python": sys.version,
+        "build_command": "bash packaging/build_macos.sh",
+        "build_options": {"developer_id_requested": bool(os.environ.get("APT_CODESIGN_IDENTITY")),
+                          "notarization_requested": bool(os.environ.get("APT_NOTARY_PROFILE"))},
         "build_packages": {d.metadata["Name"]: d.version for d in metadata.distributions()},
         "tracked_sha256": digests,
     }
@@ -145,6 +148,13 @@ def candidate(app: Path, dmg: Path, smoke: Path, notary_app: Path | None, notary
         "signing": {"status": "developer_id_notarized" if notarized else "developer_id_unnotarized" if developer_id else "ad_hoc",
                     "signature": signature, "verification": verification, "staples": tickets,
                     "gatekeeper": gatekeeper, "receipts": receipts},
+        "verification_references": {
+            "source_ci_checks": f"https://github.com/KYLeonis/ai-physics-tracker/commit/{build['source_commit']}/checks",
+            "ci_status": "Check the exact source checks; this build does not certify CI completion",
+            "plan": "publication/plans/p6.4-release-preparation.md",
+            "evidence": "publication/evidence/runtime/p6.4-release-preparation.md",
+            "review": "docs/reviews/publication-p6.4-review.md",
+        },
         "public_release_authorized": False,
         "pending_gates": ["actual dependency/source material review", "signed download human review", "installed teacher-import", "student two-path pilot",
                           "complete installed scientific export/recovery evidence", "Windows real-machine verification"],

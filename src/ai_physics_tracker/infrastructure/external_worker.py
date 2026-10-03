@@ -309,6 +309,7 @@ class ExternalWorkerRunner:
         log_file = (job_dir / WORKER_LOG_NAME).open("wb")
         argv = [
             str(self._runtime_python),
+            "-B",  # worker源码在签名App内；导入不得新增__pycache__破坏seal。
             "-P",  # 受信 PYTHONPATH 优先，禁止工作目录中的同名包遮蔽 worker。
             "-m",
             self._worker_module,

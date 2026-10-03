@@ -594,6 +594,21 @@ def test_polluted_host_environment_does_not_leak_to_worker(
     assert result["status"] == "success"
 
 
+def test_worker_keeps_packaged_source_tree_unchanged(tmp_path: Path) -> None:
+    import shutil
+
+    package_root = tmp_path / "worker-src"
+    shutil.copytree(Path(__file__).parents[1] / "src/ai_physics_tracker",
+                    package_root / "ai_physics_tracker", ignore=shutil.ignore_patterns("__pycache__"))
+    before = {p.relative_to(package_root): p.read_bytes() for p in package_root.rglob("*") if p.is_file()}
+    _, handle, _ = _start_hello(tmp_path, package_root=package_root)
+    assert handle.join(timeout_s=JOIN_TIMEOUT_S)
+    assert handle.read_result()["status"] == "success"
+    after = {p.relative_to(package_root): p.read_bytes() for p in package_root.rglob("*") if p.is_file()}
+    assert after == before
+    assert not list(package_root.rglob("__pycache__"))
+
+
 # --- 2026-09-28 S1–S3 review 回归(M1 host outputs 必填;B1 见下) -----------------
 
 
