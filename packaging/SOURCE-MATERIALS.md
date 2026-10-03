@@ -2,7 +2,8 @@
 
 P6.4 review, 2026-10-04. This is a concrete source index, **not a declaration that
 all release obligations are complete**. No public binary release has happened.
-The application uses Qt and FFmpeg under their LGPL terms. Original license texts
+The application uses Qt and standalone FFprobe under their LGPL terms; the actual
+cv2 FFmpeg GPL closure found below still requires a distribution decision. Original license texts
 and copyright notices accompany the app; MIT applies to this repository's code.
 Modification of libraries and reverse engineering for debugging such modifications
 are not prohibited. Process isolation is not used as an automatic licensing exemption.

@@ -315,7 +315,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**本次P6.3 Mac开发交付按用户HR通过授权收尾；已通过最终Independent复审并集成/push（b6ff20e），停止，等待用户指令。下一阶段为P6.4签名、公证与发行材料/正常下载启动HR，仍未执行。teacher-import安装版、非开发学生两支pilot及完整科学/导出/恢复安装版证据保持发行前待补；Windows G1–G5/CUDA/跨平台重开明确暂未实机验证/not_run。公开tag/GitHub Release必须等用户说“发”；用户原工程/视频只读，main/shared venv不修改。**
+**P6.4已获授权，当前在codex/ejp-p6-4-release推进。先完成现有签名/来源工具的native测试候选与Independent Review、push checkpoint；用户裁定cv2 GPL闭包处理路径后执行对应修复。Developer ID证书、真实公证与隔离下载HR尚待补，不宣布普通用户首发通过。teacher-import安装版、学生两支pilot及完整科学/导出/恢复证据待补；Windows暂未实机验证。公开tag/GitHub Release必须等用户说“发”；用户工程/视频只读，main/shared venv不修改。**
 
 ## P2.1 delivery (2026-09-30)
 

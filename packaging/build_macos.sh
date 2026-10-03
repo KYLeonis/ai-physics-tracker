@@ -28,7 +28,7 @@ if [ -n "$IDENTITY" ]; then
         exit 1
     fi
 fi
-if [ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=no)" ]; then
+if [ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=normal)" ]; then
     echo "Commit tracked changes before building a candidate with source provenance." >&2
     exit 1
 fi

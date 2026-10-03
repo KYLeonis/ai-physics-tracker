@@ -15,7 +15,11 @@ import sys
 import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-FORBIDDEN_SUFFIXES = {".mp4", ".mov", ".avi", ".pt", ".pth", ".onnx", ".p12", ".pfx", ".key"}
+FORBIDDEN_SUFFIXES = {
+    ".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".mpg", ".mpeg", ".wmv",
+    ".pt", ".pth", ".onnx", ".h5", ".hdf5", ".ckpt", ".safetensors",
+    ".p12", ".pfx", ".key", ".p8", ".der",
+}
 
 
 def sha256(path: Path) -> str:
@@ -40,16 +44,33 @@ def inventory(root: Path) -> dict[str, dict]:
             if path.suffix.lower() in FORBIDDEN_SUFFIXES:
                 raise ValueError(f"Unexpected video, weight or private-key artifact: {name}")
             # Plain-text resources may include public certificates, but never private keys.
-            if path.stat().st_size < 1024 * 1024 and b"PRIVATE KEY-----" in path.read_bytes():
+            try:
+                content = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                content = ""
+            if "PRIVATE KEY-----" in content:
                 raise ValueError(f"Private-key material in candidate: {name}")
             files[name] = {"size": path.stat().st_size, "sha256": sha256(path)}
     return files
 
 
+def validate_inputs(tracked: dict[str, str]) -> None:
+    """Ignored files are not source provenance; refuse extra repo inputs collected by spec."""
+    for directory in ("src/ai_physics_tracker", "resources/runtime", "packaging/licenses"):
+        for path in (REPO_ROOT / directory).rglob("*"):
+            if not path.is_file() or (directory.startswith("src/") and path.suffix != ".py"):
+                continue
+            name = path.relative_to(REPO_ROOT).as_posix()
+            if name not in tracked or sha256(path) != tracked[name]:
+                raise ValueError(f"Uncommitted bundle input: {name}")
+
+
 def provenance() -> dict:
-    if git("status", "--porcelain", "--untracked-files=no"):
+    if git("status", "--porcelain", "--untracked-files=normal"):
         raise ValueError("Commit tracked changes before recording build provenance")
     tracked = git("ls-files", "-z").rstrip("\0").split("\0")
+    digests = {p: sha256(REPO_ROOT / p) for p in tracked}
+    validate_inputs(digests)
     return {
         "schema_version": 1,
         "source_commit": git("rev-parse", "HEAD"),
@@ -57,7 +78,7 @@ def provenance() -> dict:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "python": sys.version,
         "build_packages": {d.metadata["Name"]: d.version for d in metadata.distributions()},
-        "tracked_sha256": {p: sha256(REPO_ROOT / p) for p in tracked},
+        "tracked_sha256": digests,
     }
 
 
@@ -71,11 +92,14 @@ def candidate(app: Path, dmg: Path, smoke: Path, notary_app: Path | None, notary
     build = json.loads((resources / "build-info.json").read_text(encoding="utf-8"))
     if build["source_commit"] != git("rev-parse", "HEAD"):
         raise ValueError("Check out the exact candidate source commit before generating its manifest")
+    if git("status", "--porcelain", "--untracked-files=normal"):
+        raise ValueError("Source checkout changed since build")
     for name, digest in build["tracked_sha256"].items():
         if sha256(REPO_ROOT / name) != digest:
             raise ValueError(f"Source changed since build: {name}")
-    expected = {p.relative_to(REPO_ROOT / "src").as_posix(): sha256(p)
-                for p in (REPO_ROOT / "src/ai_physics_tracker").rglob("*.py")}
+    validate_inputs(build["tracked_sha256"])
+    expected = {name.removeprefix("src/"): digest for name, digest in build["tracked_sha256"].items()
+                if name.startswith("src/ai_physics_tracker/") and name.endswith(".py")}
     actual = {p.relative_to(resources / "worker-src").as_posix(): sha256(p)
               for p in (resources / "worker-src").rglob("*.py")}
     if actual != expected:
