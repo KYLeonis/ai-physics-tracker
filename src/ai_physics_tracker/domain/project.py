@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from math import isclose
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from uuid import UUID, uuid4
 
 from ai_physics_tracker.domain.calibration import Calibration
@@ -124,6 +124,23 @@ def create_project(name: str, description: str | None = None) -> Project:
         description=description,
         created_at=now,
         modified_at=now,
+    )
+
+
+# 视为"空目录"的系统元数据：目录里只有这些时仍可直接作为新项目目录
+EMPTY_DIRECTORY_METADATA = {".DS_Store"}
+
+
+def is_empty_project_destination(directory: Path) -> bool:
+    """已存在目录是否（除系统元数据外）为空，可直接作为新项目目录。
+
+    发布校验与 GUI 预检共用同一判据（P6.3 HR：用户在访达预建的空文件夹
+    应能直接当项目文件夹，而不是被迫再想一个新名字）。放在 domain 供
+    infrastructure 与 gui 同时引用。
+    """
+
+    return all(
+        entry.name in EMPTY_DIRECTORY_METADATA for entry in directory.iterdir()
     )
 
 

@@ -306,8 +306,13 @@ class ProjectActions(QObject):
             parent=self.window,
         )
         if wizard.exec() != wizard.DialogCode.Accepted:
+            # 向导内 "New track for role" 可能已向会话加 track：取消也要让列表可见
+            self.window._refreshTrackList()
             return
         roles = wizard.pendulum_roles()
+        # 同理：接受后无论走哪条分支（AI 任务占用/会话错误/后台迁移），
+        # 按钮创建的 track 都应立即可见，不再逐分支补刷
+        self.window._refreshTrackList()
         if session.project.required_capabilities:
             # 已是 publication 项目：直接创建（可撤销的单次事务）；与迁移
             # 路径一致，AI 任务运行中不允许改变 role 绑定

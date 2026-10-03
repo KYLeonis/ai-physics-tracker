@@ -158,7 +158,8 @@ def test_save_as_keeps_source_unchanged_and_later_save_targets_destination(
     (
         pytest.param("same", ValueError, id="same-directory"),
         pytest.param("child", ValueError, id="source-child"),
-        pytest.param("existing", FileExistsError, id="existing-target"),
+        # 已存在的空目录自 P6.3 HR 起可直接作为目标；非空目录仍拒绝
+        pytest.param("existing-nonempty", FileExistsError, id="existing-nonempty-target"),
     ),
 )
 def test_save_as_rejects_same_child_and_existing_targets(
@@ -179,6 +180,7 @@ def test_save_as_rejects_same_child_and_existing_targets(
     else:
         target = tmp_path / "already-existing"
         target.mkdir()
+        (target / "keep.txt").write_text("x", encoding="utf-8")
 
     with pytest.raises(expected_error):
         session.save_as(target)
@@ -186,6 +188,26 @@ def test_save_as_rejects_same_child_and_existing_targets(
     assert session.project == before_rejection
     assert session.project_root == source.resolve()
     assert not session.is_dirty
+
+
+def test_save_as_accepts_pre_created_empty_target_folder(tmp_path: Path) -> None:
+    """P6.3 HR：访达预建的空文件夹可直接作为 save-as 目标（含 .DS_Store）。"""
+
+    repository = ProjectRepository()
+    session, _video = _session_with_video(tmp_path, repository)
+    source = tmp_path / "source-project"
+    session.save_as(source)
+
+    target = tmp_path / "my-empty-folder"
+    target.mkdir()
+    (target / ".DS_Store").write_bytes(b"")
+    session.save_as(target)
+
+    assert session.project_root == target.resolve()
+    assert (target / "project.json").is_file()
+    assert not (target / ".DS_Store").exists()
+    assert repository.load(target) == session.project
+    assert source.exists(), "原目录不受空目标发布影响"
 
 
 def test_first_save_failure_keeps_rootless_session_and_staging_recovery_path(

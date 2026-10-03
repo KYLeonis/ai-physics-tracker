@@ -34,6 +34,7 @@ from ai_physics_tracker.domain.pendulum import (
     PendulumRoles,
     PhysicalParameters,
 )
+from ai_physics_tracker.domain.project import is_empty_project_destination
 from ai_physics_tracker.domain.track import Track
 
 _ROLE_DESCRIPTIONS = {
@@ -202,6 +203,22 @@ class PendulumSetupPanel(QGroupBox):
             )
 
 
+def _fresh_subdirectory(parent: Path, base: str = "PendulumProject") -> Path:
+    """返回 parent 下第一个尚不存在的子目录路径。
+
+    Choose… 只能选中已存在目录；空目录可直接作为项目目录，但选中
+    非空目录（如下载文件夹）时只能作为父目录并追加新子目录名，
+    否则发布校验必然拒绝（P6.3 HR）。
+    """
+
+    candidate = parent / base
+    suffix = 2
+    while candidate.exists():
+        candidate = parent / f"{base}-{suffix}"
+        suffix += 1
+    return candidate
+
+
 class PendulumWizardDialog(QDialog):
     """收集 destination（仅 v1 迁移路径）与完整四 role draft。
 
@@ -251,6 +268,14 @@ class PendulumWizardDialog(QDialog):
             destRow.addWidget(self.destinationEdit, 1)
             destRow.addWidget(browseButton)
             layout.addLayout(destRow)
+            destHint = QLabel(
+                "Pick an EMPTY folder to use it directly as the project "
+                "folder, or any other folder — a new subfolder name is "
+                "appended automatically. Enter a full path (starting with /); "
+                "missing folders are created on save.", self)
+            destHint.setWordWrap(True)
+            destHint.setStyleSheet("color: #666;")
+            layout.addWidget(destHint)
         else:
             self.destinationEdit = None
             note = QLabel(
@@ -313,10 +338,15 @@ class PendulumWizardDialog(QDialog):
 
     def _browse(self) -> None:
         selected = QFileDialog.getExistingDirectory(
-            self, "Choose a NEW project directory (publication copy)"
+            self, "Choose the project folder (empty) or its parent folder"
         )
         if selected:
-            self.destinationEdit.setText(selected)
+            picked = Path(selected)
+            if is_empty_project_destination(picked):
+                # 用户预建的空文件夹直接作为项目目录（P6.3 HR 二次反馈）
+                self.destinationEdit.setText(str(picked))
+            else:
+                self.destinationEdit.setText(str(_fresh_subdirectory(picked)))
 
     def _validate_and_accept(self) -> None:
         error = self.validate()
@@ -359,8 +389,22 @@ class PendulumWizardDialog(QDialog):
             if not text:
                 return "Choose a destination directory for the publication copy."
             destination = Path(text)
+            if not destination.is_absolute():
+                return (
+                    "Enter the full path of the new project folder starting "
+                    "from the root (for example "
+                    "/Users/yourname/Downloads/PendulumProject). The folder "
+                    "must not already exist — the app creates it on save."
+                )
             if destination.exists():
-                return f"Destination already exists: {destination}\nChoose a new, empty directory name."
+                if not destination.is_dir():
+                    return f"Destination is not a folder: {destination}"
+                if not is_empty_project_destination(destination):
+                    return (
+                        f"Destination folder is not empty: {destination}\n"
+                        "Choose an empty folder, or a name that does not "
+                        "exist yet (it will be created)."
+                    )
         return None
 
     def pendulum_roles(self) -> PendulumRoles:

@@ -27,6 +27,31 @@ from ai_physics_tracker.infrastructure.task_runner import (
 )
 
 
+@pytest.mark.parametrize("location", ["worker", "legacy", "explicit", "outside"])
+@pytest.mark.parametrize("line_ending", ["\n", "\r\n"], ids=["lf", "crlf"])
+def test_task_history_reads_external_worker_log_with_existing_path_guards(
+    tmp_path, location, line_ending,
+):
+    root = tmp_path / "project"
+    root.mkdir()
+    run = create_tracking_run(uuid4(), uuid4(), "infer")
+    if location == "worker":
+        path = root / "data" / "engines" / str(run.run_id) / "worker.log"
+    elif location == "legacy":
+        path = root / "data" / "engines" / f"{run.run_id}.log"
+    else:
+        relative = "custom.log" if location == "explicit" else "../outside.log"
+        run = replace(run, extra_fields={"log_path": relative})
+        path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    content = f"worker finished status=success{line_ending}"
+    path.write_bytes(content.encode("utf-8"))
+    if location == "outside":
+        assert tracking_job.read_task_log(root, run) == "No saved log for this task."
+    else:
+        assert tracking_job.read_task_log(root, run) == content
+
+
 class WaitingInferenceAdapter(MockEngineAdapter):
     """等待取消信号，验证统一 runner 能回收真实 spawn 进程。"""
 

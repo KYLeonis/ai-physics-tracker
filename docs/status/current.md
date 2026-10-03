@@ -1,8 +1,8 @@
-> Publication工作树（2026-10-03）：P6.3执行中——S1候选核对、S4自动证据完成；S2干净机器安装已通过（另一台MacBook M5/macOS 27,用户HR,首次启动需xattr去隔离的发行限制已实测确认,归P6.4签名/公证）。R01–R12三栏证据表见[p6.3-mac-validation](../../publication/evidence/runtime/p6.3-mac-validation.md)。下一步用户在M5安装版执行S3两条实际任务（[HR入口](../../publication/plans/p6.3-mac-human-review.md)），随后S5学生试用与S6审查；Windows真机仍not_run，公开tag/Release等用户说“发”。[权威状态](../../publication/STATUS.md)。用户原工程/视频只读、main与共享venv不修改。
+> Publication工作树（2026-10-03）：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。当前完成199bc52并发文件保护修复（57passed），S6 Approve with limitations（F1 Closed、F2 Open-Minor），最终199bc52 tests/packaging双平台通过；集成/push后停止。[权威状态](../../publication/STATUS.md)。
 
 # Current Status
 
-> Publication worktree note（2026-10-02）：以下保留main通用线状态；论文线当前为P6.3 Mac——S1/S4自动部分已完成，等用户按HR材料亲测S2干净安装与S3两条实际任务，权威步骤与门禁见[publication/STATUS.md](../../publication/STATUS.md)。
+> 以下保留main通用线历史状态；论文线按上方当前摘要及[publication/STATUS.md](../../publication/STATUS.md)执行，不依据下方main阶段停点判断论文线进度。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

@@ -621,7 +621,8 @@ class DLCAdapter:
             raise ValueError(f"Incomplete inference: processed {progress[0]}/{request.frame_count} frames")
         if not isinstance(scorer, str) or Path(scorer).name != scorer:
             raise ValueError("DLC returned an invalid scorer")
-        prediction_path = request.output_dir / f"{request.video_path.stem}{scorer}.h5"
+        # save_as_csv 已要求DLC生成CSV；host不依赖AI runtime中的PyTables。
+        prediction_path = request.output_dir / f"{request.video_path.stem}{scorer}.csv"
         parsed = parse_predictions(
             prediction_path, request.track_id, request.timeline, request.source_detail,
             min_confidence=request.params.min_confidence, frame_count=request.frame_count,
@@ -678,7 +679,8 @@ class DLCAdapter:
                 raise ValueError(f"Joint inference processed {progress[0]}/{frame_count} frames")
             if not isinstance(scorer, str) or Path(scorer).name != scorer:
                 raise ValueError("DLC returned an invalid scorer")
-            artifact = output_dir / f"{video_path.stem}{scorer}.h5"
+            # 交付且哈希校验同一CSV；不可在host读取失败后回退未声明的旁文件。
+            artifact = output_dir / f"{video_path.stem}{scorer}.csv"
             parsed = read_joint_raw_predictions(
                 artifact, bodypart_mapping, frame_count=frame_count,
                 expected_scorer=scorer,

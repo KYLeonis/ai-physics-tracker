@@ -11,7 +11,7 @@ import pytest
 
 from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.derived import DerivedData, DerivedInput
-from ai_physics_tracker.domain.project import add_calibration, add_video
+from ai_physics_tracker.domain.project import add_calibration, add_video, create_project
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.video import Video
@@ -686,3 +686,62 @@ def test_refinement_iteration_resume_lineage_roundtrip(tmp_path: Path) -> None:
     assert info is not None
     assert info.training_mode == "resume"
     assert info.resume_from_training_run_id == parent_id
+
+
+def test_publish_preserves_file_added_after_destination_check(tmp_path, monkeypatch):
+    repository = ProjectRepository()
+    destination = tmp_path / "project"
+    destination.mkdir()
+    (destination / ".DS_Store").write_bytes(b"metadata")
+    user_file = destination / "user-note.txt"
+    original_iterdir = Path.iterdir
+    destination_scans = 0
+
+    def concurrent_iterdir(path):
+        nonlocal destination_scans
+        if path == destination:
+            destination_scans += 1
+            scan = destination_scans
+        else:
+            scan = 0
+        yield from original_iterdir(path)
+        if scan == 2:
+            # 发布检查刚结束时模拟同步软件写入，内容必须保留而不是被清理。
+            user_file.write_bytes(b"keep user data")
+
+    monkeypatch.setattr(Path, "iterdir", concurrent_iterdir)
+    with pytest.raises(ProjectFormatError, match="recovery staging"):
+        repository.create_from_project(destination, create_project("race"))
+    assert user_file.read_bytes() == b"keep user data"
+    assert not (destination / "project.json").exists()
+    staging, = tmp_path.glob(".project.pending-*")
+    assert repository.load(staging).name == "race"
+
+
+def test_publish_accepts_pre_created_empty_destination_folder(tmp_path: Path) -> None:
+    """P6.3 HR：访达预建的空文件夹可直接作为新项目目录（含 .DS_Store）。
+
+    非空目录仍 fail-closed 拒绝且不触动其内容；空目录发布时仅清除
+    Finder 元数据后原子落位。
+    """
+
+    from ai_physics_tracker.domain.project import create_project
+
+    repo = ProjectRepository()
+    project = create_project("empty-destination")
+
+    empty = tmp_path / "my-folder"
+    empty.mkdir()
+    (empty / ".DS_Store").write_bytes(b"")
+    saved = repo.create_from_project(empty, project)
+    assert (empty / "project.json").is_file()
+    assert not (empty / ".DS_Store").exists()
+    assert repo.load(empty).project_id == saved.project_id
+
+    occupied = tmp_path / "occupied"
+    occupied.mkdir()
+    (occupied / "keep.txt").write_text("x", encoding="utf-8")
+    # 预检阶段（进入 staging 前）按既有语义抛裸 FileExistsError
+    with pytest.raises(FileExistsError, match="already exists"):
+        repo.create_from_project(occupied, project)
+    assert (occupied / "keep.txt").exists()

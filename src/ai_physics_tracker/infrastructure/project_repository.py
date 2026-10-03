@@ -11,10 +11,12 @@ from threading import RLock
 from typing import cast
 
 from ai_physics_tracker.domain.project import (
+    EMPTY_DIRECTORY_METADATA,
     PUBLICATION_REQUIRED_CAPABILITIES,
     MigrationRecord,
     Project,
     create_project,
+    is_empty_project_destination,
 )
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.domain.video import Video
@@ -184,7 +186,11 @@ class ProjectRepository:
     def _publish_project(
         self, destination: Path, project: Project, source_root: Path | None = None
     ) -> Project:
-        """新目录先暂存再发布；失败保留明确的恢复路径，不自动删除文件。"""
+        """新目录先暂存再发布；失败保留明确的恢复路径，不自动删除文件。
+
+        destination 允许是已存在的空目录（P6.3 HR：用户在访达预建的
+        空文件夹可直接作为项目目录），发布前移除其中的 Finder 元数据。
+        """
 
         destination = destination.resolve()
         if (PureWindowsPath(destination.name).is_reserved()
@@ -192,7 +198,8 @@ class ProjectRepository:
                 or any(char in '<>:"\\|?*' for char in destination.name)):
             raise ValueError("project directory name is not Windows-safe")
         if destination.exists():
-            raise FileExistsError(f"project destination already exists: {destination}")
+            if not destination.is_dir() or not is_empty_project_destination(destination):
+                raise FileExistsError(f"project destination already exists: {destination}")
         if not destination.parent.is_dir():
             raise FileNotFoundError(f"destination parent not found: {destination.parent}")
         _validate_resolved_video_locators(destination, project)
@@ -208,7 +215,17 @@ class ProjectRepository:
                     (staging / relative).mkdir(parents=True)
             saved = self.save(staging, project)
             if destination.exists():
-                raise FileExistsError(f"project destination appeared during save: {destination}")
+                # 预检通过的空目录：清掉 Finder 元数据后移除空壳再原子落位；
+                # 期间出现任何真实内容则 fail-closed（staging 保留供恢复）。
+                entries = tuple(destination.iterdir())
+                for entry in entries:
+                    if entry.name not in EMPTY_DIRECTORY_METADATA:
+                        raise FileExistsError(
+                            f"project destination is no longer empty: {destination}")
+                # 只清理已校验的清单；并发新增真实文件时 rmdir 会拒绝而保留内容。
+                for entry in entries:
+                    entry.unlink()
+                destination.rmdir()
             staging.rename(destination)
             return saved
         except Exception as error:
