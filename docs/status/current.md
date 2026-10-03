@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-02）：P6.3执行开始——S1候选核对与S4自动证据完成：RC=HEAD `9d40eb3`的CI artifact（DMG SHA `4ebfd2bb…`，tests/packaging双平台success），包内核对全过（adhoc签名未公证归P6.4），frozen verifier 15/48/2一致，R01–R12三栏证据表见[p6.3-mac-validation](../../publication/evidence/runtime/p6.3-mac-validation.md)。S2/S3/S5真人任务材料就绪（[HR入口](../../publication/plans/p6.3-mac-human-review.md)），停在等用户亲测；Windows真机仍not_run，公开tag/Release等用户说“发”。[权威状态](../../publication/STATUS.md)。用户原工程/视频只读、main与共享venv不修改。
+> Publication工作树（2026-10-03）：P6.3执行中——S1候选核对、S4自动证据完成；S2干净机器安装已通过（另一台MacBook M5/macOS 27,用户HR,首次启动需xattr去隔离的发行限制已实测确认,归P6.4签名/公证）。R01–R12三栏证据表见[p6.3-mac-validation](../../publication/evidence/runtime/p6.3-mac-validation.md)。下一步用户在M5安装版执行S3两条实际任务（[HR入口](../../publication/plans/p6.3-mac-human-review.md)），随后S5学生试用与S6审查；Windows真机仍not_run，公开tag/Release等用户说“发”。[权威状态](../../publication/STATUS.md)。用户原工程/视频只读、main与共享venv不修改。
 
 # Current Status
 

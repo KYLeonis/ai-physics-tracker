@@ -14,6 +14,12 @@
 - 环境观察（只读，未做任何修改）：leonis 账号 `~/Library/Application Support/KYLeonis/AI Physics Tracker/` 已有 runtime-cache 与一个 2026-10-02 23:19 创建、无 `active.txt` 的 install 目录 ⇒ **当前账号非干净环境**；S2 冷装需另一台 Mac 或本机新账号，隔离要求已写入 HR 材料。本机无 `AI_PHYSICS_*` 覆盖、`/Applications` 无同名 app。
 - S3 素材就绪：`build/p6.3-mac-rc/synthetic-pendulum-36f.mp4`（36 帧，SHA256 `f7132464…cc45`）；Mac AI runtime 下载量按 manifest 实算约 415 MB（87 工件）。S2/S3/S5/S6 未执行，对应 R 行保持 pending/not_run。
 
+### S2 通过 — 2026-10-03
+
+- 用户在**另一台 MacBook（M5，macOS 27，无开发环境）**完成 S2 干净机器安装验收：微信传输 DMG → 首次双击报「已损坏」（Gatekeeper 隔离标记，右键打开在新系统无效）→ 拖装 Applications + `xattr` 去隔离后正常启动 → 冷启动基础 GUI、界面内 AI 环境安装/自检/Check、关闭重开就绪整链通过（用户确认，未导出诊断）。
+- R01 Mac 判 **pass with limitation**：安装/setup/启动/自检/重开实测通过；限制=未签名未公证需终端去隔离（实测为发行阻断级，P6.4 签名/公证必要项确认）；R01 训练/推理可用性部分由 R03/S3 在安装版补证。R11 记一例真人故障恢复（Gatekeeper 拦截→文档路径恢复，带终端门槛 limitation）。AC2 的安装部分满足，CPU 训练/推理部分待 S3。
+- 文档同步：HR 材料「右键打开」指引更正为 xattr 步骤（`3e6d7ae`）；证据表 S2 反馈节闭环。剩余：S3 两条实际任务（M5 安装版，素材经 AirDrop 过去）、S5 外部学生、S6 Independent Review；Windows 缺项保持 not_run。
+
 ## P6.3 Mac-first planning — 2026-10-02
 
 - 用户决定先完成Mac release，本轮仅要求建立[P6.3 Mac mini-plan](plans/p6.3-mac-release-candidate.md)，后续会交GLM执行部分工作。**计划就绪，执行未开始**；规划基线`5af3a6b`，没有构建/安装/训练/代码改动或发布。
@@ -281,7 +287,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P6.3 S1与S4自动部分已完成（见上方execution start节）。下一步：用户按[p6.3-mac-human-review](plans/p6.3-mac-human-review.md)亲测 S2 干净环境安装（另一台Mac或本机新账号）与 S3 两条实际任务，并回复封闭式问题；随后安排 S5 外部学生试用与 S6 Independent Review。S2/S3/S5/S6 未完成前对应 R 行保持 pending/not_run，Windows 真机仍 not_run。公开tag/GitHub Release等用户说”发”。用户原工程/视频只读，main与共享venv不修改。**
+**P6.3 进度：S1、S4自动部分、S2（M5干净机器安装,2026-10-03用户HR通过）已完成。下一步：用户在 M5 安装版上执行 S3 两条实际任务（AirDrop 合成视频过去,按[p6.3-mac-human-review](plans/p6.3-mac-human-review.md)任务A/B,回复问题4–6含MPS实测）；随后 S5 外部学生试用与 S6 Independent Review。S3/S5/S6 未完成前对应 R 行保持 pending/not_run，Windows 真机仍 not_run。公开tag/GitHub Release等用户说”发”。用户原工程/视频只读，main与共享venv不修改。**
 
 ## P2.1 delivery (2026-09-30)
 
