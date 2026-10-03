@@ -686,3 +686,32 @@ def test_refinement_iteration_resume_lineage_roundtrip(tmp_path: Path) -> None:
     assert info is not None
     assert info.training_mode == "resume"
     assert info.resume_from_training_run_id == parent_id
+
+
+def test_publish_accepts_pre_created_empty_destination_folder(tmp_path: Path) -> None:
+    """P6.3 HR：访达预建的空文件夹可直接作为新项目目录（含 .DS_Store）。
+
+    非空目录仍 fail-closed 拒绝且不触动其内容；空目录发布时仅清除
+    Finder 元数据后原子落位。
+    """
+
+    from ai_physics_tracker.domain.project import create_project
+
+    repo = ProjectRepository()
+    project = create_project("empty-destination")
+
+    empty = tmp_path / "my-folder"
+    empty.mkdir()
+    (empty / ".DS_Store").write_bytes(b"")
+    saved = repo.create_from_project(empty, project)
+    assert (empty / "project.json").is_file()
+    assert not (empty / ".DS_Store").exists()
+    assert repo.load(empty).project_id == saved.project_id
+
+    occupied = tmp_path / "occupied"
+    occupied.mkdir()
+    (occupied / "keep.txt").write_text("x", encoding="utf-8")
+    # 预检阶段（进入 staging 前）按既有语义抛裸 FileExistsError
+    with pytest.raises(FileExistsError, match="already exists"):
+        repo.create_from_project(occupied, project)
+    assert (occupied / "keep.txt").exists()
