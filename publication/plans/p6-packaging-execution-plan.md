@@ -174,14 +174,14 @@ PyInstaller 改动的 DLL 搜索状态会影响子进程。Windows 的 `SetDllDi
 **Slices / Acceptance Criteria**：
 
 - [ ] S1：填写支持矩阵、最低 OS/driver、包/下载/磁盘体积实测、安装/修复/设备/离线指南、已知科学与硬件限制、卸载保留说明。普通用户不需要看 JSON 或执行 shell。
-- [ ] S2：actual dependency/material review：PySide/Qt、FFprobe、Torch/DLC、CPython/bootstrap、packager/installer 的实际版本许可、notices 与源码提供义务材料。**不自行把 TBD License 改成某许可**，形成具体候选与待用户裁定项；不能把进程分离当自动豁免依据。[Inno Setup 官方信息与许可入口](https://jrsoftware.org/isinfo.php)
+- [ ] S2：actual dependency/material review：PySide/Qt、FFprobe、Torch/DLC、CPython/bootstrap、packager/installer 的实际版本许可、notices 与源码提供义务材料。**保持用户已定MIT；影响发行许可的变动须具体裁定**，形成具体候选与待用户裁定项；不能把进程分离当自动豁免依据。[Inno Setup 官方信息与许可入口](https://jrsoftware.org/isinfo.php)
 - [ ] S3：Windows签名、Mac codesign/notarization 的账号/证书/签名范围/下载隔离后启动验证；缺证书则记录 unsigned test candidate，不标普通用户首发通过。先准备可检查产物，再请用户补签名资料或裁定，不自行购买/更改账号设置。[Apple notarization 文档](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)
 - [ ] S4：生成 RC manifest：版本/tag建议、source commit、host/runtime locks、二进制与资源 SHA256、签名结果、build命令、验证CI/evidence、notices。产物上传前再次核对不存在用户视频/模型/密钥；审查候选不等于公开发行授权。
 - [ ] S5：同步 publication README/STATUS/PHASE_PLAN、packaging README、相关 architecture/development/AGENTS 标记；发布说明只写真实能力。确认具体版本与公开发布授权后才打 release tag/上传 GitHub Release；若无授权，停在已 push 的可审查候选，明确“发行尚未执行”。
 
 **Review Gate**：材料/manifest Self-review + Independent Review 检查此前 blocking 项与来源；签名后实际下载安装 HR。修改 License、新依赖及公开发布遵守项目的必要裁定，不能用计划文件代替授权。
 
-**Result（2026-10-04）**：用户已授权开始；S1指南/草案、S2实际二进制材料复查、S3签名与清单工具进行中。发现cv2自带GPL FFmpeg发行阻断，待用户裁定；无有效Developer ID证书，实际签名/公证待补。P6不宣布完成；无公开tag/Release。当前具体证据及下一步见执行mini-plan。
+**Result（2026-10-04）**：用户已授权开始；S1指南/草案、S2实际二进制材料复查、S3签名与清单工具/native测试候选/Independent Review和同源双平台CI通过。发现cv2自带GPL FFmpeg发行阻断，待用户裁定；无有效Developer ID证书，实际签名/公证待补。P6不宣布完成；无公开tag/Release。当前具体证据及下一步见执行mini-plan。
 
 ## 4. 统一验证、Git 和资源预算
 

@@ -7,8 +7,10 @@
 
 ## P6.4 release preparation — 2026-10-04
 
+- 最终准备checkpoint：Independent Review **Approve with limitations**，F1–F4均Closed；4a46a5c native测试候选成功，63项定向pass，114份worker/2444项文件清单、host隔离/CSV/external worker、启动后seal验证通过。`dist/p6.4-preparation/AIPhysicsTracker-0.1.0-arm64.dmg`，140990041bytes，SHA537a20b73f155796096d38e7cee8d74ed93a4cf0c99675ca6f809d9be0afcf2d；伴随`release-manifest.json`。仍ad_hoc未公证、GPL处理待裁定，不标正式发行完成。[本轮证据](evidence/runtime/p6.4-release-preparation.md)。 最终同源4a46a5c [tests37138578706](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37138578706)/[packaging37138578708](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37138578708)双平台success。
+
 - Branch `codex/ejp-p6-4-release`，base b459e4a。[安装指南](install-guide.md)与[0.1.0发行草案](release-notes-0.1.0.md)就绪；实际App约304MB、Mac固定runtime下载415025090bytes、一个已就绪runtime1603141698bytes。首次权重另计、建议预留4GiB加用户数据；Windows不宣称支持验收已完成。
-- F2向导措辞纠正：新项目文件夹可创建但父目录必须存在、已有空目录可用。来源/manifest工具、可选Developer ID及App/DMG双公证装订入口实施，证书缺失preflight/语法/20项定向检查通过；native构建与Independent Review执行中，不记为通过。
+- F2向导措辞纠正：新项目文件夹可创建但父目录必须存在、已有空目录可用。来源/manifest工具、可选Developer ID及App/DMG双公证装订入口实施，证书缺失preflight/语法/20项定向检查通过；最终native构建与Independent Review已通过，见本节首行；不把Apple签名/公证记为通过。
 - **材料blocking**：P6.3 final App cv2的`libavcodec61.19.101`实测FFmpeg7.1.1/Homebrew7.1.1_3、`--enable-gpl --enable-version3`及x264/x265等；SHA77b55196650377557f90e43e18b03265919b1c20815520c3625ee5debfee5a76。独立LGPL ffprobe没有覆盖它，旧表“按各自许可”不能充当完整审查。清单已纠正，已请求用户裁定重建LGPL（推荐）或GPL组合发行方案；不自行改MIT或引入构建依赖。详见[SOURCE-MATERIALS](../packaging/SOURCE-MATERIALS.md)。
 - 本机0 valid identities，notarytool/stapler存在。已解释商店外正常下载需Developer ID/公证；用户证书可用性尚未确认。Windows签名、真机/CUDA、teacher-import/学生/完整安装科学导出恢复仍待补。
 - 基线b459e4a [tests37134242725](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134242725)/[packaging37134242705](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134242705)，集成b6ff20e [tests37134119741](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134119741)/[packaging37134119759](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134119759)均已确认success；不是本轮未提交工具增量的CI。
@@ -315,7 +317,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P6.4已获授权，当前在codex/ejp-p6-4-release推进。先完成现有签名/来源工具的native测试候选与Independent Review、push checkpoint；用户裁定cv2 GPL闭包处理路径后执行对应修复。Developer ID证书、真实公证与隔离下载HR尚待补，不宣布普通用户首发通过。teacher-import安装版、学生两支pilot及完整科学/导出/恢复证据待补；Windows暂未实机验证。公开tag/GitHub Release必须等用户说“发”；用户工程/视频只读，main/shared venv不修改。**
+**P6.4已获授权，当前在codex/ejp-p6-4-release推进。现有签名/来源工具的native测试候选、Independent Review和同源双平台CI已通过，push准备checkpoint；用户裁定cv2 GPL闭包处理路径后执行对应修复。Developer ID证书、真实公证与隔离下载HR尚待补，不宣布普通用户首发通过。teacher-import安装版、学生两支pilot及完整科学/导出/恢复证据待补；Windows暂未实机验证。公开tag/GitHub Release必须等用户说“发”；用户工程/视频只读，main/shared venv不修改。**
 
 ## P2.1 delivery (2026-09-30)
 
