@@ -154,6 +154,9 @@ user_projects/
 *.whl
 cuda*/
 cudnn*/
+# 原始第三方许可正文是发行材料，不是CUDA二进制。
+!resources/runtime/licenses/macos/packages/torch-2.13.0.dist-info/licenses/third_party/cudnn_frontend/
+!resources/runtime/licenses/macos/packages/torch-2.13.0.dist-info/licenses/third_party/cudnn_frontend/LICENSE.txt
 nvidia/
 
 # ---------- Windows 打包产物 ----------
