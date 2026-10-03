@@ -31,7 +31,7 @@ from ai_physics_tracker.domain.pendulum import (
 )
 from ai_physics_tracker.domain.track import Track
 from ai_physics_tracker.domain.types import utc_now
-from ai_physics_tracker.gui import project_actions
+from ai_physics_tracker.gui import pendulum_setup, project_actions
 from ai_physics_tracker.gui.main_window import MainWindow
 from ai_physics_tracker.gui.pendulum_setup import (
     PendulumWizardDialog,
@@ -188,6 +188,91 @@ def test_wizard_validation_rejects_missing_roles_duplicate_and_existing_destinat
         track.track_id for track in tracks
     }
     assert all(isinstance(value, UUID) for value in roles.track_ids())
+
+
+def test_wizard_validation_rejects_relative_destination(tmp_path: Path) -> None:
+    """裸文件名/相对路径会被 frozen app 解析到不可控 CWD,必须显式拒绝(P6.3 HR)。"""
+
+    video_id = uuid4()
+    tracks = [
+        _stub_track(name, video_id)
+        for name in ("tip", "body top", "body bottom", "pivot")
+    ]
+    dialog = PendulumWizardDialog(tracks, require_destination=True)
+    for role, track in zip(ROLE_ORDER, tracks):
+        dialog.set_role_track(role, track)
+
+    dialog.destinationEdit.setText("just-a-name")
+    error = dialog.validate()
+    assert error is not None and "full path" in error
+
+    dialog.destinationEdit.setText(str(tmp_path / "fresh"))
+    assert dialog.validate() is None
+
+
+def test_wizard_browse_appends_fresh_subdirectory(
+    tmp_path: Path, monkeypatch, qtbot: QtBot
+) -> None:
+    """Choose… 返回的目录视为父目录,自动追加尚不存在的新子目录名(P6.3 HR)。
+
+    getExistingDirectory 只能返回已存在目录,而校验要求 destination 不存在;
+    不追加会让"选中新文件夹 → already exists"成为必然死循环。
+    """
+
+    video_id = uuid4()
+    tracks = [
+        _stub_track(name, video_id)
+        for name in ("tip", "body top", "body bottom", "pivot")
+    ]
+    dialog = PendulumWizardDialog(tracks, require_destination=True)
+    qtbot.addWidget(dialog)
+
+    (tmp_path / "PendulumProject").mkdir()
+
+    class _FakeFileDialog:
+        @staticmethod
+        def getExistingDirectory(*args, **kwargs) -> str:
+            return str(tmp_path)
+
+    monkeypatch.setattr(pendulum_setup, "QFileDialog", _FakeFileDialog)
+    dialog._browse()
+    assert dialog.destinationEdit.text() == str(tmp_path / "PendulumProject-2")
+
+
+def test_wizard_reject_still_refreshes_track_list(
+    qtbot: QtBot, synthetic_video_path: Path, monkeypatch
+) -> None:
+    """向导取消时,role 按钮已创建的 track 也要出现在 track 列表(P6.3 HR)。"""
+
+    window = _opened_window(qtbot, synthetic_video_path)
+    video_id = window.activeVideoId
+    refreshes = []
+    original_refresh = window._refreshTrackList
+
+    def counting_refresh() -> None:
+        refreshes.append(1)
+        original_refresh()
+
+    monkeypatch.setattr(window, "_refreshTrackList", counting_refresh)
+
+    class _RejectWizard:
+        DialogCode = QDialog.DialogCode
+
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def exec(self) -> int:
+            window._annotation_session.add_track(video_id, "Pendulum tip")
+            return 0
+
+    monkeypatch.setattr(project_actions, "PendulumWizardDialog", _RejectWizard)
+    window.projectActions.createPendulumExperiment()
+    assert refreshes, "取消向导后未刷新 track 列表"
+    track_names = [
+        window.trackList.item(index).text()
+        for index in range(window.trackList.count())
+    ]
+    assert "Pendulum tip" in track_names
 
 
 def test_wizard_rejects_cross_video_is_prevented_by_construction() -> None:

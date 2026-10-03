@@ -202,6 +202,22 @@ class PendulumSetupPanel(QGroupBox):
             )
 
 
+def _fresh_subdirectory(parent: Path, base: str = "PendulumProject") -> Path:
+    """返回 parent 下第一个尚不存在的子目录路径。
+
+    Choose… 只能选中已存在目录，而发布校验要求 destination 尚不存在
+    （目录由应用创建），二者矛盾会让"选中新文件夹 → 报 already exists"
+    成为必然；因此浏览结果一律视为父目录并追加新子目录名（P6.3 HR）。
+    """
+
+    candidate = parent / base
+    suffix = 2
+    while candidate.exists():
+        candidate = parent / f"{base}-{suffix}"
+        suffix += 1
+    return candidate
+
+
 class PendulumWizardDialog(QDialog):
     """收集 destination（仅 v1 迁移路径）与完整四 role draft。
 
@@ -251,6 +267,13 @@ class PendulumWizardDialog(QDialog):
             destRow.addWidget(self.destinationEdit, 1)
             destRow.addWidget(browseButton)
             layout.addLayout(destRow)
+            destHint = QLabel(
+                "Choose… selects the PARENT folder; a new subfolder name is "
+                "appended automatically. The full path must not already "
+                "exist — the app creates it on save.", self)
+            destHint.setWordWrap(True)
+            destHint.setStyleSheet("color: #666;")
+            layout.addWidget(destHint)
         else:
             self.destinationEdit = None
             note = QLabel(
@@ -313,10 +336,10 @@ class PendulumWizardDialog(QDialog):
 
     def _browse(self) -> None:
         selected = QFileDialog.getExistingDirectory(
-            self, "Choose a NEW project directory (publication copy)"
+            self, "Choose the PARENT folder for the new project"
         )
         if selected:
-            self.destinationEdit.setText(selected)
+            self.destinationEdit.setText(str(_fresh_subdirectory(Path(selected))))
 
     def _validate_and_accept(self) -> None:
         error = self.validate()
@@ -359,6 +382,13 @@ class PendulumWizardDialog(QDialog):
             if not text:
                 return "Choose a destination directory for the publication copy."
             destination = Path(text)
+            if not destination.is_absolute():
+                return (
+                    "Enter the full path of the new project folder starting "
+                    "from the root (for example "
+                    "/Users/yourname/Downloads/PendulumProject). The folder "
+                    "must not already exist — the app creates it on save."
+                )
             if destination.exists():
                 return f"Destination already exists: {destination}\nChoose a new, empty directory name."
         return None
