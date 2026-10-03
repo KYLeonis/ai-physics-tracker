@@ -1,9 +1,17 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-02。
+- 最后更新：2026-10-03。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，已集成回publication（2f0fc98）。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## P6.3 S3 inference HR fix — 2026-10-03
+
+- 用户安装版run `f2ba8bc0`推理失败已定位：worker实际上MPS成功36/36，HDF5完整（36×12），host未含PyTables且仍选HDF5交付导致verify拒绝。不是训练或模型推理失败，Setup缺项属于分析门禁，不是此次错误原因。
+- `146c6a3`：两个infer入口使用DLC已生成的CSV作为声明/哈希/解析产物，不静默回退未声明文件；历史日志兼容`<run>/worker.log`，native smoke增加host四角色CSV读取。无新依赖/数据schema/科学算法改动；[review](../docs/reviews/publication-p6.3-review.md) Approve，root80passed、独立52passed。
+- 私有副本用同一真实模型MPS36帧再推理，在无PyTables host环境通过原身份/hash/四角色校验，登记completed candidate；原工程manifest不变、旧failed run未改写。CSV在原float32精度与HDF5一致。详情见[证据表](evidence/runtime/p6.3-mac-validation.md#s3-inference-fix2026-10-03)。
+- 新本地DMG：`dist/p6.3-inference-fix/AIPhysicsTracker-0.1.0-arm64.dmg`，140836894bytes，SHA256 `37ce972da8213f5cedf82f521bb0053b0e8334a81bb571a356db8fefa28a0ac2`；来自`146c6a3`同一源码树，native smoke通过、114份worker源码字节一致、LGPL FFprobe复用合格缓存。未修改正在运行的`/Applications`旧App。
+- **下一步**：用户保存退出旧App，安装新DMG，打开原测试工程重试推理；应出现completed候选（不自动采用），历史日志可见，无需重训。最终源码CI待核对，安装版HR待反馈，P6.3不关闭/不集成；Windows/学生/签名缺项保持，无tag/Release。
 
 ## P6.3 execution start — 2026-10-02（S1 + S4 自动部分）
 

@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-03）：P6.3执行中——S1候选核对、S4自动证据完成；S2干净机器安装已通过（另一台MacBook M5/macOS 27,用户HR,首次启动需xattr去隔离的发行限制已实测确认,归P6.4签名/公证）。R01–R12三栏证据表见[p6.3-mac-validation](../../publication/evidence/runtime/p6.3-mac-validation.md)。下一步用户在M5安装版执行S3两条实际任务（[HR入口](../../publication/plans/p6.3-mac-human-review.md)），随后S5学生试用与S6审查；Windows真机仍not_run，公开tag/Release等用户说“发”。[权威状态](../../publication/STATUS.md)。用户原工程/视频只读、main与共享venv不修改。
+> Publication工作树（2026-10-03）：P6.3 S3安装版推理故障已修复（146c6a3）：worker MPS36帧实际成功，host缺PyTables导致HDF5校验失败；新任务交付受哈希校验CSV，历史栏兼容worker.log。root80passed/独立52passed/Approve，新DMG原生smoke和私有副本真实推理验证通过。下一步用户保存退出旧App、安装dist/p6.3-inference-fix的新DMG、重试推理与确认日志；无需重训，HR/最终CI待核对，P6.3不关闭。S2既有安装反馈保留，Windows实机/学生/签名缺项未关闭；原工程/视频只读，main/shared venv未改，无tag/Release。[权威状态](../../publication/STATUS.md)。
 
 # Current Status
 

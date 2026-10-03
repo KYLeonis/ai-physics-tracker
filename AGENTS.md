@@ -13,9 +13,9 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 ## 2. 当前 Roadmap（概要）
 
-论文发布线（2026-10-02）：P0–P5已集成；P6.1/P6.2开发交付、独立审查和双平台CI通过，用户确认Mac HR三项均通过，已集成回publication（2f0fc98）。Windows真机G1–G4/G5、CUDA与外部学生pilot按既有裁定延期并保持not_run；P6.3/P6.4尚未执行，公开tag/Release必须等用户说“发”，ADR-0020保留。权威状态见`publication/STATUS.md`；下表为通用产品线。
+论文发布线（2026-10-02）：P0–P5已集成；P6.1/P6.2开发交付、独立审查和双平台CI通过，用户确认Mac HR三项均通过，已集成回publication（2f0fc98）。Windows真机G1–G4/G5、CUDA与外部学生pilot按既有裁定延期并保持not_run；P6.3执行中、P6.4尚未执行，公开tag/Release必须等用户说“发”，ADR-0020保留。权威状态见`publication/STATUS.md`；下表为通用产品线。
 
-最新范围：用户决定Mac release优先；`publication/plans/p6.3-mac-release-candidate.md`已建立，本轮只规划、执行未开始，等待用户指定GLM执行Slice。Mac优先不把Windows缺项写成通过，也不免除P6.4签名/公证与最终下载HR。
+最新范围（2026-10-03）：Mac release优先，P6.3执行中；S1/S4自动部分和S2安装反馈已记录。S3推理HDF5/PyTables故障已修复（146c6a3），新DMG及私有副本MPS验证通过，待新App HR与最终CI；S5/S6未关闭。Mac优先不把Windows缺项写成通过，也不免除P6.4签名/公证与最终下载HR。步骤见`publication/plans/p6.3-mac-release-candidate.md`。
 
 | 阶段 | 名称 | 一句话目标 |
 | --- | --- | --- |
