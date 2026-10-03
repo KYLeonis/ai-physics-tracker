@@ -7,6 +7,7 @@
 
 ## P6.3 S3 inference HR fix — 2026-10-03
 
+- CI follow-up：`3ab830f` [tests37115559841](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37115559841) macOS通过；Windows1445passed/3failed，三项均为新增测试默认写CRLF但断言LF。测试夹具改为明确字节写入并覆盖LF/CRLF，定向19passed；生产源码不变。该SHA [packaging37115592676](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37115592676) 双平台通过，新CI待核对，现有DMG无需重建。
 - 用户安装版run `f2ba8bc0`推理失败已定位：worker实际上MPS成功36/36，HDF5完整（36×12），host未含PyTables且仍选HDF5交付导致verify拒绝。不是训练或模型推理失败，Setup缺项属于分析门禁，不是此次错误原因。
 - `146c6a3`：两个infer入口使用DLC已生成的CSV作为声明/哈希/解析产物，不静默回退未声明文件；历史日志兼容`<run>/worker.log`，native smoke增加host四角色CSV读取。无新依赖/数据schema/科学算法改动；[review](../docs/reviews/publication-p6.3-review.md) Approve，root80passed、独立52passed。
 - 私有副本用同一真实模型MPS36帧再推理，在无PyTables host环境通过原身份/hash/四角色校验，登记completed candidate；原工程manifest不变、旧failed run未改写。CSV在原float32精度与HDF5一致。详情见[证据表](evidence/runtime/p6.3-mac-validation.md#s3-inference-fix2026-10-03)。

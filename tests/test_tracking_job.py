@@ -28,7 +28,10 @@ from ai_physics_tracker.infrastructure.task_runner import (
 
 
 @pytest.mark.parametrize("location", ["worker", "legacy", "explicit", "outside"])
-def test_task_history_reads_external_worker_log_with_existing_path_guards(tmp_path, location):
+@pytest.mark.parametrize("line_ending", ["\n", "\r\n"], ids=["lf", "crlf"])
+def test_task_history_reads_external_worker_log_with_existing_path_guards(
+    tmp_path, location, line_ending,
+):
     root = tmp_path / "project"
     root.mkdir()
     run = create_tracking_run(uuid4(), uuid4(), "infer")
@@ -41,11 +44,12 @@ def test_task_history_reads_external_worker_log_with_existing_path_guards(tmp_pa
         run = replace(run, extra_fields={"log_path": relative})
         path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("worker finished status=success\n", encoding="utf-8")
+    content = f"worker finished status=success{line_ending}"
+    path.write_bytes(content.encode("utf-8"))
     if location == "outside":
         assert tracking_job.read_task_log(root, run) == "No saved log for this task."
     else:
-        assert tracking_job.read_task_log(root, run) == "worker finished status=success\n"
+        assert tracking_job.read_task_log(root, run) == content
 
 
 class WaitingInferenceAdapter(MockEngineAdapter):

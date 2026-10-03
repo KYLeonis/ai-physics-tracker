@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-03）：P6.3 S3安装版推理故障已修复（146c6a3）：worker MPS36帧实际成功，host缺PyTables导致HDF5校验失败；新任务交付受哈希校验CSV，历史栏兼容worker.log。root80passed/独立52passed/Approve，新DMG原生smoke和私有副本真实推理验证通过。下一步用户保存退出旧App、安装dist/p6.3-inference-fix的新DMG、重试推理与确认日志；无需重训，HR/最终CI待核对，P6.3不关闭。S2既有安装反馈保留，Windows实机/学生/签名缺项未关闭；原工程/视频只读，main/shared venv未改，无tag/Release。[权威状态](../../publication/STATUS.md)。
+> Publication工作树（2026-10-03）：P6.3 S3安装版推理故障已修复（146c6a3）：worker MPS36帧实际成功，host缺PyTables导致HDF5校验失败；新任务交付受哈希校验CSV，历史栏兼容worker.log。root80passed/独立52passed/Approve，新DMG原生smoke和私有副本真实推理验证通过。3ab830f双平台打包通过、Mac测试通过，Windows三项新增测试因CRLF/LF假设失败；已修正夹具并覆盖两种换行，定向19passed，生产源码/DMG不变，新CI待核对。下一步用户保存退出旧App、安装dist/p6.3-inference-fix的新DMG、重试推理与确认日志；无需重训，HR仍待反馈，P6.3不关闭。S2既有安装反馈保留，Windows实机/学生/签名缺项未关闭；原工程/视频只读，main/shared venv未改，无tag/Release。[权威状态](../../publication/STATUS.md)。
 
 # Current Status
 
