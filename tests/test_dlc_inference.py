@@ -2,6 +2,7 @@
 
 from concurrent.futures import CancelledError
 from contextlib import contextmanager
+import csv
 from multiprocessing import Event
 from pathlib import Path
 from queue import Queue
@@ -96,6 +97,7 @@ def test_infer_passes_selected_snapshot_and_all_dlc_parameters(
 
     assert outcome.model_snapshot == selected
     assert outcome.device == "cpu"
+    assert outcome.prediction_path == request.output_dir / "clipscorer.csv"
     assert calls["args"] == (
         str(request.config_path),
         [str(request.video_path)],
@@ -112,6 +114,65 @@ def test_infer_passes_selected_snapshot_and_all_dlc_parameters(
     # DLC 3.0.1 compat.py 自带 overwrite=False，重复传入会使真实调用失败。
     assert "overwrite" not in kwargs
     assert request.output_dir.is_dir()
+
+
+@pytest.mark.parametrize("write_csv", [True, False])
+def test_joint_infer_delivers_csv_and_does_not_fall_back_to_hdf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, write_csv: bool,
+) -> None:
+    from ai_physics_tracker.domain.pendulum import ROLE_ORDER
+    from ai_physics_tracker.infrastructure.dlc_predictions import read_joint_raw_predictions
+
+    config, checkpoint = tmp_path / "config.yaml", tmp_path / "snapshot-1.pt"
+    config.touch()
+    checkpoint.touch()
+    output = tmp_path / "predictions"
+    mapping = tuple((role, role) for role in ROLE_ORDER)
+
+    def analyze_videos(*args, **kwargs):
+        assert kwargs["save_as_csv"] is True
+        # 两种产物同时存在时，host必须只读取被声明的CSV。
+        (output / "clipscorer.h5").write_bytes(b"host must not read this HDF5")
+        if write_csv:
+            with (output / "clipscorer.csv").open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(["scorer", *["scorer"] * 12])
+                writer.writerow(["bodyparts", *[role for role in ROLE_ORDER for _ in range(3)]])
+                writer.writerow(["coords", *[coord for _ in ROLE_ORDER for coord in ("x", "y", "likelihood")]])
+                for frame in range(2):
+                    writer.writerow([frame, *[value for _ in ROLE_ORDER for value in (1., 2., 0.9)]])
+        return "scorer"
+
+    @contextmanager
+    def completed_progress(queue, run_id, cancel_event, total):
+        yield [total]
+
+    @contextmanager
+    def selected_snapshot(path):
+        yield
+
+    monkeypatch.setitem(sys.modules, "deeplabcut", _fake_deeplabcut(analyze_videos=analyze_videos))
+    monkeypatch.setattr(dlc_adapter, "_stage_joint_model", lambda *args: (config, checkpoint))
+    monkeypatch.setattr(dlc_adapter, "_model_snapshots", lambda *args, **kwargs: [SimpleNamespace(path=checkpoint)])
+    monkeypatch.setattr(dlc_adapter, "_prediction_progress", completed_progress)
+    monkeypatch.setattr(dlc_adapter, "_selected_snapshot", selected_snapshot)
+
+    def infer():
+        return DLCAdapter().infer_joint_artifact(
+            uuid4(), Queue(), Event(), config_path=config, video_path=tmp_path / "clip.mp4",
+            checkpoint_path=checkpoint, pose_cfg_path=config, output_dir=output,
+            frame_count=2, bodypart_mapping=mapping, batch_size=2, device="cpu",
+        )
+
+    if not write_csv:
+        with pytest.raises(OSError):
+            infer()
+        return
+    artifact, scorer, version, device, parsed = infer()
+    assert artifact == output / "clipscorer.csv"
+    assert (scorer, device) == ("scorer", "cpu")
+    assert parsed.complete_count == 2
+    assert read_joint_raw_predictions(artifact, mapping, frame_count=2, expected_scorer=scorer) == parsed
 
 
 @pytest.mark.parametrize("snapshot_exists, belongs", [(False, True), (True, False)])

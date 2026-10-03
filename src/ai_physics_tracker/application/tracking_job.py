@@ -388,7 +388,11 @@ def prepare_tracking_candidate(project: Project, request: TrackingRequest,
 
 def read_task_log(root: Path, run: TrackingRun) -> str:
     """仅在后台读取日志末尾；旧任务没有日志时明示。"""
-    relative = run.extra_fields.get("log_path") or f"data/engines/{run.run_id}.log"
+    relative = run.extra_fields.get("log_path")
+    if not relative:
+        legacy = f"data/engines/{run.run_id}.log"
+        # 联合任务的外部worker按run目录保存日志，兼容既有单轨日志位置。
+        relative = legacy if (root / legacy).is_file() else f"data/engines/{run.run_id}/worker.log"
     path = (root / relative).resolve()
     if not path.is_relative_to(root.resolve()) or not path.is_file():
         return "No saved log for this task."

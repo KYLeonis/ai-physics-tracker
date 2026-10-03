@@ -6,6 +6,7 @@
 判定一律读结果文件 + 退出码。本文件随 PyInstaller 打包，不进产品包导入路径。
 """
 
+import csv
 import json
 import multiprocessing
 import os
@@ -65,6 +66,26 @@ def _smoke() -> int:
             return _finish(4)
         window.runtimeSetup.dialog.close()
         window.close()
+
+        # 交付格式须在真正host中可读；hello不覆盖推理产物解析依赖。
+        from ai_physics_tracker.domain.pendulum import ROLE_ORDER
+        from ai_physics_tracker.infrastructure.dlc_predictions import read_joint_raw_predictions
+
+        with tempfile.TemporaryDirectory(prefix="apt-frozen-predictions-") as directory:
+            artifact = Path(directory) / "predictions.csv"
+            with artifact.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(["scorer", *["DLC"] * 12])
+                writer.writerow(["bodyparts", *[role for role in ROLE_ORDER for _ in range(3)]])
+                writer.writerow(["coords", *[coord for _ in ROLE_ORDER for coord in ("x", "y", "likelihood")]])
+                writer.writerow([0, *[value for _ in ROLE_ORDER for value in (1.25, 2.5, 0.9)]])
+            parsed = read_joint_raw_predictions(
+                artifact, tuple((role, role) for role in ROLE_ORDER),
+                frame_count=1, expected_scorer="DLC",
+            )
+            if parsed.complete_count != 1 or "tables" in sys.modules:
+                raise RuntimeError("Frozen host cannot validate joint CSV without PyTables")
+            report["joint_csv_frames"] = parsed.complete_count
 
         loaded = sorted(
             {
