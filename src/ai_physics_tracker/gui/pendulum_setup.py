@@ -272,7 +272,8 @@ class PendulumWizardDialog(QDialog):
                 "Pick an EMPTY folder to use it directly as the project "
                 "folder, or any other folder — a new subfolder name is "
                 "appended automatically. Enter a full path (starting with /); "
-                "missing folders are created on save.", self)
+                "the project folder is created on save, but its parent "
+                "folder must already exist.", self)
             destHint.setWordWrap(True)
             destHint.setStyleSheet("color: #666;")
             layout.addWidget(destHint)
@@ -393,8 +394,8 @@ class PendulumWizardDialog(QDialog):
                 return (
                     "Enter the full path of the new project folder starting "
                     "from the root (for example "
-                    "/Users/yourname/Downloads/PendulumProject). The folder "
-                    "must not already exist — the app creates it on save."
+                    "/Users/yourname/Downloads/PendulumProject). Choose an "
+                    "empty folder or a new folder inside an existing parent."
                 )
             if destination.exists():
                 if not destination.is_dir():

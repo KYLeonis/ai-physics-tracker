@@ -1,9 +1,18 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-03。
+- 最后更新：2026-10-04。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.3本次Mac开发交付已按HR反馈和S6审查带发行待补项集成（b6ff20e）；P6.4未执行。P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，已集成回publication（2f0fc98）。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
+- 当前：**P6.4发行准备已授权、进行中，见[mini-plan](plans/p6.4-release-preparation.md)。安装指南/发行草案、签名公证/来源清单工具已准备；实际cv2二进制发现GPL FFmpeg，待用户裁定处理。本机无Developer ID证书，实际签名/公证未执行。P6.3已集成b6ff20e，b459e4a tests/packaging双平台success。Windows暂未实机验证；无tag/Release，MIT保持。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## P6.4 release preparation — 2026-10-04
+
+- Branch `codex/ejp-p6-4-release`，base b459e4a。[安装指南](install-guide.md)与[0.1.0发行草案](release-notes-0.1.0.md)就绪；实际App约304MB、Mac固定runtime下载415025090bytes、一个已就绪runtime1603141698bytes。首次权重另计、建议预留4GiB加用户数据；Windows不宣称支持验收已完成。
+- F2向导措辞纠正：新项目文件夹可创建但父目录必须存在、已有空目录可用。来源/manifest工具、可选Developer ID及App/DMG双公证装订入口实施，证书缺失preflight/语法/20项定向检查通过；native构建与Independent Review执行中，不记为通过。
+- **材料blocking**：P6.3 final App cv2的`libavcodec61.19.101`实测FFmpeg7.1.1/Homebrew7.1.1_3、`--enable-gpl --enable-version3`及x264/x265等；SHA77b55196650377557f90e43e18b03265919b1c20815520c3625ee5debfee5a76。独立LGPL ffprobe没有覆盖它，旧表“按各自许可”不能充当完整审查。清单已纠正，已请求用户裁定重建LGPL（推荐）或GPL组合发行方案；不自行改MIT或引入构建依赖。详见[SOURCE-MATERIALS](../packaging/SOURCE-MATERIALS.md)。
+- 本机0 valid identities，notarytool/stapler存在。已解释商店外正常下载需Developer ID/公证；用户证书可用性尚未确认。Windows签名、真机/CUDA、teacher-import/学生/完整安装科学导出恢复仍待补。
+- 基线b459e4a [tests37134242725](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134242725)/[packaging37134242705](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134242705)，集成b6ff20e [tests37134119741](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134119741)/[packaging37134119759](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134119759)均已确认success；不是本轮未提交工具增量的CI。
+- 下一步：验证工具/原生测试候选并只读Independent Review，push checkpoint；用户许可选择后执行对应后端处理，证书齐备后公证/下载HR。未授权公开发行，不打tag/Release，不宣布P6完成。
 
 ## P6.3 Mac development delivery closeout — 2026-10-03
 

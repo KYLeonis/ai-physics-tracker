@@ -14,11 +14,14 @@
 
 import os
 import sys
+import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(SPECPATH).resolve().parent
 APP_NAME = "AI Physics Tracker"
 EXECUTABLE_NAME = "AIPhysicsTracker"
+VERSION = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+codesign_identity = os.environ.get("APT_CODESIGN_IDENTITY") if sys.platform == "darwin" else None
 
 ffprobe_dir = os.environ.get("APT_FFPROBE_DIR")
 if not ffprobe_dir:
@@ -30,10 +33,12 @@ if not ffprobe_path.is_file():
 
 datas = [
     (str(REPO_ROOT / "resources" / "runtime"), "resources/runtime"),
-    (str(ffprobe_path), "resources/ffprobe"),
     (str(REPO_ROOT / "LICENSE"), "resources"),
     (str(REPO_ROOT / "packaging" / "NOTICE-third-party.md"), "resources"),
+    (str(REPO_ROOT / "packaging" / "SOURCE-MATERIALS.md"), "resources"),
 ]
+if os.environ.get("APT_BUILD_INFO_FILE"):
+    datas.append((os.environ["APT_BUILD_INFO_FILE"], "resources"))
 
 # 第三方许可文本原件（P6.1 许可复查：NOTICE 逐项对应）
 licenses_dir = REPO_ROOT / "packaging" / "licenses"
@@ -47,7 +52,8 @@ for module_file in sorted((REPO_ROOT / "src" / "ai_physics_tracker").rglob("*.py
 a = Analysis(
     [str(REPO_ROOT / "packaging" / "entry_point.py")],
     pathex=[str(REPO_ROOT / "src")],
-    binaries=[],
+    # 显式作为Mach-O/PE收集，Developer ID签名同时覆盖时序子进程。
+    binaries=[(str(ffprobe_path), "resources/ffprobe")],
     datas=datas,
     # 不做 collect_submodules 大清单(计划明令禁止通用 hidden-import 堆砌):
     # 依赖闭包由静态分析+--apt-smoke 运行时断言把关,缺漏按冒烟错误精准补
@@ -71,6 +77,7 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
+    codesign_identity=codesign_identity,
 )
 
 coll = COLLECT(
@@ -90,11 +97,11 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": APP_NAME,
             "CFBundleDisplayName": APP_NAME,
-            "CFBundleShortVersionString": "0.1.0",
-            "CFBundleVersion": "0.1.0",
+            "CFBundleShortVersionString": VERSION,
+            "CFBundleVersion": VERSION,
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "14.0",
-            # 首发未签名/未公证（P6.4 处理），不注册文件关联
+            # 不注册文件关联；签名由显式构建参数选择。
             "CFBundleDocumentTypes": [],
         },
     )

@@ -210,7 +210,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P6 — Distribution and First Release
 
-2026-10-03最新范围：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。P6.1/P6.2已集成；P6.3记录、AC实际状态及S6见[Mac mini-plan](plans/p6.3-mac-release-candidate.md)、[STATUS](STATUS.md)。
+2026-10-04最新范围：P6.4发行准备进行中（2026-10-04）：指南/签名公证/来源清单工具已准备；实际Mac cv2附带GPL FFmpeg，待用户裁定LGPL重建或GPL组合发行方案；本机无Developer ID证书，签名/公证待补。Windows暂未实机验证，无公开tag/Release，MIT不变。当前[P6.4 mini-plan](plans/p6.4-release-preparation.md)与[STATUS](STATUS.md)为执行入口。
 
 - **Goal**：在普通用户电脑上实际安装并运行完整平台。
 - **Scope**：native build/installer/app/dmg、first-run setup/repair、硬件runtime matrix、版本锁定/下载、自检日志、干净机器验收、发行文档。

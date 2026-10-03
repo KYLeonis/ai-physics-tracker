@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-03）：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。[权威状态](STATUS.md)、[最终证据](evidence/runtime/p6.3-mac-validation.md)。
+当前：P6.4发行准备进行中（2026-10-04）：指南/签名公证/来源清单工具已准备；实际Mac cv2附带GPL FFmpeg，待用户裁定LGPL重建或GPL组合发行方案；本机无Developer ID证书，签名/公证待补。Windows暂未实机验证，无公开tag/Release，MIT不变。[权威状态](STATUS.md)、[P6.4 mini-plan](plans/p6.4-release-preparation.md)、[安装指南](install-guide.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
@@ -13,7 +13,7 @@
 - [Experiment/run/result contract](spec/experiment-run-derived-contracts.md)与[ADR-0017](../docs/decisions/0017-publication-project-contract.md)：用户批准的schema2与Save As边界。
 - [Runtime contract/evidence](evidence/runtime/README.md)：Mac冻结程序探针，Windows未验证；不是正式installer。
 - [PHASE_PLAN](PHASE_PLAN.md)：P0–P6边界、Subphases、依赖、review gates与发行风险。
-- [P6封装执行计划](plans/p6-packaging-execution-plan.md)：P6.1–P6.4 mini-plan；P6.1/P6.2已集成，P6.3本次Mac开发交付收尾，P6.4未执行。
+- [P6封装执行计划](plans/p6-packaging-execution-plan.md)：P6.1–P6.4 mini-plan；P6.1/P6.2已集成，P6.3本次Mac开发交付收尾，P6.4发行准备进行中。
 
 ## Baseline
 

@@ -169,7 +169,7 @@ PyInstaller 改动的 DLL 搜索状态会影响子进程。Windows 的 `SetDllDi
 
 **Goal**：得到可审查、可复现、版本及来源明确的软件首发候选，并按实际发布授权收尾。
 
-**Agent Context Pack**：共同 Context Pack + P6.3 final evidence、repo 当前 `LICENSE`（仍 TBD）、实际依赖 notices、runtime lock 和 build ADR。High-risk（公开分发/签名/依赖材料）；文档本身 Normal-risk。
+**Agent Context Pack**：共同 Context Pack + P6.3 final evidence、repo 当前 `LICENSE`（用户2026-10-02已定MIT）、实际依赖 notices、runtime lock 和 build ADR。High-risk（公开分发/签名/依赖材料）；文档本身 Normal-risk。当前执行入口：[P6.4 mini-plan](p6.4-release-preparation.md)。
 
 **Slices / Acceptance Criteria**：
 
@@ -181,7 +181,7 @@ PyInstaller 改动的 DLL 搜索状态会影响子进程。Windows 的 `SetDllDi
 
 **Review Gate**：材料/manifest Self-review + Independent Review 检查此前 blocking 项与来源；签名后实际下载安装 HR。修改 License、新依赖及公开发布遵守项目的必要裁定，不能用计划文件代替授权。
 
-**Result**：not_run。P6 完成或明确停在 RC 后停止，不自行进入论文 deposit、main 通用 Phase 或扩展阶段。
+**Result（2026-10-04）**：用户已授权开始；S1指南/草案、S2实际二进制材料复查、S3签名与清单工具进行中。发现cv2自带GPL FFmpeg发行阻断，待用户裁定；无有效Developer ID证书，实际签名/公证待补。P6不宣布完成；无公开tag/Release。当前具体证据及下一步见执行mini-plan。
 
 ## 4. 统一验证、Git 和资源预算
 
