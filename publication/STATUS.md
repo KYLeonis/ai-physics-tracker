@@ -2,7 +2,7 @@
 
 - 最后更新：2026-10-03。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，已集成回publication（2f0fc98）。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
+- 当前：**P6.3本次Mac开发交付已按HR反馈和S6审查带发行待补项集成（b6ff20e）；P6.4未执行。P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，已集成回publication（2f0fc98）。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
 ## P6.3 Mac development delivery closeout — 2026-10-03
@@ -12,7 +12,8 @@
 - S6审查发现GLM空目录支持的并发误删问题F1；`199bc52`固定已校验元数据快照，仅清理该清单，新用户文件导致rmdir拒绝且保留staging。旧实现确定性回归失败，修复后仓储/工作流/向导57passed；完整Independent复审见Review Record。新候选已重建：`dist/p6.3-final/AIPhysicsTracker-0.1.0-arm64.dmg`，140848272bytes，SHA4429e01640382aa7185163781ce6fa27bbcd24e81fe67bc7c7b6e28771a93e57；native smoke及114份worker字节核对通过，旧DMG的HR来源保持准确，不冒称新SHA已有真人HR。
 - Windows G1–G4/G5、CUDA、跨平台重开：**暂未实机验证/not_run**。安装版teacher-import、非开发本科生两支pilot、完整科学/portable导出/恢复证据保留发行待补；签名/公证与正常下载启动HR在P6.4，未执行。
 - `199bc52` [tests37133406052](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37133406052)双平台success：Mac1455passed/4skipped/1既有xfail、Windows1453passed/6skipped/1既有xfail；[packaging37133407052](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37133407052)双平台success。F2向导父目录文案Minor保留待P6.4复核，不声称零开放finding。
-- 下一步：S6 [Approve with limitations](../docs/reviews/publication-p6.3-review.md)已完成（F1 Closed、F2 Open-Minor），--no-ff集成/push后停止；不自动开始P6.4，无tag/Release。main/shared venv/用户工程只读。
+- Git：收尾文档be9ecb5，--no-ff集成b6ff20e（parents87fc9c8/be9ecb5），两分支已push；集成树与已审查工作分支完全相同，src/tests/packaging/resources/scripts/pyproject/.github与已验证199bc52一致。集成[tests37134119741](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134119741)/[packaging37134119759](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37134119759)自动触发，结果待补，不冒称该run已通过。
+- 下一步：S6 [Approve with limitations](../docs/reviews/publication-p6.3-review.md)已完成（F1 Closed、F2 Open-Minor），本次开发交付已集成/push，停止；不自动开始P6.4，无tag/Release。main/shared venv/用户工程只读。
 
 ## P6.3 S3 inference HR fix — 2026-10-03
 
@@ -305,7 +306,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**本次P6.3 Mac开发交付按用户HR通过授权收尾；最终Independent复审已完成，集成/push后停止，等待用户指令。下一阶段为P6.4签名、公证与发行材料/正常下载启动HR，仍未执行。teacher-import安装版、非开发学生两支pilot及完整科学/导出/恢复安装版证据保持发行前待补；Windows G1–G5/CUDA/跨平台重开明确暂未实机验证/not_run。公开tag/GitHub Release必须等用户说“发”；用户原工程/视频只读，main/shared venv不修改。**
+**本次P6.3 Mac开发交付按用户HR通过授权收尾；已通过最终Independent复审并集成/push（b6ff20e），停止，等待用户指令。下一阶段为P6.4签名、公证与发行材料/正常下载启动HR，仍未执行。teacher-import安装版、非开发学生两支pilot及完整科学/导出/恢复安装版证据保持发行前待补；Windows G1–G5/CUDA/跨平台重开明确暂未实机验证/not_run。公开tag/GitHub Release必须等用户说“发”；用户原工程/视频只读，main/shared venv不修改。**
 
 ## P2.1 delivery (2026-09-30)
 

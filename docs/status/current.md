@@ -1,4 +1,4 @@
-> Publication工作树（2026-10-03）：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。当前完成199bc52并发文件保护修复（57passed），S6 Approve with limitations（F1 Closed、F2 Open-Minor），最终199bc52 tests/packaging双平台通过；集成/push后停止。[权威状态](../../publication/STATUS.md)。
+> Publication工作树（2026-10-03）：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。当前完成199bc52并发文件保护修复（57passed），S6 Approve with limitations（F1 Closed、F2 Open-Minor），最终199bc52 tests/packaging双平台通过；已--no-ff集成b6ff20e并push，停止等待用户指令进入P6.4。[权威状态](../../publication/STATUS.md)。
 
 # Current Status
 
