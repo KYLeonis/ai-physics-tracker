@@ -217,11 +217,13 @@ class ProjectRepository:
             if destination.exists():
                 # 预检通过的空目录：清掉 Finder 元数据后移除空壳再原子落位；
                 # 期间出现任何真实内容则 fail-closed（staging 保留供恢复）。
-                for entry in destination.iterdir():
+                entries = tuple(destination.iterdir())
+                for entry in entries:
                     if entry.name not in EMPTY_DIRECTORY_METADATA:
                         raise FileExistsError(
                             f"project destination is no longer empty: {destination}")
-                for entry in destination.iterdir():
+                # 只清理已校验的清单；并发新增真实文件时 rmdir 会拒绝而保留内容。
+                for entry in entries:
                     entry.unlink()
                 destination.rmdir()
             staging.rename(destination)
