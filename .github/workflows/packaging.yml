@@ -6,7 +6,7 @@ name: packaging
 
 on:
   push:
-    branches: [main, "publication/**", "feat/p6*"]
+    branches: [main, "publication/**", "feat/p6*", "codex/ejp-p6-*"]
   workflow_dispatch:
 
 permissions:
@@ -38,7 +38,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AIPhysicsTracker-macos-arm64
-          path: dist/*.dmg
+          path: |
+            dist/*.dmg
+            dist/release-manifest.json
           if-no-files-found: error
       - name: Upload artifact (Windows)
         if: runner.os == 'Windows'

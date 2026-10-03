@@ -102,11 +102,10 @@ if [ -n "$NOTARY_PROFILE" ]; then
     spctl --assess --type execute --verbose=2 "$APP"
     spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
 fi
-MANIFEST_ARGS=()
+MANIFEST_ARGS=(candidate --app "$APP" --dmg "$DMG" --smoke "$SMOKE_RESULT"
+    --output "$DIST/release-manifest.json")
 if [ -n "$NOTARY_PROFILE" ]; then
-    MANIFEST_ARGS=(--notary-app "$WORK/notary-app.json" --notary-dmg "$WORK/notary-dmg.json")
+    MANIFEST_ARGS+=(--notary-app "$WORK/notary-app.json" --notary-dmg "$WORK/notary-dmg.json")
 fi
-"$BUILD_ENV/bin/python" "$REPO_ROOT/scripts/release_manifest.py" candidate \
-    --app "$APP" --dmg "$DMG" --smoke "$SMOKE_RESULT" \
-    --output "$DIST/release-manifest.json" "${MANIFEST_ARGS[@]}"
+"$BUILD_ENV/bin/python" "$REPO_ROOT/scripts/release_manifest.py" "${MANIFEST_ARGS[@]}"
 echo "==> done: $DMG"

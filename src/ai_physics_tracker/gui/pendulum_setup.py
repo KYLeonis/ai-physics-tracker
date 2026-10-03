@@ -271,7 +271,7 @@ class PendulumWizardDialog(QDialog):
             destHint = QLabel(
                 "Pick an EMPTY folder to use it directly as the project "
                 "folder, or any other folder — a new subfolder name is "
-                "appended automatically. Enter a full path (starting with /); "
+                "appended automatically. Enter a full absolute path; "
                 "the project folder is created on save, but its parent "
                 "folder must already exist.", self)
             destHint.setWordWrap(True)
