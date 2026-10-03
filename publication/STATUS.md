@@ -5,6 +5,15 @@
 - 当前：**P6.1/P6.2开发交付、独立复审和双平台CI通过；用户2026-10-02回复Mac [HR三项均通过](plans/p6.2-human-review.md)，已集成回publication（2f0fc98）。Windows真机仍not_run，可按[指南](plans/p6-windows-machine-check.md)直接下载Actions包验收。尚未公开发布。MIT不变；DLC3.0.1实际许可LGPL-3.0-or-later。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
+## P6.3 Mac development delivery closeout — 2026-10-03
+
+- 用户确认`/Users/leonis/Downloads/p63-taskA-01`作为HR验收通过，授权接下来收尾，并明确Windows仍“暂未实机验证”。本次关闭的是Mac开发交付，不把完整发行R01–R12缺项改成通过。
+- 原工程只读核对：两轮auto→MPS 50epochs训练，16/4→32/4帧；两轮CSV推理完整36帧，SHA与manifest匹配，最新`0b54216c`已采用；SG9/3与7/3两份36行分析结果保存。模型均trained，无teacher-import/ODE/export记录可佐证。HR/证据见[p6.3-mac-human-review](plans/p6.3-mac-human-review.md)、[最终证据](evidence/runtime/p6.3-mac-validation.md#mac-delivery-closeout2026-10-03)。
+- S6审查发现GLM空目录支持的并发误删问题F1；`199bc52`固定已校验元数据快照，仅清理该清单，新用户文件导致rmdir拒绝且保留staging。旧实现确定性回归失败，修复后仓储/工作流/向导57passed；完整Independent复审见Review Record。新候选已重建：`dist/p6.3-final/AIPhysicsTracker-0.1.0-arm64.dmg`，140848272bytes，SHA4429e01640382aa7185163781ce6fa27bbcd24e81fe67bc7c7b6e28771a93e57；native smoke及114份worker字节核对通过，旧DMG的HR来源保持准确，不冒称新SHA已有真人HR。
+- Windows G1–G4/G5、CUDA、跨平台重开：**暂未实机验证/not_run**。安装版teacher-import、非开发本科生两支pilot、完整科学/portable导出/恢复证据保留发行待补；签名/公证与正常下载启动HR在P6.4，未执行。
+- `199bc52` [tests37133406052](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37133406052)双平台success：Mac1455passed/4skipped/1既有xfail、Windows1453passed/6skipped/1既有xfail；[packaging37133407052](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37133407052)双平台success。F2向导父目录文案Minor保留待P6.4复核，不声称零开放finding。
+- 下一步：S6 [Approve with limitations](../docs/reviews/publication-p6.3-review.md)已完成（F1 Closed、F2 Open-Minor），--no-ff集成/push后停止；不自动开始P6.4，无tag/Release。main/shared venv/用户工程只读。
+
 ## P6.3 S3 inference HR fix — 2026-10-03
 
 - CI follow-up：`3ab830f` [tests37115559841](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37115559841) macOS通过；Windows1445passed/3failed，三项均为新增测试默认写CRLF但断言LF。测试夹具改为明确字节写入并覆盖LF/CRLF，定向19passed；生产源码不变。该SHA [packaging37115592676](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37115592676) 双平台通过。修复提交`968c6b9` [tests37116734213](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37116734213) 双平台success：Mac1454passed/4skipped/1既有xfail，Windows1452passed/6skipped/1既有xfail。生产树与已通过打包的3ab830f一致，现有DMG无需重建。
@@ -296,7 +305,7 @@ Independent Scientific Review已完成：F1–F4修复并独立复审关闭，�
 
 ## Next Recommended Action
 
-**P6.3 进度：S1、S4自动部分、S2（M5干净机器安装,2026-10-03用户HR通过）已完成。下一步：用户在 M5 安装版上执行 S3 两条实际任务（AirDrop 合成视频过去,按[p6.3-mac-human-review](plans/p6.3-mac-human-review.md)任务A/B,回复问题4–6含MPS实测）；随后 S5 外部学生试用与 S6 Independent Review。S3/S5/S6 未完成前对应 R 行保持 pending/not_run，Windows 真机仍 not_run。公开tag/GitHub Release等用户说”发”。用户原工程/视频只读，main与共享venv不修改。**
+**本次P6.3 Mac开发交付按用户HR通过授权收尾；最终Independent复审已完成，集成/push后停止，等待用户指令。下一阶段为P6.4签名、公证与发行材料/正常下载启动HR，仍未执行。teacher-import安装版、非开发学生两支pilot及完整科学/导出/恢复安装版证据保持发行前待补；Windows G1–G5/CUDA/跨平台重开明确暂未实机验证/not_run。公开tag/GitHub Release必须等用户说“发”；用户原工程/视频只读，main/shared venv不修改。**
 
 ## P2.1 delivery (2026-09-30)
 

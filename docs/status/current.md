@@ -1,8 +1,8 @@
-> Publication工作树（2026-10-03）：P6.3 S3安装版推理故障已修复（146c6a3）：worker MPS36帧实际成功，host缺PyTables导致HDF5校验失败；新任务交付受哈希校验CSV，历史栏兼容worker.log。root80passed/独立52passed/Approve，新DMG原生smoke和私有副本真实推理验证通过。3ab830f双平台打包通过、Mac测试通过，Windows三项新增测试因CRLF/LF假设失败；已修正夹具并覆盖两种换行，定向19passed，生产源码/DMG不变。968c6b9 tests37116734213双平台通过（Mac1454/Windows1452passed，既有skip/xfail保留）。下一步用户保存退出旧App、安装dist/p6.3-inference-fix的新DMG、重试推理与确认日志；无需重训，HR仍待反馈，P6.3不关闭。S2既有安装反馈保留，Windows实机/学生/签名缺项未关闭；原工程/视频只读，main/shared venv未改，无tag/Release。[权威状态](../../publication/STATUS.md)。
+> Publication工作树（2026-10-03）：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。当前完成199bc52并发文件保护修复（57passed），S6 Approve with limitations（F1 Closed、F2 Open-Minor），最终199bc52 tests/packaging双平台通过；集成/push后停止。[权威状态](../../publication/STATUS.md)。
 
 # Current Status
 
-> Publication worktree note（2026-10-02）：以下保留main通用线状态；论文线当前为P6.3 Mac——S1/S4自动部分已完成，等用户按HR材料亲测S2干净安装与S3两条实际任务，权威步骤与门禁见[publication/STATUS.md](../../publication/STATUS.md)。
+> 以下保留main通用线历史状态；论文线按上方当前摘要及[publication/STATUS.md](../../publication/STATUS.md)执行，不依据下方main阶段停点判断论文线进度。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。

@@ -141,7 +141,7 @@ PyInstaller 改动的 DLL 搜索状态会影响子进程。Windows 的 `SetDllDi
 <a id="p63-release-candidate-verification-mini-plan"></a>
 ## P6.3 Release candidate verification — mini-plan
 
-2026-10-02用户决定Mac优先：具体Slice/AC/GLM边界以[P6.3 Mac执行mini-plan](p6.3-mac-release-candidate.md)为准，目前只完成规划。以下保留双平台完整目标；Windows缺项单列not_run，Mac范围通过不等于双平台P6完成。
+2026-10-02用户决定Mac优先：具体Slice/AC/GLM边界以[P6.3 Mac执行mini-plan](p6.3-mac-release-candidate.md)为准；用户2026-10-03确认p63-taskA-01 HR通过并授权本次Mac开发交付收尾。以下保留双平台完整目标；Windows缺项单列not_run，Mac范围通过不等于双平台P6完成。
 
 **Goal**：同一候选 commit 的发行包在真实非开发环境完成完整链，证明 P0–P5 的科学与教学合同在冻结环境中仍成立。
 
@@ -162,7 +162,7 @@ PyInstaller 改动的 DLL 搜索状态会影响子进程。Windows 的 `SetDllDi
 
 **Review Gate**：Independent Review 汇总 R01–R12 与故障恢复；两平台安装 Human Review + 非开发学生两支 pilot。新增体验必须再 HR；单纯文档勘误不重复全链。
 
-**Result**：not_run。输出发行验收表（实施时创建，至少字段见上），记录全部限制。集成/push 后进入 P6.4。
+**Result（2026-10-03）**：当前Mac开发交付按用户HR授权带发行待补项收尾；完整R01–R12未完成，Windows暂未实机验证、teacher-import/学生/完整安装版证据保留，见Mac mini-plan与STATUS。集成/push后停止，等待用户指令进入P6.4。
 
 <a id="p64-first-release-close-mini-plan"></a>
 ## P6.4 First release close — mini-plan

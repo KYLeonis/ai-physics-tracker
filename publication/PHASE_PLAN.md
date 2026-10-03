@@ -4,7 +4,7 @@
 
 > 2026-10-01：用户授权显式SG窗口/阶数覆盖，默认9/3与冻结profile不变；见[ADR-0019](../docs/decisions/0019-custom-angular-sg-settings.md)与scientific-profiles §9。
 
-- 2026-09-19规划；当前（2026-10-02）：**P0–P5开发交付已收尾并集成，用户HR与最终355b375双平台CI通过；外部学生pilot/Windows副本重开保持not_run，发行前待补。P6未启动，P6前Windows G1–G4与ADR-0020不变**。
+- 2026-09-19规划；当前（2026-10-02）：**P0–P5开发交付已收尾并集成，用户HR与最终355b375双平台CI通过；外部学生pilot/Windows副本重开保持not_run，发行前待补。P6.1/P6.2已集成，P6.3本次Mac开发交付收尾；Windows门禁按用户裁定暂未实机验证，ADR-0020不变**。
 - Worktree `ai-physics-tracker-ejp`；integration branch `publication/ejp-damped-pendulum`。
 - 产品基础：`62239fa` / immutable tag `ejp-damped-pendulum-baseline-phase5.7`；本轮调查HEAD `0e1e4f1`。
 - 需求：[platform-requirements](spec/platform-requirements.md)；详细证据：[scientific-asset-inventory](spec/scientific-asset-inventory.md)；交接：[STATUS](STATUS.md)。
@@ -210,9 +210,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P6 — Distribution and First Release
 
-2026-10-02最新范围：用户决定先完成Mac release；[P6.3 Mac mini-plan](plans/p6.3-mac-release-candidate.md)已建立，执行未开始，后续由用户指定GLM的Slice。Windows真机/CUDA/跨平台重开继续not_run，不宣布双平台首发完成；签名/公证及最终下载HR仍在P6.4，公开发布必须等“发”。
-
-2026-10-02：P6.1/P6.2开发交付、独立复审和双平台CI已通过；用户确认[Mac安装版HR](plans/p6.2-human-review.md)三项均通过，已集成回publication（2f0fc98）；未公开发布。Windows G1–G4/G5保持not_run，按[便捷指南](plans/p6-windows-machine-check.md)另行实测。后续P6.3/P6.4尚未执行；[总计划](plans/p6-packaging-execution-plan.md)、[实施mini-plan](plans/p6.2-managed-runtime.md)、[STATUS](STATUS.md)。
+2026-10-03最新范围：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。P6.1/P6.2已集成；P6.3记录、AC实际状态及S6见[Mac mini-plan](plans/p6.3-mac-release-candidate.md)、[STATUS](STATUS.md)。
 
 - **Goal**：在普通用户电脑上实际安装并运行完整平台。
 - **Scope**：native build/installer/app/dmg、first-run setup/repair、硬件runtime matrix、版本锁定/下载、自检日志、干净机器验收、发行文档。

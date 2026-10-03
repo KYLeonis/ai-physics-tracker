@@ -1,6 +1,6 @@
 # Roadmap — AI Physics Tracker
 
-> Publication线（2026-10-02）：P0–P5开发交付已完成并集成；用户HR及最终集成355b375 Windows/macOS CI均通过。外部学生pilot与Windows副本重开保持not_run、发行前待补；P6未启动，进入P6前Windows G1–G4门禁及ADR-0020保留。[权威状态](../publication/STATUS.md)。
+> Publication线（2026-10-03）：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。[权威状态](../publication/STATUS.md)。
 
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始

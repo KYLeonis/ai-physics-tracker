@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前（2026-10-02）：P0–P5已集成；P6.1/P6.2双平台CI、独立复审和Mac HR三项通过，已集成回publication（2f0fc98）。未公开发布；Windows真机及学生pilot保持not_run，可从[Windows下载/验收指南](plans/p6-windows-machine-check.md)直接使用Actions便携包；ADR-0020保留。[学生实测记录](student-pilot-record.md)、[权威状态](STATUS.md)。
+当前（2026-10-03）：P6.3本次Mac开发交付按用户2026-10-03的p63-taskA-01 HR通过反馈收尾（带发行待补项）；两轮MPS训练、36帧CSV推理/采用和SG分析保存已核对。Windows暂未实机验证（G1–G5/CUDA/跨平台重开not_run），teacher-import安装版、外部学生pilot及完整科学/恢复安装版证据继续待补。P6.4签名/公证/下载HR未执行，未公开发布，tag/Release仍等用户说“发”。[权威状态](STATUS.md)、[最终证据](evidence/runtime/p6.3-mac-validation.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
@@ -13,7 +13,7 @@
 - [Experiment/run/result contract](spec/experiment-run-derived-contracts.md)与[ADR-0017](../docs/decisions/0017-publication-project-contract.md)：用户批准的schema2与Save As边界。
 - [Runtime contract/evidence](evidence/runtime/README.md)：Mac冻结程序探针，Windows未验证；不是正式installer。
 - [PHASE_PLAN](PHASE_PLAN.md)：P0–P6边界、Subphases、依赖、review gates与发行风险。
-- [P6封装执行计划](plans/p6-packaging-execution-plan.md)：P6.1–P6.4 mini-plan、Windows前置门禁与GLM5.3接续/转交步骤；仅规划，未实施。
+- [P6封装执行计划](plans/p6-packaging-execution-plan.md)：P6.1–P6.4 mini-plan；P6.1/P6.2已集成，P6.3本次Mac开发交付收尾，P6.4未执行。
 
 ## Baseline
 
@@ -30,7 +30,7 @@
 
 不做通用multi-object identity、多相机/3D/任意实验插件、通用model library、论文修改/投稿metadata/Zenodo deposit或新的论文科学补充分析。完整non-goals见requirements。
 
-P0–P5的科学、AI流程、教学交互和导出开发已获用户HR通过，按2026-10-02指令收尾。P3.2历史数值差异保持ADR-0020；学生pilot、Windows副本重开仍未测，发行验收待补；Windows G1–G4进入P6前必须完成。P6未启动，不创建论文submission/published标签。
+P0–P5的科学、AI流程、教学交互和导出开发已获用户HR通过，按2026-10-02指令收尾。P3.2历史数值差异保持ADR-0020；学生pilot、Windows副本重开仍未测，发行验收待补；Windows门禁按用户最新裁定保持暂未实机验证；P6开发已执行，完整发行待补，不创建论文submission/published标签。
 
 当前角运动默认规则：student-default-v2，tip + calibrated fixed pivot，辅助role仅诊断。历史v1/legacy与golden不改；见[ADR-0018](../docs/decisions/0018-tip-fixed-pivot-angular-qc.md)、[scientific-profiles §8](spec/scientific-profiles.md)。
 
