@@ -48,6 +48,37 @@ def _smoke() -> int:
         )
 
         set_application_identity()
+        # 在真实 frozen host 检查视频读写/seek；原 OpenCV build-info 不代表替换后的库。
+        import cv2
+        import numpy as np
+
+        with tempfile.TemporaryDirectory(prefix="apt-video-smoke-") as temporary:
+            for extension, codec in (("mp4", "mp4v"), ("avi", "MJPG")):
+                video = str(Path(temporary) / ("synthetic." + extension))
+                writer = cv2.VideoWriter(video, cv2.CAP_FFMPEG, cv2.VideoWriter_fourcc(*codec), 10.0, (64, 48))
+                if not writer.isOpened():
+                    raise RuntimeError(f"Packaged {codec} encoder unavailable")
+                for index in range(24):
+                    writer.write(np.full((48, 64, 3), index * 6, dtype=np.uint8))
+                writer.release()
+                capture = cv2.VideoCapture(video, cv2.CAP_FFMPEG)
+                capture.set(cv2.CAP_PROP_POS_FRAMES, 17)
+                ok, pixels = capture.read()
+                count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+                capture.release()
+                if not ok or count != 24 or abs(float(pixels.mean()) - 102) > 5:
+                    raise RuntimeError(f"Packaged {extension} decoding/seek failed")
+        report["video_read_write_seek"] = ["MP4/mp4v", "AVI/MJPEG"]
+        if sys.platform == "darwin":
+            import ctypes
+
+            libs = Path(cv2.__file__).parent
+            codec_path = next(libs.rglob("libavcodec.*.dylib"))
+            codec_lib = ctypes.CDLL(str(codec_path))
+            codec_lib.avcodec_license.restype = ctypes.c_char_p
+            report["opencv_ffmpeg_license"] = codec_lib.avcodec_license().decode()
+            if report["opencv_ffmpeg_license"] != "LGPL version 2.1 or later":
+                raise RuntimeError("Packaged OpenCV FFmpeg is not LGPL")
         app = QApplication(sys.argv[:1])
         window = MainWindow(
             lambda: VideoSession(OpenCVVideoReader()),

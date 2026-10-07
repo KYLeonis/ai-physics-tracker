@@ -261,10 +261,12 @@ def publish_runtime(data_root: Path, python: Path, evidence: dict, cancel: Runti
 
 
 def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
-                    cancel: RuntimeCancellation, report: Callable[[RuntimeProgress], None]) -> Path:
+                    cancel: RuntimeCancellation, report: Callable[[RuntimeProgress], None],
+                    *, opencv_wheels: Path | None = None) -> Path:
     """在固定且独占的新版本目录安装，旧 active/runtime 原封不动保留。"""
     if not profile_supported(profile):
         raise RuntimeInstallError("Runtime profile does not match this computer (Apple Silicon requires macOS 14+)")
+    replacements = verified_opencv_wheels(profile, opencv_wheels) if opencv_wheels is not None else {}
     data_root = data_root.absolute()
     parent = data_root / "runtimes"
     parent.mkdir(parents=True, exist_ok=True)
@@ -306,9 +308,12 @@ def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
         for index, artifact in enumerate(profile["packages"]):
             report(RuntimeProgress("Downloading", f"Package {index+1}/{len(profile['packages'])}: {artifact['name']}"))
             paths[artifact["name"]] = download_artifact(artifact, cache, cancel, report)
+        for name, artifact in replacements.items():
+            paths[name] = opencv_wheels / artifact["filename"]
+        journal["opencv_replacements"] = replacements
         builders = {"setuptools", "wheel", "packaging"}
         for title, selected in (("Preparing installer", builders), ("Installing AI packages", set(paths))):
-            lines = [f"{a['name']} @ {paths[a['name']].as_uri()} --hash=sha256:{a['sha256']}"
+            lines = [f"{a['name']} @ {paths[a['name']].as_uri()} --hash=sha256:{replacements.get(a['name'], a)['sha256']}"
                      for a in profile["packages"] if a["name"] in selected]
             requirements = folder / ("build-requirements.txt" if selected == builders else "requirements.txt")
             requirements.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -334,3 +339,26 @@ def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
         raise
     finally:
         lock.close()
+
+
+def verified_opencv_wheels(profile: dict, directory: Path) -> dict[str, dict]:
+    """随签名 App 提供的替换包须匹配固定原包身份与实际文件 hash。"""
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("schema_version") != 1:
+        raise RuntimeInstallError("Unsupported OpenCV replacement manifest")
+    result = {}
+    for original in profile["packages"]:
+        if not original["name"].startswith("opencv-"):
+            continue
+        matches = [a for a in manifest["wheels"] if a["filename"] == original["filename"]]
+        if len(matches) != 1:
+            raise RuntimeInstallError("Missing or duplicate LGPL OpenCV replacement")
+        artifact = matches[0]
+        validate_artifact(artifact)
+        path = directory / artifact["filename"]
+        if (artifact["original_sha256"] != original["sha256"] or artifact["version"] != original["version"]
+                or artifact["name"] != original["name"] or artifact["ffmpeg"]["license"] != "LGPL version 2.1 or later"
+                or not path.is_file() or path.stat().st_size != artifact["size"] or sha256_file(path) != artifact["sha256"]):
+            raise RuntimeInstallError("LGPL OpenCV replacement identity or SHA256 mismatch")
+        result[original["name"]] = artifact
+    return result

@@ -41,6 +41,7 @@ jobs:
           path: |
             dist/*.dmg
             dist/release-manifest.json
+            dist/*-ffmpeg-sources.zip
           if-no-files-found: error
       - name: Upload artifact (Windows)
         if: runner.os == 'Windows'

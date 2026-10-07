@@ -81,6 +81,7 @@ def provenance() -> dict:
         "build_options": {"developer_id_requested": bool(os.environ.get("APT_CODESIGN_IDENTITY")),
                           "notarization_requested": bool(os.environ.get("APT_NOTARY_PROFILE"))},
         "build_packages": {d.metadata["Name"]: d.version for d in metadata.distributions()},
+        "opencv_replacements": opencv_artifacts(Path(os.environ["APT_OPENCV_WHEELS"])) if os.environ.get("APT_OPENCV_WHEELS") else None,
         "tracked_sha256": digests,
     }
 
@@ -88,6 +89,26 @@ def provenance() -> dict:
 def probe(*args: str) -> dict:
     result = subprocess.run(args, capture_output=True, text=True, check=False)
     return {"returncode": result.returncode, "output": (result.stdout + result.stderr).strip()}
+
+
+def opencv_artifacts(directory: Path) -> dict:
+    """校验生成的 wheel 身份/hash，防止清单与随包实际文件分离。"""
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    inputs = json.loads((REPO_ROOT / "packaging/opencv_macos_inputs.json").read_text(encoding="utf-8"))["artifacts"]
+    expected = {a["filename"]: a for a in inputs}
+    actual = {a["filename"]: a for a in manifest["wheels"]}
+    if len(actual) != len(manifest["wheels"]) or actual.keys() != expected.keys():
+        raise ValueError("OpenCV replacement artifact set differs from fixed inputs")
+    if manifest["ffmpeg_source_sha256"] != "733984395e0dbbe5c046abda2dc49a5544e7e0e1e2366bba849222ae9e3a03b1":
+        raise ValueError("OpenCV FFmpeg source differs from approved source")
+    for name, artifact in actual.items():
+        original = expected[name]
+        if (any(artifact[key] != original[key] for key in ("name", "version", "url"))
+                or artifact["original_sha256"] != original["sha256"]
+                or artifact["ffmpeg"]["license"] != "LGPL version 2.1 or later"
+                or sha256(directory / name) != artifact["sha256"]):
+            raise ValueError("OpenCV replacement provenance or SHA256 differs")
+    return manifest
 
 
 def candidate(app: Path, dmg: Path, smoke: Path, notary_app: Path | None, notary_dmg: Path | None) -> dict:
@@ -119,6 +140,9 @@ def candidate(app: Path, dmg: Path, smoke: Path, notary_app: Path | None, notary
     if smoke_result.get("status") != "ok" or smoke_result.get("forbidden_modules") != []:
         raise ValueError("Native smoke did not pass host isolation")
     files = inventory(app)
+    replacements = opencv_artifacts(resources / "opencv-lgpl")
+    if replacements != build.get("opencv_replacements") or smoke_result.get("opencv_ffmpeg_license") != "LGPL version 2.1 or later":
+        raise ValueError("Bundled OpenCV replacements differ from build or native license check")
     signature = probe("codesign", "-dv", "--verbose=4", str(app))
     verification = probe("codesign", "--verify", "--deep", "--strict", str(app))
     if verification["returncode"]:
@@ -142,9 +166,11 @@ def candidate(app: Path, dmg: Path, smoke: Path, notary_app: Path | None, notary
     return {
         "schema_version": 1, "build": build,
         "dmg": {"filename": dmg.name, "size": dmg.stat().st_size, "sha256": sha256(dmg)},
+        "ffmpeg_sources": {"filename": f"AIPhysicsTracker-{build['version']}-ffmpeg-sources.zip",
+                           "sha256": sha256(dmg.parent / f"AIPhysicsTracker-{build['version']}-ffmpeg-sources.zip")},
         "app": {"name": app.name, "minimum_macos": info["LSMinimumSystemVersion"],
                 "logical_bytes": sum(v.get("size", 0) for v in files.values()), "files": files},
-        "native_smoke": {k: smoke_result[k] for k in ("status", "runtime_profiles", "joint_csv_frames", "forbidden_modules")},
+        "native_smoke": {k: smoke_result[k] for k in ("status", "runtime_profiles", "joint_csv_frames", "forbidden_modules", "video_read_write_seek", "opencv_ffmpeg_license")},
         "signing": {"status": "developer_id_notarized" if notarized else "developer_id_unnotarized" if developer_id else "ad_hoc",
                     "signature": signature, "verification": verification, "staples": tickets,
                     "gatekeeper": gatekeeper, "receipts": receipts},

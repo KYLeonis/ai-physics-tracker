@@ -43,13 +43,22 @@ python3.12 -m venv "$BUILD_ENV"
 "$BUILD_ENV/bin/python" -m pip install --quiet --no-deps -e "$REPO_ROOT"
 "$BUILD_ENV/bin/python" -m pip check
 
+# 同 ABI LGPL 动态库替换：host 与新安装 AI runtime 的 Mac wheels 同时处理。
+OPENCV_BUILD="${APT_OPENCV_BUILD:-$WORK/opencv-build}"
+OPENCV_WHEELS="$WORK/opencv-lgpl"
+bash "$REPO_ROOT/scripts/build_opencv_ffmpeg_lgpl.sh" "$OPENCV_BUILD"
+"$BUILD_ENV/bin/python" "$REPO_ROOT/scripts/prepare_opencv_lgpl.py" \
+    --build "$OPENCV_BUILD" --output "$OPENCV_WHEELS"
+"$BUILD_ENV/bin/python" -m pip install --quiet --no-deps --force-reinstall \
+    "$OPENCV_WHEELS"/opencv_python_headless-4.14.0.94-*.whl
+
 # LGPL ffprobe：源码固定版本自建（ffmpeg-static 的 macOS 二进制含 nonfree，不可再分发）
 bash "$REPO_ROOT/scripts/build_ffprobe_lgpl.sh" "$FFPROBE_DIR"
 
 echo "==> PyInstaller"
 BUILD_INFO="$WORK/build-info.json"
-"$BUILD_ENV/bin/python" "$REPO_ROOT/scripts/release_manifest.py" provenance --output "$BUILD_INFO"
-APT_BUILD_INFO_FILE="$BUILD_INFO" APT_FFPROBE_DIR="$FFPROBE_DIR" PYINSTALLER_STRICT_BUNDLE_CODESIGN_ERROR=1 "$BUILD_ENV/bin/python" -m PyInstaller \
+APT_OPENCV_WHEELS="$OPENCV_WHEELS" "$BUILD_ENV/bin/python" "$REPO_ROOT/scripts/release_manifest.py" provenance --output "$BUILD_INFO"
+APT_OPENCV_WHEELS="$OPENCV_WHEELS" APT_BUILD_INFO_FILE="$BUILD_INFO" APT_FFPROBE_DIR="$FFPROBE_DIR" PYINSTALLER_STRICT_BUNDLE_CODESIGN_ERROR=1 "$BUILD_ENV/bin/python" -m PyInstaller \
     --clean --noconfirm \
     --distpath "$DIST" --workpath "$WORK/pyinstaller" \
     "$REPO_ROOT/packaging/ai_physics_tracker.spec"
@@ -89,6 +98,7 @@ mkdir -p "$STAGING"
 cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 DMG="$DIST/AIPhysicsTracker-$VERSION-arm64.dmg"
+cp "$OPENCV_WHEELS/ffmpeg-corresponding-source.zip" "$DIST/AIPhysicsTracker-$VERSION-ffmpeg-sources.zip"
 rm -f "$DMG"
 hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null
 if [ -n "$IDENTITY" ]; then

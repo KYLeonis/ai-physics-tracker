@@ -173,7 +173,10 @@ class RuntimeSetupActions(QObject):
         profile = self.dialog.profileCombo.currentData()
         self._begin(installing=True)
         self._future = self._executor.submit(install_runtime, self.data_root, profile,
-                                             launch_context.worker_package_root(), self._cancel, self._progress.put)
+                                             launch_context.worker_package_root(), self._cancel, self._progress.put,
+                                             opencv_wheels=(launch_context.resource_root() / "opencv-lgpl"
+                                                            if launch_context.is_frozen() and profile["system"] == "Darwin"
+                                                            else None))
         self.refresh()
         self.window.trackingActions.refresh()
 

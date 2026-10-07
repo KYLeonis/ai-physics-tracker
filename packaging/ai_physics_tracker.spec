@@ -39,6 +39,11 @@ datas = [
 ]
 if os.environ.get("APT_BUILD_INFO_FILE"):
     datas.append((os.environ["APT_BUILD_INFO_FILE"], "resources"))
+if sys.platform == "darwin":
+    wheels = os.environ.get("APT_OPENCV_WHEELS")
+    if not wheels or not (Path(wheels) / "manifest.json").is_file():
+        raise SystemExit("Verified LGPL OpenCV wheels are required for macOS packaging")
+    datas.append((wheels, "resources/opencv-lgpl"))
 
 # 第三方许可文本原件（P6.1 许可复查：NOTICE 逐项对应）
 licenses_dir = REPO_ROOT / "packaging" / "licenses"

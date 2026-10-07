@@ -11,7 +11,7 @@ P6.4精确版本源码、重建/修改方式和发行材料待补项见随包 `S
 | 组件 | 版本 | 许可 | 证据/文本 |
 | --- | --- | --- | --- |
 | PySide6-Essentials / Qt 6 / shiboken6 | 6.11.2 | LGPL-3.0-only（构建亦提供 GPL-2/3 选项；本项目按 LGPL 动态链接使用） | `LGPL-3.0.txt` + `GPL-3.0.txt`（LGPL-3 以 GPL-3 为引用前提，两者均随包）；Qt 源码可获取于 https://download.qt.io ；wheel 本身不携带许可文本，故从 gnu.org 收录正本 |
-| opencv-python-headless（cv2，含其捆绑的 FFmpeg/libav* 等 dylib） | 4.14.0.94 | OpenCV: Apache-2.0；**当前Mac实际FFmpeg为GPL构建（见P6.4实测），发行门禁未关闭** | `opencv-python-headless-4.14.0.94.LICENSE.txt` 与 `LICENSE-3RD-PARTY.txt`不足以替代实际闭包核对；候选`libavcodec`含`--enable-gpl`及x264/x265 |
+| opencv-python-headless（cv2，含其捆绑的 FFmpeg/libav* 等 dylib） | 4.14.0.94 | OpenCV: Apache-2.0；**新Mac候选替换为同ABI的FFmpeg7.1.1 LGPL2.1+；旧包为GPL，不复用** | `opencv-python-headless-4.14.0.94.LICENSE.txt` 与 `LICENSE-3RD-PARTY.txt`不足以替代实际闭包核对；原包`libavcodec`含GPL/x264/x265；修复后的实际许可/库hash见`opencv-lgpl/manifest.json`，原notices保留 |
 | FFprobe（时序探测，独立进程） | macOS: 7.1.1 源码自建 / Windows: BtbN n8.1.3-14 | LGPL（macOS 构建为 `--disable-gpl --disable-nonfree`，configure 确认 "LGPL version 2.1 or later"；Windows 为 BtbN FFmpeg-Builds win64-lgpl 包） | 见下"FFprobe 分发决定" |
 | NumPy | 2.4.6 | BSD-3-Clause（含捆绑组件） | `numpy-2.4.6.LICENSE.txt` + `numpy-2.4.6-extra-licenses/`（wheel 原件） |
 | SciPy | 1.17.1 | BSD-3-Clause（含捆绑组件） | `scipy-1.17.1.LICENSE.txt` |
@@ -77,3 +77,13 @@ Windows SHA `aaf7786ecc3fa0bf13259359de6545148e37038a378232609ca14fb9c875170d`�
 `scripts/prepare_runtime_licenses.py` 复核上述 SHA 后提取原文本，
 `resources/runtime/NOTICE.md` 记录源码与复现入口。安装器不改第三方代码；
 高级解释器覆盖入口仍可调用用户自行修改且接口兼容的 runtime。
+
+## P6.4 OpenCV修复（2026-10-07）
+
+用户已授权直接处理；按ADR-0023替换host4.14及新装runtime4.11 Mac wheels的
+FFmpeg动态闭包为官方7.1.1 LGPL2.1+自建库，更新wheel RECORD并记录原/新SHA。
+不修改OpenCV API、主程序MIT、共享venv、旧环境或用户数据。旧GPL构建记载是
+历史证据；新候选以实际动态库license/configuration、依赖闭包及native smoke为准。
+App现在额外携带修复后的OpenCV wheels，安装器不再把这两个原Mac wheel直接
+安装为最终环境。其他AI包/独立imageio-ffmpeg仍按各自许可，不能宣称整个runtime
+无GPL。精确FFmpeg源码与脚本在候选对应的ffmpeg-sources.zip中，公开上传尚未执行。

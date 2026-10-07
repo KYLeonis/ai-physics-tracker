@@ -92,3 +92,14 @@ Apple返回的JSON保存在`APT_WORK/notary-app.json`、`notary-dmg.json`并写�
 - macOS arm64 最低为 **14.0**（host 科学计算 wheels 与 AI profile 的要求）。
 - Windows CUDA profile 必须通过显式 CUDA tensor 自检；不可用时安装失败并
   保留旧环境，用户可选择 CPU profile 重试。Windows 真机训练验证仍待补。
+
+## Mac OpenCV LGPL修复与签名（2026-10-07）
+
+Mac构建自动编译同ABI LGPL FFmpeg、修复固定host/runtime OpenCV wheels、重写
+RECORD并验证实际闭包。可用`APT_OPENCV_BUILD`指定本轮独立构建缓存；不修改
+共享开发venv。新增随包wheel资源及同源`*-ffmpeg-sources.zip`/SHA，CI一起上传
+Actions artifact（不是GitHub Release）。已装AI环境保留，Repair新环境生效。
+
+用户尚无Apple会员，本轮交付ad-hoc未公证测试包。以后使用Developer ID Application
+及Keychain profile；完整步骤见[公证指南](../publication/macos-signing-guide.md)。
+Windows仍暂未实机验证，未获得“发”不执行公开发行。
