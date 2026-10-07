@@ -1,9 +1,24 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-04。
+- 最后更新：2026-10-07。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.4发行准备已授权、进行中，见[mini-plan](plans/p6.4-release-preparation.md)。安装指南/发行草案、签名公证/来源清单工具已准备；实际cv2二进制发现GPL FFmpeg，待用户裁定处理。本机无Developer ID证书，实际签名/公证未执行。P6.3已集成b6ff20e，b459e4a tests/packaging双平台success。Windows暂未实机验证；无tag/Release，MIT保持。**
+- 当前：**P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG/审查/CI待验证。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## P6.4 OpenCV LGPL continuation — 2026-10-07
+
+- 用户明确授权直接处理GPL FFmpeg，且选择尚无Apple会员、先完成未签名测试包。
+  [ADR-0023](../docs/decisions/0023-macos-opencv-lgpl-video-libraries.md)记录同major ABI
+  动态库替换；[签名/公证指南](macos-signing-guide.md)已写，当前不执行Apple上传。
+- 固定并验证host4.14与runtime4.11三个Mac原wheel；官方FFmpeg7.1.1同源LGPL
+  库替换、移除未用Homebrew闭包、RECORD重写。只缓存源码，每次干净编译。
+  修复wheels/hash作为App资源；新runtime身份/hash校验后安装，旧环境/active保留。
+- 41项定向通过；隔离新runtime安装和Torch/DLC selftest成功，同一私有测试模型
+  MPS36帧推理完成、四角色missing0。host MP4/mp4v、AVI/MJPEG读写/seek通过。
+  原生DMG、来源归档/包内核对、Independent复审与同源CI待完成。
+- 下一步：生成修复后的ad-hoc DMG及ffmpeg-sources.zip、验证原生资源/闭包，
+  独立复审/push/CI后交用户安装及Repair HR。不要替换用户App、旧runtime、共享
+  venv或工程；不集成/公开发布，不把其他P6材料/真人缺项写成通过。
 
 ## P6.4 release preparation — 2026-10-04
 
