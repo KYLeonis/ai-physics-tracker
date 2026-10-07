@@ -39,3 +39,35 @@ Final native candidate passes, exact-source CI双平台success. Missing Develope
 notary receipts, download HR, complete source material and Windows hardware are
 explicit limitations, not findings closed by these code changes. User decision
 is required before GPL remediation; public tag/Release still requires “发”.
+
+## OpenCV LGPL continuation — 2026-10-07
+
+The user subsequently authorized the OpenCV GPL FFmpeg repair and selected an
+unnotarized test package (no Apple Developer membership). Required reviewer
+`p6_4_opencv_review` (gpt-6-luna/max) worked read-only; root implemented and tested.
+Range: 70f774a → 5fe09ca → final source 76f42c1. This continuation supersedes the
+pending OpenCV authorization above; it does not close other release gates.
+
+| ID | Initial finding | Repair / verification | Status |
+| --- | --- | --- | --- |
+| O1 / P2 | Reusing the FFmpeg build prefix could associate the current source SHA with stale compiled libraries | Each invocation now extracts verified source and compiles into a fresh directory; only tarball cached. Final native build/source zip checked | Closed |
+| O2 / P2 | Source-material text still treated repair authorization as pending | Actual user authorization, replacement procedure and source materials recorded; MIT unchanged | Closed |
+| O3 / evidence | Preliminary runtime installation used different wheel hashes from the final clean native build | Fresh private runtime installed using actual final App resources; ready wheel and six library hashes verified, then same interpreter completed 36-frame MPS inference | Closed |
+
+Final verdict: **Approve with limitations**. Reviewer verified commit/source
+inputs, App build info and OpenCV manifest at 76f42c1, all 2204 inventory entries,
+DMG and both source archive copies, fixed FFmpeg tar SHA, exact final runtime
+binding, bundled worker hash, native video smoke and signature, and both jobs in
+each exact-source CI run 37622723056 / 37622723409. No blocking code/install
+regression found. Root ran 41 targeted tests; reviewer did not run pytest.
+
+Minor stale README/release-note decision wording was corrected in final docs.
+Non-blocking public-build hygiene: FFmpeg configuration contains the local build
+prefix path, not a secret; normalize for a future public candidate. Current
+candidate is ad-hoc and Gatekeeper rejection is consistent with this scope.
+Installation/Repair HR, Developer ID/public notarization, other release materials
+and Windows hardware are pending. Windows CI is not hardware acceptance.
+
+Exact candidate/runtime/CI evidence and HR steps:
+`publication/evidence/runtime/p6.4-opencv-lgpl-validation.md`. No integration or
+public tag/Release at this checkpoint; wait for installation/Repair HR.

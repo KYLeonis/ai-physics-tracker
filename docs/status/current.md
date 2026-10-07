@@ -1,4 +1,4 @@
-> P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG/审查/CI待验证。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。 权威进度见publication/STATUS.md。
+> P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG、独立审查和同源双平台CI通过；安装及Repair HR待反馈。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。 权威进度见publication/STATUS.md。
 
 # Current Status
 

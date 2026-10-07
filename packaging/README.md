@@ -83,8 +83,8 @@ Apple返回的JSON保存在`APT_WORK/notary-app.json`、`notary-dmg.json`并写�
 - DMG/zip **当前测试候选未Developer ID签名、未公证**：Mac27实测右键打开不能
   解决“已损坏”；测试去隔离步骤见P6.3 HR，不作为普通用户安装方案。
 - P6.4实际二进制检查发现Mac cv2附带FFmpeg7.1.1_3为`--enable-gpl`，包含x264/x265。
-  既有独立LGPL ffprobe替换没有覆盖该库；材料门禁未关闭，等待用户裁定重建LGPL
-  后端或准备GPL组合发行方案。当前不能宣称整个Mac包只含LGPL FFmpeg。
+  既有独立LGPL ffprobe替换没有覆盖该库。用户2026-10-07已授权并完成同ABI
+  LGPL替换，见下方；旧候选保留为历史证据，不用它充当修复后的发行包。
 - Windows 为 zip 便携目录，无安装器/卸载器/文件关联（用户 2026-10-02 裁定 CI
   可运行即达标；Inno Setup 待后续）。
 - Windows G1–G4 真机门禁、G5 clean-machine、学生 pilot 按用户裁定延期至发行前

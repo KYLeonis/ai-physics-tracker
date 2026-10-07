@@ -210,7 +210,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P6 — Distribution and First Release
 
-2026-10-04最新范围：P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG/审查/CI待验证。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。当前[P6.4 mini-plan](plans/p6.4-release-preparation.md)与[STATUS](STATUS.md)为执行入口。
+2026-10-04最新范围：P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG、独立审查和同源双平台CI通过；安装及Repair HR待反馈。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。当前[P6.4 mini-plan](plans/p6.4-release-preparation.md)与[STATUS](STATUS.md)为执行入口。
 
 - **Goal**：在普通用户电脑上实际安装并运行完整平台。
 - **Scope**：native build/installer/app/dmg、first-run setup/repair、硬件runtime matrix、版本锁定/下载、自检日志、干净机器验收、发行文档。

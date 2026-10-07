@@ -2,7 +2,7 @@
 
 - 最后更新：2026-10-07。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG/审查/CI待验证。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。**
+- 当前：**P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG、独立审查和同源双平台CI通过；安装及Repair HR待反馈。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
 ## P6.4 OpenCV LGPL continuation — 2026-10-07
@@ -15,9 +15,13 @@
   修复wheels/hash作为App资源；新runtime身份/hash校验后安装，旧环境/active保留。
 - 41项定向通过；隔离新runtime安装和Torch/DLC selftest成功，同一私有测试模型
   MPS36帧推理完成、四角色missing0。host MP4/mp4v、AVI/MJPEG读写/seek通过。
-  原生DMG、来源归档/包内核对、Independent复审与同源CI待完成。
-- 下一步：生成修复后的ad-hoc DMG及ffmpeg-sources.zip、验证原生资源/闭包，
-  独立复审/push/CI后交用户安装及Repair HR。不要替换用户App、旧runtime、共享
+  原生DMG与来源归档/包内核对通过；最终App随包wheel重新安装/selftest及36帧MPS
+  推理通过，hash与App清单完全一致。Independent复审Approve with limitations。
+  同源76f42c1 tests37622723056/packaging37622723409均双平台success（Mac1469
+  pass/4skip/1xfail；Windows1467pass/6skip/1xfail）。
+  [本轮完整证据](evidence/runtime/p6.4-opencv-lgpl-validation.md)。
+- 下一步：用户安装dist/p6.4-lgpl-test中的DMG，按证据文档执行视频/Repair/推理
+  HR并回复通过或需调整；本轮只交付ad-hoc测试包，公证按用户裁定延期。不要替换用户App、旧runtime、共享
   venv或工程；不集成/公开发布，不把其他P6材料/真人缺项写成通过。
 
 ## P6.4 release preparation — 2026-10-04
