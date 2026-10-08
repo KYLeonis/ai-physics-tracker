@@ -1234,7 +1234,8 @@ class TaskPanel(QDockWidget):
                 self.reviewSkipButton.setToolTip("")
             if controller.is_correcting:
                 self.reviewCorrectButton.setText("Click Video...")
-                self.reviewCorrectButton.setStyleSheet("font-weight: bold; background-color: #ffe0b2;")
+                self.reviewCorrectButton.setStyleSheet(
+                    "font-weight: bold; background-color: #ffe0b2; color: #172b4d;")
             else:
                 self.reviewCorrectButton.setText("Correct (C)")
                 self.reviewCorrectButton.setStyleSheet("")

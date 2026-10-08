@@ -1,6 +1,6 @@
 # AI Physics Tracker
 
-> P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG、独立审查和同源双平台CI通过；安装及Repair HR待反馈。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。 权威进度见publication/STATUS.md。
+> P6.4发行准备进行中（2026-10-08）：OpenCV LGPL测试包Mac安装/Repair/推理HR用户确认均通过。Windows实机反馈滚轮缩放与深色顶部推荐提示问题，本轮GUI修复进行中；新Windows包及HR待补，其他Windows门禁不提升为通过。用户尚无Apple会员，仅未公证ad-hoc测试包；无公开tag/Release，MIT不变。 权威进度见publication/STATUS.md。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 

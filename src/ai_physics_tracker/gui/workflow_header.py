@@ -84,6 +84,8 @@ class WorkflowHeader(QWidget):
         status_column.addWidget(self.taskStripLabel)
         self.nextStepLabel = QLabel()
         self.nextStepLabel.setWordWrap(True)
+        self.nextStepLabel.setStyleSheet(
+            "background: #eaf3ff; color: #172b4d; border-radius: 4px; padding: 4px;")
         status_column.addWidget(self.nextStepLabel)
         next_actions = QHBoxLayout()
         self.nextStepButtons = [QPushButton() for _ in range(3)]

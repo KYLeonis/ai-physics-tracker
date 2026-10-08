@@ -228,7 +228,7 @@ class MainWindow(QMainWindow):
         self.calibrationGuideLabel.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         self.calibrationGuideLabel.setStyleSheet(
-            "background: #eaf3ff; border-radius: 4px;")
+            "background: #eaf3ff; color: #172b4d; border-radius: 4px;")
         self.calibrationGuideLabel.hide()
         self.calibrationGuideButton = QPushButton("", self)
         self.calibrationGuideButton.hide()

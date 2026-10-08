@@ -1,9 +1,25 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-07。
+- 最后更新：2026-10-08。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.4发行准备进行中（2026-10-07）：用户已授权修复Mac host/runtime OpenCV的GPL FFmpeg，采用同ABI的LGPL动态库；隔离新runtime自检与36帧MPS推理通过，新DMG、独立审查和同源双平台CI通过；安装及Repair HR待反馈。用户尚无Apple会员，本轮仅未公证ad-hoc测试包；Developer ID Application与公证指南就绪。Windows暂未实机验证，无公开tag/Release，MIT不变。**
+- 当前：**P6.4发行准备进行中（2026-10-08）：OpenCV LGPL测试包Mac安装/Repair/推理HR用户确认均通过。Windows实机反馈滚轮缩放与深色顶部推荐提示问题，本轮GUI修复进行中；新Windows包及HR待补，其他Windows门禁不提升为通过。用户尚无Apple会员，仅未公证ad-hoc测试包；无公开tag/Release，MIT不变。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## P6.4 Windows GUI HR follow-up — 2026-10-08
+
+- 用户确认上一轮Mac安装/Repair/selftest/短视频推理HR“均通过”；对应DMG
+  f774796d、source76f42c1。未签名下载/Apple公证并未由此通过。
+- 用户在Windows实机发现普通鼠标滚轮不能缩放；代码原来统一调用Qt平移。
+  现在仅普通垂直angleDelta滚轮缩放，识别TouchPad、pixelDelta或滚动phase则
+  保留平移；横向/无视频不缩放，复用ZOOM_STEP与现有范围/映射。
+- 深色模式问题经用户确认是顶部推荐提示；顶部推荐框显式浅蓝背景/深色文字，
+  同类固定浅背景标注引导/建议Correct按钮配齐前景色。无主题系统/新依赖。
+- 4种真实viewport合成滚轮回归修复前失败；修复后视频/标定/标注/导航/任务面板
+  **75passed**，覆盖TouchPad无pixelDelta和普通/半档/多档滚轮；dark palette实际
+  foreground/background自检通过。新同源CI/原生Windows包待补。
+- Next Recommended Action：提交/pushGUI修复，等Windows native artifact后交付
+  滚轮/深色提示HR；保持本分支不集成，无tag/Release。用户反馈只证明已开始
+  Windows实机试用，不代表G1–G5/CUDA/全部平台门禁已通过。
 
 ## P6.4 OpenCV LGPL continuation — 2026-10-07
 
