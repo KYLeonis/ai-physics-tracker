@@ -71,3 +71,18 @@ and Windows hardware are pending. Windows CI is not hardware acceptance.
 Exact candidate/runtime/CI evidence and HR steps:
 `publication/evidence/runtime/p6.4-opencv-lgpl-validation.md`. No integration or
 public tag/Release at this checkpoint; wait for installation/Repair HR.
+
+## Local GUI follow-up — 2026-10-08
+
+User confirmed previous Mac candidate playback/seek and runtime Repair/inference
+HR passed, then reported Windows wheel zoom and dark top recommendation bugs.
+This is a Normal-risk GUI repair under the continuation mini-plan; root self-review
+and regression checks, not a new independent review or scientific/build change.
+Source a13b4b1 restores ordinary vertical wheel zoom at the shared VideoView
+handler, retaining touchpad/pixel/phase scrolling and no-frame/horizontal behavior.
+Paired foreground/background resolves fixed pale hints under dark palettes.
+Four viewport-wheel regressions failed before the fix; all 75 targeted GUI tests
+pass after repair. Actual dark-palette top/guide foreground/background self-check
+passes. Same-source tests37734658400 and packaging37734658340 are both successful
+on macOS/Windows. New candidate Human Review remains pending; no merge/public
+Release. This result does not promote the other Windows hardware gates.

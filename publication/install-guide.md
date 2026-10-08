@@ -27,6 +27,10 @@ P6.4修复候选实测：DMG **196,036,773 bytes（约187 MiB）**、应用本�
 
 ## 标注 → 训练 → 推理 → 改善
 
+视频区普通鼠标滚轮向上放大、向下缩小；触控板双指滑动平移，捏合缩放。
+也可使用View菜单的Zoom in/out、Fit to window。顶部推荐提示采用匹配的
+浅色背景与深色文字，深色系统模式下也应清晰可读。
+
 1. 在 **Experiment setup** 创建单摆实验，选视频和一个空项目文件夹（或已有父文件夹内的新文件夹）。完整填写标尺、固定pivot、真实竖直、tip半径参考、L/g和release frame。
 2. **Acquire trajectory → Recommend 20 frames → Label recommended frames**。每帧按提示依次标tip、body_top、body_bottom、pivot，四点完成后自动跳到下一推荐帧。
 3. **Run joint training**。Advanced的device默认 **auto**：Mac选择可用MPS，否则CPU。也可显式选CPU用于诊断；显式后端失败会报告错误，不悄悄重跑CPU。compile/autocast目前默认关闭。

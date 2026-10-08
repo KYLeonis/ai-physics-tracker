@@ -2,7 +2,7 @@
 
 - 最后更新：2026-10-08。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.4发行准备进行中（2026-10-08）：OpenCV LGPL测试包Mac安装/Repair/推理HR用户确认均通过。Windows实机反馈滚轮缩放与深色顶部推荐提示问题，本轮GUI修复进行中；新Windows包及HR待补，其他Windows门禁不提升为通过。用户尚无Apple会员，仅未公证ad-hoc测试包；无公开tag/Release，MIT不变。**
+- 当前：**P6.4发行准备进行中（2026-10-08）：OpenCV LGPL测试包Mac安装/Repair/推理HR用户确认均通过。Windows滚轮缩放与深色顶部推荐提示已修复，75定向及a13b4b1双平台测试/打包CI通过，新Windows包待真人HR；其他Windows门禁未逐项验收。用户尚无Apple会员，仅未公证ad-hoc测试包；无公开tag/Release，MIT不变。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
 ## P6.4 Windows GUI HR follow-up — 2026-10-08
@@ -16,9 +16,12 @@
   同类固定浅背景标注引导/建议Correct按钮配齐前景色。无主题系统/新依赖。
 - 4种真实viewport合成滚轮回归修复前失败；修复后视频/标定/标注/导航/任务面板
   **75passed**，覆盖TouchPad无pixelDelta和普通/半档/多档滚轮；dark palette实际
-  foreground/background自检通过。新同源CI/原生Windows包待补。
-- Next Recommended Action：提交/pushGUI修复，等Windows native artifact后交付
-  滚轮/深色提示HR；保持本分支不集成，无tag/Release。用户反馈只证明已开始
+  foreground/background自检通过。a13b4b1同源tests37734658400双平台success：
+  Mac1479pass/4skip/1既有xfail，Windows1477pass/6skip/1既有xfail。
+  packaging37734658340双平台success，Windows artifact11531173028已生成。
+- Next Recommended Action：用户下载[本轮Windows包](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/37734658340/artifacts/11531173028)，
+  按mini-plan检查视频区滚轮和深色顶部推荐提示，回复Q1/Q2通过或需调整。
+  本轮停在HR，保持本分支不集成，无tag/Release。用户反馈只证明已开始
   Windows实机试用，不代表G1–G5/CUDA/全部平台门禁已通过。
 
 ## P6.4 OpenCV LGPL continuation — 2026-10-07

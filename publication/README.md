@@ -4,7 +4,7 @@
 
 ## Planning entry points
 
-当前：P6.4发行准备进行中（2026-10-08）：OpenCV LGPL测试包Mac安装/Repair/推理HR用户确认均通过。Windows实机反馈滚轮缩放与深色顶部推荐提示问题，本轮GUI修复进行中；新Windows包及HR待补，其他Windows门禁不提升为通过。用户尚无Apple会员，仅未公证ad-hoc测试包；无公开tag/Release，MIT不变。[权威状态](STATUS.md)、[P6.4 mini-plan](plans/p6.4-release-preparation.md)、[安装指南](install-guide.md)。
+当前：P6.4发行准备进行中（2026-10-08）：OpenCV LGPL测试包Mac安装/Repair/推理HR用户确认均通过。Windows滚轮缩放与深色顶部推荐提示已修复，75定向及a13b4b1双平台测试/打包CI通过，新Windows包待真人HR；其他Windows门禁未逐项验收。用户尚无Apple会员，仅未公证ad-hoc测试包；无公开tag/Release，MIT不变。[权威状态](STATUS.md)、[P6.4 mini-plan](plans/p6.4-release-preparation.md)、[安装指南](install-guide.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
