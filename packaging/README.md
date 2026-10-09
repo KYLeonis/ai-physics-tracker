@@ -81,7 +81,7 @@ Apple返回的JSON保存在`APT_WORK/notary-app.json`、`notary-dmg.json`并写�
 ## 已知限制（诚实清单）
 
 - DMG/zip **当前测试候选未Developer ID签名、未公证**：Mac27实测右键打开不能
-  解决“已损坏”；测试去隔离步骤见P6.3 HR，不作为普通用户安装方案。
+  解决“已损坏”；本次unsigned prerelease首次去隔离步骤见[安装指南](../publication/install-guide.md)，仍需终端。
 - P6.4实际二进制检查发现Mac cv2附带FFmpeg7.1.1_3为`--enable-gpl`，包含x264/x265。
   既有独立LGPL ffprobe替换没有覆盖该库。用户2026-10-07已授权并完成同ABI
   LGPL替换，见下方；旧候选保留为历史证据，不用它充当修复后的发行包。
@@ -102,4 +102,8 @@ Actions artifact（不是GitHub Release）。已装AI环境保留，Repair新环
 
 用户尚无Apple会员，本轮交付ad-hoc未公证测试包。以后使用Developer ID Application
 及Keychain profile；完整步骤见[公证指南](../publication/macos-signing-guide.md)。
-Windows仍暂未实机验证，未获得“发”不执行公开发行。
+2026-10-09用户明确授权不付费公开Mac测试版，
+[v0.1.0 prerelease](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0)
+已发布，source54638e4、11项资产/hash核对通过。源码/依赖材料与安装指南同包
+下载；详见[SOURCE-MATERIALS](SOURCE-MATERIALS.md)。Windows完整实机/CUDA与
+新GUI HR仍待补，不发布Windows二进制，不标正式双平台验收完成。

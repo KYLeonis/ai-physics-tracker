@@ -1,91 +1,134 @@
-# 0.1.0 source and build materials
+# v0.1.0 Mac source and build materials
 
-P6.4 review, updated 2026-10-07. This is a concrete source index, **not a declaration that
-all release obligations are complete**. No public binary release has happened.
-The application uses Qt and standalone FFprobe under their LGPL terms. On
-2026-10-07 the user authorized replacing the actual Mac cv2 GPL FFmpeg closure
-with a matching-major LGPL build; both host and newly installed runtime wheels
-are repaired by the build scripts. Old installed environments are unchanged. Original license texts
-and copyright notices accompany the app; MIT applies to this repository's code.
-Modification of libraries and reverse engineering for debugging such modifications
-are not prohibited. Process isolation is not used as an automatic licensing exemption.
+Public unsigned Mac prerelease supplement, 2026-10-09. MIT applies to this
+repository's application code; third-party libraries retain their own licenses
+and copyright notices. Modification of libraries and reverse engineering for
+debugging such modifications are permitted. Shared-library/process boundaries
+are not asserted as automatic license exemptions.
 
-## Exact source/build inputs
+## v0.1.0 Mac release supplement — 2026-10-09
 
-| Delivered component | Source and build material |
-| --- | --- |
-| Application + worker | Candidate manifest's exact `source_commit` in [repository](https://github.com/KYLeonis/ai-physics-tracker); `packaging/build_macos.sh`, spec and host lock at that commit. All tracked input hashes and actual build Python/package versions are embedded in `resources/build-info.json` |
-| Qt 6.11.2 | [Qt 6.11.2 full source archive](https://download.qt.io/archive/qt/6.11/6.11.2/single/qt-everywhere-src-6.11.2.tar.xz), [versioned submodules](https://download.qt.io/archive/qt/6.11/6.11.2/submodules/). Actual Mac frameworks: Core/Gui/Widgets/Network/DBus/OpenGL/OpenGLWidgets/Test (qtbase), Svg (qtsvg). This inventory does not imply every Qt module is distributed |
-| PySide6-Essentials/shiboken6 6.11.2 | [Exact QtForPython source](https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.2-src/pyside-setup-everywhere-src-6.11.2.tar.xz). Locked unmodified PyPI wheels; PyInstaller relocates/re-signs the collected native libraries |
-| Mac ffprobe 7.1.1 | [Official source](https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz), SHA256 `733984395e0dbbe5c046abda2dc49a5544e7e0e1e2366bba849222ae9e3a03b1`; complete configure/build command in `scripts/build_ffprobe_lgpl.sh`. No upstream code patch, GPL/nonfree/version3 disabled; source source-link + original notices do not alone prove final distribution completeness |
-| OpenCV 4.14.0.94 and its bundled FFmpeg/components | Raw wheel `LICENSE.txt`/`LICENSE-3RD-PARTY.txt` in `resources/licenses/`; [exact package source/build tag94](https://github.com/opencv/opencv-python/tree/94). **Actual Mac wheel/old App libavcodec61.19.101 declares FFmpeg7.1.1/Homebrew7.1.1_3, `--enable-gpl --enable-version3` with x264/x265**, unlike release notes mentioning8.1.2. Do not infer Mac binary contents from Linux/release headline or standalone ffprobe. Historical finding; repaired candidates use the LGPL replacement described below |
-| CPython host | Actual patch version/build packages in `build-info.json`; [CPython source](https://github.com/python/cpython), corresponding patch tag. Native build interpreter is separate from AI runtime; current local build Python3.12.13 |
-| AI Python/PBS | CPython3.12.15/PBS20261001; [CPython exact source](https://github.com/python/cpython/tree/v3.12.15), [PBS build scripts](https://github.com/astral-sh/python-build-standalone/tree/20261001); bootstrap archive URLs/SHA in runtime manifest, original per-platform PYTHON.json/third-party texts under `resources/runtime/licenses/` |
-| DLC3.0.1/Torch2.13.0/torchvision0.28.0 and all runtime dependencies | Every artifact URL, size, SHA, license metadata and source/sdist URL/hash when available in `resources/runtime/manifest.json`; [DLC v3.0.1](https://github.com/DeepLabCut/DeepLabCut/tree/v3.0.1), [Torch v2.13.0](https://github.com/pytorch/pytorch/tree/v2.13.0), [vision v0.28.0](https://github.com/pytorch/vision/tree/v0.28.0). Original wheel notices retained; Torch/DLC remain separate. Repaired Mac OpenCV wheels are shipped as trusted installer resources |
-| PyInstaller6.22.3 | [Exact source](https://github.com/pyinstaller/pyinstaller/tree/v6.22.3); original COPYING with bootloader exception in app's licenses. No installer framework on Mac, Apple's hdiutil creates DMG |
-| Other host wheels | Fixed versions in host lock, original wheel texts under licenses; actual build closure/version list in embedded build-info. Numerical packages include their own bundled dependency notices |
+All companion assets are served beside the binary at
+https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0.
+`SHA256SUMS` covers every upload except itself. `release-manifest.json` is the
+unaltered CI snapshot; `release-decision.json` records subsequent user permission
+for unsigned public prerelease. Binary build source is
+`54638e484ca3160d2d335e8f78c0580bef21949a`, not a later documentation commit.
+The DMG is ad-hoc signed, not Developer ID signed or Apple notarized.
 
-## Replacement / recombination
+### Downloadable corresponding source
 
-The host uses shared Qt libraries in its onedir app; AI packages remain in a
-separate editable runtime. For a modified compatible Qt/library build, check out
-the candidate source, use the corresponding library/source build and build this
-application with `APT_CODESIGN_IDENTITY` unset (ad-hoc), then test it locally.
-Apple Developer ID private keys are not required to build an altered local copy.
-Do not change an already signed app and expect its original signature to remain valid.
-For modified compatible AI components, the existing `AI_PHYSICS_RUNTIME_PYTHON`
-override selects the user's interpreter. These are developer instructions; ordinary
-users install and manage the runtime in Settings.
+- `AIPhysicsTracker-0.1.0-source.tar.gz`: exact application Git snapshot54638e4,
+  including worker, PyInstaller spec, all build/replacement scripts, requirements,
+  runtime artifact/source manifest, original license texts and MIT license.
+- `AIPhysicsTracker-0.1.0-ffmpeg-sources.zip`: official unmodified FFmpeg7.1.1
+  tarball (SHA733984395e0dbbe5c046abda2dc49a5544e7e0e1e2366bba849222ae9e3a03b1),
+  actual OpenCV configure output, LGPL build commands and OpenCV replacement script/inputs.
+  Standalone ffprobe buildconf is retained in the third-party source companion.
+  The mounted final host libavcodec itself reports LGPL2.1+ and disable-gpl,
+  disable-nonfree, disable-version3. It is not the old Homebrew GPL binary.
+- `AIPhysicsTracker-0.1.0-third-party-sources.zip`: official unmodified Qt6.11.2
+  qtbase/qtsvg/qtimageformats source archives and PySide/shiboken6.11.2 pyside-setup
+  source archive, verified against Qt MirrorBrain published SHA256. Qt source
+  includes its vendored components, LICENSES and CMake build scripts. These modules
+  cover the actual delivered frameworks and image-format/platform/style/TLS plugins;
+  no QtQuick/QML/WebEngine framework is distributed. No application changes to Qt.
+  The archive also contains GNU GCC13.4.0 source plus its Homebrew Darwin patch, upstream SciPy release workflow
+  and toolchain build materials for bundled libquadmath/libgfortran, and version
+  corrections for timezone-package notices. `source-index.json` records exact
+  URLs, commit/version, sizes, archive hashes and build-origin evidence.
 
-## Material gate still pending before public release
+The final mounted App's frozen scipy.__config__ identifies SciPy1.17.1,
+Accelerate BLAS and **GCC13.4.0** Fortran. It contains libquadmath (LGPL2.1+)
+and libgfortran (GPL3+ with GCC Runtime Library Exception3.1). The older macOS12
+OpenBLAS wheel build instructions select GCC12.1; they do not describe this
+macOS14 Accelerate build and are not used as source proof for this binary.
+The versioned scipy-release workflow selects preinstalled gfortran-13 for
+Accelerate. Included GNU GCC13.4.0 tarball SHA256 is
+`9c4ce6dbb040568fdc545588ac03c5cbc95a8dbf0c7aa490170843afb59ca8f5`;
+Homebrew's GCC13.4 Darwin patch SHA256 is
+`60b22ae7f5f78b41e12c51d8c6e99ba933a7e124454fe8cdbff7200505167949`.
+Source tarball, exact patch, historical compiler formula/build instructions,
+release wheel workflow (SOURCE_REF_TO_BUILD=v1.17.1) and measured App compiler/BLAS metadata are included.
+The compiler recipe is Homebrew/homebrew-core commit
+`36f6d3a30a5f2d3c653bf90ca77425cfbbbfaadd`; the scipy-release workflow is commit
+`a09f7a0f9639782b7d05243873b17c430da2fcc2`. Original LGPL text for libquadmath
+is retained in NumPy's notice and the GCC source COPYING.LIB.
 
-Actual P6.3 final App path:
-`Contents/Frameworks/cv2/__dot__dylibs/libavcodec.61.19.101.dylib`, SHA256
-`77b55196650377557f90e43e18b03265919b1c20815520c3625ee5debfee5a76`.
-`strings` confirms the complete Homebrew configure line (GPL/version3,
-libx264/libx265/libxvid/libvidstab/librubberband). This is a measured issue, not
-a hypothetical license concern. On 2026-10-07 the user authorized direct repair
-with LGPL FFmpeg; source MIT stays. The old candidate is not the repaired package.
+Actual CI host interpreter is official CPython **3.12.10**. The earlier local
+3.12.13 reference is historical. Actual pytz/tzdata are **2026.5**; the original
+2026.4-named bundled MIT/Apache texts are byte-identical to their 2026.5 wheel
+counterparts. Correctly named copies and wheel URLs/hashes accompany this release;
+we did not patch the signed bundle or misstate its inventory. Other actual host
+packages/versions are recorded in release-manifest build.build_packages.
+OpenCV's preserved libaom3.12.1 and libavif1.3.0 (Mach-O library ABI16.3.0) use
+permissive BSD-style licenses retained in the original wheel THIRD-PARTY text;
+source: https://aomedia.googlesource.com/aom/+/refs/tags/v3.12.1 and
+https://github.com/AOMediaCodec/libavif/tree/v1.3.0. libaom also links libvmaf3.0.0
+(BSD-2-Clause-Patent, copyright2020 Netflix, Inc.), source
+https://github.com/Netflix/vmaf/tree/v3.0.0. Its missing original-wheel notice is
+supplied in full in THIRD-PARTY-NOTICES.md, the source companion and Release body,
+which are documentation provided with this binary distribution. Future builds
+also collect packaging/licenses/libvmaf-3.0.0.LICENSE. CPython source:
+https://github.com/python/cpython/tree/v3.12.10; PyInstaller6.22.3 source and
+bootloader exception are identified above. This supplement is delivered separately
+because the already verified DMG remains byte-identical to CI.
 
-- Verify the rebuilt candidate's actual cv2 closure before making distribution claims.
-  Match OpenCV wheel's actual bundled component versions/build sources, not just
-  package-level metadata. Mirror/provide exact corresponding LGPL source and build
-  material alongside the eventual binary download (including standalone FFprobe,
-  Qt/PySide and cv2's applicable bundled libraries). Release links are not created yet.
-- Lock/record native build interpreter provenance and dependent third-party source
-  obligations. Original notices are available; a generic upstream link is not the
-  same as proof of the exact binary's complete corresponding source.
-- Windows material/CPU/CUDA inventories and hardware results are not inferred from
-  Mac. The exact Windows FFprobe asset and source tag remain in its build script.
+### Build and library replacement
 
-References: [Qt LGPL terms](https://doc.qt.io/qt-6/lgpl.html),
-[FFmpeg official distribution guidance](https://ffmpeg.org/legal.html).
-This gate remains pending until the actual downloadable materials are reviewed;
-do not label S2 fully passed based on this index alone.
+Extract the exact application snapshot on Apple Silicon with Xcode command-line
+tools and Python3.12. Initialize a local Git checkout/commit for the candidate
+provenance script (the exported tarball has no .git); to retain original commit
+identity instead clone the repository and checkout54638e4. Run:
 
-## Mac OpenCV replacement materials (2026-10-07)
+```sh
+git clone https://github.com/KYLeonis/ai-physics-tracker.git
+cd ai-physics-tracker
+git checkout 54638e484ca3160d2d335e8f78c0580bef21949a
+bash packaging/build_macos.sh
+```
 
-`packaging/opencv_macos_inputs.json` pins three original wheel URLs/SHA/sizes: host
-headless4.14.0.94 and runtime regular/headless4.11.0.86. `scripts/build_opencv_ffmpeg_lgpl.sh`
-builds unmodified official FFmpeg7.1.1 from the same source SHA as standalone
-ffprobe, with GPL/nonfree/version3/autodetect disabled. Only system libraries are
-linked; major ABI is retained. `scripts/prepare_opencv_lgpl.py` changes install names,
-prunes unused Homebrew libraries (including x264/x265), retains the non-FFmpeg
-OpenCV closure, signs Mach-O and regenerates every wheel RECORD. This is library
-replacement, not a full OpenCV source rebuild. OpenCV's compiled build-info remains
-historical; actual libav* license/configuration and read/write/seek are checked.
+The script creates its own build venv, records actual dependencies, builds the
+FFmpeg libraries, repairs fixed OpenCV wheels and invokes PyInstaller. Leave
+APT_CODESIGN_IDENTITY/APT_NOTARY_PROFILE unset for local ad-hoc builds. Historical
+transitive versions are in the manifest: pin those versions explicitly when
+reconstructing that dependency set; the current script's transitive resolution
+is not a promise of identical binaries. A build from the source tarball has the
+same code but a different local provenance commit. Apple credentials are unnecessary.
 
-Each candidate includes `opencv-lgpl/manifest.json` with original/new wheel hashes
-and library hashes, copied into embedded build provenance. The companion
-`AIPhysicsTracker-0.1.0-ffmpeg-sources.zip` contains exact FFmpeg source tarball,
-actual configure output and build/replacement scripts/inputs; it is prepared for
-publication beside the DMG, not uploaded yet. Source itself is unmodified.
-LGPL2.1/GPL2 license texts are present in that source archive.
+For a compatible modified Qt build, extract qtbase and build shared arm64 Qt with
+`configure -opensource -confirm-license -prefix <your-qt-prefix>` and CMake;
+then configure/build/install qtsvg and qtimageformats against that prefix. Follow
+pyside-setup's included README/setup.py/build_scripts using that Qt prefix and
+Python3.12 to build modified PySide6-Essentials/shiboken wheels. Install them in a
+separate application build venv in place of the locked upstream wheel versions
+and invoke the supplied PyInstaller spec (maintain FFprobe/OpenCV/build-info
+resource environment variables from build_macos.sh). No code modification or
+reverse engineering for debugging such library changes is prohibited.
+Alternatively compatible framework/plugin replacement in a copied onedir app
+must retain original install names/architecture and be locally re-signed ad-hoc;
+the original signature will no longer verify after modification. These are
+recombination instructions, not a tested bit-for-bit Qt/compiler rebuild.
 
-Repaired runtime wheels retain upstream name/version and original notices; the
-installer logs replacements explicitly after validating original artifact identity
-and new local SHA. Existing runtimes require Repair into a new directory. The
-independent imageio-ffmpeg executable is a separate GPL component in the downloaded
-AI runtime; this OpenCV fix does not claim the complete AI environment is GPL-free.
-Qt/PySide and other corresponding-source materials still need final publication
-review; source MIT and Windows not_run remain unchanged.
+GCC source contains top-level configure/build and libquadmath/Makefile/configure.
+Apply the supplied gcc-13.4.0.diff with `patch -p1` from the extracted source
+directory and follow the included Homebrew formula configure/make options.
+Build in a separate prefix with GCC13.4 Darwin arm64,
+then use compatible shared libquadmath/libgfortran in a rebuilt/copied app and
+re-sign locally. No compiler is installed by this release preparation.
+
+The AI runtime is separately downloaded and editable. Exact sources/sdist URLs,
+original license texts and bootstrap compiler-source provenance are in the
+application snapshot resources/runtime. imageio-ffmpeg remains a separate GPL
+program; the Mac cv2 repair does not declare the complete runtime GPL-free.
+Windows binaries are not assets of this release and receive no Mac-based closure
+or hardware certification. Original project/videos/weights/private keys are absent.
+
+Original independent runtime sources/license metadata and all artifact hashes are
+in resources/runtime/manifest.json of the exact application snapshot. Managed
+runtime uses PBS20261001/CPython3.12.15, DLC3.0.1, Torch2.13.0 and torchvision0.28.0;
+the manifest specifies exact package sources and immutable artifact URLs. To use
+modified compatible AI components, AI_PHYSICS_RUNTIME_PYTHON selects your separate
+interpreter. Repair installs a new environment, leaving an existing one intact.
+
+References: https://doc.qt.io/qt-6/lgpl.html and https://ffmpeg.org/legal.html.

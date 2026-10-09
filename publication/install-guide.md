@@ -1,6 +1,8 @@
 # AI Physics Tracker 0.1.0 — 安装与使用
 
-这是 **Mac 首发候选说明**，尚未公开发行。当前候选未取得 Developer ID 签名/Apple 公证，首次下载启动可能被系统拦截；普通用户双击安装的验收尚未完成。正式下载地址将在发布获授权后补入。
+这是 **v0.1.0 未公证 Mac 测试版**。用户已授权跳过付费 Apple Developer 签名/公证并公开发布；这不代表所有正式发行门禁完成。
+
+[GitHub 下载页](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0) · [Apple Silicon DMG](https://github.com/KYLeonis/ai-physics-tracker/releases/download/v0.1.0/AIPhysicsTracker-0.1.0-arm64.dmg)。请同时下载 `SHA256SUMS` 核对文件。
 
 ## 支持范围与空间
 
@@ -8,15 +10,22 @@
 | --- | --- | --- |
 | Apple Silicon Mac，macOS 14.0 或更新 | CPU / MPS；不需要预装Python | 原生构建、独立AI环境、用户训练/推理HR通过；另一台M5/macOS27冷装通过但需去隔离。最低系统14.0是包要求，未在14.0真机验收 |
 | Intel Mac | 不提供此版本 | arm64 DMG不能作为Intel安装包 |
-| Windows x64，Windows10/11目标 | CPU / NVIDIA CUDA13.0候选 | 双平台CI通过；**暂未实机验证**，不作为本次Mac发行支持承诺；portable zip，无安装器 |
+| Windows x64，Windows10/11目标 | CPU / NVIDIA CUDA13.0候选 | 双平台CI通过；完整门禁**暂未实机验证**（已开始试用并反馈问题），不作为本次Mac发行支持承诺；portable zip，无安装器 |
 
-P6.4修复候选实测：DMG **196,036,773 bytes（约187 MiB）**、应用本体 **330,194,788 bytes（约315 MiB）**；额外携带修复后的OpenCV安装包及对应源码材料。Mac AI环境固定下载 **415,025,090 bytes（约396 MiB）**；本轮隔离的新环境含Python共 **1,559,531,087 bytes（约1.45 GiB）**，另有约396 MiB下载缓存。建议首次安装预留至少 **4 GiB空闲空间**，另给视频、模型和训练结果留空间；不是训练硬件最低规格测试。修复会保留旧环境，因此还需空间。预训练权重在首次训练时可能另外下载，未计入上述固定量。
+P6.4公开 DMG 实测：DMG **196,260,240 bytes（约187 MiB）**、应用本体 **336,650,126 bytes（约321 MiB）**；额外携带修复后的OpenCV安装包及对应源码材料。Mac AI环境固定下载 **415,025,090 bytes（约396 MiB）**；本轮隔离的新环境含Python共 **1,559,531,087 bytes（约1.45 GiB）**，另有约396 MiB下载缓存。建议首次安装预留至少 **4 GiB空闲空间**，另给视频、模型和训练结果留空间；不是训练硬件最低规格测试。修复会保留旧环境，因此还需空间。预训练权重在首次训练时可能另外下载，未计入上述固定量。
 
 ## 安装与首次打开
 
-1. 下载适合Apple Silicon的DMG。打开后把 **AI Physics Tracker** 拖入 **Applications（应用程序）**。
+1. 从上述下载页下载适合Apple Silicon的DMG。在终端进入下载目录，运行 `shasum -a 256 -c SHA256SUMS --ignore-missing`；至少确认 DMG 为 OK。打开后把 **AI Physics Tracker** 拖入 **Applications（应用程序）**。
 2. 弹出磁盘映像，从Applications双击应用。无需下载源码、配置Python或启动终端。
-3. 若系统报“已损坏/无法验证开发者”，当前包尚未达到正式下载启动门禁；记录系统版本和提示反馈给维护者。新系统上右键打开不一定有效。测试人员已授权的去隔离方法仅在[Mac测试HR文档](plans/p6.3-mac-human-review.md)中提供；它不是普通用户安装要求。
+3. 若系统报“已损坏/无法验证开发者”，先确认下载来源及 SHA256 与 `SHA256SUMS` 一致。此包只有 ad-hoc 签名，没有 Apple 公证，新系统上右键打开不一定有效。对已核对的本应用可在终端执行：
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/AI Physics Tracker.app"
+open "/Applications/AI Physics Tracker.app"
+```
+
+此命令只清除此应用的下载隔离标记，不关闭系统 Gatekeeper。哈希匹配不等于 Apple 信任认证；若校验失败，请重新下载，不执行上述命令。
 
 ## 安装AI环境
 
@@ -56,4 +65,4 @@ M0/M1对比、残差、参数/起点诊断和可行域是模型检验工具；RM
 
 ## 许可与反馈
 
-主程序MIT；Qt、FFmpeg、DLC等保留各自许可。**AI environment → Third-party licenses and source details…** 可查看原许可和来源；[打包材料](../packaging/NOTICE-third-party.md)与[源码入口](../packaging/SOURCE-MATERIALS.md)随候选附带。反馈请提供应用版本、系统/芯片、操作和导出的诊断，不必发送视频或私钥。
+主程序MIT；Qt、FFmpeg、DLC等保留各自许可。**AI environment → Third-party licenses and source details…** 可查看原许可和来源；[打包材料](../packaging/NOTICE-third-party.md)与[源码入口](../packaging/SOURCE-MATERIALS.md)随候选附带。反馈请提供应用版本、系统/芯片、操作和导出的诊断，不必发送视频或私钥。公开测试版的二进制 source 为 `54638e484ca3160d2d335e8f78c0580bef21949a`；安装包不因后续文档提交而重建。

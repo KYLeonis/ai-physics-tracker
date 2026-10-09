@@ -1,10 +1,10 @@
 # P6 — 封装与首发执行计划（供 GLM5.3 接续）
 
-- 日期：2026-10-02；当前状态：**P6.1/P6.2代码/审查/双平台CI及Mac HR通过，已集成回publication（2f0fc98）；尚未公开发布。** 下面未更新的原始Slice清单保留为规划记录，实施状态以[STATUS](../STATUS.md)和[P6.2 mini-plan](p6.2-managed-runtime.md)为准。
+- 日期：2026-10-02；当前状态：**P6.1/P6.2代码/审查/双平台CI及Mac HR通过，已集成回publication（2f0fc98）；2026-10-09按用户授权公开Mac v0.1.0 unsigned prerelease；完整生产门禁仍待补。** 下面未更新的原始Slice清单保留为规划记录，实施状态以[STATUS](../STATUS.md)和[P6.2 mini-plan](p6.2-managed-runtime.md)为准。
 - Worktree：`/Users/leonis/Documents/ai-physics-tracker-ejp`。
 - Integration branch：`publication/ejp-damped-pendulum`；规划基线：`b0251cd`。
 - 这里的 P6 是论文产品线 Distribution and First Release，**不是 main 的 Phase 6 Advanced Physics Analysis**。
-- 当前授权：P6.2已交付；用户决定先完成Mac release，本轮只建立[P6.3 Mac mini-plan](p6.3-mac-release-candidate.md)，执行未开始，等待用户指定GLM范围。Windows实机门禁按其后续裁定延期，不能标为通过；公开tag/GitHub Release必须等用户说“发”。
+- 当前授权：用户明确要求跳过付费Apple认证并公开Mac测试版；2026-10-09 v0.1.0已发布。实际执行记录见[P6.4 mini-plan](p6.4-release-preparation.md)与[STATUS](../STATUS.md)。Windows及其他完整门禁未通过，保留待补。
 - 以下Windows前置时点、License待定、Qt锁、四profile和not_run等原规划描述由后续用户裁定、ADR-0021/0022和实施mini-plan覆盖：实际三份锁（Mac CPU/MPS共享一份），原生OS锁，源码MIT，DLC3.0.1 LGPL；额度只在需要时读取当前接口，不沿用旧快照。
 
 ## 1. 交付目标与实施顺序
@@ -174,14 +174,20 @@ PyInstaller 改动的 DLL 搜索状态会影响子进程。Windows 的 `SetDllDi
 **Slices / Acceptance Criteria**：
 
 - [ ] S1：填写支持矩阵、最低 OS/driver、包/下载/磁盘体积实测、安装/修复/设备/离线指南、已知科学与硬件限制、卸载保留说明。普通用户不需要看 JSON 或执行 shell。
-- [ ] S2：actual dependency/material review：PySide/Qt、FFprobe、Torch/DLC、CPython/bootstrap、packager/installer 的实际版本许可、notices 与源码提供义务材料。**保持用户已定MIT；影响发行许可的变动须具体裁定**，形成具体候选与待用户裁定项；不能把进程分离当自动豁免依据。[Inno Setup 官方信息与许可入口](https://jrsoftware.org/isinfo.php)
+- [x] S2：actual dependency/material review：PySide/Qt、FFprobe、Torch/DLC、CPython/bootstrap、packager/installer 的实际版本许可、notices 与源码提供义务材料。**保持用户已定MIT；影响发行许可的变动须具体裁定**，形成具体候选与待用户裁定项；不能把进程分离当自动豁免依据。[Inno Setup 官方信息与许可入口](https://jrsoftware.org/isinfo.php)
 - [ ] S3：Windows签名、Mac codesign/notarization 的账号/证书/签名范围/下载隔离后启动验证；缺证书则记录 unsigned test candidate，不标普通用户首发通过。先准备可检查产物，再请用户补签名资料或裁定，不自行购买/更改账号设置。[Apple notarization 文档](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)
-- [ ] S4：生成 RC manifest：版本/tag建议、source commit、host/runtime locks、二进制与资源 SHA256、签名结果、build命令、验证CI/evidence、notices。产物上传前再次核对不存在用户视频/模型/密钥；审查候选不等于公开发行授权。
-- [ ] S5：同步 publication README/STATUS/PHASE_PLAN、packaging README、相关 architecture/development/AGENTS 标记；发布说明只写真实能力。确认具体版本与公开发布授权后才打 release tag/上传 GitHub Release；若无授权，停在已 push 的可审查候选，明确“发行尚未执行”。
+- [x] S4：生成 RC manifest：版本/tag建议、source commit、host/runtime locks、二进制与资源 SHA256、签名结果、build命令、验证CI/evidence、notices。产物上传前再次核对不存在用户视频/模型/密钥；审查候选不等于公开发行授权。
+- [x] S5：同步 publication README/STATUS/PHASE_PLAN、packaging README、相关 architecture/development/AGENTS 标记；发布说明只写真实能力。确认具体版本与公开发布授权后才打 release tag/上传 GitHub Release；若无授权，停在已 push 的可审查候选，明确“发行尚未执行”。
 
 **Review Gate**：材料/manifest Self-review + Independent Review 检查此前 blocking 项与来源；签名后实际下载安装 HR。修改 License、新依赖及公开发布遵守项目的必要裁定，不能用计划文件代替授权。
 
 **Result（2026-10-04）**：用户已授权开始；S1指南/草案、S2实际二进制材料复查、S3签名与清单工具/native测试候选/Independent Review和同源双平台CI通过。发现cv2自带GPL FFmpeg发行阻断，待用户裁定；无有效Developer ID证书，实际签名/公证待补。P6不宣布完成；无公开tag/Release。当前具体证据及下一步见执行mini-plan。
+
+**Result（2026-10-09，覆盖上方历史准备停点）**：用户授权unsigned Mac测试发行，
+v0.1.0已公开prerelease；实际App闭包/源码/许可材料、11项远端SHA、同源CI与
+Independent Review完成。S1指南已交付，但首次Gatekeeper去隔离仍需终端，
+不勾选“普通用户不执行shell”；S3实际签名/公证仍未做。Windows/学生/科学
+完整发行门禁待补；本次例外不宣布P6生产验收完成。详见最终发行证据。
 
 ## 4. 统一验证、Git 和资源预算
 

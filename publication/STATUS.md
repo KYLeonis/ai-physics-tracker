@@ -1,9 +1,32 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-08。
+- 最后更新：2026-10-09。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
-- 当前：**P6.4发行准备进行中（2026-10-08）：OpenCV LGPL测试包Mac安装/Repair/推理HR用户确认均通过。Windows滚轮缩放与深色顶部推荐提示已修复，75定向及a13b4b1双平台测试/打包CI通过，新Windows包待真人HR；其他Windows门禁未逐项验收。用户尚无Apple会员，仅未公证ad-hoc测试包；无公开tag/Release，MIT不变。**
+- 当前：**P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## P6.4 unsigned Mac public release — 2026-10-09
+
+- 用户明确授权“需要付费就算了，直接帮我发布吧”，随后“继续”；按该授权完成
+  [v0.1.0 Mac prerelease](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0)。
+  发布时间2026-10-09 16:11:02 Asia/Shanghai；release id407616340，draft=false，
+  prerelease=true。仅Mac arm64二进制，Windows包继续在Actions，不冒称双平台发行。
+- tag/source固定54638e484ca3160d2d335e8f78c0580bef21949a；该SHA的
+  tests37735873436/packaging37735873042双平台success，Mac artifact11531623935。
+  DMG196260240bytes，SHA256
+  cf6afbbeaf11be77322761faa74418b814ac7986b3cb582f3f786bb45ab3e0e0。
+- Qt/PySide6.11.2、FFmpeg7.1.1与实际SciPy GCC13.4/达尔文补丁/构建材料和完整
+  VMAF BSD-2-Clause-Patent等材料作为同一Release资产提供。原App/CI manifest保持
+  不变，release-decision单独记录后续公开授权；不是可逐位重建声明。
+- required只读Independent Review Approve with limitations；主Agent核对公开前后
+  11项assets名称、size、uploaded状态与完整SHA256，tag fetch指向实际源码；公开
+  下载SHA256SUMS按下方证据记录。详见[发行证据](evidence/runtime/p6.4-v0.1.0-release.md)、
+  [审查记录](../docs/reviews/publication-p6.4-review.md)、[安装指南](install-guide.md)。
+- **Next Recommended Action**：本次公开测试发行收尾后停止。等待用户的新Windows
+  滚轮/深色顶部提示Q1/Q2 HR反馈，随后按现有mini-plan集成publication；完整Windows
+  G1–G5/CUDA、外部学生、安装版teacher-import/科学导出恢复仍pending/not_run。
+  Developer ID/Apple公证按用户不付费裁定跳过，不声明正常Gatekeeper下载体验通过。
+  当前工作分支codex/ejp-p6-4-release保持不集成；main/shared venv/用户工程未改。
 
 ## P6.4 Windows GUI HR follow-up — 2026-10-08
 

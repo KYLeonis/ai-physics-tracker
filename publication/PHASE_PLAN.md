@@ -210,7 +210,7 @@ P0.3只是风险验证，不建设完整安装向导；原型可删弃，只有�
 
 ### P6 — Distribution and First Release
 
-2026-10-04最新范围：P6.4发行准备进行中（2026-10-08）：OpenCV LGPL测试包Mac安装/Repair/推理HR用户确认均通过。Windows滚轮缩放与深色顶部推荐提示已修复，75定向及a13b4b1双平台测试/打包CI通过，新Windows包待真人HR；其他Windows门禁未逐项验收。用户尚无Apple会员，仅未公证ad-hoc测试包；无公开tag/Release，MIT不变。当前[P6.4 mini-plan](plans/p6.4-release-preparation.md)与[STATUS](STATUS.md)为执行入口。
+2026-10-09最新范围：P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。当前[P6.4 mini-plan](plans/p6.4-release-preparation.md)与[STATUS](STATUS.md)为执行入口。
 
 - **Goal**：在普通用户电脑上实际安装并运行完整平台。
 - **Scope**：native build/installer/app/dmg、first-run setup/repair、硬件runtime matrix、版本锁定/下载、自检日志、干净机器验收、发行文档。

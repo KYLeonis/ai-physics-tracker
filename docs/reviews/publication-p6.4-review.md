@@ -86,3 +86,31 @@ pass after repair. Actual dark-palette top/guide foreground/background self-chec
 passes. Same-source tests37734658400 and packaging37734658340 are both successful
 on macOS/Windows. New candidate Human Review remains pending; no merge/public
 Release. This result does not promote the other Windows hardware gates.
+
+## Unsigned Mac publication review — 2026-10-09
+
+Required read-only reviewer `p6_4_publication_review` (gpt-6-luna/max), root prepared
+materials and performed the publication. Exact binary source: 54638e4. Verdict:
+**Approve with limitations**, contingent on root final remote asset verification;
+that verification was subsequently completed for all 11 files before and after
+publication. This is an unsigned Mac prerelease authorized explicitly by the user,
+not a claim that all P6 production, Windows, or student gates have passed.
+
+Reviewer checked actual mounted App inventory (2198 entries, 336650126 bytes),
+ad-hoc seal, LGPL FFprobe/OpenCV dependency closure, Qt/PySide source/module
+coverage, actual SciPy GCC13.4/Accelerate metadata and matching compiler source /
+Darwin patch / upstream release workflow, original notices, archive CRC/SHA and
+local checksum list. No pytest rerun for source/documentation distribution changes.
+
+| Finding | Disposition | Status |
+| --- | --- | --- |
+| Missing VMAF full license in original wheel/App | Exact v3.0.0 BSD-2-Clause-Patent license supplied in release body, notice sidecar and companion source ZIP; tracked future build license added; original bundle untouched | Closed |
+| Initial GCC12.1 inference from Mac12 OpenBLAS recipe did not describe actual bundle | Actual SciPy metadata GCC13.4/Accelerate checked; matching GCC13.4 source, Homebrew Darwin patch and v1.17.1 release workflow included; no bit-for-bit rebuild claim | Closed |
+| Qt imageformats/compiler archives initially absent from source index | Final module coverage, sources, hashes and build materials indexed and verified | Closed |
+| Source workflow described too broadly / stale timezone package versions | Wording narrowed to actual release workflow; pytz/tzdata2026.5 notices verified byte-identical to original embedded2026.4-named files, actual version table corrected | Closed |
+
+Root remote check: release407616340, exactly11 uploaded assets, all names/sizes
+and service SHA256 equal final local files; public draft=false/prerelease=true;
+fetch tag v0.1.0 resolves54638e484ca3160d2d335e8f78c0580bef21949a. Reviewer did not
+independently finish remote checks (transient TLS errors); root performed this gate.
+Details: `publication/evidence/runtime/p6.4-v0.1.0-release.md`.

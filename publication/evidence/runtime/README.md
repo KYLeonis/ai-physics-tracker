@@ -2,6 +2,13 @@
 
 2026-09-20；本目录记录spike证据，不是首发runtime认证。合同：[runtime-boundary](../../spec/runtime-boundary.md)。
 
+## Current distribution evidence
+
+[v0.1.0 unsigned Mac public release](p6.4-v0.1.0-release.md) records exact
+source/tag/CI/assets, independent review and public-download checksum readback.
+This is a Mac prerelease, not completion of all Windows/student/production gates.
+Historical spike evidence below remains unchanged.
+
 ## Environment inventory
 
 Host：Mac arm64。EJP无.venv；system Python3.14不属于产品支持范围。外置worker复用主仓库已有Python3.12.13 venv，DLC3.0.1、torch2.13.0、torchvision0.28.0；PySide6 6.11.2、OpenCV4.11.0.86、NumPy1.26.4、SciPy1.17.1、Pandas2.3.3。仅作为本机已测试组合，不直接宣称Windows同版本可安装或全DLC功能兼容。
