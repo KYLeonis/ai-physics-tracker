@@ -1,5 +1,8 @@
 # 论文线通用修复回移评估
 
+> 完整功能 / UI / 数据 / 科学 / 发行差异见[全量区别文档](publication-main-feature-ui-differences.md)
+> 及其 637 文件 / 229 提交 / 80 源码模块附件。本页保留首批五项回移与设备核查的原始证据。
+
 - 日期：2026-10-11
 - 产品线基线：`main @ 3baddf5`；论文 worktree 干净。
 - 审查目标：论文集成分支 `publication/ejp-damped-pendulum @ b459e4a`，

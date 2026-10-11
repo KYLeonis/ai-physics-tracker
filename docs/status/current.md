@@ -2,11 +2,13 @@
 
 > 2026-10-11：`fix/main-ui-backports` 五项通用修复与顶部下一步推荐已完成，Issue [#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)。新定向 72 / 全量 820 passed；`fe051f5` 的 [CI 38115253367](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38115253367) 双平台通过，Human Review 尚未通过，未集成 main。Phase 6 草案仍待确认。
 
+> 两线全量功能 / UI 比较已完成：[区别文档](../notes/publication-main-feature-ui-differences.md)，附 637 文件 / 229 提交 / 80 源码模块清单。新增优先候选为 Analysis 视频只读；本轮仅文档，不合并产品改动。
+
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 > 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
 
-- 最后更新：2026-10-11（顶部推荐验证与 Human Review 准备）
+- 最后更新：2026-10-11（论文 / main 全量区别文档交付）
 
 ## Current
 
@@ -20,6 +22,10 @@
 [mini-plan](main-ui-backports-plan.md#human-review)。用户反馈通过后，记录实际验收范围，
 `--no-ff` 集成 main/push/确认 CI/关闭 #23；若反馈需调整，修复验证后重新请求 HR。
 此等待来源为 AGENTS.md §7 / Workflow §5.1，不用 offscreen 探针替代用户体验。
+
+**后续回移候选先读[区别文档 §8](../notes/publication-main-feature-ui-differences.md#8-建议回移顺序与具体候选)。**
+优先单独修复 Analysis 视频只读；autosave `after` 续接先复现主线 busy 场景，
+再按后台生命周期风险声明 review。当前比较任务没有实施这两项，不把科学 / 模型 / 打包扩展加入 #23。
 
 **用户确认规划范围与建议验收门槛后，启动 6.1 Slice 1。** 先读
 [Phase 6 requirements](../spec/phase6-requirements.md) → [总计划](phase-6-plan.md) →
@@ -60,6 +66,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **论文 / main 全量区别扫描（2026-10-11）**：固定 main `50a7924` / 论文集成 `b459e4a` / 最新工作线 `154f262` / 当前维护 `3c43544`；完整 inventory **637 文件、229 提交、80 源码模块（53 新增 / 27 修改）**，明确已同步、待主线 HR、论文独有及 main 独有文档。补充 Analysis 模式仍可保留标注的内存探针与回移候选；保留 E3 30/48 / E2 47/48 与发行真人缺项。公开 v0.1.0 的 11 资产 / 固定源码重新在线核对；链接、计数、diff 检查通过。仅文档，未跑真实训练 / 论文全量、未改用户工程 / 论文 worktree / 合并产品；[报告及附件](../notes/publication-main-feature-ui-differences.md)。
 
 - **macOS Start learning 设备核查（2026-10-11）**：主线 auto 保留到 worker，按 CUDA→MPS→CPU 解析；本机 `.venv` Torch 2.13.0 实测解析 mps / 张量 mps:0。GUI 捕获三种设备选择均保留，定向 4+9 passed；论文 `5ada419` 是联合路径固定 CPU 修复，单轨无需回移。仅记录检查，未改产品/用户工程、未启动 DLC 完整训练；[核查记录](../notes/publication-backport-assessment.md#start-learning--macos-auto-设备核查2026-10-11)。
 
