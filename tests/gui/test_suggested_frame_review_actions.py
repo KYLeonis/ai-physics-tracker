@@ -630,7 +630,7 @@ def test_correct_mode_video_click_atomic_submission_ac4(test_window: MainWindow,
     # 模拟视频画面点击
     click_pos = _inside_point(window, 20.0, 30.0)
     window._onAnnotationClicked(click_pos)
-    QTest.qWait(20)
+    # 同步检查原子写入；等待 timer 会与完成审核的正常 autosave 竞争。
 
     # 验证退出 Correct 模式
     assert not window.reviewActions.is_correcting
