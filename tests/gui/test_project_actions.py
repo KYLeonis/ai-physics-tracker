@@ -219,3 +219,56 @@ class TestAutosave:
         assert calls == ["10 new annotations"]
         assert window._marks_since_autosave == 0
 
+
+
+def test_busy_autosave_continues_once_after_new_edits_are_saved(qtbot, synthetic_video_path, tmp_path, monkeypatch):
+    from threading import Event
+    from tests.gui.test_tracking_actions import _FakeRunner, _opened_window
+    window, session, track = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    entered, release = Event(), Event()
+    repository = session._repository
+    original = repository.save
+    calls = []
+    def save(root, project):
+        calls.append(project)
+        if len(calls) == 1:
+            entered.set()
+            release.wait(3)
+        return original(root, project)
+    monkeypatch.setattr(repository, "save", save)
+    session.mark_point(track, 3, 20, 30)
+    window.projectActions.autosave("first batch")
+    try:
+        qtbot.waitUntil(entered.is_set)
+        session.mark_point(track, 4, 40, 50)
+        continued = []
+        window.projectActions.autosave("start learning", lambda: continued.append(session.is_dirty))
+        window.setWorkspace("analysis")
+    finally:
+        release.set()
+    qtbot.waitUntil(lambda: not window.projectActions.busy and bool(continued), timeout=5000)
+    assert continued == [False] and len(calls) == 2
+    assert not window.videoView.is_annotation_mode()
+    saved = repository.load(session.project_root)
+    assert {p.frame_index for p in saved.observations} >= {3, 4}
+
+
+def test_failed_busy_autosave_does_not_execute_continuation(qtbot, synthetic_video_path, tmp_path, monkeypatch):
+    from threading import Event
+    from tests.gui.test_tracking_actions import _FakeRunner, _opened_window
+    window, session, track = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    entered, release = Event(), Event()
+    def fail(*_args):
+        entered.set(); release.wait(3)
+        raise OSError("simulated save failure")
+    monkeypatch.setattr(session._repository, "save", fail)
+    session.mark_point(track, 3, 20, 30)
+    window.projectActions.autosave("first")
+    continued = []
+    try:
+        qtbot.waitUntil(entered.is_set)
+        window.projectActions.autosave("learning", lambda: continued.append(True))
+    finally:
+        release.set()
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
+    assert session.is_dirty and not continued

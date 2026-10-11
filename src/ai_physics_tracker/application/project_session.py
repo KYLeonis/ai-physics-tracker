@@ -78,6 +78,7 @@ from ai_physics_tracker.domain.track_store import (
     resolve_effective_points,
 )
 from ai_physics_tracker.domain.types import utc_now
+from ai_physics_tracker.domain.imported_model import ImportedModel
 from ai_physics_tracker.domain.types import JsonObject
 from ai_physics_tracker.domain.video import Video
 
@@ -454,6 +455,13 @@ class ProjectSession:
         else:
             self._project = replace(self._project, tracking_runs=runs)
         return result
+
+    def register_imported_model(self, model: ImportedModel) -> None:
+        """模型元数据独立于标注 Undo；不会伪造 train run。"""
+        existing = self._project.imported_models
+        models = (tuple(model if m.model_id == model.model_id else m for m in existing)
+                  if any(m.model_id == model.model_id for m in existing) else (*existing, model))
+        self._project = replace(self._project, imported_models=models)
 
     def save(self) -> Project:
         """保存到已绑定的项目根目录并清除 dirty；无根目录时报错。"""

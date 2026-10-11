@@ -35,6 +35,7 @@ class ProjectActions(QObject):
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._poll)
         menu = window.menuBar().addMenu("File")
+        self.menu = menu
         specs = (
             ("New project", QKeySequence.StandardKey.New, self.newProject),
             ("Open project…", QKeySequence.StandardKey.Open, self.openProject),
@@ -53,6 +54,13 @@ class ProjectActions(QObject):
             menu.addAction(action)
             self.actions.append(action)
 
+    def _model_busy(self) -> bool:
+        model = getattr(self.window, "modelActions", None)
+        if model is not None and model.busy:
+            self.window.statusBar().showMessage("Cancel the model operation before changing project/media location")
+            return True
+        return False
+
     def refresh(self) -> None:
         session = self.window._annotation_session
         name = session.project.name if session is not None else "Untitled"
@@ -61,10 +69,12 @@ class ProjectActions(QObject):
         tracking = getattr(self.window, "trackingActions", None)
         if tracking is not None and not self.busy:
             for index in (4, 5):
-                self.actions[index].setEnabled(not tracking.pending)
+                self.actions[index].setEnabled(not tracking.pending and not bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy))
                 self.actions[index].setToolTip("Cancel the AI task before changing project/media location" if tracking.pending else "")
 
     def guarded(self, continuation: Callable[[], None]) -> None:
+        if self._model_busy():
+            return
         if self.busy:
             return
         session = self.window._annotation_session
@@ -141,6 +151,8 @@ class ProjectActions(QObject):
             select()
 
     def relinkVideo(self) -> None:
+        if self._model_busy():
+            return
         tracking = getattr(self.window, "trackingActions", None)
         if tracking and tracking.pending:
             return
@@ -182,7 +194,16 @@ class ProjectActions(QObject):
         accept_saved_snapshot 保留，不会丢失。
         """
         session = self.window._annotation_session
-        if self.busy or session is None:
+        if session is None:
+            return
+        if self.busy:
+            if after is not None and self._progress is None and self._prior_session is session and self._completion:
+                previous = self._completion
+                def continue_save(saved):
+                    previous(saved)
+                    if self.window._annotation_session is session:
+                        self.autosave(reason, after)
+                self._completion = continue_save
             return
         if session.project_root is None or not session.is_dirty:
             if after is not None:
@@ -216,6 +237,8 @@ class ProjectActions(QObject):
         self._timer.start(30)
 
     def saveAs(self, after: Callable[[], None] | None = None) -> None:
+        if self._model_busy():
+            return
         tracking = getattr(self.window, "trackingActions", None)
         if tracking and tracking.pending:
             self.window.statusBar().showMessage("Cancel the AI task before Save as")
@@ -307,10 +330,17 @@ class ProjectActions(QObject):
         self.window.syncVideoSelector()
         if (self.window._annotation_session is self._prior_session or not self._cancellable):
             self.window.videoView.set_annotation_mode(
-                self._was_annotating and self.window._measurement_allowed)
+                self._was_annotating and self.window._measurement_allowed
+                and self.window.currentWorkspace != "analysis"
+                and not bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy)
+                and not bool(getattr(self.window, "batchAnnotationActions", None)
+                             and self.window.batchAnnotationActions.batch is not None
+                             and self.window.batchAnnotationActions.batch.paused))
         self.refresh()
 
     def requestWindowClose(self) -> bool:
+        if self._model_busy():
+            return False
         if self.close_allowed:
             return True
         if self.busy:

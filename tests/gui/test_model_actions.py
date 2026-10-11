@@ -1,0 +1,133 @@
+"""教师模型 GUI 的导入、自检、取消与上下文边界回归。"""
+
+from concurrent.futures import CancelledError
+from dataclasses import replace
+from threading import Event
+import time
+from uuid import uuid4
+
+from ai_physics_tracker.application.tracking_job import (
+    prepare_tracking_request, run_tracking_worker, prepare_tracking_candidate,
+)
+from ai_physics_tracker.infrastructure.mock_engine_adapter import MockEngineAdapter
+from ai_physics_tracker.infrastructure.imported_models import import_model
+from ai_physics_tracker.infrastructure.task_runner import TaskResult
+from tests.test_imported_models import model_sources, evidence
+from tests.gui.test_tracking_actions import _FakeRunner, _opened_window
+
+
+class ProbeHandle:
+    def __init__(self, run_id, model):
+        self.run_id = run_id
+        self.model = model
+        self.alive = True
+        self.cancelled = False
+        self.messages = []
+
+    def poll_messages(self):
+        messages,self.messages=self.messages,[]
+        return messages
+
+    def is_alive(self): return self.alive
+
+    def cancel(self, timeout_s=1):
+        self.cancelled=True
+        self.alive=False
+
+
+class ProbeRunner:
+    def __init__(self): self.handle=None; self.release=Event(); self.started=Event()
+
+    def start_task(self, run_id, target, root, model, video, video_id, frame, device):
+        self.handle=ProbeHandle(run_id,model)
+        self.args=(video,video_id,frame,device)
+        self.started.set()
+        return self.handle
+
+
+def test_gui_import_probe_and_inference_request_without_training(qtbot, synthetic_video_path, tmp_path):
+    window,session,track=_opened_window(qtbot,synthetic_video_path,tmp_path,_FakeRunner())
+    actions=window.modelActions
+    before=session.project.observations
+    actions.importFiles(model_sources(tmp_path))
+    qtbot.waitUntil(lambda: not actions.busy and not window.projectActions.busy, timeout=5000)
+    assert len(session.project.imported_models)==1
+    assert not session.tracking_runs()
+    assert actions.bodyparts.count()==2
+    assert not actions.inferButton.isEnabled()
+    assert "self-test teacher" in window.trackingActions.panel.cardTitleLabel.text()
+    runner=ProbeRunner();actions.runner=runner
+    actions.selfTest()
+    qtbot.waitUntil(runner.started.is_set)
+    assert actions.busy
+    window.trackingActions.train()
+    assert not window.trackingActions.pending
+    assert not window.projectActions.requestWindowClose()
+    assert not window.projectActions.actions[4].isEnabled()
+    model=session.project.imported_models[0]
+    proof={**evidence(model),"frame_index":runner.args[2],"video_id":str(runner.args[1])}
+    runner.handle.messages=[TaskResult(runner.handle.run_id,True,{"status":"completed","evidence":proof})]
+    qtbot.waitUntil(lambda:not actions.busy and not window.projectActions.busy,timeout=5000)
+    assert runner.handle.cancelled
+    assert actions.inferButton.isEnabled()
+    assert session.project.observations==before and not session.tracking_runs()
+    assert "teacher model ready" in window.trackingActions.panel.cardTitleLabel.text()
+    captured=[]
+    window.trackingActions._start=lambda params,**kw:captured.append((params,kw))
+    actions.bodyparts.setCurrentText("other")
+    actions.inferButton.click()
+    assert captured[0][1]=={"imported_model_id":model.model_id,"imported_bodypart":"other"}
+    assert not session.is_dirty
+
+
+def test_cancel_late_probe_success_never_applies_evidence(qtbot, synthetic_video_path, tmp_path):
+    window,session,_=_opened_window(qtbot,synthetic_video_path,tmp_path,_FakeRunner())
+    actions=window.modelActions
+    model=import_model(session.project_root,*model_sources(tmp_path));session.register_imported_model(model)
+    actions.refresh();runner=ProbeRunner();actions.runner=runner
+    actions.selfTest();qtbot.waitUntil(runner.started.is_set)
+    actions.cancel()
+    runner.handle.messages=[TaskResult(runner.handle.run_id,True,{"status":"completed","evidence":evidence(model)})]
+    qtbot.waitUntil(lambda:not actions.busy,timeout=3000)
+    assert runner.handle.cancelled
+    assert not session.project.imported_models[0].self_test
+    assert not actions.inferButton.isEnabled()
+
+
+def test_context_change_discards_probe(qtbot, synthetic_video_path, tmp_path):
+    window,session,_=_opened_window(qtbot,synthetic_video_path,tmp_path,_FakeRunner())
+    actions=window.modelActions
+    model=import_model(session.project_root,*model_sources(tmp_path));session.register_imported_model(model)
+    actions.refresh();runner=ProbeRunner();actions.runner=runner
+    actions.selfTest();qtbot.waitUntil(runner.started.is_set)
+    window._delivery_generation += 1
+    runner.handle.messages=[TaskResult(runner.handle.run_id,True,{"status":"completed","evidence":evidence(model)})]
+    qtbot.waitUntil(lambda:not actions.busy,timeout=3000)
+    assert not session.project.imported_models[0].self_test
+    assert "context changed" in actions.status.text()
+
+
+def test_imported_pipeline_candidate_and_explicit_activation_preserve_manual(qtbot, synthetic_video_path, tmp_path):
+    from queue import Queue
+    from ai_physics_tracker.application.tracking_types import InferenceParams
+    window,session,track=_opened_window(qtbot,synthetic_video_path,tmp_path,_FakeRunner())
+    model=import_model(session.project_root,*model_sources(tmp_path))
+    model=replace(model,self_test=evidence(model))
+    session.register_imported_model(model)
+    manual=session.manual_points(track)
+    params=InferenceParams(0.0)
+    req=prepare_tracking_request(session,track,params,imported_model_id=model.model_id,imported_bodypart="tip")
+    session.record_tracking_run(req.run)
+    result=run_tracking_worker(req.run.run_id,Queue(),Event(),req,MockEngineAdapter())
+    candidate=prepare_tracking_candidate(session.project,req,session.project_root/result["result_path"])
+    assert not candidate.observations_changed
+    assert session.apply_tracking_candidate(candidate)
+    run=session.tracking_runs()[0]
+    assert run.status=="completed" and run.task_type=="infer"
+    assert "training_run_id" not in run.config
+    assert run.config["bodypart"]=="tip"
+    assert not session.get_refinement_state(track).active_infer_run_id
+    session.activate_infer_run(track,run.run_id)
+    assert session.manual_points(track)==manual
+    assert len(session.effective_points(track))==5
+    assert not any(r.task_type=="train" for r in session.tracking_runs())

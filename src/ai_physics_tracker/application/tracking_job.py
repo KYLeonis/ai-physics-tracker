@@ -55,13 +55,17 @@ class TrackingRequest:
     resume_from_training_run_id: UUID | None = None
     resume_snapshot_path: Path | None = None
     resume_snapshot_info: tuple[int, int] | None = None
+    imported_model_id: UUID | None = None
+    imported_bodypart: str | None = None
 
 
 def prepare_tracking_request(session: ProjectSession, track_id: UUID,
                              parameters: TrainingParams | InferenceParams,
                              training_run_id: UUID | None = None,
                              training_mode: str = "restart",
-                             resume_from_training_run_id: UUID | None = None) -> TrackingRequest:
+                             resume_from_training_run_id: UUID | None = None,
+                             imported_model_id: UUID | None = None,
+                             imported_bodypart: str | None = None) -> TrackingRequest:
     """仅检查内存条件和捕获快照；不导入引擎、读视频或扫描文件。"""
     if session.project_root is None:
         raise ProjectSessionError("Save the project before starting an AI task")
@@ -127,6 +131,14 @@ def prepare_tracking_request(session: ProjectSession, track_id: UUID,
         config = parameters.to_config()
         config["training_mode"] = training_mode
         task_type = "train"
+    elif imported_model_id is not None:
+        from ai_physics_tracker.infrastructure.imported_models import verified_self_test
+        model = next((m for m in session.project.imported_models if m.model_id == imported_model_id), None)
+        if model is None or imported_bodypart not in model.bodyparts or not verified_self_test(model, parameters.device):
+            raise ProjectSessionError("Repeat the teacher model actual-frame self-test before inference")
+        config = {**asdict(parameters), "imported_model_id": str(imported_model_id),
+                  "bodypart": imported_bodypart, "manifest_hash": model.manifest_hash}
+        task_type = "infer"
     else:
         trained = next((run for run in session.tracking_runs() if run.run_id == training_run_id), None)
         if (trained is None or trained.task_type != "train" or trained.status != "completed"
@@ -145,7 +157,7 @@ def prepare_tracking_request(session: ProjectSession, track_id: UUID,
     return TrackingRequest(session.project, session.project_root, run, parameters, detail,
                            training_run_id, path.resolve(), (stat.st_size, stat.st_mtime_ns),
                            training_mode, resume_from_training_run_id,
-                           resume_snapshot_path, resume_snapshot_info)
+                           resume_snapshot_path, resume_snapshot_info, imported_model_id, imported_bodypart)
 
 
 def _owned_session(project: Project, request: TrackingRequest) -> ProjectSession:
@@ -201,12 +213,13 @@ def _run_pipeline(run_id, queue, cancel_event, request, adapter):
         points_path = None
     else:
         send_log(queue, run_id, "INFO", "Preparing inference")
-        run, prepared = prepare_inference(
-            session,
-            request.training_run_id,
-            request.parameters,
-            run_id=run_id,
-        )
+        if request.imported_model_id is not None:
+            from ai_physics_tracker.application.imported_model_job import prepare_imported_inference
+            run, prepared = prepare_imported_inference(session, request.run.track_id,
+                request.imported_model_id, request.imported_bodypart, request.parameters, run_id)
+        else:
+            run, prepared = prepare_inference(
+                session, request.training_run_id, request.parameters, run_id=run_id)
         payload = _inference_process_worker(run_id, queue, cancel_event, prepared, adapter)
         if payload["status"] == "cancelled":
             raise CancelledError()
@@ -314,6 +327,14 @@ def _file_info(path: Path) -> tuple[int, int]:
 
 def verify_completed_run_files(run: TrackingRun, root: Path) -> None:
     """提交前复核 run 实际引用的模型/config 轻量状态。"""
+    if run.extra_fields.get("imported_model_sha256"):
+        from ai_physics_tracker.infrastructure.imported_models import file_sha256
+        folder = root / run.extra_fields["imported_model_directory"]
+        if not folder.resolve().is_relative_to(root.resolve()):
+            raise ProjectSessionError("Teacher model path escaped the project")
+        for name, digest in run.extra_fields["imported_model_sha256"].items():
+            if file_sha256(folder / name) != digest:
+                raise ProjectSessionError("Teacher model changed before candidate commit")
     pairs = ((run.model_snapshot, run.extra_fields.get("model_file_info"), "model"),
              (run.extra_fields.get("config_path"), run.extra_fields.get("config_file_info"), "config"))
     for reference, expected, label in pairs:

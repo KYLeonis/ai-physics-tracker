@@ -7,6 +7,7 @@ from pathlib import PurePosixPath
 from uuid import UUID, uuid4
 
 from ai_physics_tracker.domain.calibration import Calibration
+from ai_physics_tracker.domain.imported_model import ImportedModel
 from ai_physics_tracker.domain.derived import (
     DerivedData,
     mark_calibrations_stale,
@@ -72,6 +73,8 @@ class Project:
     registries: Registries = field(default_factory=Registries)
     ui_state: JsonObject = field(default_factory=dict)
     extra_fields: JsonObject = field(default_factory=dict, repr=False)
+
+    imported_models: tuple[ImportedModel, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -345,6 +348,9 @@ def delete_calibration(project: Project, calibration_id: UUID) -> Project:
 def validate_project(project: Project) -> None:
     """校验聚合引用与项目级唯一性不变量。"""
 
+    model_ids = [model.model_id for model in project.imported_models]
+    if len(set(model_ids)) != len(model_ids):
+        raise ValueError("Imported model ids must be unique")
     video_ids = [video.video_id for video in project.videos]
     if len(set(video_ids)) != len(video_ids):
         raise ValueError("video_id values must be unique")
