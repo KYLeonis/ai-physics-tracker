@@ -37,7 +37,7 @@
 
 | 候选 | 排除原因 |
 | --- | --- |
-| 顶部常驻下一步按钮（`9f5cff7`） | 主线 WorkflowHeader 的现有契约是导航/状态展示；论文实现联动 publication_task_card、实验与模型操作。可在 6.2 UI 设计时评估，不能直接带回论文专用 action |
+| 顶部常驻下一步按钮（`9f5cff7`） | 主线 WorkflowHeader 的现有契约是导航/状态展示；论文实现联动 publication_task_card、实验与模型操作。初评暂缓。2026-10-11 用户已授权学习此呈现方式，改用 main TaskCard/dispatcher 接入本维护分支；论文专用 action 仍排除 |
 | 允许预建空目录（`2b77d2e`）及并发文件保护（`199bc52`） | main 目前拒绝已存在目录，没有论文新空目录清理路径，也没有对应并发误删问题。引入前者是持久化行为扩展，必须一起带保护和测试，另立计划/Independent Review；本轮不归为紧急主线修复 |
 | CSV 推理交付/worker.log（`146c6a3`） | 主要解决 frozen host 无 PyTables 与外置 worker 日志位置。main 的单轨 worker 已写 `data/engines/<run>.log` 并登记 log_path，AI 栈仍同环境；不是当前日志读取缺陷。host/runtime 分离时再评估 CSV |
 | 联合模型自检/设备路由/模型任务 Cancel（`7cda8cd`、`5ada419`、`231e4d8`） | 依赖论文联合任务、教师模型与 modelActions；主线不存在这一任务类型，不能把论文修复当作单轨路径缺陷 |
