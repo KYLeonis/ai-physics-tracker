@@ -4,7 +4,7 @@
 >
 > 本文覆盖全部 tracked 文件差异、分叉后提交及产品模块入口，区分 **已进 main / 已在维护分支 / 论文独有 / 主线独有**。它是功能与实现差异审查，不是重新完成科学正确性、真人体验或发行验收。
 
-> 后续状态（2026-10-11）：用户已确认上一轮主线维护 HR 通过，进入集成收尾。本文比较表与 TSV 保留扫描时固定快照；当前进度见[状态入口](../status/current.md)。
+> 后续状态（2026-10-11）：用户已确认上一轮主线维护 HR 通过，五项修复与顶部推荐已集成 / push main（`017cc04`）。本文比较表与 TSV 保留扫描时固定快照；当前进度见[状态入口](../status/current.md)。
 
 ## 1. 比较对象与范围
 
@@ -278,7 +278,7 @@ git diff 50a7924 154f262 -- src/ai_physics_tracker/gui/main_window.py
 gh release view v0.1.0 --json tagName,targetCommitish,publishedAt,assets,url
 ```
 
-下一步：先按[维护 mini-plan 的 HR 步骤](../status/main-ui-backports-plan.md#human-review)
+扫描时下一步：先按[维护 mini-plan 的 HR 步骤](../status/main-ui-backports-plan.md#human-review)
 完成当前已实现增量的主线验收；需要继续回移时，优先单独处理 Analysis 只读，
 再对 autosave 续接做主线场景复现。科学 / 多点 / 模型 / 打包扩展按主线阶段范围另行立项。
 

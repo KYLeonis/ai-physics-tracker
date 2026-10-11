@@ -2,7 +2,7 @@
 
 - Issue：[#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)
 - 分支：`fix/main-ui-backports`（base `main @ 50a7924`）
-- 日期 / 状态：2026-10-11 · 顶部推荐与五项回移本地/双平台 CI 通过；用户确认 Human Review 通过，准备集成
+- 日期 / 状态：2026-10-11 · 顶部推荐与五项回移本地/双平台 CI 通过；用户确认 Human Review 通过；已集成 / push main，双平台 CI success，Issue #23 已关闭
 - 风险等级：Normal-risk（局部视频交互与展示，不改科学/数据契约）
 
 ## Goal
@@ -46,14 +46,14 @@ workflow_ui/review 回归与维护文档；fixtures、config、exports 无变化
 - [x] AC-4：定向/全量 pytest、diff 检查与双平台 CI 通过。
 - [x] AC-6：顶部随主线状态推进下一步，与任务卡相同动作/门禁；跨工作区可执行，
   学习/采用保留确认、导航不改数据、取消/投影失败清除旧按钮。
-- [ ] AC-5：用户按下方步骤 Human Review 通过，然后 `--no-ff` 集成/push 并关闭 Issue。
+- [x] AC-5：用户按下方步骤 Human Review 通过，然后 `--no-ff` 集成/push 并关闭 Issue。
 
 ## Slices / Verification
 
 - [x] Slice 1：建立分支/Issue，按源提交选取最小 patch，验证回归及展示。
 - [x] Slice 2：五项回移 self-review、全量测试、文档 checkpoint/push/CI。
 - [x] Slice 2b：用户授权顶部推荐扩展，回归/self-review/全量/CI，重新交付 HR。
-- [ ] Slice 3：反馈修复（如需要），HR 通过后集成与收尾。
+- [x] Slice 3：反馈修复（如需要），HR 通过后集成与收尾。
 
 定向：video_view、calibration_ui、manual_annotation、suggested_frame_review_actions、
 tracking_activation_actions、workflow_ui；全量：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q`。
@@ -104,10 +104,13 @@ tracking_activation_actions、workflow_ui；全量：`QT_QPA_PLATFORM=offscreen 
   header 732 宽，三个按钮可布局；不替代真人视觉/手感评价。
 - 实现 checkpoint `8c16908`，文档 checkpoint `fe051f5` 的 [CI 38115253367](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38115253367)：
   macOS / Windows 均 success；后续 checkpoint 仅更新文档，产品/测试树相同。
-- 分支已 push；最终产品 / 测试树在 `24ec071` 的 [CI 38137728560](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38137728560) success，准备集成。
+- 分支已 push；最终产品 / 测试树在 `24ec071` 的 [CI 38137728560](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38137728560) success，产品 / 测试树与 main 合并结果一致。
 
 ### Human Review 与收尾接续（2026-10-11）
 
 - 用户明确反馈“上一轮的HR通过”，确认本维护增量（五项 UI 修复及顶部推荐）可收尾。
 - 记录整体通过，不补写未提供的逐项平台 / 鼠标设备 / 队列测试明细；不扩大为 Windows/CUDA 全部阶段验收。
 - 既有 820 passed 与最终分支 CI 通过，产品 / 测试无新增修改；继续 `--no-ff` 集成 / push / main CI / 关闭 #23。
+
+- `--no-ff` 合并 `017cc04` 已 push main；合并前 main / origin 无分叉、工作区干净，合并无冲突；`git diff --exit-code fix/main-ui-backports HEAD -- src tests` 通过。
+- main [CI 38138010183](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38138010183) macOS / Windows 均 success；#23 已关闭，Slice 3 / 本维护周期完成。
