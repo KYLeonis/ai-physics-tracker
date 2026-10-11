@@ -1,22 +1,22 @@
 # Current Status
 
-> 2026-10-11：`fix/main-ui-backports` 五项通用修复与顶部下一步推荐已完成，Issue [#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)。新定向 72 / 全量 820 passed；新 CI 待核对，Human Review 尚未通过，未集成 main。Phase 6 草案仍待确认。
+> 2026-10-11：`fix/main-ui-backports` 五项通用修复与顶部下一步推荐已完成，Issue [#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)。新定向 72 / 全量 820 passed；`fe051f5` 的 [CI 38115253367](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38115253367) 双平台通过，Human Review 尚未通过，未集成 main。Phase 6 草案仍待确认。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 > 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
 
-- 最后更新：2026-10-11（通用 UI 回移实现与 Human Review 准备）
+- 最后更新：2026-10-11（顶部推荐验证与 Human Review 准备）
 
 ## Current
 
 - **Phase**：Phase 0–5 通用 UI 维护；Phase 6 规划草案待确认，Phase 5 已完成
-- **Subphase / Slice**：`main-ui-backports` Slice 2 已完成，Slice 2b 本地验证完成，待新 CI；Slice 3 等待 Human Review/集成；[mini-plan](main-ui-backports-plan.md)
+- **Subphase / Slice**：`main-ui-backports` Slice 2 已完成，Slice 2b 已完成；Slice 3 等待 Human Review/集成；[mini-plan](main-ui-backports-plan.md)
 - **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
 
 ## Next Recommended Action
 
-**核对顶部推荐扩展的新 CI，然后等待用户主线 Human Review。** 启动命令与 Q1/Q2/Q3 见
+**等待用户主线 Human Review。** 本地/双平台 CI 已通过； 启动命令与 Q1/Q2/Q3 见
 [mini-plan](main-ui-backports-plan.md#human-review)。用户反馈通过后，记录实际验收范围，
 `--no-ff` 集成 main/push/确认 CI/关闭 #23；若反馈需调整，修复验证后重新请求 HR。
 此等待来源为 AGENTS.md §7 / Workflow §5.1，不用 offscreen 探针替代用户体验。
@@ -61,7 +61,7 @@
 
 ## Recently Completed
 
-- **顶部推荐扩展（2026-10-11）**：按用户补充授权，常驻主线 TaskCard 的摘要/主动作/最多两个旁路；复用原动作入口，空会话推荐 Add video，审核/标注返回获取轨迹。定向 **72 passed（9.19 s）**，全量 **820 passed（48.44 s）**，self-review/diff/窄窗口布局探针通过。新 CI 待核对，Human Review 待用户；[mini-plan](main-ui-backports-plan.md)。
+- **顶部推荐扩展（2026-10-11）**：按用户补充授权，常驻主线 TaskCard 的摘要/主动作/最多两个旁路；复用原动作入口，空会话推荐 Add video，审核/标注返回获取轨迹。定向 **72 passed（9.19 s）**，全量 **820 passed（48.44 s）**，self-review/diff/窄窗口布局探针通过。代码 `8c16908` / CI checkpoint `fe051f5` 双平台通过，Human Review 待用户；[mini-plan](main-ui-backports-plan.md)。
 
 - **UI 回移自动验证（2026-10-11）**：代码 `53a6fb9`，三个 GUI 文件/十项滚轮回归，五项通用修复与源提交溯源；定向 107 passed（12.60 s）、全量 815 passed（49.36 s）、实际 widget 展示断言及 diff 检查通过。checkpoint `167a518` 的 [CI 38110444232](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38110444232) 双平台 success；无论文 schema/领域/依赖改动。分支已 push，Issue Open，等待 Human Review，未集成。
 - **论文线回移评估（2026-10-11）**：审查 publication 集成分支及最新发行分支 `154f262`；确认两项值得优先回移的通用 UI 问题、三项小改进，取消源码/测试已等价同步。主线定向 50 passed（7.07 s），只读探针与目标 patch 适用性检查通过；产品代码未修改。详见 [评估记录](../notes/publication-backport-assessment.md)。
