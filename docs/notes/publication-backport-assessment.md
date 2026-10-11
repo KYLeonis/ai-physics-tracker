@@ -1,5 +1,8 @@
 # 论文线通用修复回移评估
 
+> 完整功能 / UI / 数据 / 科学 / 发行差异见[全量区别文档](publication-main-feature-ui-differences.md)
+> 及其 637 文件 / 229 提交 / 80 源码模块附件。本页保留首批五项回移与设备核查的原始证据。
+
 - 日期：2026-10-11
 - 产品线基线：`main @ 3baddf5`；论文 worktree 干净。
 - 审查目标：论文集成分支 `publication/ejp-damped-pendulum @ b459e4a`，
@@ -37,7 +40,7 @@
 
 | 候选 | 排除原因 |
 | --- | --- |
-| 顶部常驻下一步按钮（`9f5cff7`） | 主线 WorkflowHeader 的现有契约是导航/状态展示；论文实现联动 publication_task_card、实验与模型操作。可在 6.2 UI 设计时评估，不能直接带回论文专用 action |
+| 顶部常驻下一步按钮（`9f5cff7`） | 主线 WorkflowHeader 的现有契约是导航/状态展示；论文实现联动 publication_task_card、实验与模型操作。初评暂缓。2026-10-11 用户已授权学习此呈现方式，改用 main TaskCard/dispatcher 接入本维护分支；论文专用 action 仍排除 |
 | 允许预建空目录（`2b77d2e`）及并发文件保护（`199bc52`） | main 目前拒绝已存在目录，没有论文新空目录清理路径，也没有对应并发误删问题。引入前者是持久化行为扩展，必须一起带保护和测试，另立计划/Independent Review；本轮不归为紧急主线修复 |
 | CSV 推理交付/worker.log（`146c6a3`） | 主要解决 frozen host 无 PyTables 与外置 worker 日志位置。main 的单轨 worker 已写 `data/engines/<run>.log` 并登记 log_path，AI 栈仍同环境；不是当前日志读取缺陷。host/runtime 分离时再评估 CSV |
 | 联合模型自检/设备路由/模型任务 Cancel（`7cda8cd`、`5ada419`、`231e4d8`） | 依赖论文联合任务、教师模型与 modelActions；主线不存在这一任务类型，不能把论文修复当作单轨路径缺陷 |
@@ -60,3 +63,34 @@
 - 用户决定执行后，建立 `fix/main-ui-backports`：优先两项修复，可捎带三项小改进，
   Normal-risk；自动回归后按 AGENTS.md/Workflow §5.1 发起主线 Human Review，
   通过后再 `--no-ff` 集成/push，不带入论文 schema/科学算法/依赖/License。
+
+## 执行接续
+
+2026-10-11 用户已授权回移上述五项；分支 `fix/main-ui-backports`、Issue
+[#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)，代码 checkpoint `53a6fb9`。
+最新验证/HR/集成状态见[维护 mini-plan](../status/main-ui-backports-plan.md)，不以本评估的旧只读状态判断实现进度。
+
+## Start learning / macOS auto 设备核查（2026-10-11）
+
+用户补充要求核查主线默认设备。结论：主线单轨 Start learning 默认读取 TaskPanel
+的 `device=auto`，系统学习计划只改 mode/epochs/batch，不覆盖设备；
+`tracking_job._train` 在 worker 解析 CUDA → MPS → CPU，再把明确设备交给
+prepare_training / adapter.train / DLC train_network，成功 run 保存
+`requested_device=auto` 与 `device=mps` 等实际字段。该路由与 main 原实现相同，
+本 UI 分支未改变设备行为。
+
+- 本机主线 `.venv`：arm64 / Torch 2.13.0，CUDA false、MPS built/available true；
+  `detect_device()` 返回 mps，真实张量平方求和在 mps:0 得到 14.0。
+- 实际 GUI 入口进程内捕获（只替换最终 train 调用，不启动重训练）：
+  Start learning 保留 auto / cpu / mps 三种选择，断言通过。临时合成工程已清理。
+- 定向设备/参数/顶部学习回归：4 passed；spawn mock 训练成功/失败及任务面板：
+  9 passed。未重新跑全量（无产品代码改动，既有 820/双平台 CI 证据保持）。
+- 论文源 `5ada419` 解决的是联合模型/外部 runtime 三处固定 CPU 与设备自检
+  身份问题，见论文线 `publication/plans/p5.3-hr-device-routing.md`；
+  主线单轨没有这些调用者，无需整补丁回移。两线 detect_device 内容相同。
+- 主线日志可核对 `Preparing training dataset on mps` /
+  `Detected compute device: mps`；成功任务详情显示 `device=mps`。
+  auto 在 MPS 不可用/探测失败时选 CPU；已选择 MPS 后训练失败会报告失败，
+  不自动 CPU 重训。论文线也要求不隐式 GPU 失败→CPU 重跑。
+- 本次未启动真实 DLC 完整训练/测速，不把张量自检或 mock 回归当作完整模型验证。
+  论文线既有真实 MPS 训练证据只适用于其相应模型/runtime。

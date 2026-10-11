@@ -517,7 +517,10 @@ def test_accept_and_skip_gui_contract_ac3(
     assert "left undecided" in panel.reviewProgressLabel.text()
 
 
-def test_correct_mode_toggle_and_esc_cancel_ac4(test_window: MainWindow, tmp_path: Path):
+@pytest.mark.parametrize("from_header", [False, True])
+def test_correct_mode_toggle_and_esc_cancel_ac4(
+    test_window: MainWindow, tmp_path: Path, from_header
+):
     """AC-4: Correct 进入一次性模式，Esc 取消不产生坐标，不弄脏 session。"""
     window = test_window
     session = window.analysisSession
@@ -543,7 +546,16 @@ def test_correct_mode_toggle_and_esc_cancel_ac4(test_window: MainWindow, tmp_pat
     assert not window.reviewActions.is_correcting
 
     # 进入 Correct 模式
-    panel.reviewCorrectButton.click()
+    if from_header:
+        window.trackingActions._context_key = None
+        window.trackingActions.refresh()
+        window.setWorkspace("analysis")
+        assert window.workflowHeader.nextStepButtons[1].text() == "Correct position"
+        window.workflowHeader.nextStepButtons[1].click()
+        assert window.currentWorkspace == "acquire"
+        assert window.workflowHeader.nextStepButtons[0].text() == "Cancel placement (Esc)"
+    else:
+        panel.reviewCorrectButton.click()
     assert window.reviewActions.is_correcting
     assert panel.reviewCorrectButton.text() == "Click Video..."
     assert not session.is_dirty  # 尚未落点，不应弄脏

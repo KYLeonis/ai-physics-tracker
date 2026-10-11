@@ -281,6 +281,7 @@ class TaskPanel(QDockWidget):
         self.cancelButton = QPushButton("Cancel")
         self.cancelButton.setEnabled(False)
         self.stageLabel = QLabel("Idle")
+        self.stageLabel.setWordWrap(True)
         self.progressBar = QProgressBar()
         self.progressBar.setRange(0, 1)
         self.progressBar.setValue(0)
@@ -949,7 +950,8 @@ class TaskPanel(QDockWidget):
         else:
             status_str = run.status.capitalize()
 
-        label = f"{run.task_type} · {status_str} · {str(run.run_id)[:8]}{iter_suffix}"
+        created = run.created_at.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        label = f"{created} · {run.task_type} · {status_str} · {str(run.run_id)[:8]}{iter_suffix}"
         if run.model_snapshot:
             label += f" · {run.model_snapshot.replace(chr(92), chr(47)).rsplit(chr(47), 1)[-1]}"
         return label
@@ -1223,7 +1225,8 @@ class TaskPanel(QDockWidget):
                 self.reviewSkipButton.setToolTip("")
             if controller.is_correcting:
                 self.reviewCorrectButton.setText("Click Video...")
-                self.reviewCorrectButton.setStyleSheet("font-weight: bold; background-color: #ffe0b2;")
+                self.reviewCorrectButton.setStyleSheet(
+                    "font-weight: bold; background-color: #ffe0b2; color: #172b4d;")
             else:
                 self.reviewCorrectButton.setText("Correct (C)")
                 self.reviewCorrectButton.setStyleSheet("")

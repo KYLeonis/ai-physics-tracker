@@ -1,0 +1,230 @@
+sha	author_date	kind	in_publication_integration	patch_equivalent_in_main	subject
+917cf1d1e4611f328631907b5ac3347cab749192	2026-09-18T21:53:33+08:00	ordinary	yes	no	docs(publication): establish EJP damped-pendulum publication line
+0e1e4f1fddc2fe305666f565ec2b6ee8d79b82e0	2026-09-19T00:15:28+08:00	ordinary	yes	no	docs(publication): add STATUS entry for the publication line
+0cb1fd6eef649435d2bc8dea0b510a847096fcdf	2026-09-20T09:26:46+08:00	ordinary	yes	no	docs: plan EJP undergraduate pendulum publication platform
+07baf0bea5be0c440c13d04202aecd00624e8684	2026-09-20T14:45:46+08:00	ordinary	yes	no	docs(publication): complete P0.1 scientific profiles and golden evidence
+c46d07f01f20a27282666a370804317100fc611e	2026-09-20T14:45:46+08:00	merge	yes	no	docs(publication): integrate P0.1 reviewed scientific contracts
+ce093409884748ed53e7fb9b221385cbfaab4cff	2026-09-20T22:43:58+08:00	ordinary	yes	no	docs(publication): close P0 contracts and record runtime feasibility evidence
+a6b79b63a54cb16b7c220a83ca2271b0d47d1203	2026-09-20T22:44:03+08:00	merge	yes	no	docs(publication): integrate reviewed P0.2-P0.4 closure
+c36ff9ffde2ba3f82e32e09b528311dc5afac76f	2026-09-20T23:16:19+08:00	ordinary	yes	no	docs(publication): plan P1 four-landmark measurement
+c7e3dd018b4dc404475b2f0b03f559fba1de67ea	2026-09-20T23:56:34+08:00	ordinary	yes	no	feat: P1.1 S1-S4 schema v2 domain, serializer, migration and session invariants
+0d0970b2d4121a4fe6b50d8406a92692baec7f6d	2026-09-21T09:54:44+08:00	ordinary	yes	no	fix: close P1.1 S3 review findings G1-G5/G7
+d999ad7a28d041a9a44d507fda70839d596e5c62	2026-09-21T10:12:44+08:00	ordinary	yes	no	fix: close P1.1 R2 schema review findings F1-F4 and nits F5-F7
+0deebf9b604d3de5955bfedba9639b490a10ec4a	2026-09-21T10:14:33+08:00	ordinary	yes	no	docs: record P1.1 S1-S4 review closure and sync publication status
+6c21add3df0ef15330bb345a22abd482c7034152	2026-09-21T10:18:28+08:00	ordinary	yes	no	docs: define P1.1 Human Review protocol with pass criteria
+55ce7371eadbefd33506dd143c149ac70af93096	2026-09-21T11:36:14+08:00	ordinary	yes	no	feat: P1.1-S5 pendulum setup GUI and workflow projection
+0fd349458f6d9c3e6055634180a106e72931900d	2026-09-21T11:38:42+08:00	ordinary	yes	no	test: P1.1-S6 migration failure probe and setup save/reopen GUI cases
+157ed8e06f9f27b382b0e1e57c14286179e740a9	2026-09-21T11:55:08+08:00	ordinary	yes	no	fix: close P1.1 final re-review findings S6-R1..R7
+e3ca80458f3c1aa052b7cab5b4ee606e531f8ca3	2026-09-21T11:55:47+08:00	ordinary	yes	no	docs: record P1.1 S5/S6 implementation and final re-review closure
+7869576bddae36bbf4bd9770dded8eadd7fe5efb	2026-09-21T11:56:07+08:00	ordinary	yes	no	docs: sync P1.1 completion state to publication STATUS banner
+c0290bfdbc6f1eaa9a5ac44ba1f26ba7c5c23079	2026-09-22T23:22:16+08:00	ordinary	yes	no	fix: close P1.1 Human Review round 1 feedback
+a2013c0d95f8342a509843fd58b6a37a0f7c5797	2026-09-23T00:00:10+08:00	ordinary	yes	no	docs: close P1.1 — Human Review passed, record results and hand off to P1.2
+2c367fdbfa4da365837ea2e5819911f37be145df	2026-09-23T00:00:43+08:00	ordinary	yes	no	docs: finish P1.1 closure in publication STATUS
+b90581127aea3162287b0e4d413990e3f14883e2	2026-09-23T00:03:20+08:00	ordinary	yes	no	docs: update worktree banner for P1.1 closure
+0971826befc670f33762f40e1fa92b0ff774a6c0	2026-09-23T00:03:20+08:00	merge	yes	no	merge: complete P1.1 — pendulum setup, schema v2, migration and guards
+1a1886e8a2050ed2e44dc953a3d560d3a75e33bc	2026-09-23T00:21:37+08:00	ordinary	yes	no	feat: P1.2-S1 experiment frame-set domain, serializer and session actions
+daf535a13157f83b16123f25e23a0b65cc38e935	2026-09-23T00:28:22+08:00	ordinary	yes	no	feat: P1.2-S2 pure four-role annotation join and canonical label digest
+e321f960dbba1d2518e83c38866e06ef88bd8fac	2026-09-23T00:36:06+08:00	ordinary	yes	no	fix: close P1.2-S1 review findings FS1-FS3, sync mini-plan
+80fff493a1a337efdede0c20b3d80243bc14737c	2026-09-23T00:37:02+08:00	ordinary	yes	no	docs: record P1.2 S1-S2 progress
+93bb08e0a112aca32c1a58e663d268862f66101b	2026-09-23T00:52:23+08:00	ordinary	yes	no	fix: apply P1.2 identity review findings ID1-ID3, add ID5 regressions
+415952f98263be9da98a782f62b6ec6583ce1b67	2026-09-23T00:52:35+08:00	ordinary	yes	no	docs: record P1.2 identity review closure (948 passed)
+e7be6232382811676f8e22eac150c30ab163846b	2026-09-23T01:15:17+08:00	ordinary	yes	no	feat: P1.2-S3 guided marking + S4 experiment fixed check
+b25b569f9c4ea5355631a25f0746b198fa8ada31	2026-09-23T01:21:23+08:00	ordinary	yes	no	feat: P1.2-S5 four-bodypart export plan and DLC writer
+855a84f3f4b97118f9c878e93d62dcfea8558947	2026-09-23T01:23:18+08:00	ordinary	yes	no	test: P1.2-S6 real DLC four-bodypart dataset smoke script
+b490ea12534f00038b46d3da0765e6d085688137	2026-09-23T01:33:58+08:00	ordinary	yes	no	fix: guide button dispatch, skip-state persistence; add S3 test suites
+4232be792146c9e5647bd64058f2b5416cc22d57	2026-09-23T01:57:25+08:00	ordinary	yes	no	docs: P1.2 review records, HR protocol and status closure
+34769ed4f37887e28605f884db557db52e9a66ab	2026-09-23T01:58:43+08:00	ordinary	yes	no	docs: P1.2 status closure and Human Review handoff
+f97aaf37aae1c3e2f2b910be4e888e830ce7abe0	2026-09-24T00:06:28+08:00	ordinary	yes	no	fix: replace AI task cards with a measurement card for experiment-bound tracks
+9490453b00ba6a6d6c53184fe0f1c70b05a850ce	2026-09-24T08:14:26+08:00	ordinary	yes	no	docs: record P1.2 Human Review (automated execution, A-D PASS, F1-F3)
+dd36aa96f7c8bff5d7260623570f7618280a93ec	2026-09-24T12:56:31+08:00	ordinary	yes	no	docs: record real-user P1.2 HR round (F4 frame-set progress finding)
+ff026cdb70ca68b37fb7b755a924fcd6f4fe953a	2026-09-24T13:10:55+08:00	ordinary	yes	no	docs: real-user HR round 2 (frame set 10/10 complete, F3 closed, F5 recorded)
+65d31a569e61b07021d94869e8bd2f66ebd4008c	2026-09-24T16:20:18+08:00	ordinary	yes	no	fix: retry deferred guide-entry jump (F1); record HR verdict (Q1-Q4 pass, F2 WONTFIX)
+8c1a9b915917749e1c6bc36cd1d297ae51153a01	2026-09-24T23:51:42+08:00	ordinary	yes	no	feat: frame-set progress in guide bar and measurement card (F4/F5); record fixes
+5cad79c0861367ef7bfd13fee48c4e6c9284ff9d	2026-09-24T23:52:12+08:00	merge	yes	no	merge: complete P1.2 — shared frame-set annotation, guided marking, four-bodypart export
+91d8407f5b3d587d8043b82e5c0b96aacb1aebe1	2026-09-24T23:54:09+08:00	ordinary	yes	no	docs: close P1.2 — merged, 987 tests, frame set 10/10 annotated
+3f06de9c0bc26e64dbd845e4d5c58d1594cbdd69	2026-09-24T23:58:35+08:00	merge	yes	no	Merge branch 'main' into publication/ejp-damped-pendulum
+cbcee97612c1ddd0dcf6b916b89fc0102c5d0566	2026-09-28T12:34:41+08:00	ordinary	yes	no	docs: P1.3 execution mini-plan (external runner, joint training, teacher import)
+787b169bb857445115d5782157af77103bb8c0bf	2026-09-28T12:45:21+08:00	ordinary	yes	no	ci: run tests on publication/** branch pushes
+a7dcd353840536d84c54cb50192d141ffee02472	2026-09-28T13:22:00+08:00	ordinary	yes	no	feat: P1.3-S1 product external worker (protocol v1 host/worker, fail-closed verification, tree cancel)
+32f8facc3861daa01a0751a2a30defbd70763842	2026-09-28T13:22:19+08:00	ordinary	yes	no	docs: S1 done — external worker protocol landed (1015 tests)
+6bd9b241b5be9128523935fbd022e3cb58d7aa51	2026-09-28T13:53:39+08:00	ordinary	yes	no	feat: P1.3-S2 joint training request/result (unique path, digest freeze, stale rejection)
+1288d536626df8d378a304ca0ea65614cedd79b3	2026-09-28T13:53:40+08:00	ordinary	yes	no	docs: S2 done — joint training request/result (1027 tests)
+65d4ceb981fa74552bf4fe289c573978dac1c720	2026-09-28T18:59:11+08:00	ordinary	yes	no	feat: P1.3-S3 TeacherModelReference (manifest freeze, register action, availability)
+f60a52da39ade68ec6abee616883eeb9687d1c50	2026-09-28T18:59:11+08:00	ordinary	yes	no	docs: S3 done — teacher model reference (1044 tests)
+2ab3662c42100fc5fd7869600ec17b3aa9be4da9	2026-09-28T19:58:03+08:00	ordinary	yes	no	fix: close P1.3 S1-S3 review findings (B1 bodypart guard, M1-M3, m1-m7); 1054 tests
+72bef45ede82b45a1f456054673ded68e02824a0	2026-09-28T20:13:54+08:00	ordinary	yes	no	feat: P1.3-S4 teacher import core (copy+validate, atomic publish); close slice review findings
+b5681de26c90d67029029eb7469c0c92a1e117ae	2026-09-28T20:47:46+08:00	ordinary	yes	no	feat: P1.3-S5 runtime self-test (worker op, evidence freeze, combined state); close review B1/B2/M1/M2
+b5c0c2dd356320926e1af80604ac8b3db5a36904	2026-09-28T22:22:54+08:00	ordinary	yes	no	feat: P1.3-S6 model GUI (joint training, import wizard, self-test, freeze entry); close S6 review; HR protocol
+8e9a5e4d9a2333ba991b12e23669d0ccb93f3d94	2026-09-28T22:23:16+08:00	ordinary	yes	no	docs: fix STATUS header branch and date
+dbeb525af3314b9478487ffd2746bdea5d811e47	2026-09-29T00:46:06+08:00	ordinary	yes	no	fix: close three-scan findings (device authority, split provenance, guards, sha normalize, wizard pytorch_config); HR-feedback modal errors
+231e4d817171f06d3dc68247d70b198aff6f38f0	2026-09-29T15:50:55+08:00	ordinary	yes	no	fix: HR feedback — model task drives Activity+Cancel, guided context hint, history timestamps
+920f0dbf9714602a1ad8fb8e79e6a6ca1d67d911	2026-09-29T16:27:41+08:00	ordinary	yes	no	fix: import wizard scans nested DLC project layout (checkpoint + pytorch_config recursion)
+1cdf61528c449353eed37516a9a1a5499d4699ad	2026-09-29T16:48:15+08:00	ordinary	yes	no	fix: imported-model self-test must resolve train/pytorch_config.yaml over test/pose_cfg.yaml; wizard window sizing
+ab8a8b7b00fc8430456bafeb8cb2ab0164960acd	2026-09-29T17:01:07+08:00	ordinary	yes	no	ux: explain L/g provenance fields in physical parameters dialog (HR feedback)
+b3ab4fe62630e834bab64f71c8f6cc9f33ea4b87	2026-09-29T17:36:05+08:00	ordinary	yes	no	docs: P1.3 Human Review passed — record user feedback and closure
+c6d6b8390bc9e985f3620ded130591280760650a	2026-09-29T17:41:26+08:00	ordinary	yes	no	docs: review index — P1.3 HR passed and merged
+0546ff76711a7aacb8b7861665614da87d5e4591	2026-09-29T17:41:46+08:00	merge	yes	no	merge: complete P1.3 — product external worker, joint training, teacher import, model self-test
+7169b97f84d3835c5df4cd18a4d63ad95ec58b6d	2026-09-29T19:03:08+08:00	ordinary	yes	no	feat: add P1.4 joint inference candidate pipeline
+e0eff4ad9743b97224c861775b06e22b14a5a8b5	2026-09-29T19:03:14+08:00	ordinary	yes	no	docs: start P1.4 and record joint inference evidence
+d04795091d40d0fd64ccbda14f0af232f4defc50	2026-09-29T20:07:43+08:00	ordinary	yes	no	feat: add joint review, atomic adoption and P2 measurement handoff
+13702dd2d4559e9582ab44c7b9d53736a1d87805	2026-09-29T20:08:15+08:00	ordinary	yes	no	fix: reject adopted measurement after source video changes
+2d7e2da78b91d50b70adca0a0a9aa513de42cb2f	2026-09-29T20:09:08+08:00	ordinary	yes	no	docs: record P1.4 review and handoff gates
+3929a4229ffc344f36d101fdebce8f5adb1bd7b6	2026-09-29T20:20:50+08:00	ordinary	yes	no	test: verify real joint inference cancellation and adoption lifecycle
+773ddef526808e58da41dad3f8cf94d6a3542ac1	2026-09-29T20:21:32+08:00	ordinary	yes	no	docs: hand off remaining P1.4 review and UI work
+3b3f3b2f1dd65738f62e9aaa605ab5edae4ce2f5	2026-09-29T20:52:00+08:00	ordinary	yes	no	fix: close P1.4 review findings (activation decoupled from live model, review video guard)
+d32aa0320dd662aafaccbf439006ed635829140c	2026-09-29T20:52:00+08:00	ordinary	yes	no	docs: record P1.4 S3/S5 independent review closure and gates passed
+7c29e759f6365b36438cf0cb25fa6754f6b64e04	2026-09-29T21:16:45+08:00	ordinary	yes	no	feat: add P1.4 joint inference workflow UI (review queue, activation cards)
+ac78f2c6df27822ef0d107abb3f53f658132deca	2026-09-29T21:16:45+08:00	ordinary	yes	no	docs: mark P1.4 S4 offscreen-verified, awaiting human review
+7f5cbf8f8d1d199ab108e34ad8d195206156237b	2026-09-29T23:14:26+08:00	ordinary	yes	no	fix: HR feedback — joint correct click swallowed without selected track, review queue capped frame-level, threshold semantics surfaced
+0f048969adfe2fd94b837009341f8cb5245ba617	2026-09-29T23:54:32+08:00	ordinary	yes	no	ux: continuous correct flow, activate window on correct start, frame-level accept/skip wording
+5ea8ae8d42d510a063b7e30e36ec2b76e5ee91b2	2026-09-30T00:16:27+08:00	ordinary	yes	no	feat: role-level correct flow, accept-all pending frames, corrected frames merge into training set
+497c0fa01db94ddf821c5785ca5db2be66021ab6	2026-09-30T00:28:49+08:00	ordinary	yes	no	docs: hand off role-level correct-flow debugging with full HR history
+3a26ac361edf0515f21a432e2d66c91c666785fb	2026-09-30T00:29:10+08:00	ordinary	yes	no	docs: point status next action at 2026-09-30 handoff
+72cbfff20682abdf9a4f7cb08b795837ed76a9db	2026-09-30T00:46:12+08:00	ordinary	yes	no	ux: turn joint review queue into optional frame suggestions
+ef63a3874d52a80123a45ab69e88f04034284deb	2026-09-30T10:45:10+08:00	ordinary	yes	no	fix: unify suggested-frame relabeling into a continuous four-point batch
+4c0d2b6dcfb84dd0da1c9fa3fe55ef499455c518	2026-09-30T10:45:21+08:00	ordinary	yes	no	docs: record relabeling workflow and latest inference findings
+ec2f34e8fd42f986534c8e6c4edf642ff67bd64e	2026-09-30T11:34:15+08:00	ordinary	yes	no	feat: batched difficulty suggestions with adjustable size, pool info, direct train handoff
+c794e18fdb83e6553fce2ee97b97745bc2cb416a	2026-09-30T11:55:39+08:00	ordinary	yes	no	ux: raise suggestion window at batch boundaries, keep guide text short
+8b8f1bb5d3a077f59400a2a3b581a7a996176ff0	2026-09-30T12:54:39+08:00	ordinary	yes	no	test: close P1.4 S6 — trained-model real lifecycle smoke, final review fixes, AC checklist
+2ba7331dbf4903c88299f81f2648125ba7184557	2026-09-30T12:54:52+08:00	merge	yes	no	merge: complete P1.4 — joint inference, batched relabel suggestions, atomic activation, P2 handoff
+52ed88233bce7c48a59f9c7fe50d0e777a98e0b6	2026-09-30T13:25:47+08:00	ordinary	yes	no	fix: pin pandas in locked test env (CI collection failure); docs: P1 completion sync
+bd0d514c1dc33920cfb3a4ce12834a031441ad00	2026-09-30T13:26:10+08:00	ordinary	yes	no	docs: index trained lifecycle evidence; sync main status note for P1 completion
+7ce685b5c2751fd2537918bb907cf8b6057b787c	2026-09-30T13:33:28+08:00	ordinary	yes	no	fix: CI first-run debt — PyYAML dep, utf-8 reads, Windows machine identity env
+8e5bdd929caeb47dc0ebfab50d6af0f2ad387e5d	2026-09-30T13:37:59+08:00	ordinary	yes	no	fix: spike host stdout ascii-safe on Windows consoles
+100b955e375e961068cbb55fc21178b4e7eed045	2026-09-30T13:43:15+08:00	ordinary	yes	no	docs: record CI first-run debt closure in P1.4 evidence
+015ae95a68095ef6ad1fa2acb4f1769c4d62db3e	2026-09-30T14:26:38+08:00	ordinary	yes	no	feat: add pendulum theta reconstruction and shared QC core
+d5a769e643652ddaf437ad4eefae2bd86d69d982	2026-09-30T14:26:38+08:00	ordinary	yes	no	docs: verify P1 completion and close P2.1 theta QC review
+309d032ab9c825d364bc995f3ce44c0b15a86e8c	2026-09-30T14:27:07+08:00	merge	yes	no	merge: complete P2.1 pendulum reconstruction and QC core
+9f9273ebd04de1c910984083a11326f022acb5c2	2026-09-30T14:27:07+08:00	ordinary	yes	no	docs: record P2.1 integration and P2.2 next action
+ad46b318206cced3213c50cda42669ef2400eeb3	2026-09-30T14:28:42+08:00	ordinary	yes	no	docs: index P2.1 review and add core verification command
+92e0425c3e8034504c47beb1c6e053c63ef51ddd	2026-09-30T15:12:48+08:00	ordinary	yes	no	feat: add publication angular derivatives and period diagnostics
+ce04cf0079ba72d40d414f024fc3d6d6795f2ac7	2026-09-30T15:12:48+08:00	ordinary	yes	no	docs: close P2.2 and plan P2.3 energy analysis UI
+4ec09b6790cf3d6d8d166b4f3f8edc1369e5a62e	2026-09-30T15:12:48+08:00	merge	yes	no	merge: complete P2.2 angular analysis core
+42e853dae7377fa0a4a60ce02b2ad3a2a47b4e30	2026-09-30T16:15:01+08:00	ordinary	yes	no	feat: add pendulum reference energy and scalar analysis workspace
+0ea984a7a5de24908987f95042edc6ced362848a	2026-09-30T16:15:01+08:00	ordinary	yes	no	docs: record P2.3 review and hand over human acceptance
+7cda8cd756509229a784b77a3d5a3c7fd7d84dcb	2026-09-30T16:45:10+08:00	ordinary	yes	no	fix: verify trained models before inference and show training dates
+bbedc8fb206aae9b804c529ed97c4b518fc35800	2026-09-30T16:45:10+08:00	ordinary	yes	no	docs: record P2.3 feedback fixes and model log verification
+ae32ef258254848af3c6b3ec9e936bd3fb179008	2026-09-30T19:51:32+08:00	ordinary	yes	no	fix: explain sparse pendulum analysis and render QC previews
+6e34f8cc9dba23f17be07bbd9db1293d6f78279a	2026-09-30T19:51:32+08:00	ordinary	yes	no	docs: record analysis HR diagnosis and display repair review
+6ca7f0520522e7cad486cc449975a10337eeae69	2026-09-30T22:03:28+08:00	ordinary	yes	no	fix: guide four-landmark repairs directly from pendulum analysis
+47c5142f0faeb14be123266441f906dff5b3a527	2026-09-30T22:03:49+08:00	ordinary	yes	no	docs: record four-point repair diagnosis and review gate
+869e504ca0e99be7958c77b8a8ef61dc5d1157d4	2026-09-30T22:38:00+08:00	ordinary	yes	no	fix: base angular analysis on tip and fixed pivot
+6ba4bea4399c3a3829876e15f7bddfee2a30326e	2026-09-30T22:43:21+08:00	ordinary	yes	no	docs: record tip-only angular policy and handoff
+01a8f875bde93c94ac9749dc4fcb8bc6f9fc8224	2026-10-01T11:27:11+08:00	ordinary	yes	no	feat: allow explicit Savitzky-Golay settings for angular analysis
+1a67895145d2e0321a507743c1cfc8bbf0e63330	2026-10-01T11:27:54+08:00	ordinary	yes	no	docs: record custom SG policy and reviewed HR delivery
+97ce6642199b5645e149e66aa5fc93aaaa2b1b63	2026-10-01T12:00:33+08:00	ordinary	yes	no	docs: close P2 acceptance and record user-approved delivery
+99f34b0fa4216de4cffbaa594383ca205cb9c974	2026-10-01T12:00:33+08:00	merge	yes	no	feat: complete publication P2 pendulum reconstruction and analysis
+4d4e3e97df9a564b5b3adb5cabbe04e41457dec1	2026-10-01T11:49:25+08:00	ordinary	yes	yes	fix: wait for confirmed process exit after forced cancellation
+6323e11669e30a4087bc5e083fda7c0194e3878a	2026-10-01T11:58:04+08:00	ordinary	yes	yes	fix: reap killed workers with native process wait
+02e3afd3d891e28814114a3e30a24eeef93c3621	2026-10-01T12:03:52+08:00	ordinary	yes	no	docs: finalize P2 integration and record concurrent source sync
+970bd95ef6790886669295242cf0649c92e21309	2026-10-01T12:09:56+08:00	ordinary	yes	no	docs: confirm publication Windows CI recovery
+7d8ee0bc02297fc945971e9df0e1b417bb000eb8	2026-10-01T12:38:23+08:00	ordinary	yes	no	feat: add publication pendulum ODE forward and objective core
+3278ef8a859e6a63c8f3042bf393a2ddb4da309a	2026-10-01T12:47:14+08:00	ordinary	yes	no	fix: close ODE request and solver failure review findings
+25491a70bbb48983aeaa8d3c906410b41915e94a	2026-10-01T12:51:49+08:00	ordinary	yes	no	docs: close P3.1 review and prepare P3 quota handoff
+72856582a96a74daa02e84ab27a8b8b3736ba5d3	2026-10-01T12:52:01+08:00	merge	yes	no	feat: complete publication P3.1 ODE forward and objective
+fef9c4c9a0ff9ad080b32ce123f02ea3d97086d1	2026-10-01T12:52:24+08:00	ordinary	yes	no	docs: finalize P3.1 integration and handoff state
+23950c8fcd03d2e09f4ffb0eed880cf5285e2569	2026-10-01T13:59:10+08:00	ordinary	yes	no	feat: add bounded multistart pendulum fitting and regression runner
+16af211d006856f4e353e6dc4bdbfcbdd99430a3	2026-10-01T14:15:33+08:00	ordinary	yes	no	fix: harden fit diagnostics and retain failed scientific regression evidence
+55711591d465cea6f80438a7e278d4fa4c7152ed	2026-10-01T14:15:53+08:00	ordinary	yes	no	docs: record P3.2 scientific gate findings and pending user decision
+e6266b3da3d7bfd4559906cd51eb4c363b6e5661	2026-10-01T14:37:46+08:00	ordinary	yes	no	docs: record accepted fit precision policy and historical regression limits
+70036d4fbb2b835b6e3eb44e99738f8206934e44	2026-10-01T14:45:20+08:00	ordinary	yes	no	docs: close P3.2 with accepted limitations and prepare P3.3
+cdeb65daa2ea8cb50d2da688350af03058548c79	2026-10-01T14:45:20+08:00	merge	yes	no	feat: integrate P3.2 bounded fitting with accepted regression limitations
+ed000c25319bcabf2ba4e5e2a1e331aec739a49b	2026-10-01T14:53:29+08:00	ordinary	yes	no	feat: add detached pendulum fit execution and immutable result persistence
+d686ae82fc6cc8e8a3a0c46dc1a43acac1c5a661	2026-10-01T15:07:32+08:00	ordinary	yes	no	feat: support explicit fit intervals and versioned solver options
+6af013feac523941d0157cffd5aae96c00f623de	2026-10-01T15:19:20+08:00	ordinary	yes	no	fix: validate saved fit bodies and reject invalid input boundaries
+00854e1f25b01a7fae9eabeb26dcc24f2fc228e5	2026-10-01T15:27:04+08:00	ordinary	yes	no	fix: finish fit readback guards and persist eligibility facts
+eaa724748da18699ad08f47b2427255d4e55bb44	2026-10-01T15:29:22+08:00	ordinary	yes	no	docs: close P3.3 reviewed execution and prepare P3.4 UI
+38f6de5d590d7b620a5bace2bd2ccacf61ec852f	2026-10-01T15:29:22+08:00	merge	yes	no	feat: integrate publication P3.3 fit execution and persistence
+4e4fe2dde69cce7e30553c79e32e2af5ef0fccc1	2026-10-01T15:40:52+08:00	ordinary	yes	no	feat: add explicit pendulum ODE fitting UI and background lifecycle
+815ea88cd102f6939acef9901b22c03452e0444e	2026-10-01T15:55:06+08:00	ordinary	yes	no	docs: record P3.4 reviewed checkpoint and pending human review
+0ef685b6107efb11c1f21aaf77070c8c85aac631	2026-10-01T16:12:27+08:00	ordinary	yes	no	docs: prepare provincial inference fixtures for P3.4 human review
+b04bdc1ef0c715ca8d2f07d8c7859622bdc6510f	2026-10-01T16:54:30+08:00	ordinary	yes	no	fix: clarify fit timing progress and visual model diagnostics
+47ff3e26f99b4c289c113b4411cc1389752ebd29	2026-10-01T16:54:30+08:00	ordinary	yes	no	docs: record reviewed P3.4 human feedback fixes
+c819ef51d49cb4e491cef07645e34af58c8ce1cb	2026-10-01T17:15:57+08:00	ordinary	yes	no	docs: close publication P3 after human review
+cb28326cef3c7264015437e8ee2cbd02125981bf	2026-10-01T17:15:57+08:00	merge	yes	no	feat: complete publication P3 ODE fitting and reviewed UI
+189ab4a9bc7dc7ccf0439c0ebbf07a1a8064faf1	2026-10-01T17:16:40+08:00	ordinary	yes	no	docs: record P3 integration and next phase stop
+877904fddc2cce13a1d25be3edf72d8e24ec0309	2026-10-01T19:52:02+08:00	ordinary	yes	no	docs: plan publication P4 scientific diagnostics and teaching UI
+04eaa3518aea64a04ff2aef2935ea0b06a7a6579	2026-10-01T21:39:47+08:00	ordinary	yes	no	feat: add validated pendulum model criticism evidence
+819c80ea720a3341e262499085a1442af40a40aa	2026-10-01T21:42:20+08:00	ordinary	yes	no	docs: close publication P4.1 numerical review gate
+9fe8b4253000a72a54bd3675e4d52d0a83b1bce8	2026-10-01T21:42:21+08:00	ordinary	yes	no	feat: add independent raw equivalence and conditional objective core
+1e44d286040cc199f899a58a801c236c9eb2c164	2026-10-01T21:44:49+08:00	ordinary	yes	no	docs: close publication P4.2 numerical gate and start teaching UI
+c74d175dba2e94c9b722f2675ace8b2d051cae59	2026-10-01T21:44:49+08:00	merge	yes	no	feat: integrate publication P4.1 model criticism core
+8addd4388f405d34121f1d832fc4abe18042d839	2026-10-01T21:44:49+08:00	merge	yes	no	feat: integrate publication P4.2 identifiability core
+99402e9637365ef50d178f3e49919075c504485c	2026-10-01T22:17:24+08:00	ordinary	yes	no	feat: add read-only model criticism and parameter equivalence UI
+a03bfb8918aed673496703d21f7a7e32c7bf27e2	2026-10-01T22:20:56+08:00	ordinary	yes	no	docs: checkpoint publication P4 for final human review
+47429b3911a8a81b78f5314809b796c61276402a	2026-10-01T22:51:43+08:00	ordinary	yes	no	docs: close publication P4 after successful human review
+8496a5a226de37fbba675996f383ecb81325012e	2026-10-01T22:51:44+08:00	merge	yes	no	feat: complete publication P4 model criticism and identifiability
+66c653f3042b8cf88f07ae32988847834496a181	2026-10-01T22:52:54+08:00	ordinary	yes	no	docs: record completed publication P4 integration
+6a20ac66575846bca6a7a7547bf07fb91bc2b680	2026-10-01T23:07:21+08:00	ordinary	yes	no	fix: read publication regression JSON explicitly as UTF-8
+99d6d7ae3260517f677e19f0df52380fdbdafd8b	2026-10-01T23:08:31+08:00	ordinary	yes	no	docs: record Windows encoding repair and P5 hold
+905aa91be56d96d96278143ffdca383e969eaa97	2026-10-01T23:11:08+08:00	merge	yes	no	fix: integrate publication Windows UTF-8 regression repair
+2e8b5a9398728adf555ab669c76b4da2f6ec3936	2026-10-01T23:25:31+08:00	ordinary	yes	no	test: resolve equivalence objectives above assertion precision
+188bd479dc01f0eaf5c24a4ecccf3836cd7e1132	2026-10-01T23:36:19+08:00	ordinary	yes	no	test: retain actual request checks within declared E4 error budget
+d469ac76bd657439eb6319589627337f5043d226	2026-10-01T23:47:12+08:00	ordinary	yes	no	docs: record independent approval of Windows invariance regression repair
+0feb196480b11960e1c029412e8d194d8c073a37	2026-10-01T23:48:10+08:00	merge	yes	no	fix: integrate reviewed Windows equivalence regression checks
+e166f0a58342cc3084bf01940f2eaf8caf9f304a	2026-10-02T00:00:12+08:00	ordinary	yes	no	docs: confirm publication Windows and macOS CI recovery
+9f5cff7f5c7dbd83111d65dd9f2b1f9b24462581	2026-10-02T00:25:35+08:00	ordinary	yes	no	feat: integrate publication workflow guidance and teacher model path
+4238f8a0bba4ea51a4df15c31f842a0fe301e12a	2026-10-02T00:48:51+08:00	ordinary	yes	no	feat: export frozen scientific results and portable project copies
+d9d1da39c51be1405d0c1a23cf11e3a79fbb70cf	2026-10-02T01:01:07+08:00	ordinary	yes	no	feat: prepare student pilot and publication end-to-end review
+ac53a8b9b43373bbe5b45526b15b045163017ca2	2026-10-02T01:05:06+08:00	ordinary	yes	no	fix: retain frozen auxiliary QC and established AI guard explanation
+5228537aa93f62f1b9ec2382cc2f035254f3c7c2	2026-10-02T01:19:35+08:00	ordinary	yes	no	fix: acquire a reliable tip before guiding radius setup
+777c92b1c57f93c8dbe93f0e5bc3b574c39b26f6	2026-10-02T01:29:42+08:00	ordinary	yes	no	docs: deliver publication P5 for final human review
+916adeb9e16f4d31a84c624e1e4a1a06c33f0871	2026-10-02T11:09:31+08:00	ordinary	yes	no	fix: expose representative-frame training and refinement cycle
+87d5e89b36c7e335e5a086fdbd407b3d4869e6bc	2026-10-02T11:15:39+08:00	ordinary	yes	no	fix: prioritize retraining changed labels over inference retry
+59acdf77fb2d44f8d17b48e0d910aae2b3b80787	2026-10-02T11:27:16+08:00	ordinary	yes	no	docs: record training-loop review and human retest delivery
+827f31f5e45f1be759eac226258cb5b0623abbd9	2026-10-02T14:11:01+08:00	ordinary	yes	no	feat: show actual joint inference progress and timing
+ba09af51729efa3ddefdfdf039795766a5c287db	2026-10-02T14:19:40+08:00	ordinary	yes	no	docs: record training check and inference progress HR delivery
+5ada41907d791ae4756ebefed814ae648cf6f414	2026-10-02T17:07:12+08:00	ordinary	yes	no	fix: route joint model tasks to the selected compute device
+7062abc31df82b46cbdf09afcc41bf24dbbac43c	2026-10-02T17:15:51+08:00	ordinary	yes	no	docs: record automatic device routing and acceleration checks
+2fca1914b2c8f9469899f0b21982d960c8ff3170	2026-10-02T17:37:20+08:00	ordinary	yes	no	fix: map fitted model identifiers to exported curve columns
+98bfd25d4b09ba8802167f8ca14a85872f3aece0	2026-10-02T17:39:07+08:00	ordinary	yes	no	fix: separate exported axis titles from tick labels
+b49a6dab3a7837a187324815948b2ec17bb95c20	2026-10-02T17:42:03+08:00	ordinary	yes	no	docs: record repaired P012 fit figures and export HR
+e27b6bb904a516336da735aa356ff88f2ebb0091	2026-10-02T17:53:11+08:00	ordinary	yes	no	docs: close out P5 development acceptance and preserve release gates
+355b3758bc6ee57bdffc92cd20fe6549272d0bdd	2026-10-02T17:53:11+08:00	merge	yes	no	feat: complete P5 undergraduate workflow and scientific outputs
+b0251cd4792d0140447ceebb51ba79c420aab725	2026-10-02T18:03:14+08:00	ordinary	yes	no	docs: record P5 integration and final dual-platform CI
+40db20d2d3369273931ff45c0c67f9974fb4639f	2026-10-02T18:34:27+08:00	ordinary	yes	no	docs: plan P6 packaging and GLM execution handoff
+deca21f538ee8b31d8a0f1e2ab1b53eafb08a7f8	2026-10-02T19:12:22+08:00	ordinary	yes	no	feat: split host/AI deps and add frozen launch context (P6.1)
+9b5f0e54358099a966bd19bd8dce37001dce9083	2026-10-02T19:12:26+08:00	ordinary	yes	no	build: add PyInstaller native build pipeline and dual-platform CI (P6.1)
+d41a08cb9d0bc42fbb13c29f1249ac1ad635d965	2026-10-02T19:12:26+08:00	ordinary	yes	no	docs: record P6.1 delivery, ADR-0021 and Windows gate deferral ruling
+833ee9feef80553e15fdc13d81d9403a6dfbea54	2026-10-02T19:21:27+08:00	ordinary	yes	no	fix: wait for windowed smoke exe on Windows CI (Start-Process -Wait)
+cb0339ca3c20131665606c18e839c3c1466585e6	2026-10-02T19:29:57+08:00	ordinary	yes	no	docs: record P6.1 dual-platform CI evidence
+97d7ee875bf9c95dbc599efd7b61f705b4121495	2026-10-02T20:02:22+08:00	ordinary	yes	no	docs: set MIT license, redistribute-safe LGPL ffprobe and third-party notices
+df920f457af6725ab1502d8c3cb2cfccdbb96397	2026-10-02T20:17:10+08:00	ordinary	yes	no	docs: add P6 handoff for next agent session
+b3c17224f3a42b5dc26005e1248453084e377af0	2026-10-02T21:17:54+08:00	ordinary	yes	no	feat: stage verified managed AI runtimes and pin native dependency profiles
+4a959f5f5097adc948290952778568b10b83ad40	2026-10-02T21:53:55+08:00	ordinary	yes	no	fix: restore DLC import boundary and UTF-8 runtime lock reports
+c0dbafd1fb5ddf373c58c6a269d2a95d52e910f3	2026-10-02T22:08:24+08:00	ordinary	yes	no	fix: normalize official PyTorch wheel URLs in runtime locks
+0dcebc04b1f15a56b582cada30ebacef3f18c50c	2026-10-02T22:15:12+08:00	ordinary	yes	no	fix: lock wheels omitted from pip report hash metadata
+b8e5c3e5260fc8ba01c986083c39bed28179bee0	2026-10-02T22:38:09+08:00	ordinary	yes	no	feat: add managed AI setup, repair and verified runtime switching
+c890b5ba6a1811b3a9665562dbb46dff9147a636	2026-10-02T22:56:37+08:00	ordinary	yes	no	fix: close managed runtime verification and frozen AI routes
+6bb0ff825684bf1b8a4c9d73a1a1d162743c49c3	2026-10-02T23:11:29+08:00	ordinary	yes	no	docs: record P6.2 review, dual-platform CI and human review gate
+b5e279b2ae0c38de250edca8127f603bfec5e400	2026-10-02T23:24:16+08:00	ordinary	yes	no	docs: accept P6.2 human review and guide Windows artifact testing
+2f0fc9841a1df3d59c0240379615d86ed51ed05b	2026-10-02T23:24:49+08:00	merge	yes	no	feat: integrate P6.1 native builds and P6.2 managed runtime
+5af3a6bc26873d304824e7e28abcb53165dd5c2b	2026-10-02T23:25:33+08:00	ordinary	yes	no	docs: close P6.1 and P6.2 development delivery after human review
+9d40eb3d1a1075a5e8c1e17a47215e443928f569	2026-10-02T23:49:32+08:00	ordinary	yes	no	docs: plan P6.3 Mac release candidate verification
+70c05e1cfb948f0e49300096258cb8de7629f978	2026-10-03T00:08:22+08:00	ordinary	yes	no	docs: execute P6.3 S1 candidate verification and stage Mac HR materials
+3e6d7aeb74c1eb83d58376afa32c6a30858caa64	2026-10-03T10:54:44+08:00	ordinary	yes	no	docs: correct S2 gatekeeper guidance after macOS 27 damaged-dialog feedback
+28a51dd1a71a75e2e04e098b3ae5f347cb92a0cf	2026-10-03T12:39:43+08:00	ordinary	yes	no	docs: record P6.3 S2 clean-machine install pass on MacBook M5
+87fc9c8e9e254a58e45b62e9a12e915f29880e72	2026-10-03T13:04:02+08:00	ordinary	yes	no	docs: note supplementary local RC runtime install observation
+352f891c6f42f7cc3b4ffc0f74dbdd861dae8063	2026-10-03T16:25:47+08:00	ordinary	yes	no	fix: make pendulum wizard destination usable for first-time users
+2b77d2ea702e52c52df87390c65da156add8f7cc	2026-10-03T16:50:26+08:00	ordinary	yes	no	fix: accept a pre-created empty folder as the project destination
+146c6a360f9703984359d0aa49aa7c6176b20afa	2026-10-03T18:06:56+08:00	ordinary	yes	no	fix: deliver CSV predictions to the frozen host and expose worker logs
+3ab830fdd4cacc6d0d40dab38e3bdc687b713659	2026-10-03T18:11:03+08:00	ordinary	yes	no	docs: record P6.3 inference repair evidence and native human review
+968c6b939c51c8757c5b15cea1a2223c9cccf222	2026-10-03T18:32:10+08:00	ordinary	yes	no	test: make task log fixtures independent of platform newlines
+b707c2416920dd93e2628e4069876c1253b379f2	2026-10-03T18:39:50+08:00	ordinary	yes	no	docs: record passing CI after cross-platform log fixture repair
+199bc52f1f0ac17f1a76520defa77d34bc37fe01	2026-10-03T23:29:12+08:00	ordinary	yes	no	fix: preserve files added concurrently to empty project destinations
+be9ecb51d26ab9937393bc8d98909f33cd5b3d88	2026-10-03T23:40:50+08:00	ordinary	yes	no	docs: close P6.3 Mac delivery with human review and release limitations
+b6ff20ef539ef599c444324d4dba342c4cbecf4e	2026-10-03T23:41:12+08:00	merge	yes	no	feat: integrate P6.3 Mac candidate repairs and reviewed delivery
+b459e4affcdc2072ebe25bc7905e65e095372138	2026-10-03T23:43:13+08:00	ordinary	yes	no	docs: record P6.3 integration and next release gate
+6d8361f846568f2588a7c03dd28b21c4370371cf	2026-10-04T00:24:59+08:00	ordinary	no	no	feat: prepare Mac release signing and provenance with material gates
+9ebc37c23970110fcf43481b17d0a36c37cd5d57	2026-10-04T00:29:58+08:00	ordinary	no	no	fix: support macOS system bash when recording unsigned candidates
+4037ec7b50dc2d99c17eda42a4011cb30d012787	2026-10-04T00:41:51+08:00	ordinary	no	no	fix: enforce complete candidate provenance and distinguish native TLS constants
+4240a19373a9e634f07c295e369d2a1e5698d4fd	2026-10-04T00:47:49+08:00	ordinary	no	no	fix: keep packaged worker sources immutable after launch
+34236e6d51fd1d4823c8c430850e7a8b7115c83f	2026-10-04T00:49:17+08:00	ordinary	no	no	docs: record P6.4 review repairs and unresolved release gates
+4a46a5c7c406124007d5cf3f39b556070fc67626	2026-10-04T00:54:32+08:00	ordinary	no	no	docs: preserve upstream CUDA frontend notice in candidate inputs
+70f774ad103245b3dc68a3e8a88e37f1ce47586f	2026-10-04T01:05:20+08:00	ordinary	no	no	docs: record verified P6.4 preparation candidate and pending release decisions
+5fe09ca9b09ae77cec42c1c447b66f32179de076	2026-10-07T20:38:19+08:00	ordinary	no	no	fix: replace Mac OpenCV GPL FFmpeg with verified LGPL libraries
+76f42c105dad318430378a84f5f1de81da426b84	2026-10-07T20:40:31+08:00	ordinary	no	no	docs: record LGPL repair authorization and unsigned Mac candidate scope
+bdf025ad9c53a15e008f6ad544f8f8ebbf5c4473	2026-10-07T21:51:51+08:00	ordinary	no	no	docs: deliver verified unsigned Mac LGPL test candidate for HR
+a13b4b10a56195285d434a410df08732c2326f3b	2026-10-08T13:53:18+08:00	ordinary	no	no	fix: restore mouse wheel video zoom and readable dark-mode hints
+54638e484ca3160d2d335e8f78c0580bef21949a	2026-10-08T14:06:53+08:00	ordinary	no	no	docs: record passing GUI fix CI and Windows HR artifact
+154f262c6ff53e96dff7ba349333f1527ba43796	2026-10-09T16:27:34+08:00	ordinary	no	no	docs: publish v0.1.0 unsigned Mac preview and verified source materials

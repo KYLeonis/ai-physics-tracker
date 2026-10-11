@@ -1,10 +1,10 @@
-"""Phase 5.7 — 常驻工作区导航与状态头（纯展示，不发任务）。
+"""常驻工作区导航、状态与下一步推荐。
 
 三个稳定工作区（实验设置 / 获取轨迹 / 分析与图表）+ 两行状态：
 - 第 1 行：项目 · 视频 · 目标 · 范围 · 保存状态
 - 第 2 行：当前采用轨迹 · 预览 candidate · 分析状态 chip
 
-导航只改变视图；任务执行、结果采用、图表更新均不在此发生（设计 §7）。
+导航只改变视图；推荐按钮发出动作 ID，执行由既有任务卡入口负责。
 """
 
 from PySide6.QtCore import Signal
@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from ai_physics_tracker.application.workflow_projection import TaskCard
 
 WORKSPACE_SETUP = "setup"
 WORKSPACE_ACQUIRE = "acquire"
@@ -41,6 +43,7 @@ class WorkflowHeader(QWidget):
     """窗口顶部常驻头：工作区切换 + 上下文/轨迹/分析状态。"""
 
     workspaceRequested = Signal(str)
+    actionRequested = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -81,6 +84,22 @@ class WorkflowHeader(QWidget):
         status_column.addLayout(status_row)
         status_column.addWidget(self.limitationsLabel)
         status_column.addWidget(self.taskStripLabel)
+        self.nextStepLabel = QLabel()
+        self.nextStepLabel.setWordWrap(True)
+        self.nextStepLabel.setStyleSheet(
+            "background: #eaf3ff; color: #172b4d; border-radius: 4px; padding: 4px;")
+        self.nextStepLabel.hide()
+        status_column.addWidget(self.nextStepLabel)
+        next_actions = QHBoxLayout()
+        self.nextStepButtons = [QPushButton() for _ in range(3)]
+        for button in self.nextStepButtons:
+            button.clicked.connect(
+                lambda _checked=False, b=button:
+                self.actionRequested.emit(b.property("actionId")))
+            next_actions.addWidget(button)
+            button.hide()
+        next_actions.addStretch()
+        status_column.addLayout(next_actions)
 
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.VLine)
@@ -103,6 +122,36 @@ class WorkflowHeader(QWidget):
     def setWorkspace(self, workspace: str) -> None:
         for key, button in self._buttons.items():
             button.setChecked(key == workspace)
+
+    def setTaskCard(self, card: TaskCard | None) -> None:
+        """顶部显示主动作与前两个旁路；完整说明/审核导航保留在获取轨迹面板。"""
+        actions = () if card is None else (
+            ((card.primary,) if card.primary is not None else ()) + card.secondary
+        )
+        text = ""
+        if card is not None:
+            text = card.title
+            if card.explanation:
+                text += " · " + card.explanation[0]
+            reasons = [spec.reason for spec in actions[:3]
+                       if not spec.enabled and spec.reason]
+            if reasons:
+                text += "\n" + "; ".join(reasons)
+        self.nextStepLabel.setText(text)
+        self.nextStepLabel.setVisible(card is not None)
+        self.nextStepLabel.setToolTip("\n".join(card.explanation) if card else "")
+        for index, button in enumerate(self.nextStepButtons):
+            if index >= len(actions):
+                button.hide()
+                button.setProperty("actionId", "")
+                button.setEnabled(False)
+                continue
+            spec = actions[index]
+            button.setText(spec.label)
+            button.setProperty("actionId", spec.action_id)
+            button.setEnabled(spec.enabled)
+            button.setToolTip(spec.reason or "")
+            button.show()
 
     def setAnalysisChip(self, state: str | None) -> None:
         self.analysisChipLabel.setText(
