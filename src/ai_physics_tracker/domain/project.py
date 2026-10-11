@@ -308,13 +308,20 @@ def delete_track(project: Project, track_id: UUID) -> Project:
 
     if not any(track.track_id == track_id for track in project.tracks):
         raise ValueError(f"unknown track_id: {track_id}")
+    # 双轨迹派生（ADR-0019）的参考轨迹被删除时，其他轨迹上引用它的
+    # 派生记录一并级联删除；Undo 快照将其与轨迹共同恢复。
     return replace(
         project,
         tracks=tuple(track for track in project.tracks if track.track_id != track_id),
         observations=tuple(
             point for point in project.observations if point.track_id != track_id
         ),
-        derived=tuple(item for item in project.derived if item.track_id != track_id),
+        derived=tuple(
+            item
+            for item in project.derived
+            if item.track_id != track_id
+            and item.input.reference_track_id != track_id
+        ),
         tracking_runs=tuple(
             run for run in project.tracking_runs if run.track_id != track_id
         ),
@@ -417,6 +424,12 @@ def validate_project(project: Project) -> None:
             raise ValueError("active calibration must belong to its mapped video")
     if any(item.track_id not in track_id_set for item in project.derived):
         raise ValueError("every DerivedData item must reference a registered track")
+    if any(
+        item.input.reference_track_id is not None
+        and item.input.reference_track_id not in track_id_set
+        for item in project.derived
+    ):
+        raise ValueError("every DerivedData reference track must be registered")
     run_ids = [run.run_id for run in project.tracking_runs]
     if len(set(run_ids)) != len(run_ids):
         raise ValueError("tracking run run_id values must be unique")

@@ -107,20 +107,36 @@ def validated_derived(session: ProjectSession, result: KinematicsResult) -> tupl
     """重算提交前复核原输入，保留非目标结果及目标记录的未知扩展字段。"""
 
     track_ids = tuple(track.track_id for track in result.inputs.tracks)
-    if analysis_inputs(session, result.inputs.video.video_id, track_ids) != result.inputs:
-        raise ProjectSessionError("Analysis inputs changed; results discarded. Recompute again.")
     expected = {(track_id, kind) for track_id in track_ids for kind in KINEMATICS_KINDS}
-    actual = [(record.track_id, record.kind) for record in result.records]
+    return validated_batch(session, result.inputs, result.records, expected)
+
+
+def validated_batch(
+    session: ProjectSession,
+    inputs: AnalysisInputs,
+    records: tuple[DerivedData, ...],
+    expected: set[tuple[UUID, str]],
+) -> tuple[DerivedData, ...]:
+    """分析批次的共用提交校验：输入复核、完整性、非目标保留与扩展字段合并。
+
+    kinematics 与 angular 批次共用（ADR-0019）；expected 是本批次应当
+    恰好产出的 (track_id, kind) 集合，多出、缺失或重复都拒绝提交。
+    """
+
+    track_ids = tuple(track.track_id for track in inputs.tracks)
+    if analysis_inputs(session, inputs.video.video_id, track_ids) != inputs:
+        raise ProjectSessionError("Analysis inputs changed; results discarded. Recompute again.")
+    actual = [(record.track_id, record.kind) for record in records]
     if set(actual) != expected or len(actual) != len(expected):
-        raise ProjectSessionError("Incomplete kinematics batch; results discarded")
+        raise ProjectSessionError("Incomplete analysis batch; results discarded")
     kept = tuple(item for item in session.project.derived if (item.track_id, item.kind) not in expected)
-    records = []
-    for record in result.records:
+    records_out = []
+    for record in records:
         previous = session.derived_data(record.track_id, record.kind)
         extras = deepcopy(previous.extra_fields) if previous else {}
         extras.update(record.extra_fields)
         input_extras = deepcopy(previous.input.extra_fields) if previous else {}
         input_extras.update(record.input.extra_fields)
-        records.append(replace(record, extra_fields=extras,
-                               input=replace(record.input, extra_fields=input_extras)))
-    return kept + tuple(records)
+        records_out.append(replace(record, extra_fields=extras,
+                                   input=replace(record.input, extra_fields=input_extras)))
+    return kept + tuple(records_out)
