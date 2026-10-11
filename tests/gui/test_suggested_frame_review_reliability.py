@@ -223,7 +223,10 @@ def test_save_reopen_and_resume_review_matrix(rel_window: MainWindow, qtbot):
     window._onAnnotationClicked(click_pos)
     qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 3, timeout=15000)
 
-    # 保存并重开
+    # 保存并重开。Correct 已触发静默 autosave（projectActions.busy）；
+    # _load 在 busy 时静默丢弃请求，必须先等 autosave 结束再发起重开
+    # （对照 test_suggested_frame_review_actions.py 的同款等待）。
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=15000)
     session.save()
     proj_root = session.project_root
     window.projectActions._load(lambda service, cancel: service.open_project(proj_root, cancel))

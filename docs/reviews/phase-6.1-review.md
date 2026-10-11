@@ -41,14 +41,18 @@ ADR-0008、pre-phase6 review §10（P6R-01）。
   同样继承；当前 GUI 无 zone 编辑入口。移交 Phase 6.2（角运动图表暴露 zone 相关 UI 前）
   处理，届时统一决定 zone 变更的失效策略。
 - **R6 → Fixed**：Slice 4 收尾同步（本文件 + plan AC/Slice 勾选 + current.md）。
-- **R7 → Fixed（根因定位）**：父分支 flake，与 6.1 diff 无关（在 a36007e 上复现证实）。根因：
-  `ProjectActions._load` 异步执行期间 `analysisSession` 保持**旧 session 对象**（adopt 完成才
-  替换），两个 GUI 测试用 `waitUntil(analysisSession is not None)` 等待重开完成——被旧对象
-  立即满足，测试在重开落地前操作旧 session；慢环境（Windows CI）下 adopt 在测试中途到达，
-  `projectChanged` 重置审核 UI，面板回退到重开前摘要。真实用户有模态进度框与禁用 UI 挡住
-  交互，无此竞态——纯测试等待条件缺陷。修复：两处等待改为**session 身份变化**
-  （`analysisSession is not session`），另保留 8 处超时 3000→15000 ms 余量（首个 test-only
-  提交）。修复后两文件 10/10 全绿（原 ~1/5–1/3 失败率）。
+- **R7 → Fixed（根因定位，两层）**：父分支 flake，与 6.1 diff 无关（在 a36007e 上复现证实）。
+  第一层：reliability 测试在 Correct 触发的静默 autosave（`projectActions.busy`）尚未结束时
+  就调用 `_load`，而 `_run` 在 busy 时**静默丢弃**加载请求——慢环境（CI）下重开从未发生，
+  测试全程操作旧 session 反而"稳定通过"（CI 历史绿的原因）；快环境（本地）下重开启动但
+  adopt 中途落地，`projectChanged` 重置审核 UI，面板回退到重开前摘要（~1/5–1/3 失败率）。
+  第二层：两个 GUI 测试用 `waitUntil(analysisSession is not None)` 等待重开完成——`_load`
+  期间旧 session 对象一直非 None，该条件被立即满足。真实用户有模态进度框与禁用 UI 挡住
+  交互，无此竞态——纯测试缺陷。修复（对照 test_suggested_frame_review_actions.py 既有模式）：
+  重开前先等 `not projectActions.busy`，重开后等 **session 身份变化**
+  （`analysisSession is not session`）；另保留 8 处超时 3000→15000 ms 余量。修复后两文件
+  10/10 全绿。产品侧遗留观察（backlog）：autosave 期间不禁用菜单动作，用户此刻点
+  Open/Save 会被静默忽略，与 `_run` 的 busy 早退组合成真实 UX 缺陷，非本子阶段范围。
 
 ## Verification
 
