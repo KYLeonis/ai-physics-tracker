@@ -60,3 +60,9 @@
 - 用户决定执行后，建立 `fix/main-ui-backports`：优先两项修复，可捎带三项小改进，
   Normal-risk；自动回归后按 AGENTS.md/Workflow §5.1 发起主线 Human Review，
   通过后再 `--no-ff` 集成/push，不带入论文 schema/科学算法/依赖/License。
+
+## 执行接续
+
+2026-10-11 用户已授权回移上述五项；分支 `fix/main-ui-backports`、Issue
+[#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)，代码 checkpoint `53a6fb9`。
+最新验证/HR/集成状态见[维护 mini-plan](../status/main-ui-backports-plan.md)，不以本评估的旧只读状态判断实现进度。
