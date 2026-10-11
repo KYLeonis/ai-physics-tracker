@@ -84,13 +84,14 @@ def prepare_angular_job(
                 "angular two-point reference must differ from the target track"
             )
     snapshot = session.detached()
-    # R1 首版要求有效标定；在 prepare 阶段 fail fast，避免多规格批次
-    # 在 worker 内逐规格计算后才失败。
+    # phase6-requirements R1 首版要求有效标定；在 prepare 阶段 fail fast，
+    # 避免多规格批次在 worker 内逐规格计算后才失败。
+    job_track_ids = _job_track_ids(specs)
     video_ids = {spec_track.video_id for spec_track in snapshot.tracks
-                 if spec_track.track_id in _job_track_ids(specs)}
+                 if spec_track.track_id in job_track_ids}
     if any(snapshot.active_calibration(video_id) is None for video_id in video_ids):
         raise ProjectSessionError(
-            "angular analysis requires an active calibration (phase6 R1)"
+            "angular analysis requires an active calibration (phase6-requirements R1)"
         )
     return AngularJob(
         snapshot,

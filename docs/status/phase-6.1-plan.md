@@ -53,19 +53,19 @@ ADR 需决定 scalar kinds/多输入参数的 additive 落点，并核对旧项�
 
 ## Acceptance Criteria
 
-- [ ] AC-1：单摆/两点方向的基准方向、符号、±π 跨界、恒角速/恒角加速、缺测/重合/短段测试通过。
-- [ ] AC-2：requirements AC-1/2 的解析精度和物理单位门槛通过；端点误差单独报告。
-- [ ] AC-3：两点任一输入编辑/删除、标定/时序变化使结果失效；Undo/Redo 不留下悬空引用。
-- [ ] AC-4：保存重开保留完整参考/算法参数/单位/未知字段；旧项目和既有四项运动学结果不退化。
-- [ ] AC-5：后台取消、输入变化、迟到与部分批次不提交；成功批次原子提交。
-- [ ] AC-6：Independent Review findings 已处置，定向/全量验证及双平台 CI 通过。
+- [x] AC-1：单摆/两点方向的基准方向、符号、±π 跨界、恒角速/恒角加速、缺测/重合/短段测试通过（`tests/test_angular.py` 19 项）。
+- [x] AC-2：requirements AC-1/2 的解析精度和物理单位门槛通过；端点误差单独报告（随断言消息披露，不设门槛）。
+- [x] AC-3：两点任一输入编辑/删除、标定/时序变化使结果失效；Undo/Redo 不留下悬空引用（`tests/test_angular_session.py` + 域校验测试）。
+- [x] AC-4：保存重开保留完整参考/算法参数/单位/未知字段；旧项目和既有四项运动学结果不退化（round-trip 测试 + 全量 908 passed 零回归）。
+- [x] AC-5：后台取消、输入变化、迟到与部分批次不提交；成功批次原子提交（`tests/test_angular_job.py` 9 项）。
+- [ ] AC-6：Independent Review findings 已处置，定向/全量验证及双平台 CI 通过（[review record](../reviews/phase-6.1-review.md) 已闭环；CI 见下方 Result，绿后勾选）。
 
 ## Slices
 
-- [ ] Slice 1：扫描调用链，记录 angular/data-dependency ADR，实现纯角度、段内 unwrap 与 SG 导数及解析测试。
-- [ ] Slice 2：scalar 结果溯源与多输入依赖失效；Session/保存重开/Undo 回归。
-- [ ] Slice 3：快照后台计算、输入复核和原子提交，补取消/迟到/部分批次测试。
-- [ ] Slice 4：独立 review → 处置/复审 → 文档同步 → 集成/push/CI。
+- [x] Slice 1：扫描调用链，记录 angular/data-dependency ADR（[ADR-0019](../decisions/0019-angular-kinematics-and-multi-input-derived-data.md)），实现纯角度、段内 unwrap 与 SG 导数及解析测试。
+- [x] Slice 2：scalar 结果溯源与多输入依赖失效；Session/保存重开/Undo 回归。
+- [x] Slice 3：快照后台计算、输入复核和原子提交，补取消/迟到/部分批次测试。
+- [x] Slice 4：独立 review → 处置/复审 → 文档同步 → 集成/push/CI（review 闭环；集成 main 待前置增量 HR 通过后按序执行）。
 
 ## Verification
 
@@ -82,4 +82,14 @@ ADR 需决定 scalar kinds/多输入参数的 additive 落点，并核对旧项�
 
 ## Result
 
-本轮只完成 mini-plan 草案；没有实现、没有勾选 AC，也未执行实现的 Independent Review。
+2026-10-11 完成 Slice 1–4 实现（用户本日确认启动，与 ADR-0017 口径兼容：角运动/求导是
+通用平台的输入能力；6.3 固定拟合仍留待按 ADR-0017 重规划）。交付：`domain/angular.py`
+（θ 定义/段内 unwrap/标量记录）、`DerivedInput.reference_track_id` additive 扩展与
+失效/级联/聚合校验、`compute_angular` 四种标量 kind（rad 系）、`angular_job` 后台批次
+（复用 detached/复核/原子提交骨架）、序列化往返；新增 43 项测试（解析 AC-1/2、失效与
+Undo AC-3/4、批次 AC-5），本机全量 **908 passed** 零回归。Independent Review 首轮
+7 findings：R1/R3/R4/R5/R6 修复并经复审确认（[review record](../reviews/phase-6.1-review.md)），
+R2（zone-only 变更不失效，Phase 3 既有）与 R7（父分支 GUI 测试 flake，已在 a36007e
+复现证实无关）延期并记档。已知延期：R2 移交 6.2；R7 待专门排查（已加大该测试超时余量）。
+分支 `feat/p6.1-angular-analysis` 已 push，双平台 CI 结果见 current.md；集成 main 须待
+前置增量 `feat/main-guided-refinement-model-import` HR 通过后按序 `--no-ff` 执行。
