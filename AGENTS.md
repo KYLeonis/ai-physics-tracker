@@ -9,6 +9,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 - 技术基础：DeepLabCut 3.x（PyTorch 路线）+ 传统运动学分析工作流
 - 核心体验：用户标注少量代表帧 → AI 训练/微调 → 自动跟踪整段视频 → 修正困难帧 → 再训练 → 高质量运动轨迹 → 物理量计算与导出
 - 最终形态：面向普通 Windows 用户的桌面安装程序（无需配置 Python 环境）
+- 通用分析口径：**用户提供方程 / 公式，平台完成计算与后续分析**；论文线硬编码 ODE 只作复现参考（ADR-0017），不直接作为 main 的分析架构。
 - 基准实验：**单摆**（早期重点测试案例，用于建立算法、数据处理与工作流基准）
 
 ## 2. 当前 Roadmap（概要）
@@ -83,7 +84,8 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - Phase 1 数据体系规范（**实现前必读**）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md`（持久化与项目目录）、`docs/spec/phase1-requirements.md`（Phase 1 需求与验收标准）
 - Phase 2 视频/GUI 规范：`docs/spec/phase2-requirements.md`；技术栈与分层决策见 ADR-0005
 - Phase 5 规划入口：`docs/spec/phase5-requirements.md`（需求与边界）、`docs/status/phase-5-plan.md`（Subphase 顺序与验收）
-- Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`（当前均为待确认草案）
+- Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`（旧草案需按 ADR-0017 的用户方程口径重规划）
+- 后续回移档案：`docs/status/main-backport-backlog.md`（含执行触发点，后续会话必须随相关阶段核对）
 - 模板：`docs/templates/`（subphase 计划、review）
 - 独立 review 记录（Review Record）：`docs/reviews/`（索引见其 README；生命周期规则以 `docs/workflow.md` §6 为准）
 - 实现参考与前期调研（开源生态地图）：`docs/research/open-source-project-map.md` —— 实现任何模块前先读其对应小节；各项目源码级细节见 `docs/research/raw/`，仓库快照与校验规则见 `docs/research/README.md`

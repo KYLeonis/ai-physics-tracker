@@ -274,3 +274,10 @@ Phase 5.4 沿用 schema v1 tolerant extensions，不新增顶层对象：
 - [x] schema 带 `schema_version` 且升级策略成文（§4）；
 - [x] 视频/模型等大文件只引用不复制入清单（§1/§2）；
 - [x] Phase 1 需求文档（phase1-requirements.md）引用本文件作为持久化验收依据。
+
+
+## 受管教师模型（ADR-0018，schema v1 可选增量）
+
+根对象可含 `imported_models` 数组，默认空、空时省略。每项 `model_id`（UUID）、`name`、有序 `bodyparts`、`sha256`（config.yaml / pytorch_config.yaml / checkpoint.pt 的 64 位十六进制摘要）、`self_test`（默认空对象）；未知键继续保留。资产固定保存于 `models/<model_id>/`，受管文件缺失 / 修改拒绝自检授权和推理。没有外部绝对权重引用或虚构的 train run。
+
+`self_test` 记录 manifest、runtime、requested/actual device、视频 UUID / 完整 source SHA256 / size+mtime、源帧身份、实际解码帧 hash 与 shape / predictions。它不是科学准确性证明。导入模型推理的 config 保存模型 UUID、manifest hash 和原 bodypart；预测 CSV 的单轨列映射为内部 target。保存重开 / Save as 复用工程树复制，自检身份不依赖工程绝对位置。完整边界见 [ADR-0018](../decisions/0018-managed-teacher-model-import.md)。

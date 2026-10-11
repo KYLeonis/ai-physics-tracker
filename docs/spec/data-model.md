@@ -481,3 +481,8 @@ Y-up 世界系中逆时针为正。它描述的是**坐标值的主动旋转**�
 | 退化标定显式报错（不学 TrackLab identity 回退） | §6.2 约定 5 | project map §7.8 的反面教训 |
 | Annotation 是角色不是表 | §3.6 | SLEAP user/predicted 分离 + DLC 划分时机 |
 | 持久化格式与目录 | project-format.md + ADR-0003 | PLAN A4 |
+
+
+## 教师模型受管集合（2026-10-11）
+
+`Project.imported_models` 是可选 `ImportedModel` 集合：模型 UUID / 名称 / 有序关键点 / 三文件内容摘要 / 实际帧自检证据，详见 ADR-0018 与 project-format.md。模型不绑定硬编码实验角色，也不是 train run；模型登记 / 重测元数据独立于标注 Undo。连续修正仍经原 `correct_suggested_frame` 原子事务；推理仍仅登记 completed candidate，经显式激活才改活动观测，人工点优先。
