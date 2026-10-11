@@ -22,7 +22,7 @@
 
 1. **用户执行前置增量的 [Human Review](../notes/main-guided-refinement-model-import-human-review.md)（A/B/C 反馈）**——通过后按 `--no-ff` 集成 `feat/main-guided-refinement-model-import`、验证同树 / main CI、文档收尾 / push、关闭 Issue #24。
 2. 随后按序 `--no-ff` 集成 `feat/p6.1-angular-analysis`（6.1 双平台 CI 绿为前置；AC-6 勾选与 Issue #25 关闭随集成完成），Phase 6.2（角运动图表，含 chart_data 两列假设适配与 zone 失效策略 R2）另出 mini-plan。
-3. 已知延期项：6.1 review R2（zone-only 变更不失效，6.2 处理）、R7（`test_save_reopen_and_resume_review_matrix` 父分支时序 flake，已在 a36007e 复现证实与 6.1 无关；CI 若偶发红则专门修复）。
+3. 已知延期项：6.1 review R2（zone-only 变更不失效，移交 6.2）。R7（重开测试竞态）已根因修复：测试等待条件改为 session 身份变化（`_load` 期间旧 session 仍非 None），两测试文件 10/10 全绿。
 
 后续 Phase 6 其余子阶段必须按[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)的**用户提供方程、通用平台分析**口径重规划，不执行旧固定拟合草案。触及相关阶段时必须核对[后续回移档案](main-backport-backlog.md)。
 

@@ -41,10 +41,14 @@ ADR-0008、pre-phase6 review §10（P6R-01）。
   同样继承；当前 GUI 无 zone 编辑入口。移交 Phase 6.2（角运动图表暴露 zone 相关 UI 前）
   处理，届时统一决定 zone 变更的失效策略。
 - **R6 → Fixed**：Slice 4 收尾同步（本文件 + plan AC/Slice 勾选 + current.md）。
-- **R7 → Deferred（范围外）**：父分支 flake，与 6.1 diff 无关（在 a36007e 上以 1/6
-  失败率复现，隔离运行 ~1/5–1/3）。已做无害加固：该文件 8 处 `waitUntil` 超时
-  3000→15000 ms（独立 test 提交）。竞态疑似重开 `projectChanged` 与测试点击之间，
-  需专门排查，不阻塞本子阶段；若 CI 偶发红，单独修复。
+- **R7 → Fixed（根因定位）**：父分支 flake，与 6.1 diff 无关（在 a36007e 上复现证实）。根因：
+  `ProjectActions._load` 异步执行期间 `analysisSession` 保持**旧 session 对象**（adopt 完成才
+  替换），两个 GUI 测试用 `waitUntil(analysisSession is not None)` 等待重开完成——被旧对象
+  立即满足，测试在重开落地前操作旧 session；慢环境（Windows CI）下 adopt 在测试中途到达，
+  `projectChanged` 重置审核 UI，面板回退到重开前摘要。真实用户有模态进度框与禁用 UI 挡住
+  交互，无此竞态——纯测试等待条件缺陷。修复：两处等待改为**session 身份变化**
+  （`analysisSession is not session`），另保留 8 处超时 3000→15000 ms 余量（首个 test-only
+  提交）。修复后两文件 10/10 全绿（原 ~1/5–1/3 失败率）。
 
 ## Verification
 
@@ -63,6 +67,7 @@ passed）；R5 与实现一致；两项新回归测试在修复前必失败、�
 
 ## Final Verdict
 
-**修改后通过（Approve with findings disposed）**：R1/R3/R4/R5/R6 已修复并复审确认，
-复审附带的 2 条 nit 已处置；R2/R7 记档延期（均非本 diff 引入）；科学定义、多输入依赖
-失效、存储兼容与事务四大高风险面通过审查。集成前剩余条件：双平台 CI 绿。
+**修改后通过（Approve with findings disposed）**：R1/R3/R4/R5/R6/R7 已修复（R7 为父分支
+测试竞态根因修复，见 Triage；均非 6.1 实现缺陷）；复审附带的 2 条 nit 已处置；R2 记档
+延期移交 6.2；科学定义、多输入依赖失效、存储兼容与事务四大高风险面通过审查。
+集成前剩余条件：双平台 CI 绿。

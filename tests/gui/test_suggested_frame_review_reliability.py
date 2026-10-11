@@ -227,7 +227,11 @@ def test_save_reopen_and_resume_review_matrix(rel_window: MainWindow, qtbot):
     session.save()
     proj_root = session.project_root
     window.projectActions._load(lambda service, cancel: service.open_project(proj_root, cancel))
-    qtbot.waitUntil(lambda: window.analysisSession is not None, timeout=15000)
+    # _load 期间 analysisSession 仍是旧对象，adopt 完成才替换；
+    # 必须等到身份变化，否则后续步骤会操作旧 session、被迟到的 adopt 重置。
+    qtbot.waitUntil(
+        lambda: window.analysisSession is not None and window.analysisSession is not session,
+        timeout=15000)
 
     # 验证重开后恢复
     new_session = window.analysisSession
