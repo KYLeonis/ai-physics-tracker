@@ -2,7 +2,7 @@
 
 - Issue：[#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)
 - 分支：`fix/main-ui-backports`（base `main @ 50a7924`）
-- 日期 / 状态：2026-10-11 · 本地验证通过，CI / Human Review 待完成
+- 日期 / 状态：2026-10-11 · 本地与双平台 CI 通过，等待 Human Review
 - 风险等级：Normal-risk（局部视频交互与展示，不改科学/数据契约）
 
 ## Goal
@@ -38,13 +38,13 @@
 - [x] AC-1：普通滚轮正/负/半档/多档缩放；TouchPad/pixelDelta/phase/横向/无视频不改变倍率；滚轮不触发标注。
 - [x] AC-2：深色 palette 下浅色引导框与 Correct 提示有可读前景；历史显示完整本地时间，长状态可换行。
 - [x] AC-3：标注/标定黑边光标与模式一致；关闭模式恢复；标注/标定/导航既有回归不退化。
-- [ ] AC-4：定向/全量 pytest、diff 检查与双平台 CI 通过。
+- [x] AC-4：定向/全量 pytest、diff 检查与双平台 CI 通过。
 - [ ] AC-5：用户按下方步骤 Human Review 通过，然后 `--no-ff` 集成/push 并关闭 Issue。
 
 ## Slices / Verification
 
 - [x] Slice 1：建立分支/Issue，按源提交选取最小 patch，验证回归及展示。
-- [ ] Slice 2：self-review、全量测试、文档 checkpoint/push/CI，交付主线 Human Review。
+- [x] Slice 2：self-review、全量测试、文档 checkpoint/push/CI，交付主线 Human Review。
 - [ ] Slice 3：反馈修复（如需要），HR 通过后集成与收尾。
 
 定向：video_view、calibration_ui、manual_annotation、suggested_frame_review_actions、
@@ -76,5 +76,7 @@ tracking_activation_actions、workflow_ui；全量：`QT_QPA_PLATFORM=offscreen 
 - 原处理函数的进程内回归：四种鼠标滚轮 case 均按预期失败；没有回滚产品文件。
 - 实际 widget 断言：深色 palette 两提示前景/背景、标注/标定 viewport 模式进入退出、
   历史日期时间前缀和窄宽度长状态换行均通过；不替代用户体验验收。
-- 全量测试：**815 passed（49.36 s）**；`git diff --check` 通过。CI 在分支 push 后核对。
+- 全量测试：**815 passed（49.36 s）**；`git diff --check` 通过。
+- 分支验证 checkpoint `167a518` 的 [CI 38110444232](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38110444232)：
+  macOS/Windows 两项 job 均 success。后续收尾 checkpoint 仅更新文档，产品树与该 CI 相同。
 - Human Review 尚未执行；Issue 保持 Open，未集成 main。
