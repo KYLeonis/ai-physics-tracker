@@ -213,3 +213,39 @@ def test_revocation_save_failure_does_not_start_probe(qtbot, synthetic_video_pat
     qtbot.waitUntil(lambda: not actions.busy and not window.projectActions.busy, timeout=3000)
     assert not runner.started.is_set()
     assert "save failed" in actions.status.text()
+
+
+def test_model_operation_blocks_calibration_and_hidden_delete(qtbot, synthetic_video_path, tmp_path, monkeypatch):
+    from concurrent.futures import Future
+    from PySide6.QtCore import QPointF
+    from ai_physics_tracker.gui.calibration_dialog import CalibrationDialog
+    window, session, track = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    actions = window.modelActions
+    session.add_calibration(window.activeVideoId, (0,0), (20,0), 1, "m")
+    window._refreshCalibrationUI()
+    window.drawScaleButton.click()
+    assert window.videoView.is_calibration_mode() == "scale"
+    actions._begin("test", session)
+    actions._future = Future()
+    actions.refresh()
+    assert window.videoView.is_calibration_mode() is None
+    assert not window.drawScaleButton.isChecked()
+    for widget in (window.drawScaleButton, window.setOriginButton, window.rotationSpinBox,
+                   window.calibrationSelector, window.deletePointButton):
+        assert not widget.isEnabled()
+    before = session.project
+    def must_not_open(_dialog):
+        raise AssertionError("blocked calibration must not open a dialog")
+    monkeypatch.setattr(CalibrationDialog, "exec", must_not_open)
+    window._toggleDrawScaleMode(True)
+    window._toggleSetOriginMode(True)
+    window._onScaleLineDrawn(QPointF(0,0), QPointF(30,0))
+    window._onOriginClicked(QPointF(99,99))
+    window._selected_track_id = track  # 隐藏入口也不能删除，不依赖按钮 disabled。
+    window._presented_frame_index = 0
+    window._deleteCurrentManualPoint()
+    assert session.project == before
+    assert window.videoView.is_calibration_mode() is None
+    actions._future = None
+    actions.refresh()
+    assert window.drawScaleButton.isEnabled() and window.deletePointButton.isEnabled()

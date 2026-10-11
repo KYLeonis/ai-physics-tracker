@@ -32,6 +32,7 @@ class ModelActions(QObject):
         self._context = None
         self._kind = None
         self._closed = False
+        self._video_editable = None
         self.group = QGroupBox("Teacher model")
         layout = QVBoxLayout(self.group)
         self.models = QComboBox()
@@ -157,6 +158,9 @@ class ModelActions(QObject):
         self.window.stopPlayback()
         self.window.batchAnnotationActions.pause()
         self.window.reviewActions.cancelCorrectMode()
+        self.window.drawScaleButton.setChecked(False)
+        self.window.setOriginButton.setChecked(False)
+        self.window.videoView.set_calibration_mode(None)
         self.window.videoView.set_annotation_mode(False)
 
     def selfTest(self) -> None:
@@ -256,6 +260,11 @@ class ModelActions(QObject):
         self.refresh()
 
     def refresh(self, *_args) -> None:
+        editable = self.window.canEditVideo()
+        if editable != self._video_editable:
+            self._video_editable = editable
+            self.window._refreshCalibrationUI()
+            self.window._refreshHistoryButtons()
         session = self.window.analysisSession
         models = session.project.imported_models if session else ()
         if [self.models.itemData(i) for i in range(self.models.count())] != [m.model_id for m in models]:

@@ -958,14 +958,14 @@ class MainWindow(QMainWindow):
             if pt is not None and pt.source == "manual":
                 has_manual = True
         enabled = (has_manual and self._measurement_allowed and not self.projectActions.busy
-                   and self._workspace != WORKSPACE_ANALYSIS)
+                   and self.canEditVideo())
         if hasattr(self, "deletePointButton"):
             self.deletePointButton.setEnabled(enabled)
         if hasattr(self, "trackingActions") and hasattr(self.trackingActions.panel, "deleteManualPointButton"):
             self.trackingActions.panel.deleteManualPointButton.setEnabled(enabled)
 
     def _deleteCurrentManualPoint(self) -> None:
-        if (self._workspace == WORKSPACE_ANALYSIS or not self._measurement_allowed
+        if (not self.canEditVideo() or not self._measurement_allowed
                 or self.projectActions.busy):
             return
         if self._has_pending_request:
@@ -1213,7 +1213,7 @@ class MainWindow(QMainWindow):
 
     def _toggleDrawScaleMode(self, checked: bool) -> None:
         if checked:
-            if (self._workspace == WORKSPACE_ANALYSIS or not self._measurement_allowed
+            if (not self.canEditVideo() or not self._measurement_allowed
                     or self.projectActions.busy):
                 self.drawScaleButton.setChecked(False)
                 return
@@ -1237,7 +1237,7 @@ class MainWindow(QMainWindow):
 
     def _toggleSetOriginMode(self, checked: bool) -> None:
         if checked:
-            if (self._workspace == WORKSPACE_ANALYSIS or not self._measurement_allowed
+            if (not self.canEditVideo() or not self._measurement_allowed
                     or self.projectActions.busy):
                 self.setOriginButton.setChecked(False)
                 return
@@ -1260,7 +1260,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Browse mode")
 
     def _onScaleLineDrawn(self, p1: QPointF, p2: QPointF) -> None:
-        if (self._workspace == WORKSPACE_ANALYSIS or not self._measurement_allowed
+        if (not self.canEditVideo() or not self._measurement_allowed
                     or self.projectActions.busy):
             self.drawScaleButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
@@ -1322,7 +1322,7 @@ class MainWindow(QMainWindow):
             )
 
     def _onOriginClicked(self, pt: QPointF) -> None:
-        if (self._workspace == WORKSPACE_ANALYSIS or not self._measurement_allowed
+        if (not self.canEditVideo() or not self._measurement_allowed
                     or self.projectActions.busy):
             self.setOriginButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
@@ -1515,12 +1515,14 @@ class MainWindow(QMainWindow):
                     self.calibrationSelector.setCurrentIndex(-1)
 
         has_cal = active_cal is not None
-        self.drawScaleButton.setEnabled(self._measurement_allowed)
-        self.setOriginButton.setEnabled(self._measurement_allowed and has_cal)
-        self.rotationSpinBox.setEnabled(self._measurement_allowed and has_cal)
-        self.deleteCalibrationButton.setEnabled(self._measurement_allowed and has_cal)
-        self.editScaleButton.setEnabled(self._measurement_allowed and has_cal)
-        self.deleteInactiveCalibrationButton.setEnabled(self._measurement_allowed and len(video_cals) > int(has_cal))
+        editable = self._measurement_allowed and self.canEditVideo()
+        self.calibrationSelector.setEnabled(editable)
+        self.drawScaleButton.setEnabled(editable)
+        self.setOriginButton.setEnabled(editable and has_cal)
+        self.rotationSpinBox.setEnabled(editable and has_cal)
+        self.deleteCalibrationButton.setEnabled(editable and has_cal)
+        self.editScaleButton.setEnabled(editable and has_cal)
+        self.deleteInactiveCalibrationButton.setEnabled(editable and len(video_cals) > int(has_cal))
 
         if active_cal is not None:
             dx = active_cal.scale_end_2_px[0] - active_cal.scale_end_1_px[0]
@@ -1581,7 +1583,7 @@ class MainWindow(QMainWindow):
         self.videoView.set_calibration(cal_view, image_height=h)
 
     def _onAnnotationClicked(self, view_pos: QPoint) -> None:
-        if (self._workspace == WORKSPACE_ANALYSIS or not self._measurement_allowed
+        if (not self.canEditVideo() or not self._measurement_allowed
                 or self.projectActions.busy
                 or bool(getattr(self, "modelActions", None) and self.modelActions.busy)
                 or not self.videoView.is_annotation_mode()):
