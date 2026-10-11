@@ -58,7 +58,7 @@ ADR 需决定 scalar kinds/多输入参数的 additive 落点，并核对旧项�
 - [x] AC-3：两点任一输入编辑/删除、标定/时序变化使结果失效；Undo/Redo 不留下悬空引用（`tests/test_angular_session.py` + 域校验测试）。
 - [x] AC-4：保存重开保留完整参考/算法参数/单位/未知字段；旧项目和既有四项运动学结果不退化（round-trip 测试 + 全量 908 passed 零回归）。
 - [x] AC-5：后台取消、输入变化、迟到与部分批次不提交；成功批次原子提交（`tests/test_angular_job.py` 9 项）。
-- [ ] AC-6：Independent Review findings 已处置，定向/全量验证及双平台 CI 通过（[review record](../reviews/phase-6.1-review.md) 已闭环；CI 见下方 Result，绿后勾选）。
+- [x] AC-6：Independent Review findings 已处置，定向/全量验证及双平台 CI 通过（[review record](../reviews/phase-6.1-review.md) 闭环；[CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) macOS/Windows Python 3.11 success）。
 
 ## Slices
 
@@ -91,5 +91,5 @@ Undo AC-3/4、批次 AC-5），本机全量 **908 passed** 零回归。Independe
 7 findings：R1/R3/R4/R5/R6 修复并经复审确认（[review record](../reviews/phase-6.1-review.md)），
 R2（zone-only 变更不失效，Phase 3 既有）与 R7（父分支 GUI 测试 flake，已在 a36007e
 复现证实无关）延期并记档。已知延期：R2 移交 6.2；R7 待专门排查（已加大该测试超时余量）。
-分支 `feat/p6.1-angular-analysis` 已 push，双平台 CI 结果见 current.md；集成 main 须待
+分支 `feat/p6.1-angular-analysis` 已 push，[双平台 CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) success；集成 main 须待
 前置增量 `feat/main-guided-refinement-model-import` HR 通过后按序 `--no-ff` 执行。
