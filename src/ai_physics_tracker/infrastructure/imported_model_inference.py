@@ -12,7 +12,7 @@ import numpy as np
 from ai_physics_tracker.domain.imported_model import ImportedModel
 from ai_physics_tracker.application.tracking_types import InferenceRequest, InferenceOutcome
 from ai_physics_tracker.infrastructure.imported_models import (
-    check_cancel, runtime_identity, verify_model, verified_self_test,
+    check_cancel, file_sha256, runtime_identity, verify_model, verified_self_test,
 )
 from ai_physics_tracker.infrastructure.task_runner import send_progress
 
@@ -52,6 +52,7 @@ def run_model_self_test(run_id: UUID, queue: Any, cancel: Any, root: Path, model
     """独占 spawn 进程；只返回小型可审计证据，不产生训练记录。"""
     check_cancel(cancel)
     before = video_path.stat()
+    video_hash = file_sha256(video_path, cancel)
     capture = cv2.VideoCapture(str(video_path))
     try:
         if not capture.isOpened() or not capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index):
@@ -68,13 +69,14 @@ def run_model_self_test(run_id: UUID, queue: Any, cancel: Any, root: Path, model
         raise ValueError("Self-test requires a finite prediction for every declared bodypart")
     verify_model(root, model, cancel)
     after = video_path.stat()
-    if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
+    if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns) or file_sha256(video_path, cancel) != video_hash:
         raise ValueError("Self-test video changed during inference")
     check_cancel(cancel)
     return {"status": "completed", "evidence": {
         "manifest_hash": model.manifest_hash, "runtime": runtime_identity(),
         "requested_device": device, "actual_device": actual,
         "video_id": str(video_id), "frame_index": frame_index,
+        "video_sha256": video_hash, "video_file_info": [after.st_size, after.st_mtime_ns],
         "frame_sha256": hashlib.sha256(frame.tobytes()).hexdigest(),
         "frame_shape": list(frame.shape), "predictions": prediction.tolist(),
     }}
@@ -84,7 +86,8 @@ def infer_imported_model(run_id: UUID, queue: Any, cancel: Any, request: Inferen
     from ai_physics_tracker.infrastructure.dlc_predictions import parse_predictions
 
     model = request.imported_model
-    if not verified_self_test(model, request.params.device):
+    if (not verified_self_test(model, request.params.device, request.timeline.video_id, request.video_path)
+            or file_sha256(request.video_path, cancel) != model.self_test["video_sha256"]):
         raise ValueError("Teacher model requires a successful self-test in this environment/device")
     runner, actual = load_runner(request.model_root, model, request.params.device,
                                  request.params.batch_size, cancel)
@@ -121,6 +124,8 @@ def infer_imported_model(run_id: UUID, queue: Any, cancel: Any, request: Inferen
     finally:
         capture.release()
     verify_model(request.model_root, model, cancel)
+    if file_sha256(request.video_path, cancel) != model.self_test["video_sha256"]:
+        raise ValueError("Teacher inference video changed; repeat self-test")
     parsed = parse_predictions(output, request.track_id, request.timeline, request.source_detail,
                               min_confidence=request.params.min_confidence, frame_count=request.frame_count)
     return InferenceOutcome(parsed.points, output, parsed.row_count, parsed.missing_count,

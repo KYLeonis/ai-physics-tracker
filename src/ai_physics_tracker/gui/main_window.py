@@ -603,6 +603,7 @@ class MainWindow(QMainWindow):
                 panel.hide()
         self.workflowHeader.setWorkspace(workspace)
         self._refreshDeletePointButton()
+        self._refreshHistoryButtons()
         self.analysisChanged.emit()
         if workspace == WORKSPACE_ANALYSIS:
             self.refreshAnalysisSourceBar()
@@ -885,7 +886,14 @@ class MainWindow(QMainWindow):
             self._presentFrame(snapshot.current_frame)
         self.frameRequestFailed.emit()
 
+    def canEditVideo(self) -> bool:
+        """分析页及模型操作期间禁止视频数据的交互写入。"""
+        return (self._workspace != WORKSPACE_ANALYSIS
+                and not (hasattr(self, "modelActions") and self.modelActions.busy))
+
     def _undo(self) -> None:
+        if not self.canEditVideo():
+            return
         # P6R-01：会话层原子拒绝（如撤销越过已登记 AI 任务的建 Track 操作）时，
         # 给出可见反馈而不是让异常穿透 GUI 事件循环；状态已保证完全不变。
         if self._annotation_session is None:
@@ -900,6 +908,8 @@ class MainWindow(QMainWindow):
         self._afterHistoryStep()
 
     def _redo(self) -> None:
+        if not self.canEditVideo():
+            return
         if self._annotation_session is None:
             return
         try:
@@ -931,8 +941,8 @@ class MainWindow(QMainWindow):
 
     def _refreshHistoryButtons(self) -> None:
         session = self._annotation_session
-        self.undoButton.setEnabled(session is not None and session.can_undo)
-        self.redoButton.setEnabled(session is not None and session.can_redo)
+        self.undoButton.setEnabled(self.canEditVideo() and session is not None and session.can_undo)
+        self.redoButton.setEnabled(self.canEditVideo() and session is not None and session.can_redo)
         self._refreshDeletePointButton()
         if hasattr(self, "projectActions"):
             self.projectActions.refresh()
@@ -1011,6 +1021,8 @@ class MainWindow(QMainWindow):
                 self.reviewActions.startCorrectCurrent()
 
     def _addTrack(self) -> None:
+        if not self.canEditVideo():
+            return
         if not self._measurement_allowed or self.projectActions.busy or self._annotation_session is None or self._annotation_video_id is None:
             return
         track = self._annotation_session.add_track(self._annotation_video_id)
@@ -1026,6 +1038,8 @@ class MainWindow(QMainWindow):
         self._refreshHistoryButtons()
 
     def _deleteSelectedTrack(self) -> None:
+        if not self.canEditVideo():
+            return
         tracking = getattr(self, "trackingActions", None)
         if tracking and tracking.pending and tracking.activeTrackId == self._selected_track_id:
             self.statusBar().showMessage("Cancel the AI task before deleting its track")
@@ -1355,6 +1369,8 @@ class MainWindow(QMainWindow):
             )
 
     def _onRotationChanged(self, deg: float) -> None:
+        if not self.canEditVideo():
+            return
         if self._annotation_session is None or self._annotation_video_id is None:
             return
         active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
@@ -1374,6 +1390,8 @@ class MainWindow(QMainWindow):
 
     def _editActiveScale(self) -> None:
         """复用标尺对话框编辑属性，保留标定 ID、端点与原始观测。"""
+        if not self.canEditVideo():
+            return
 
         session, video_id = self._annotation_session, self._annotation_video_id
         if not self._measurement_allowed or self.projectActions.busy or session is None or video_id is None:
@@ -1408,6 +1426,8 @@ class MainWindow(QMainWindow):
 
     def _deleteInactiveCalibration(self) -> None:
         """选择非生效标定后删除，不为了删除而切换 active 标定。"""
+        if not self.canEditVideo():
+            return
 
         session, video_id = self._annotation_session, self._annotation_video_id
         if not self._measurement_allowed or self.projectActions.busy or session is None or video_id is None:
@@ -1428,6 +1448,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Inactive calibration deleted; active calibration unchanged")
 
     def _deleteActiveCalibration(self) -> None:
+        if not self.canEditVideo():
+            return
         if self._annotation_session is None or self._annotation_video_id is None:
             return
         active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
@@ -1444,6 +1466,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Calibration deleted")
 
     def _onCalibrationSelected(self, _index: int) -> None:
+        if not self.canEditVideo():
+            return
         if self._annotation_session is None or self._annotation_video_id is None:
             return
         cal_id = self.calibrationSelector.currentData(Qt.ItemDataRole.UserRole)

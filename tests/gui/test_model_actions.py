@@ -65,7 +65,7 @@ def test_gui_import_probe_and_inference_request_without_training(qtbot, syntheti
     assert not window.projectActions.requestWindowClose()
     assert not window.projectActions.actions[4].isEnabled()
     model=session.project.imported_models[0]
-    proof={**evidence(model),"frame_index":runner.args[2],"video_id":str(runner.args[1])}
+    proof={**evidence(model, video_id=window.activeVideoId, video_path=session.video_path(session.project.videos[0])),"frame_index":runner.args[2],"video_id":str(runner.args[1])}
     runner.handle.messages=[TaskResult(runner.handle.run_id,True,{"status":"completed","evidence":proof})]
     qtbot.waitUntil(lambda:not actions.busy and not window.projectActions.busy,timeout=5000)
     assert runner.handle.cancelled
@@ -87,7 +87,7 @@ def test_cancel_late_probe_success_never_applies_evidence(qtbot, synthetic_video
     actions.refresh();runner=ProbeRunner();actions.runner=runner
     actions.selfTest();qtbot.waitUntil(runner.started.is_set)
     actions.cancel()
-    runner.handle.messages=[TaskResult(runner.handle.run_id,True,{"status":"completed","evidence":evidence(model)})]
+    runner.handle.messages=[TaskResult(runner.handle.run_id,True,{"status":"completed","evidence":evidence(model, video_id=window.activeVideoId, video_path=session.video_path(session.project.videos[0]))})]
     qtbot.waitUntil(lambda:not actions.busy,timeout=3000)
     assert runner.handle.cancelled
     assert not session.project.imported_models[0].self_test
@@ -101,7 +101,7 @@ def test_context_change_discards_probe(qtbot, synthetic_video_path, tmp_path):
     actions.refresh();runner=ProbeRunner();actions.runner=runner
     actions.selfTest();qtbot.waitUntil(runner.started.is_set)
     window._delivery_generation += 1
-    runner.handle.messages=[TaskResult(runner.handle.run_id,True,{"status":"completed","evidence":evidence(model)})]
+    runner.handle.messages=[TaskResult(runner.handle.run_id,True,{"status":"completed","evidence":evidence(model, video_id=window.activeVideoId, video_path=session.video_path(session.project.videos[0]))})]
     qtbot.waitUntil(lambda:not actions.busy,timeout=3000)
     assert not session.project.imported_models[0].self_test
     assert "context changed" in actions.status.text()
@@ -112,7 +112,7 @@ def test_imported_pipeline_candidate_and_explicit_activation_preserve_manual(qtb
     from ai_physics_tracker.application.tracking_types import InferenceParams
     window,session,track=_opened_window(qtbot,synthetic_video_path,tmp_path,_FakeRunner())
     model=import_model(session.project_root,*model_sources(tmp_path))
-    model=replace(model,self_test=evidence(model))
+    model=replace(model,self_test=evidence(model, video_id=window.activeVideoId, video_path=session.video_path(session.project.videos[0])))
     session.register_imported_model(model)
     manual=session.manual_points(track)
     params=InferenceParams(0.0)
@@ -131,3 +131,85 @@ def test_imported_pipeline_candidate_and_explicit_activation_preserve_manual(qtb
     assert session.manual_points(track)==manual
     assert len(session.effective_points(track))==5
     assert not any(r.task_type=="train" for r in session.tracking_runs())
+
+
+def test_model_registration_waits_for_existing_save(qtbot, synthetic_video_path, tmp_path):
+    from concurrent.futures import Future
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    actions = window.modelActions
+    model = import_model(session.project_root, *model_sources(tmp_path))
+    actions._begin("import", session)
+    future = Future(); future.set_result(model)
+    actions._future = future
+    window.projectActions.busy = True
+    actions._poll()
+    assert actions.busy and not session.project.imported_models
+    window.projectActions.busy = False
+    actions._poll()
+    assert session.project.imported_models == (model,)
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=3000)
+    assert not session.is_dirty
+
+
+def test_project_model_import_survives_detached_video_switch(qtbot, synthetic_video_path, tmp_path):
+    from concurrent.futures import Future
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    actions = window.modelActions
+    model = import_model(session.project_root, *model_sources(tmp_path))
+    actions._begin("import", session)
+    future = Future(); future.set_result(model); actions._future = future
+    current = session.detached()
+    window._annotation_session = current
+    other_path = tmp_path / "other.avi"
+    other_path.write_bytes(synthetic_video_path.read_bytes())
+    other = replace(current.project.videos[0], video_id=uuid4(), file_path=None, original_path=str(other_path))
+    current._project = replace(current.project, videos=(*current.project.videos, other),
+                               timelines=(*current.project.timelines, replace(current.project.timelines[0], video_id=other.video_id)))
+    window._annotation_video_id = other.video_id
+    window._delivery_generation += 1
+    actions._poll()
+    assert current.project.imported_models == (model,)
+    assert not session.project.imported_models
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=3000)
+    assert not current.is_dirty
+
+
+def test_retest_cancel_revocation_is_persisted_before_worker_start(qtbot, synthetic_video_path, tmp_path):
+    from ai_physics_tracker.application.project_session import ProjectSession
+    from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
+    from ai_physics_tracker.application.workflow_projection import MODE_INSPECT
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    actions = window.modelActions
+    model = import_model(session.project_root, *model_sources(tmp_path))
+    model = replace(model, self_test=evidence(model, video_id=window.activeVideoId,
+                                             video_path=session.video_path(session.project.videos[0])))
+    session.register_imported_model(model); session.save(); actions.refresh()
+    assert actions.isVerified()
+    runner = ProbeRunner(); actions.runner = runner
+    actions.selfTest()
+    qtbot.waitUntil(runner.started.is_set, timeout=3000)
+    reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+    assert not reopened.project.imported_models[0].self_test
+    state = actions.window.trackingActions._current_workflow_state
+    from ai_physics_tracker.application.workflow_projection import select_task_card
+    assert select_task_card(state).mode == MODE_INSPECT
+    actions.cancel()
+    qtbot.waitUntil(lambda: not actions.busy, timeout=3000)
+    assert not actions.isVerified()
+    assert not ProjectSession.load(ProjectRepository(), session.project_root).project.imported_models[0].self_test
+
+
+def test_revocation_save_failure_does_not_start_probe(qtbot, synthetic_video_path, tmp_path, monkeypatch):
+    from ai_physics_tracker.application.project_session import ProjectSession
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    actions = window.modelActions
+    model = import_model(session.project_root, *model_sources(tmp_path))
+    session.register_imported_model(model); actions.refresh()
+    runner = ProbeRunner(); actions.runner = runner
+    def fail(_session):
+        raise OSError("disk full")
+    monkeypatch.setattr(ProjectSession, "save", fail)
+    actions.selfTest()
+    qtbot.waitUntil(lambda: not actions.busy and not window.projectActions.busy, timeout=3000)
+    assert not runner.started.is_set()
+    assert "save failed" in actions.status.text()

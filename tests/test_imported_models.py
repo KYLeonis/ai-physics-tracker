@@ -17,7 +17,7 @@ from ai_physics_tracker.domain.project import create_project
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.application.tracking_types import InferenceParams, InferenceRequest
 from ai_physics_tracker.infrastructure.imported_models import (
-    import_model, verify_model, runtime_identity, verified_self_test,
+    import_model, verify_model, runtime_identity, verified_self_test, file_sha256,
 )
 from ai_physics_tracker.infrastructure.imported_model_inference import (
     run_model_self_test, validated_predictions, infer_imported_model,
@@ -40,9 +40,14 @@ def model_sources(tmp_path, parts=("tip", "other")):
     return cfg, pose, checkpoint
 
 
-def evidence(model, device="auto", actual="cpu"):
-    return {"manifest_hash": model.manifest_hash, "runtime": runtime_identity(),
-            "requested_device": device, "actual_device": actual, "frame_sha256": "a" * 64}
+def evidence(model, device="auto", actual="cpu", video_id=None, video_path=None):
+    result = {"manifest_hash": model.manifest_hash, "runtime": runtime_identity(),
+              "requested_device": device, "actual_device": actual, "frame_sha256": "a" * 64}
+    if video_path is not None:
+        stat = video_path.stat()
+        result.update(video_id=str(video_id), video_sha256=file_sha256(video_path),
+                      video_file_info=[stat.st_size, stat.st_mtime_ns])
+    return result
 
 
 @pytest.fixture
@@ -116,7 +121,8 @@ def test_v1_roundtrip_unknown_fields_and_save_as(imported, tmp_path):
     loaded = repo.load(destination)
     assert loaded.imported_models == (model,)
     verify_model(destination, loaded.imported_models[0])
-    assert verified_self_test(loaded.imported_models[0], "auto")
+    assert loaded.imported_models[0].self_test == model.self_test
+    assert not verified_self_test(loaded.imported_models[0], "auto")  # 旧证据缺少视频身份须重测。
     assert "imported_models" not in project_to_payload(create_project("old"))
 
 
@@ -130,15 +136,20 @@ def test_malformed_persisted_model_rejected(imported, field, value):
         project_from_payload(payload)
 
 
-def test_self_test_identity_needs_matching_environment_and_device(imported):
+def test_self_test_identity_needs_matching_environment_and_device(imported, synthetic_video_path):
     _, model = imported
-    model = replace(model, self_test=evidence(model))
-    assert verified_self_test(model, "auto")
-    assert not verified_self_test(model, "cpu")
+    video_id = uuid4()
+    model = replace(model, self_test=evidence(model, video_id=video_id, video_path=synthetic_video_path))
+    assert verified_self_test(model, "auto", video_id, synthetic_video_path)
+    assert not verified_self_test(model, "cpu", video_id, synthetic_video_path)
     bad = {**model.self_test, "runtime": {"torch": "changed"}}
-    assert not verified_self_test(replace(model, self_test=bad), "auto")
+    assert not verified_self_test(replace(model, self_test=bad), "auto", video_id, synthetic_video_path)
     bad = {**model.self_test, "manifest_hash": "changed"}
-    assert not verified_self_test(replace(model, self_test=bad), "auto")
+    assert not verified_self_test(replace(model, self_test=bad), "auto", video_id, synthetic_video_path)
+
+    assert not verified_self_test(model, "auto", uuid4(), synthetic_video_path)
+    synthetic_video_path.write_bytes(b"changed")
+    assert not verified_self_test(model, "auto", video_id, synthetic_video_path)
 
 
 class PoseRunner:
@@ -179,11 +190,12 @@ def test_predictions_reject_wrong_schema(array):
 
 def test_imported_inference_maps_selected_bodypart_and_keeps_raw_rows(imported, synthetic_video_path, monkeypatch):
     root, model = imported
-    model = replace(model, self_test=evidence(model))
+    video_id = uuid4()
+    model = replace(model, self_test=evidence(model, video_id=video_id, video_path=synthetic_video_path))
     monkeypatch.setattr("ai_physics_tracker.infrastructure.imported_model_inference.load_runner",
                         lambda *_: (PoseRunner(), "cpu"))
     req = InferenceRequest(root/model.directory/"config.yaml", synthetic_video_path,
-        root/model.directory/"checkpoint.pt", root/"prediction", uuid4(), Timeline(uuid4(),10,(0,4)),
+        root/model.directory/"checkpoint.pt", root/"prediction", uuid4(), Timeline(video_id,10,(0,4)),
         "teacher:test", 5, InferenceParams(0.5), imported_model=model, model_root=root, bodypart="other")
     result = infer_imported_model(uuid4(), Queue(), Event(), req)
     assert result.row_count == 5 and result.low_confidence_count == 5 and not result.points
@@ -191,4 +203,25 @@ def test_imported_inference_maps_selected_bodypart_and_keeps_raw_rows(imported, 
     assert "target,target,target" in text and "30.0,40.0,0.2" in text
     with pytest.raises(ValueError, match="Auto device changed"):
         infer_imported_model(uuid4(), Queue(), Event(), replace(req,
-            imported_model=replace(model, self_test=evidence(model, actual="mps")), output_dir=root/"another"))
+            imported_model=replace(model, self_test={**model.self_test, "actual_device": "mps"}), output_dir=root/"another"))
+
+
+def test_full_video_identity_rejects_same_size_and_mtime_replacement(imported, synthetic_video_path, monkeypatch):
+    import os
+    root, model = imported
+    video_id = uuid4()
+    model = replace(model, self_test=evidence(model, video_id=video_id, video_path=synthetic_video_path))
+    stat = synthetic_video_path.stat()
+    original = synthetic_video_path.read_bytes()
+    synthetic_video_path.write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
+    os.utime(synthetic_video_path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    assert verified_self_test(model, "auto", video_id, synthetic_video_path)  # 轻量 GUI 状态不读完整视频。
+    def must_not_load(*_args):
+        raise AssertionError("full content identity must be checked before loading the engine")
+    monkeypatch.setattr("ai_physics_tracker.infrastructure.imported_model_inference.load_runner", must_not_load)
+    req = InferenceRequest(root/model.directory/"config.yaml", synthetic_video_path,
+        root/model.directory/"checkpoint.pt", root/"prediction", uuid4(), Timeline(video_id,10,(0,4)),
+        "teacher:test", 5, InferenceParams(0.5), imported_model=model, model_root=root, bodypart="tip")
+    with pytest.raises(ValueError, match="self-test"):
+        infer_imported_model(uuid4(), Queue(), Event(), req)
+    assert not req.output_dir.exists()

@@ -41,6 +41,7 @@ def read_model_config(config_path: Path, pose_path: Path) -> tuple[dict[str, Any
             or not parts or any(not isinstance(p, str) or not p.strip() for p in parts)
             or len(set(parts)) != len(parts)):
         raise ValueError("Use a single-animal, uncropped PyTorch DLC project with named bodyparts")
+    # ponytail: 本轮只支持单动物 RGB bottom-up；Phase 7 扩展多动物/TD 时再扩展输出契约。
     metadata = pose.get("metadata", {})
     if (not isinstance(metadata, dict) or metadata.get("bodyparts") != parts
             or metadata.get("unique_bodyparts", []) or metadata.get("with_identity", False)
@@ -117,9 +118,22 @@ def runtime_identity() -> dict[str, str]:
             "machine": platform.machine()}
 
 
-def verified_self_test(model: ImportedModel, device: str) -> bool:
+def verified_self_test(model: ImportedModel, device: str, video_id: Any = None,
+                       video_path: Path | None = None) -> bool:
+    """无身份或旧证明一律拒绝；完整内容哈希由后台复核。"""
     evidence = model.self_test
-    return (evidence.get("manifest_hash") == model.manifest_hash
+    if video_id is None or video_path is None:
+        return False
+    try:
+        stat = video_path.stat()
+    except OSError:
+        return False
+    # GUI 只查轻量身份；后台准备、推理及提交再查视频完整 SHA256。
+    return (evidence.get("video_id") == str(video_id)
+            and evidence.get("video_file_info") == [stat.st_size, stat.st_mtime_ns]
+            and isinstance(evidence.get("video_sha256"), str)
+            and len(evidence["video_sha256"]) == 64
+            and evidence.get("manifest_hash") == model.manifest_hash
             and evidence.get("runtime") == runtime_identity()
             and evidence.get("requested_device") == device
             and isinstance(evidence.get("frame_sha256"), str)

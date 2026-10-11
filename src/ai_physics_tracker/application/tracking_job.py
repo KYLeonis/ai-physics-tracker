@@ -134,7 +134,9 @@ def prepare_tracking_request(session: ProjectSession, track_id: UUID,
     elif imported_model_id is not None:
         from ai_physics_tracker.infrastructure.imported_models import verified_self_test
         model = next((m for m in session.project.imported_models if m.model_id == imported_model_id), None)
-        if model is None or imported_bodypart not in model.bodyparts or not verified_self_test(model, parameters.device):
+        video = next(v for v in session.project.videos if v.video_id == track.video_id)
+        if (model is None or imported_bodypart not in model.bodyparts
+                or not verified_self_test(model, parameters.device, track.video_id, session.video_path(video))):
             raise ProjectSessionError("Repeat the teacher model actual-frame self-test before inference")
         config = {**asdict(parameters), "imported_model_id": str(imported_model_id),
                   "bodypart": imported_bodypart, "manifest_hash": model.manifest_hash}
@@ -329,6 +331,8 @@ def verify_completed_run_files(run: TrackingRun, root: Path) -> None:
     """提交前复核 run 实际引用的模型/config 轻量状态。"""
     if run.extra_fields.get("imported_model_sha256"):
         from ai_physics_tracker.infrastructure.imported_models import file_sha256
+        if file_sha256(Path(run.extra_fields["imported_video_path"])) != run.extra_fields["imported_video_sha256"]:
+            raise ProjectSessionError("Teacher video changed before candidate commit")
         folder = root / run.extra_fields["imported_model_directory"]
         if not folder.resolve().is_relative_to(root.resolve()):
             raise ProjectSessionError("Teacher model path escaped the project")

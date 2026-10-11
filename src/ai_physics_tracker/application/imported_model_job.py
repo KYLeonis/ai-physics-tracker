@@ -12,7 +12,7 @@ from ai_physics_tracker.application.project_session import ProjectSession, Proje
 from ai_physics_tracker.application.tracking_types import InferenceRequest, InferenceParams
 from ai_physics_tracker.domain.tracking_run import TrackingRun, create_tracking_run
 from ai_physics_tracker.domain.imported_model import ImportedModel
-from ai_physics_tracker.infrastructure.imported_models import import_model, verify_model, verified_self_test
+from ai_physics_tracker.infrastructure.imported_models import file_sha256, import_model, verify_model, verified_self_test
 from ai_physics_tracker.infrastructure.imported_model_inference import run_model_self_test
 from ai_physics_tracker.infrastructure.task_runner import BackgroundTaskRunner, TaskResult
 
@@ -22,12 +22,16 @@ def prepare_imported_inference(session: ProjectSession, track_id: UUID, model_id
                                ) -> tuple[TrackingRun, InferenceRequest]:
     """后台校验模型身份并准备标准 infer run；不接触活动 GUI 会话。"""
     model = next((m for m in session.project.imported_models if m.model_id == model_id), None)
-    if model is None or bodypart not in model.bodyparts or not verified_self_test(model, params.device):
+    if model is None or bodypart not in model.bodyparts:
         raise ProjectSessionError("Select a teacher model/bodypart and repeat its actual-frame self-test")
     root = session.project_root
     verify_model(root, model)
     track = next(t for t in session.tracks if t.track_id == track_id)
     video = next(v for v in session.project.videos if v.video_id == track.video_id)
+    video_path = session.video_path(video)
+    if (not verified_self_test(model, params.device, video.video_id, video_path)
+            or file_sha256(video_path) != model.self_test["video_sha256"]):
+        raise ProjectSessionError("Teacher model video changed; repeat its actual-frame self-test")
     timeline = next(t for t in session.project.timelines if t.video_id == track.video_id)
     run = create_tracking_run(video.video_id, track_id, "infer", run_id=run_id,
                               engine_version=model.self_test["runtime"]["deeplabcut"],
@@ -41,6 +45,7 @@ def prepare_imported_inference(session: ProjectSession, track_id: UUID, model_id
         "config_path": config.relative_to(root).as_posix(),
         "imported_model_sha256": dict(model.sha256),
         "imported_model_directory": model.directory,
+        "imported_video_path": str(video_path), "imported_video_sha256": model.self_test["video_sha256"],
         "model_file_info": [snapshot.stat().st_size, snapshot.stat().st_mtime_ns]})
     request = InferenceRequest(config, session.video_path(video), snapshot,
                                root / "data" / "engines" / str(run_id), track_id,

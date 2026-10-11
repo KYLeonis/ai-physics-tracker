@@ -153,7 +153,17 @@ class BatchAnnotationActions(QObject):
     def skip(self) -> None:
         if not self.active or self._blocked():
             return
-        # 跳过批次项只推进队列，不把已有 Correct 改成 Skip 或制造标签。
+        if self.batch.run_id is not None:
+            state = self._session.get_suggested_frame_review(self.batch.run_id)
+            existing = state.reviewed_frames.get(self.batch.current_frame)
+            # 已修正项保留原事务；未修正困难帧记录 Skip，代表帧跳过不制造标签。
+            if existing is None or existing.disposition != "corrected":
+                try:
+                    self._session.skip_suggested_frame(self.batch.run_id, self.batch.current_frame)
+                except (ProjectSessionError, ValueError) as error:
+                    self.window.statusBar().showMessage(f"Skip failed: {error}")
+                    return
+                self.window._refreshHistoryButtons()
         self.batch = self.batch.advance(corrected=False)
         self._advance()
 
@@ -201,7 +211,9 @@ class BatchAnnotationActions(QObject):
         self.group.setVisible(batch is not None)
         if batch is not None:
             self.status.setText(
-                f"Batch complete: {batch.corrected} manual label(s). Next: start learning. Skipped frames remain unchanged."
+                f"Batch complete: {batch.corrected} manual label(s). "
+                + ("Next: start learning. " if batch.corrected else "No labels added. ")
+                + "Skipped frames remain unchanged."
                 if batch.finished else
                 f"{'Paused' if batch.paused else 'Click video'} · {batch.index + 1}/{len(batch.frames)} · frame {batch.current_frame}")
             self.pauseButton.setVisible(self.active)

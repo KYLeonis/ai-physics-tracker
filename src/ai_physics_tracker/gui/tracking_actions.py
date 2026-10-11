@@ -255,10 +255,9 @@ class TrackingActions(QObject):
             })
         model_actions = getattr(self.window, "modelActions", None)
         if model_actions:
-            from ai_physics_tracker.application.imported_model_job import verified_self_test
             model = model_actions.selectedModel()
             review_facts.update(teacher_available=model is not None,
-                teacher_verified=bool(model and verified_self_test(model, model_actions.device.currentText())))
+                teacher_verified=model_actions.isVerified(model))
             if model_actions.busy:
                 from ai_physics_tracker.application.workflow_projection import EXEC_MODEL
                 return ExecutionInput(kind=EXEC_MODEL, **review_facts)
@@ -688,6 +687,7 @@ class TrackingActions(QObject):
             window.frameSelectionActions.requestSuggestion(10, "kmeans")
             return
         if action_id == "create_track":
+            window.setWorkspace("acquire")
             window.addTrackButton.click()
             return
         if action_id == "save_project":

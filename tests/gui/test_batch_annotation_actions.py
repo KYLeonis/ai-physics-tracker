@@ -62,13 +62,17 @@ def test_difficult_frame_batch_preserves_unselected_and_skip_records(qtbot, synt
     batch.handleClick(44,55)
     batch.skip()
     state=session.get_suggested_frame_review(run.run_id)
-    assert len(state.reviewed_frames) == 1
+    assert len(state.reviewed_frames) == 2
+    assert state.reviewed_frames[2].disposition == "skipped"
+    assert 3 not in state.reviewed_frames
     record=state.reviewed_frames[1]
     assert record.disposition == "corrected"
     point=next(p for p in session.project.observations if p.point_id == record.manual_point_id)
     assert point.pixel_x == 44 and point.source == "manual"
     assert len(session.manual_points(track)) == before
-    # 一次 Undo 同时回滚人工点和 corrected 记录。
+    # Skip 和 Correct 各自为一个原子事务。
+    session.undo()
+    assert set(session.get_suggested_frame_review(run.run_id).reviewed_frames) == {1}
     session.undo()
     assert not session.get_suggested_frame_review(run.run_id).reviewed_frames
     qtbot.waitUntil(lambda: not window.projectActions.busy)
@@ -133,3 +137,21 @@ def test_explicit_single_correct_can_edit_while_batch_is_paused(qtbot, synthetic
     window._onAnnotationClicked(point)
     assert session.get_suggested_frame_review(run.run_id).reviewed_frames[1].disposition == "corrected"
     assert window.batchAnnotationActions.batch.frames == (1,)
+
+
+def test_difficult_skip_survives_save_and_reopen(qtbot, synthetic_video_path, tmp_path):
+    from ai_physics_tracker.application.project_session import ProjectSession
+    from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    run = _setup_infer_run_with_prediction(window, tmp_path)
+    candidate = ReviewCandidate(1, ReviewPredictionSnapshot(10,20,0.4), {},{},(),0.8)
+    session.set_active_review_batch(run.run_id, ActiveReviewBatch(uuid4(),{},(candidate,)))
+    window.reviewActions.onRunSelected(run.run_id)
+    batch = window.batchAnnotationActions
+    batch.start((1,), run.run_id)
+    before = session.project.observations
+    batch.skip()
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=3000)
+    reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+    assert reopened.get_suggested_frame_review(run.run_id).reviewed_frames[1].disposition == "skipped"
+    assert session.project.observations == before

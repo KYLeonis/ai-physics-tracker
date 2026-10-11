@@ -754,6 +754,7 @@ def _running_card(state: WorkflowState) -> TaskCard:
         EXEC_TRAINING: MODE_LEARNING,
         EXEC_INFERRING: MODE_GENERATING,
         EXEC_MINING: MODE_INSPECT,
+        EXEC_MODEL: MODE_INSPECT,
     }
     return TaskCard(
         mode=modes.get(kind, MODE_BLOCKED),

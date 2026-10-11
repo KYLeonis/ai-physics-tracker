@@ -535,6 +535,8 @@ class DifficultFrameReviewActions(QObject):
         self.window.seekFrame(frame_index)
 
     def acceptCurrent(self) -> None:
+        if not self.window.canEditVideo():
+            return
         if self._controller is None or self._controller.current_candidate is None:
             return
         try:
@@ -553,6 +555,8 @@ class DifficultFrameReviewActions(QObject):
         self._notify_workflow_changed()
 
     def skipCurrent(self) -> None:
+        if not self.window.canEditVideo():
+            return
         if self._controller is None or self._controller.current_candidate is None:
             return
         try:
