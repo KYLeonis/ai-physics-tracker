@@ -1,22 +1,26 @@
 # Current Status
 
-> 2026-10-01维护修复：论文线Windows CI36810642925唯一失败为任务取消返回后子进程仍存活；main修复TaskHandle强杀后原生join确认退出；初版10s/TimeoutError方案55项及双平台CI通过，但审查要求避免新增异常，已简化最终实现。最终54项定向及独立复审Approve（独立7核心/13GUI）通过，最终main CI[36813075358](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813075358)和publication CI[36813371127](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813371127)均Windows/macOS通过；论文线受控同步为4d4e3e9→6323e11（source bf8f0c5→8a7d90d），见[mini-plan](windows-cancel-fix-plan.md)。Phase6仍未立项。
+> 2026-10-11：用户返回主线继续开发；`main @ b997100` 与 `origin/main` 同步，进入 Phase 6 规划。需求、总计划及 6.1 mini-plan 已起草，待用户确认范围与建议验收门槛；尚未开始产品实现。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 > 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
 
-- 最后更新：2026-09-18（Agent-first Workflow 2.0 升级；Phase 5 已收官，等待 Phase 6 立项指令）
+- 最后更新：2026-10-11（主线状态盘点与 Phase 6 规划草案）
 
 ## Current
 
-- **Phase**：阶段间停点 —— Phase 5 已完成（2026-09-18）；Phase 6 — Advanced Physics Analysis 尚未立项
-- **Subphase / Slice**：无（等待用户立项指令）
-- **Development Mode**：Build Mode（Phase 6 立项后的主模式；见 `docs/workflow.md` §13）
+- **Phase**：Phase 6 — Advanced Physics Analysis，规划中（草案待确认）；Phase 5 已完成
+- **Subphase / Slice**：6.1 Angular Analysis Foundation mini-plan 草案；无产品实现 Slice
+- **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
 
 ## Next Recommended Action
 
-**等待用户启动 Phase 6 — Advanced Physics Analysis 的立项/设计工作。** 下一次开发会话先读本文件 → `docs/roadmap.md` Phase 6 → 现有 kinematics/charts 契约（`docs/spec/data-model.md`、ADR-0008/0009）→ 写 `docs/spec/phase6-requirements.md` 与 Phase 6 master plan；此后每个 subphase mini-plan 按新模板包含 Agent Context Pack 与 Review Gate。不要从收尾会话直接开始 Phase 6 实现。
+**用户确认规划范围与建议验收门槛后，启动 6.1 Slice 1。** 先读
+[Phase 6 requirements](../spec/phase6-requirements.md) → [总计划](phase-6-plan.md) →
+[6.1 mini-plan](phase-6.1-plan.md) 与 Context Pack；创建 `feat/p6.1-angular-analysis` 分支/Issue，
+扫描 scalar kind、双轨迹依赖、首次标定失效与现有消费者，记录契约 ADR，再实现纯数值部分。
+计划确认门来源为 `docs/status/README.md`；本轮仅交付可审查草案，不将建议指标当成已接受标准。
 
 ## Active Constraints
 
@@ -28,6 +32,7 @@
 - `frame_index` 是 int、时间是 float 秒；换算只经 Timeline 纯函数（nominal 模型 `frame/fps_nominal`，非 VFR 引擎）
 - 缺测展开为 NaN 并按连续段滤波：不跨 NaN 段求导、不静默插值、短段按既定缩窗规则（ADR-0008）
 - 平滑微分 = SG 先平滑后微分，默认 window=7 / polyorder=2（ADR-0008）
+- Phase 6 规划约束：现有 `KINEMATICS_KINDS` 四项批次与图表两列 values 不是通用高级分析接口；新标量量和双轨迹依赖须显式适配并验证失效（pre-phase6 review §10）
 - 预测永不自动成为 ground truth：completed infer 只是候选，显式 Activate/Replace/Clear 原子事务才改观测
 - Accept 不产生 ground truth；Correct 才写 manual 并保留 prediction provenance
 - `FrameSelectionResult` 只含帧号，不创建 TrackPoint
@@ -51,6 +56,8 @@
 
 ## Recently Completed
 
+- **Phase 6 规划草案（2026-10-11）**：已核对主线/远程、既有运动学/图表/DerivedData 契约，新增 requirements、总计划及 6.1 mini-plan；建议误差门槛待确认，未修改产品代码或论文线。主线回归 `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q`：**805 passed，56.91 s**；草案本地链接与 `git diff --check` 通过。基线 `b997100` 最新 CI [36813834691](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813834691) 已在线复核 success。
+- **Windows 取消维护修复（2026-10-01）**：强杀后原生 join 确认 worker 退出；54 项定向与 Independent Review Approve。main CI [36813075358](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813075358) 双平台通过；细节见 [mini-plan](windows-cancel-fix-plan.md)。
 - **Agent-first Workflow 2.0 升级（2026-09-18，分支 `docs/agent-workflow-2.0`）**：引入 Agent Context Pack、Cold-start Protocol 2.0、risk-based Review Gate / PR 流程、Source of Truth 分工表、Development Modes、finding 继承规则；重写 subphase-plan 模板，current.md 改为运行时入口结构。顺手修正过期事实：repo 可见性 Private→Public、architecture.md ADR 索引补 0009–0016、AGENTS.md 移除已删除的 CODE_OF_CONDUCT.md 条目。
 - **Phase 5 收官（2026-09-18）**：5.7 R1/R2 CLOSED + 最终 Human Review 通过；全量 **804 passed**，双平台 CI 绿（[run 35319559409](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35319559409)）。Phase 5.0–5.7 全部完成；AC-9 缺口保持归档。各 subphase 交付与 review 见 `docs/status/phase-5.*-plan.md` 与 `docs/reviews/`。
 - **Pre-Phase 6 Stabilization（2026-09-16，已合并）**：P6R-01/02/03/04 及 R1 补漏（P6R-02-R1 / 03-R1 / 05）全部关闭，生命周期见 [pre-phase6-project-review.md](../reviews/pre-phase6-project-review.md) §17–19 与 [pre-phase6-stabilization-review.md](../reviews/pre-phase6-stabilization-review.md)；**Phase 6 Entry Gate：READY**。

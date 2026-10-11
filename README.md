@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:    阶段间停点（Phase 5 已完成）
+Current Phase:    Phase 6 — Advanced Physics Analysis（规划草案待确认）
 Last Delivered:   Phase 5.7 — Interaction Flow Redesign（最终 Human Review 通过）
-Next Planned:     Phase 6 — Advanced Physics Analysis（尚未立项）
+Next Planned:     Phase 6.1 — Angular Analysis Foundation（确认计划后开始实现）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -99,6 +99,10 @@ macOS Human Review、433 项本地测试、真实 CPU GUI 组件闭环及 macOS/
 Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-means 代表帧选取；5.2 完成全帧原始预测、多信号困难帧筛查、时间去重/多样性与真实基准；5.3 完成 Accept/Correct/Skip 审核队列和 prediction provenance；5.4 完成候选隔离、结果激活/替换/清除与固定验证集；5.5 完成确定性 Training Advisor、显式 Restart/Resume 与 lineage；5.6 完成真实单摆 refinement 闭环及三类 delta 归档；5.7 将界面重构为“实验设置 → 获取轨迹 → 分析与图表”三个工作区、常驻状态头与状态驱动任务卡，并通过最终 Human Review。Phase 5.6 的冻结基准改善目标未达到 ≥5%（最佳 −3.3%），已按用户批准如实保留为明示缺口，不影响已完成的工作流与科研可追溯契约。详见
 [Phase 5 requirements](docs/spec/phase5-requirements.md) 与 [PHASE_5_PLAN](docs/status/phase-5-plan.md)。
 
+2026-10-11 返回主线进入 Phase 6 规划，产品实现尚未开始。当前可审查
+[需求草案](docs/spec/phase6-requirements.md)、[总计划](docs/status/phase-6-plan.md) 与
+[6.1 mini-plan](docs/status/phase-6.1-plan.md)；范围与建议误差指标确认后，从角运动基础开始。
+
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
 ## Roadmap
@@ -111,7 +115,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | ⬜ |
+| Phase 6 | Advanced Physics Analysis | 🔄 规划草案待确认 |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
 | Phase 9 | Optimization & Packaging | ⬜ |
