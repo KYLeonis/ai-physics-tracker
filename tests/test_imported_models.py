@@ -65,7 +65,7 @@ def test_import_copy_and_safe_weights(imported, tmp_path):
     verify_model(root, model)
 
 
-@pytest.mark.parametrize("change", ["order", "multi", "tensorflow", "crop", "identity", "td"])
+@pytest.mark.parametrize("change", ["order", "multi", "tensorflow", "crop", "identity", "td", "color"])
 def test_reject_incompatible_configs(tmp_path, change):
     paths = model_sources(tmp_path)
     config = yaml.safe_load(paths[0].read_text())
@@ -76,6 +76,7 @@ def test_reject_incompatible_configs(tmp_path, change):
     if change == "crop": config["cropping"] = True
     if change == "identity": pose["metadata"]["with_identity"] = True
     if change == "td": pose["method"] = "td"
+    if change == "color": pose["data"] = {"colormode": "BGR"}
     paths[0].write_text(yaml.safe_dump(config), encoding="utf-8")
     paths[1].write_text(yaml.safe_dump(pose), encoding="utf-8")
     with pytest.raises(ValueError):

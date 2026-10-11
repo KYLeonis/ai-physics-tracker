@@ -99,3 +99,37 @@ def test_manual_navigation_pauses_batch_and_resume_returns_to_target(qtbot, synt
     window.startPlayback()
     assert batch.batch.paused
     window.stopPlayback()
+
+
+def test_batch_selection_does_not_reenter_task_panel_during_list_clear(qtbot, synthetic_video_path, tmp_path, monkeypatch):
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    panel = window.trackingActions.panel
+    calls = []
+    monkeypatch.setattr(window.trackingActions, "refresh", lambda *_args: calls.append(True))
+    item = QListWidgetItem("candidate")
+    item.setData(Qt.ItemDataRole.UserRole, 1)
+    panel.reviewCandidatesList.addItem(item)
+    item.setSelected(True)
+    assert window.batchAnnotationActions.correctButton.isEnabled()
+    panel.setReviewBatch(None, None)
+    assert not calls
+    window.batchAnnotationActions._selectionChanged()
+    assert not window.batchAnnotationActions.correctButton.isEnabled()
+
+
+def test_explicit_single_correct_can_edit_while_batch_is_paused(qtbot, synthetic_video_path, tmp_path):
+    from PySide6.QtCore import QPointF
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner())
+    run = _setup_infer_run_with_prediction(window, tmp_path)
+    candidate = ReviewCandidate(1, ReviewPredictionSnapshot(10,20,0.4), {},{},(),0.8)
+    session.set_active_review_batch(run.run_id, ActiveReviewBatch(uuid4(),{},(candidate,)))
+    window.reviewActions.onRunSelected(run.run_id)
+    window.batchAnnotationActions.start((1,), run.run_id)
+    qtbot.waitUntil(lambda: window.presented_frame_index == 1 and not window._has_pending_request)
+    window.reviewActions.startCorrectCurrent()
+    assert window.batchAnnotationActions.batch.paused
+    point = window.videoView.mapFromScene(QPointF(20, 30))
+    assert point is not None
+    window._onAnnotationClicked(point)
+    assert session.get_suggested_frame_review(run.run_id).reviewed_frames[1].disposition == "corrected"
+    assert window.batchAnnotationActions.batch.frames == (1,)

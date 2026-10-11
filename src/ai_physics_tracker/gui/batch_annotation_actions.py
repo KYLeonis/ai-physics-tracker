@@ -59,9 +59,16 @@ class BatchAnnotationActions(QObject):
         window.selectedTrackChanged.connect(self._contextChanged)
         window.projectChanged.connect(self.clear)
         window.analysisChanged.connect(self.refresh)
-        panel.suggestedFramesList.itemSelectionChanged.connect(self.refresh)
-        panel.reviewCandidatesList.itemSelectionChanged.connect(self.refresh)
+        panel.suggestedFramesList.itemSelectionChanged.connect(self._selectionChanged)
+        panel.reviewCandidatesList.itemSelectionChanged.connect(self._selectionChanged)
         self.refresh()
+
+    def _selectionChanged(self) -> None:
+        # 列表可能正处于 clear()/重建中，不能从选择信号重入整个任务面板刷新。
+        panel = self.window.trackingActions.panel
+        blocked = self._blocked()
+        self.labelButton.setEnabled(bool(panel.suggestedFramesList.selectedItems()) and not blocked)
+        self.correctButton.setEnabled(bool(panel.reviewCandidatesList.selectedItems()) and not blocked)
 
     @property
     def active(self) -> bool:

@@ -1574,15 +1574,15 @@ class MainWindow(QMainWindow):
         pixel = self.videoView.mapScreenToPixel(view_pos)
         if pixel is None:
             return  # 点击落在图像外（data-model.md §6.1：不钳位、不造值）
-        batch = getattr(self, "batchAnnotationActions", None)
-        if batch is not None and batch.batch is not None and not batch.batch.finished:
-            batch.handleClick(pixel[0], pixel[1])
-            return
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             handled = self.reviewActions.handleCorrectClick(pixel[0], pixel[1])
             if handled:
                 self._refreshMarkers()
                 self._refreshHistoryButtons()
+            return
+        batch = getattr(self, "batchAnnotationActions", None)
+        if batch is not None and batch.batch is not None and not batch.batch.finished:
+            batch.handleClick(pixel[0], pixel[1])
             return
         try:
             self._annotation_session.mark_point(

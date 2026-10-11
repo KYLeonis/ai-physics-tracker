@@ -661,6 +661,10 @@ class TrackingActions(QObject):
         """任务卡动作分发：全部走既有执行入口（与 Advanced 同一验证路径）。"""
         window = self.window
         session = window.analysisSession
+        if action_id in {"teacher_test", "teacher_infer", "teacher_cancel"}:
+            {"teacher_test": window.modelActions.selfTest, "teacher_infer": window.modelActions.infer,
+             "teacher_cancel": window.modelActions.cancel}[action_id]()
+            return
         if action_id in {"batch_pause", "batch_resume", "batch_skip"}:
             getattr(window.batchAnnotationActions, action_id.removeprefix("batch_"))()
             return

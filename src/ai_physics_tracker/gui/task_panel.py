@@ -1178,7 +1178,8 @@ class TaskPanel(QDockWidget):
             self.reviewCorrectButton.setText("Correct (C)")
             self.reviewCorrectButton.setStyleSheet("")
             self.deleteManualPointButton.setEnabled(False)
-            self.reviewCandidatesList.clear()
+            with QSignalBlocker(self.reviewCandidatesList):
+                self.reviewCandidatesList.clear()
             return
 
         tot = summary.total_candidates

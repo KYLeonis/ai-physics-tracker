@@ -57,7 +57,7 @@ def test_gui_import_probe_and_inference_request_without_training(qtbot, syntheti
     assert not actions.inferButton.isEnabled()
     assert "self-test teacher" in window.trackingActions.panel.cardTitleLabel.text()
     runner=ProbeRunner();actions.runner=runner
-    actions.selfTest()
+    window.workflowHeader.nextStepButtons[0].click()
     qtbot.waitUntil(runner.started.is_set)
     assert actions.busy
     window.trackingActions.train()
@@ -75,7 +75,7 @@ def test_gui_import_probe_and_inference_request_without_training(qtbot, syntheti
     captured=[]
     window.trackingActions._start=lambda params,**kw:captured.append((params,kw))
     actions.bodyparts.setCurrentText("other")
-    actions.inferButton.click()
+    window.workflowHeader.nextStepButtons[0].click()
     assert captured[0][1]=={"imported_model_id":model.model_id,"imported_bodypart":"other"}
     assert not session.is_dirty
 

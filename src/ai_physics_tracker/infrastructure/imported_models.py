@@ -46,6 +46,9 @@ def read_model_config(config_path: Path, pose_path: Path) -> tuple[dict[str, Any
             or metadata.get("unique_bodyparts", []) or metadata.get("with_identity", False)
             or len(metadata.get("individuals", [])) != 1 or pose.get("method") != "bu"):
         raise ValueError("Pose config must match the ordered bodyparts and use one bottom-up individual")
+    data = pose.get("data", {})
+    if not isinstance(data, dict) or data.get("colormode", "RGB") != "RGB":
+        raise ValueError("This importer supports RGB models; select a matching RGB pose config")
     # 强制安全权重加载，不允许 YAML 覆盖为任意 pickle 对象反序列化。
     pose.setdefault("runner", {})["load_weights_only"] = True
     return pose, tuple(parts)
