@@ -52,9 +52,7 @@ def pendulum_theta_world(
 
     dx = np.asarray(world_x, dtype=float) - pivot_world_x
     dy = np.asarray(world_y, dtype=float) - pivot_world_y
-    # -dy 在 dy == +0.0 时产生 -0.0，会使 atan2 把正右方解析成 π；
-    # 加 +0.0 把 -0.0 规整回 +0.0，其余数值不受影响（IEEE 754）。
-    theta = np.arctan2(dx, -dy + 0.0)
+    theta = np.arctan2(dx, -dy)
     coincident = (dx == 0.0) & (dy == 0.0)
     theta = np.where(coincident, np.nan, theta)
     return theta

@@ -201,6 +201,23 @@ def test_prepare_rejects_duplicate_targets_and_self_reference(tmp_path: Path) ->
         prepare_angular_job(session, video_id, (), SmoothingParameters())
 
 
+def test_prepare_fails_fast_without_active_calibration(tmp_path: Path) -> None:
+    """R1 首版要求有效标定：prepare 阶段拒绝，而非 worker 内逐规格失败。"""
+
+    session = ProjectSession.start(ProjectRepository())
+    video, _timeline = session.register_external_video(tmp_path / "clip.avi", _info())
+    track = session.add_track(video.video_id)
+    session.mark_point(track.track_id, 0, pixel_x=100.0, pixel_y=1000.0)
+
+    with pytest.raises(ProjectSessionError, match="active calibration"):
+        prepare_angular_job(
+            session,
+            video.video_id,
+            (AngularSpec(track.track_id, PendulumReference(pivot_px=(1.0, 1.0))),),
+            SmoothingParameters(),
+        )
+
+
 def test_extra_fields_survive_angular_batch_replace_and_roundtrip(
     tmp_path: Path,
 ) -> None:

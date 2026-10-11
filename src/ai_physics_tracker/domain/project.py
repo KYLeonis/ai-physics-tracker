@@ -424,12 +424,17 @@ def validate_project(project: Project) -> None:
             raise ValueError("active calibration must belong to its mapped video")
     if any(item.track_id not in track_id_set for item in project.derived):
         raise ValueError("every DerivedData item must reference a registered track")
-    if any(
-        item.input.reference_track_id is not None
-        and item.input.reference_track_id not in track_id_set
-        for item in project.derived
-    ):
-        raise ValueError("every DerivedData reference track must be registered")
+    for item in project.derived:
+        reference_id = item.input.reference_track_id
+        if reference_id is None:
+            continue
+        if reference_id not in track_id_set:
+            raise ValueError("every DerivedData reference track must be registered")
+        # R1 的双轨迹角度定义要求同视频；构造点已强制，这里是聚合级兜底。
+        if tracks_by_id[reference_id].video_id != tracks_by_id[item.track_id].video_id:
+            raise ValueError(
+                "derived reference track must belong to the same video as its track"
+            )
     run_ids = [run.run_id for run in project.tracking_runs]
     if len(set(run_ids)) != len(run_ids):
         raise ValueError("tracking run run_id values must be unique")

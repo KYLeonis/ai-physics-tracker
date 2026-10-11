@@ -401,6 +401,36 @@ def test_validate_project_rejects_dangling_reference_track(tmp_path: Path) -> No
         replace(session.project, derived=dangling)
 
 
+def test_validate_project_rejects_cross_video_reference_track(tmp_path: Path) -> None:
+    """R1 双轨迹角度要求同视频：聚合校验对跨视频引用兜底拒绝。"""
+
+    session, video_id, (track_a, track_b) = _session_with_calibration(
+        tmp_path, track_names=("Rod A", "Rod B")
+    )
+    other_video, _ = session.register_external_video(tmp_path / "other.avi", _info())
+    other_track = session.add_track(other_video.video_id, "Other Video Track")
+    for f in range(5):
+        session.mark_point(track_a.track_id, f, pixel_x=100.0 + f, pixel_y=1000.0)
+        session.mark_point(track_b.track_id, f, pixel_x=200.0 + f, pixel_y=900.0 - f)
+    session.compute_angular(
+        track_a.track_id, reference=TwoPointReference(reference_track_id=track_b.track_id)
+    )
+
+    cross_video = tuple(
+        replace(
+            record,
+            input=replace(
+                record.input,
+                reference_track_id=other_track.track_id,
+                track_id=record.track_id,
+            ),
+        )
+        for record in session.project.derived
+    )
+    with pytest.raises(ValueError, match="same video"):
+        replace(session.project, derived=cross_video)
+
+
 def test_first_calibration_leaves_angular_unaffected_scenario_guard(
     tmp_path: Path,
 ) -> None:

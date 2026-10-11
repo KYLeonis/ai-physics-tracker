@@ -1024,7 +1024,8 @@ class ProjectSession:
 
         角度定义与数值规则见 phase6-requirements.md R1 与 ADR-0019：
         原始 wrapped θ → 段内 unwrap → SG(deriv=0/1/2)。首版要求有效标定，
-        不提供像素角度模式；同一角度定义下重算整组替换本轨迹的角运动结果。
+        不提供像素角度模式；重算即整组替换本轨迹全部角运动结果（含更换
+        参考模式，ADR-0019 第 1 节）。
 
         Args:
             track_id: 目标轨迹（单摆摆球 / 两点方向中的 A 点）。
