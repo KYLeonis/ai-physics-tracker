@@ -66,3 +66,28 @@
 2026-10-11 用户已授权回移上述五项；分支 `fix/main-ui-backports`、Issue
 [#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)，代码 checkpoint `53a6fb9`。
 最新验证/HR/集成状态见[维护 mini-plan](../status/main-ui-backports-plan.md)，不以本评估的旧只读状态判断实现进度。
+
+## Start learning / macOS auto 设备核查（2026-10-11）
+
+用户补充要求核查主线默认设备。结论：主线单轨 Start learning 默认读取 TaskPanel
+的 `device=auto`，系统学习计划只改 mode/epochs/batch，不覆盖设备；
+`tracking_job._train` 在 worker 解析 CUDA → MPS → CPU，再把明确设备交给
+prepare_training / adapter.train / DLC train_network，成功 run 保存
+`requested_device=auto` 与 `device=mps` 等实际字段。该路由与 main 原实现相同，
+本 UI 分支未改变设备行为。
+
+- 本机主线 `.venv`：arm64 / Torch 2.13.0，CUDA false、MPS built/available true；
+  `detect_device()` 返回 mps，真实张量平方求和在 mps:0 得到 14.0。
+- 实际 GUI 入口进程内捕获（只替换最终 train 调用，不启动重训练）：
+  Start learning 保留 auto / cpu / mps 三种选择，断言通过。临时合成工程已清理。
+- 定向设备/参数/顶部学习回归：4 passed；spawn mock 训练成功/失败及任务面板：
+  9 passed。未重新跑全量（无产品代码改动，既有 820/双平台 CI 证据保持）。
+- 论文源 `5ada419` 解决的是联合模型/外部 runtime 三处固定 CPU 与设备自检
+  身份问题，见论文线 `publication/plans/p5.3-hr-device-routing.md`；
+  主线单轨没有这些调用者，无需整补丁回移。两线 detect_device 内容相同。
+- 主线日志可核对 `Preparing training dataset on mps` /
+  `Detected compute device: mps`；成功任务详情显示 `device=mps`。
+  auto 在 MPS 不可用/探测失败时选 CPU；已选择 MPS 后训练失败会报告失败，
+  不自动 CPU 重训。论文线也要求不隐式 GPU 失败→CPU 重跑。
+- 本次未启动真实 DLC 完整训练/测速，不把张量自检或 mock 回归当作完整模型验证。
+  论文线既有真实 MPS 训练证据只适用于其相应模型/runtime。

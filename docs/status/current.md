@@ -61,6 +61,8 @@
 
 ## Recently Completed
 
+- **macOS Start learning 设备核查（2026-10-11）**：主线 auto 保留到 worker，按 CUDA→MPS→CPU 解析；本机 `.venv` Torch 2.13.0 实测解析 mps / 张量 mps:0。GUI 捕获三种设备选择均保留，定向 4+9 passed；论文 `5ada419` 是联合路径固定 CPU 修复，单轨无需回移。仅记录检查，未改产品/用户工程、未启动 DLC 完整训练；[核查记录](../notes/publication-backport-assessment.md#start-learning--macos-auto-设备核查2026-10-11)。
+
 - **顶部推荐扩展（2026-10-11）**：按用户补充授权，常驻主线 TaskCard 的摘要/主动作/最多两个旁路；复用原动作入口，空会话推荐 Add video，审核/标注返回获取轨迹。定向 **72 passed（9.19 s）**，全量 **820 passed（48.44 s）**，self-review/diff/窄窗口布局探针通过。代码 `8c16908` / CI checkpoint `fe051f5` 双平台通过，Human Review 待用户；[mini-plan](main-ui-backports-plan.md)。
 
 - **UI 回移自动验证（2026-10-11）**：代码 `53a6fb9`，三个 GUI 文件/十项滚轮回归，五项通用修复与源提交溯源；定向 107 passed（12.60 s）、全量 815 passed（49.36 s）、实际 widget 展示断言及 diff 检查通过。checkpoint `167a518` 的 [CI 38110444232](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38110444232) 双平台 success；无论文 schema/领域/依赖改动。分支已 push，Issue Open，等待 Human Review，未集成。
