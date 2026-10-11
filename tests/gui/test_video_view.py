@@ -5,7 +5,10 @@ mapScreenToPixel 在任意缩放下映射正确、越界返回 None。
 """
 
 import numpy as np
+import pytest
 from PySide6.QtCore import QPoint, QPointF, QSize, Qt
+from PySide6.QtGui import QInputDevice, QPointingDevice, QWheelEvent
+from PySide6.QtWidgets import QApplication
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsPolygonItem
 from pytestqt.qtbot import QtBot
 
@@ -104,6 +107,83 @@ def test_zoom_clamps_to_bounds(qtbot: QtBot) -> None:
     for _ in range(120):
         view.zoomOut()
     assert view.currentScale() >= MIN_SCALE - 1e-9
+
+
+@pytest.mark.parametrize("delta", [120, -120, 60, 240])
+def test_mouse_wheel_on_viewport_zooms(qtbot: QtBot, delta: int) -> None:
+    view = _shown_view(qtbot)
+    view.zoomOriginal()
+    view.set_annotation_mode(True)
+    clicks = []
+    view.annotationClicked.connect(clicks.append)
+    pos = view.mapFromScene(QPointF(50, 30))
+    event = QWheelEvent(
+        QPointF(pos), QPointF(view.viewport().mapToGlobal(pos)),
+        QPoint(), QPoint(0, delta), Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.NoScrollPhase, False,
+    )
+
+    QApplication.sendEvent(view.viewport(), event)
+
+    assert view.currentScale() == pytest.approx(1.25 ** (delta / 120))
+    assert event.isAccepted()
+    assert clicks == []
+    assert not view._fit_pending
+
+
+@pytest.mark.parametrize("pixels,angles,phase", [
+    (QPoint(0, 10), QPoint(0, 120), Qt.ScrollPhase.NoScrollPhase),
+    (QPoint(), QPoint(0, 120), Qt.ScrollPhase.ScrollUpdate),
+    (QPoint(), QPoint(120, 0), Qt.ScrollPhase.NoScrollPhase),
+    (QPoint(), QPoint(), Qt.ScrollPhase.ScrollBegin),
+])
+def test_trackpad_and_horizontal_wheel_keep_scale(
+    qtbot: QtBot, pixels: QPoint, angles: QPoint, phase: Qt.ScrollPhase,
+) -> None:
+    view = _shown_view(qtbot)
+    view.zoomOriginal()
+    event = QWheelEvent(
+        QPointF(50, 30), QPointF(50, 30), pixels, angles,
+        Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier, phase, False,
+    )
+
+    QApplication.sendEvent(view.viewport(), event)
+
+    assert view.currentScale() == 1.0
+
+
+def test_wheel_without_video_keeps_scale(qtbot: QtBot) -> None:
+    view = VideoView()
+    qtbot.addWidget(view)
+    event = QWheelEvent(
+        QPointF(50, 30), QPointF(50, 30), QPoint(), QPoint(0, 120),
+        Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase, False,
+    )
+
+    QApplication.sendEvent(view.viewport(), event)
+
+    assert view.currentScale() == 1.0
+
+
+def test_touchpad_without_pixel_delta_keeps_scale(qtbot: QtBot) -> None:
+    view = _shown_view(qtbot)
+    view.zoomOriginal()
+    device = QPointingDevice(
+        "touchpad", 1, QInputDevice.DeviceType.TouchPad,
+        QPointingDevice.PointerType.Finger, QInputDevice.Capability.Position,
+        2, 0,
+    )
+    event = QWheelEvent(
+        QPointF(50, 30), QPointF(50, 30), QPoint(), QPoint(0, 120),
+        Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase, False,
+        Qt.MouseEventSource.MouseEventNotSynthesized, device,
+    )
+
+    QApplication.sendEvent(view.viewport(), event)
+
+    assert view.currentScale() == 1.0
 
 
 def test_clear_frame_resets_to_placeholder(qtbot: QtBot) -> None:

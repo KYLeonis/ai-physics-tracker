@@ -15,6 +15,7 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QImage,
+    QInputDevice,
     QMouseEvent,
     QPainter,
     QPen,
@@ -272,8 +273,17 @@ class VideoView(QGraphicsView):
         self.scaleChanged.emit(self.currentScale())
 
     def wheelEvent(self, event: QWheelEvent) -> None:
-        # 滚轮/双指滑动 = 滚动视图（平移）；缩放由 pinch 手势、
-        # 快捷键与菜单承担（Human Review 结论：滑动缩放不符合直觉）
+        # 普通鼠标滚轮缩放；触控板滑动保留平移，捏合仍负责缩放。
+        if (
+            self.hasFrame()
+            and event.device().type() != QInputDevice.DeviceType.TouchPad
+            and event.pixelDelta().isNull()
+            and event.phase() == Qt.ScrollPhase.NoScrollPhase
+            and event.angleDelta().y() != 0
+        ):
+            self._zoomBy(ZOOM_STEP ** (event.angleDelta().y() / 120))
+            event.accept()
+            return
         super().wheelEvent(event)
 
     def event(self, event: QEvent) -> bool:
@@ -337,6 +347,8 @@ class VideoView(QGraphicsView):
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
         else:
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        # 图像黑边没有 item 光标，viewport 也需与当前模式同步。
+        self.viewport().setCursor(shape)
         if self._pixmap_item is not None:
             self._pixmap_item.setCursor(shape)
         for item in self._marker_items:
