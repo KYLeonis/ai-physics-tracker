@@ -1,6 +1,6 @@
 # Current Status
 
-> 2026-10-11：`fix/main-ui-backports` 五项通用修复与顶部下一步推荐已完成，Issue [#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)。新定向 72 / 全量 820 passed；`fe051f5` 的 [CI 38115253367](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38115253367) 双平台通过，Human Review 尚未通过，未集成 main。Phase 6 草案仍待确认。
+> 2026-10-11：`fix/main-ui-backports` 五项通用修复与顶部下一步推荐已完成，Issue [#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)。新定向 72 / 全量 820 passed；`fe051f5` 的 [CI 38115253367](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38115253367) 双平台通过，用户已确认 Human Review 通过，准备集成 main。Phase 6 草案仍待确认。
 
 > 两线全量功能 / UI 比较已完成：[区别文档](../notes/publication-main-feature-ui-differences.md)，附 637 文件 / 229 提交 / 80 源码模块清单。新增优先候选为 Analysis 视频只读；本轮仅文档，不合并产品改动。
 
@@ -13,15 +13,12 @@
 ## Current
 
 - **Phase**：Phase 0–5 通用 UI 维护；Phase 6 规划草案待确认，Phase 5 已完成
-- **Subphase / Slice**：`main-ui-backports` Slice 2 已完成，Slice 2b 已完成；Slice 3 等待 Human Review/集成；[mini-plan](main-ui-backports-plan.md)
+- **Subphase / Slice**：`main-ui-backports` Slice 2 已完成，Slice 2b 已完成；Slice 3 Human Review 已通过，准备集成；[mini-plan](main-ui-backports-plan.md)
 - **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
 
 ## Next Recommended Action
 
-**等待用户主线 Human Review。** 本地/双平台 CI 已通过； 启动命令与 Q1/Q2/Q3 见
-[mini-plan](main-ui-backports-plan.md#human-review)。用户反馈通过后，记录实际验收范围，
-`--no-ff` 集成 main/push/确认 CI/关闭 #23；若反馈需调整，修复验证后重新请求 HR。
-此等待来源为 AGENTS.md §7 / Workflow §5.1，不用 offscreen 探针替代用户体验。
+**完成当前维护分支集成。** 用户已明确确认上一轮 HR 通过；`24ec071` 的双平台 [CI 38137728560](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38137728560) success，产品 / 测试树未新增修改。按计划 `--no-ff` 集成 main、push、确认 CI 并关闭 #23。
 
 **后续回移候选先读[区别文档 §8](../notes/publication-main-feature-ui-differences.md#8-建议回移顺序与具体候选)。**
 优先单独修复 Analysis 视频只读；autosave `after` 续接先复现主线 busy 场景，
@@ -71,9 +68,9 @@
 
 - **macOS Start learning 设备核查（2026-10-11）**：主线 auto 保留到 worker，按 CUDA→MPS→CPU 解析；本机 `.venv` Torch 2.13.0 实测解析 mps / 张量 mps:0。GUI 捕获三种设备选择均保留，定向 4+9 passed；论文 `5ada419` 是联合路径固定 CPU 修复，单轨无需回移。仅记录检查，未改产品/用户工程、未启动 DLC 完整训练；[核查记录](../notes/publication-backport-assessment.md#start-learning--macos-auto-设备核查2026-10-11)。
 
-- **顶部推荐扩展（2026-10-11）**：按用户补充授权，常驻主线 TaskCard 的摘要/主动作/最多两个旁路；复用原动作入口，空会话推荐 Add video，审核/标注返回获取轨迹。定向 **72 passed（9.19 s）**，全量 **820 passed（48.44 s）**，self-review/diff/窄窗口布局探针通过。代码 `8c16908` / CI checkpoint `fe051f5` 双平台通过，Human Review 待用户；[mini-plan](main-ui-backports-plan.md)。
+- **顶部推荐扩展（2026-10-11）**：按用户补充授权，常驻主线 TaskCard 的摘要/主动作/最多两个旁路；复用原动作入口，空会话推荐 Add video，审核/标注返回获取轨迹。定向 **72 passed（9.19 s）**，全量 **820 passed（48.44 s）**，self-review/diff/窄窗口布局探针通过。代码 `8c16908` / CI checkpoint `fe051f5` 双平台通过，Human Review 本轮用户已确认通过；[mini-plan](main-ui-backports-plan.md)。
 
-- **UI 回移自动验证（2026-10-11）**：代码 `53a6fb9`，三个 GUI 文件/十项滚轮回归，五项通用修复与源提交溯源；定向 107 passed（12.60 s）、全量 815 passed（49.36 s）、实际 widget 展示断言及 diff 检查通过。checkpoint `167a518` 的 [CI 38110444232](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38110444232) 双平台 success；无论文 schema/领域/依赖改动。分支已 push，Issue Open，等待 Human Review，未集成。
+- **UI 回移自动验证（2026-10-11）**：代码 `53a6fb9`，三个 GUI 文件/十项滚轮回归，五项通用修复与源提交溯源；定向 107 passed（12.60 s）、全量 815 passed（49.36 s）、实际 widget 展示断言及 diff 检查通过。checkpoint `167a518` 的 [CI 38110444232](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38110444232) 双平台 success；无论文 schema/领域/依赖改动。分支已 push，用户已确认 HR 通过，准备集成。
 - **论文线回移评估（2026-10-11）**：审查 publication 集成分支及最新发行分支 `154f262`；确认两项值得优先回移的通用 UI 问题、三项小改进，取消源码/测试已等价同步。主线定向 50 passed（7.07 s），只读探针与目标 patch 适用性检查通过；产品代码未修改。详见 [评估记录](../notes/publication-backport-assessment.md)。
 - **Phase 6 规划草案（2026-10-11）**：已核对主线/远程、既有运动学/图表/DerivedData 契约，新增 requirements、总计划及 6.1 mini-plan；建议误差门槛待确认，未修改产品代码或论文线。主线回归 `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q`：**805 passed，56.91 s**；草案本地链接与 `git diff --check` 通过。基线 `b997100` 最新 CI [36813834691](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813834691) 已在线复核 success。
 - **Windows 取消维护修复（2026-10-01）**：强杀后原生 join 确认 worker 退出；54 项定向与 Independent Review Approve。main CI [36813075358](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/36813075358) 双平台通过；细节见 [mini-plan](windows-cancel-fix-plan.md)。

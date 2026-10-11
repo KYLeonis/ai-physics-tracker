@@ -2,7 +2,7 @@
 
 - Issue：[#23](https://github.com/KYLeonis/ai-physics-tracker/issues/23)
 - 分支：`fix/main-ui-backports`（base `main @ 50a7924`）
-- 日期 / 状态：2026-10-11 · 顶部推荐与五项回移本地/双平台 CI 通过；等待 Human Review
+- 日期 / 状态：2026-10-11 · 顶部推荐与五项回移本地/双平台 CI 通过；用户确认 Human Review 通过，准备集成
 - 风险等级：Normal-risk（局部视频交互与展示，不改科学/数据契约）
 
 ## Goal
@@ -91,7 +91,7 @@ tracking_activation_actions、workflow_ui；全量：`QT_QPA_PLATFORM=offscreen 
 - 全量测试：**815 passed（49.36 s）**；`git diff --check` 通过。
 - 分支验证 checkpoint `167a518` 的 [CI 38110444232](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38110444232)：
   macOS/Windows 两项 job 均 success。该 CI 仅覆盖五项回移；顶部推荐扩展须重新验证，不能沿用它作为新代码证据。
-- Human Review 尚未执行；Issue 保持 Open，未集成 main。
+- 初次五项回移交付时 Human Review 未执行；后续统一 HR 结果见下方收尾记录。
 
 ### 顶部推荐补充结果
 
@@ -104,4 +104,10 @@ tracking_activation_actions、workflow_ui；全量：`QT_QPA_PLATFORM=offscreen 
   header 732 宽，三个按钮可布局；不替代真人视觉/手感评价。
 - 实现 checkpoint `8c16908`，文档 checkpoint `fe051f5` 的 [CI 38115253367](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38115253367)：
   macOS / Windows 均 success；后续 checkpoint 仅更新文档，产品/测试树相同。
-- 分支已 push；Human Review 仍等待用户，未集成/未关闭 Issue。
+- 分支已 push；最终产品 / 测试树在 `24ec071` 的 [CI 38137728560](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38137728560) success，准备集成。
+
+### Human Review 与收尾接续（2026-10-11）
+
+- 用户明确反馈“上一轮的HR通过”，确认本维护增量（五项 UI 修复及顶部推荐）可收尾。
+- 记录整体通过，不补写未提供的逐项平台 / 鼠标设备 / 队列测试明细；不扩大为 Windows/CUDA 全部阶段验收。
+- 既有 820 passed 与最终分支 CI 通过，产品 / 测试无新增修改；继续 `--no-ff` 集成 / push / main CI / 关闭 #23。
