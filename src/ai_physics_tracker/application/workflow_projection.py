@@ -356,13 +356,20 @@ def analysis_facts(session: ProjectSession, track_id: UUID | None) -> AnalysisFa
 
 
 def project_workflow_state(
-    session: ProjectSession,
+    session: ProjectSession | None,
     track_id: UUID | None,
     runs: Sequence[TrackingRun],
     execution: ExecutionInput | None = None,
 ) -> WorkflowState:
     """三维修量 + 前置缺失 + 学习/生成推进度的一次性投影（纯读取）。"""
     execution = execution or ExecutionInput()
+    if session is None:
+        return WorkflowState(
+            execution=execution,
+            trajectory=TrajectoryFacts(),
+            analysis=AnalysisFacts(ANALYSIS_NOT_COMPUTABLE, reason="no project"),
+            prerequisites=("add an experiment video",),
+        )
     prerequisites: list[str] = []
     if not session.project.videos:
         prerequisites.append("add an experiment video")

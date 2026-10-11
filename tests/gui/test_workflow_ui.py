@@ -6,6 +6,7 @@
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
 from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
@@ -84,18 +85,26 @@ def test_acquire_panel_fits_1024_by_640_without_horizontal_clipping(
     assert scroll.verticalScrollBar().maximum() > 0
 
 def test_header_shows_context_and_card_follows_projection(
-    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch
 ) -> None:
     window = _window()
     qtbot.addWidget(window)
     window.show()
 
-    # 无项目：卡片为空、状态头显示 No project
+    # 无项目：常驻下一步仍能打开视频，执行入口由 ProjectActions 提供。
     assert window.workflowHeader.contextLabel.text() == "No project"
     assert not window.trackingActions.panel.cardPrimaryButton.isVisible()
+    header = window.workflowHeader
+    assert header.nextStepButtons[0].text() == "Add experiment video"
+    opened = []
+    monkeypatch.setattr(window.projectActions, "openVideo", lambda: opened.append(True))
+    header.nextStepButtons[0].click()
+    assert opened == [True]
 
     assert window.openVideo(synthetic_video_path, show_error=False)
-    window.addTrackButton.click()
+    assert header.nextStepButtons[0].text() == "Create a track"
+    header.nextStepButtons[0].click()
+    assert header.nextStepButtons[0].text() == "Save the project"
     session = window.analysisSession
     track = session.tracks[0]
 
@@ -106,6 +115,20 @@ def test_header_shows_context_and_card_follows_projection(
     card = window.trackingActions.panel
     assert "mark example positions" in card.cardTitleLabel.text()
     assert card.cardPrimaryButton.text() == "Pick representative frames"
+    assert header.nextStepButtons[0].text() == card.cardPrimaryButton.text()
+    assert card.cardTitleLabel.text() in header.nextStepLabel.text()
+    session.mark_point(track.track_id, 0, 10.0, 10.0)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    assert header.nextStepButtons[0].text() == "Mark next suggested frame"
+    before = session.project.observations
+    window.setWorkspace("analysis")
+    assert header.nextStepButtons[0].isVisible()
+    assert not card.isVisible()
+    # 从隐藏任务卡的工作区进入标注画面，导航本身不写数据。
+    header.nextStepButtons[0].click()
+    assert window.currentWorkspace == "acquire"
+    assert session.project.observations == before
 
     # 状态头显示项目/视频/目标/范围
     header_text = window.workflowHeader.contextLabel.text()
@@ -136,8 +159,9 @@ def test_card_running_task_shows_cancel(qtbot: QtBot, synthetic_video_path: Path
     assert panel.cardPrimaryButton.text() == "Cancel"
 
 
+@pytest.mark.parametrize("from_header", [False, True])
 def test_start_learning_card_confirms_fixed_check_then_trains(
-    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch
+    qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch, from_header
 ) -> None:
     """C1+C2：卡片“开始学习”→ 预选确认 → freeze → 以系统计划启动训练。"""
     from ai_physics_tracker.gui.fixed_check_dialog import (
@@ -165,7 +189,12 @@ def test_start_learning_card_confirms_fixed_check_then_trains(
     window.trackingActions.refresh()
 
     assert panel.cardPrimaryButton.text() == "Start learning"
-    panel.cardPrimaryButton.click()
+    if from_header:
+        window.setWorkspace("analysis")
+        window.workflowHeader.nextStepButtons[0].click()
+        assert window.currentWorkspace == "acquire"
+    else:
+        panel.cardPrimaryButton.click()
 
     # C1：预选集合经用户确认后才 freeze
     assert captured["frames"] == [1]  # 4 帧 [0,1,2,3] → 预选内部帧 1（floor 平局取早）
@@ -273,8 +302,9 @@ def _better_candidate_setup(qtbot, synthetic_video_path, tmp_path):
     return window, session, track_id, infer1, infer2
 
 
+@pytest.mark.parametrize("from_header", [False, True])
 def test_adopt_card_replaces_after_confirmation_and_history_only_previews(
-    qtbot, synthetic_video_path, tmp_path, monkeypatch
+    qtbot, synthetic_video_path, tmp_path, monkeypatch, from_header
 ) -> None:
     from PySide6.QtWidgets import QMessageBox
 
@@ -288,15 +318,19 @@ def test_adopt_card_replaces_after_confirmation_and_history_only_previews(
     assert panel.cardPrimaryButton.text() == "Adopt for analysis"
     assert "looks better" in panel.cardTitleLabel.text()
 
+    button = panel.cardPrimaryButton
+    if from_header:
+        window.setWorkspace("analysis")
+        button = window.workflowHeader.nextStepButtons[0]
     # conftest 把 question 桩化为 Discard：确认被拒 → 不采用
-    panel.cardPrimaryButton.click()
+    button.click()
     assert session.get_track_activation_status(track_id)[1] == infer1.run_id
 
     # 确认 Yes → 走既有 replace 原子事务
     monkeypatch.setattr(
         QMessageBox, "question",
         lambda *a, **k: QMessageBox.StandardButton.Yes)
-    panel.cardPrimaryButton.click()
+    button.click()
     assert session.get_track_activation_status(track_id)[1] == infer2.run_id
 
     # 采用后：无候选，卡片进入“图表待更新”；状态头显示当前版本
@@ -304,6 +338,7 @@ def test_adopt_card_replaces_after_confirmation_and_history_only_previews(
     window.trackingActions.refresh()
     assert window.trackingActions.panel.cardPrimaryButton.text() == "Update charts"
     assert "Preview:" not in window.workflowHeader.trajectoryLabel.text()
+    assert window.workflowHeader.nextStepButtons[0].text() == "Update charts"
 
     # history 选择旧行为只预览：不改变 active
     window.trackingActions.panel.resultsToggleButton.click()
@@ -522,3 +557,50 @@ def test_header_shows_analysis_limitations(
     assert limitations.isVisible() or not limitations.isHidden()
     assert "2 of 5 frames" in limitations.text()
     assert "no effective observation" in limitations.text()
+
+
+def test_header_disabled_action_explains_gate_and_clears_stale_actions(qtbot) -> None:
+    from ai_physics_tracker.application.workflow_projection import ActionSpec, TaskCard
+    from ai_physics_tracker.gui.workflow_header import WorkflowHeader
+
+    header = WorkflowHeader()
+    qtbot.addWidget(header)
+    header.show()
+    card = TaskCard(
+        mode="blocked", title="Current: blocked",
+        primary=ActionSpec("start_learning", "Start learning", False, "Save first"),
+        secondary=(ActionSpec("view_analysis", "View charts"),),
+    )
+    emitted = []
+    header.actionRequested.connect(emitted.append)
+    header.setTaskCard(card)
+    assert "Save first" in header.nextStepLabel.text()
+    header.nextStepButtons[0].click()
+    assert emitted == []
+    header.nextStepButtons[1].click()
+    assert emitted == ["view_analysis"]
+
+    header.setTaskCard(TaskCard(mode="blocked", title="Current: stopping"))
+    assert all(not button.isVisible() for button in header.nextStepButtons)
+    header.setTaskCard(None)
+    assert not header.nextStepLabel.isVisible()
+    assert all(button.property("actionId") == "" for button in header.nextStepButtons)
+
+
+def test_header_projection_failure_hides_previous_recommendation(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch
+) -> None:
+    from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
+
+    window, _session, _track_id = _opened_window(
+        qtbot, synthetic_video_path, tmp_path, _FakeRunner(_FakeHandle()))
+    assert window.workflowHeader.nextStepButtons[0].isVisible()
+
+    def fail(*_args):
+        raise ValueError("unavailable facts")
+
+    monkeypatch.setattr(window.trackingActions, "_workflow_state", fail)
+    window.trackingActions._context_key = None
+    window.trackingActions.refresh()
+    assert not window.workflowHeader.nextStepLabel.isVisible()
+    assert all(not button.isVisible() for button in window.workflowHeader.nextStepButtons)

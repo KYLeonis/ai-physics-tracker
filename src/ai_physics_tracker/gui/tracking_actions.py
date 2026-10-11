@@ -88,6 +88,7 @@ class TrackingActions(QObject):
         self.panel.trainRequested.connect(self.train)
         self.panel.primaryActionRequested.connect(self._onCardAction)
         self.panel.secondaryActionRequested.connect(self._onCardAction)
+        window.workflowHeader.actionRequested.connect(self._onCardAction)
         self.panel.inferRequested.connect(self.infer)
         self.panel.cancelRequested.connect(self.cancel)
         self.panel.runSelected.connect(self.showLog)
@@ -284,13 +285,17 @@ class TrackingActions(QObject):
         from ai_physics_tracker.application.workflow_projection import select_task_card
 
         try:
+            state = self._workflow_state(session, track_id, runs)
             if session is None:
                 self.panel.setTaskCard(None)
+                self.window.workflowHeader.setTaskCard(select_task_card(state))
                 self.window.workflowHeader.setStatus(
                     "No project", "Current trajectory: —", None)
+                self.window.workflowHeader.setLimitations(())
+                self.window.workflowHeader.setTaskStrip("")
+                self._current_workflow_state = state
                 self._clear_candidate_preview()
                 return
-            state = self._workflow_state(session, track_id, runs)
             candidate = state.trajectory.candidate
             review = getattr(self.window, "reviewActions", None)
             if (candidate is not None and candidate.pending_review > 0
@@ -311,12 +316,14 @@ class TrackingActions(QObject):
                     from dataclasses import replace as _replace
                     card = _replace(card, explanation=ux.body)
             self.panel.setTaskCard(card)
+            self.window.workflowHeader.setTaskCard(card)
             self._current_workflow_state = state
             self._refresh_header(session, state, video, track)
             self._sync_candidate_preview(session, runs, state, track, video)
         except Exception as error:  # 投影是辅助信息，失败只降级显示
             logger.warning("workflow projection failed: %s", error)
             self.panel.setTaskCard(None)
+            self.window.workflowHeader.setTaskCard(None)
 
     def _sync_candidate_preview(self, session, runs, state, track, video) -> None:
         candidate = state.trajectory.candidate
@@ -676,6 +683,11 @@ class TrackingActions(QObject):
         if session is None or track_id is None:
             return
         runs = session.tracking_runs()
+
+        if action_id in ("review_accept", "review_correct", "review_skip",
+                         "review_previous", "review_next", "finish_checking",
+                         "cancel_placement", "label_frame"):
+            window.setWorkspace("acquire")
 
         if action_id == "confirm_check_frames":
             window.setWorkspace("acquire")
