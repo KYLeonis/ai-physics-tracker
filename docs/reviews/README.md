@@ -36,3 +36,6 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 ## Main 后续增量
 
 - [引导修正与教师模型导入](main-guided-refinement-model-import-review.md)：Issue #24，R1/R2/R3 F1–F6 Closed / Approve，本轮 Human Review 待反馈。
+
+- 2026-10-13：Phase 6.1 用户要求的完整复审追加于原记录，R2 / R8–R13 Closed / Approve，
+  929 全量 / 最新代码双平台 CI 通过；6.2 入口准备就绪，前置增量 HR / 集成仍待执行。

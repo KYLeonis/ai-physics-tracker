@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:    Main guided refinement / teacher import（本轮等待验证与 HR）
-Last Delivered:   Phase 5 + main UI backports（上一轮 Human Review 已通过）
-Next Planned:     本轮 HR 后集成；Phase 6 按用户方程平台口径重规划
+Current Phase:    Phase 6.1 angular foundation（完整复审 / 修复完成，待集成）
+Last Delivered:   Phase 5 + main UI backports；6.1 工作分支已可用
+Next Planned:     前置增量 HR / 顺序集成；Phase 6.2 子计划已准备
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -155,3 +155,9 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 后续分析采用**用户提供方程 / 公式，通用平台完成计算与分析**；论文分支固定 ODE 是复现参考，Phase 6 旧草案须重规划（[ADR-0017](docs/decisions/0017-user-defined-equation-analysis-platform.md)）。
 
 当前工作分支新增 Analysis 视频只读、建议帧批量连续标注 / 修正与完成后的训练推荐、教师 DLC 模型受管导入 / 实际帧自检 / 单关键点候选轨迹。模型自检不会证明科学准确性，候选仍需显式采用。自动化 / Independent Review / 双平台 CI 已通过，等待本轮 [Human Review](docs/notes/main-guided-refinement-model-import-human-review.md)，尚未集成 main。其余回移候选在 [后续档案](docs/status/main-backport-backlog.md) 按相关阶段触发核对。
+
+### Phase 6.1 / 6.2 当前进度（2026-10-13）
+
+6.1 已交付 θ/ω/α 的纯计算、双输入依赖与保存 / 后台事务，并完成完整审查和修复，
+尚无角量 GUI。当前可进入 [6.2 角量图表与相空间计划](docs/status/phase-6.2-plan.md)的实现准备；
+科学 / 时序 / 结果版本约束见 ADR-0019/0020，实际验证和待集成条件见 current。

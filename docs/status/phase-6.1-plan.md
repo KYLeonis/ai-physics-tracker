@@ -3,7 +3,7 @@
 > 2026-10-11：用户确认启动本子阶段（角运动基础与 ADR-0017"角运动/求导是通用平台输入能力"口径兼容；6.1 的 non-goals 本就排除周期/拟合，R3 固定拟合部分仍留待按 ADR-0017 重规划）。科学/数据契约见[ADR-0019](../decisions/0019-angular-kinematics-and-multi-input-derived-data.md)。
 
 - Issue / 分支：[#25](https://github.com/KYLeonis/ai-physics-tracker/issues/25) / `feat/p6.1-angular-analysis`（叠加于待 HR 的 `feat/main-guided-refinement-model-import`，集成顺序：增量先行）
-- 日期 / 状态：2026-10-11 · **进行中（用户已确认范围）**
+- 日期 / 状态：2026-10-11 · **实现 / 完整复审完成，待按序集成**
 - 风险等级：High-risk（角度定义、unwrap/微分、多输入依赖与派生结果事务）
 
 ## Goal
@@ -17,6 +17,7 @@
 - [phase6-requirements.md](../spec/phase6-requirements.md) R1/R5、AC-1/2/7；[总计划](phase-6-plan.md)。
 - [data-model.md](../spec/data-model.md) §3.8/§4/§6：派生数据、有效观测及坐标契约。
 - ADR-0008：SG 的物理 dt、NaN 分段与短段；ADR-0009：后台快照与原子结果提交。
+- [ADR-0020](../decisions/0020-analysis-batch-result-and-recipe-consistency.md)：本轮结果版本、配方一致性与公共时序边界修复。
 - `CODE_STANDARD.md`；`docs/research/open-source-project-map.md` §3.3/3.11/3.12/§7。
 
 ### Relevant Historical Findings
@@ -89,7 +90,17 @@ ADR 需决定 scalar kinds/多输入参数的 additive 落点，并核对旧项�
 （复用 detached/复核/原子提交骨架）、序列化往返；新增 43 项测试（解析 AC-1/2、失效与
 Undo AC-3/4、批次 AC-5），本机全量 **908 passed** 零回归。Independent Review 首轮
 7 findings：R1/R3/R4/R5/R6 修复并经复审确认（[review record](../reviews/phase-6.1-review.md)），
-R2（zone-only 变更不失效，Phase 3 既有）与 R7（父分支 GUI 测试 flake，已在 a36007e
-复现证实无关）延期并记档。已知延期：R2 移交 6.2；R7 待专门排查（已加大该测试超时余量）。
+首轮曾延期 R2 / R7：R7 后续根因修复；R2 已由 2026-10-12–13 完整审查直接修复，
+不再留给 6.2。新增后台版本 / 配方、公共时序边界与计算溯源修复见审查记录。
 分支 `feat/p6.1-angular-analysis` 已 push，[双平台 CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) success；集成 main 须待
 前置增量 `feat/main-guided-refinement-model-import` HR 通过后按序 `--no-ff` 执行。
+
+## 完整复审补充（2026-10-13）
+
+用户要求完整复审后直接修复潜在问题；新 finding / 复现 / 修复与独立确认统一记在
+[review record](../reviews/phase-6.1-review.md) 的“完整复审”章节。新增 ADR-0020 分析结果版本 / 配方策略，
+补旧构造兼容、时序授权、区间失效、近似来源，以及两种模式在旋转 / 非零区间下的解析回归。
+最新测试 / CI 以 current 为准；[6.2 子计划](phase-6.2-plan.md)已形成，当前不含 GUI 实现。
+
+最终完整复审：R2 / R8–R13 全部 Closed，最新全量929 passed（66.38 s），
+代码4842560 / 双平台CI38274300024 success；6.2技术入口READY，实际集成依然按前置HR顺序。

@@ -189,3 +189,10 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 教师模型由 domain `ImportedModel` + Project 集合保存身份，infrastructure `imported_models` 管理安全 YAML / staged copy / SHA256，`imported_model_inference` 共用实际帧探针与全视频 runner。GUI `ModelActions` 拥有导入线程 / 自检 spawn 的完整生命周期；`imported_model_job` 将选定关键点接入既有跟踪候选 / 激活事务。[ADR-0018](decisions/0018-managed-teacher-model-import.md) 规定 schema v1 可选扩展、身份和不伪造训练履历。
 
 连续建议帧队列 `AnnotationBatch` 只存瞬时选择 / 进度；GUI `BatchAnnotationActions` 委托原 Session 写人工点 / corrected provenance / skipped 记录，完成后显式推荐训练。Analysis 视频只读，Acquire 是编辑入口。
+
+### 分析结果提交边界（2026-10-13）
+
+角运动和线性运动学共用输入 / 目标结果版本 / 配方 / 标定一致性校验，
+拒绝旧任务覆盖新参数结果；参考依赖和时序授权由应用边界守住。
+同步角运动保存 fps / 区间 / 近似来源，后台复用相同溯源，见
+[ADR-0020](decisions/0020-analysis-batch-result-and-recipe-consistency.md)。
