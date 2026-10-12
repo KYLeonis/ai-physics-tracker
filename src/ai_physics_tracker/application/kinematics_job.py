@@ -143,6 +143,16 @@ def validated_batch(
     calibration_id = inputs.calibration.calibration_id if inputs.calibration else None
     if any(record.status != "valid" or record.calibration_ref != calibration_id for record in records):
         raise ProjectSessionError("Analysis batch has inconsistent status or calibration")
+    for record in records:
+        steps = [step for step in record.pipeline if isinstance(step, dict)
+                 and step.get("step") == "calibration_transform"]
+        if calibration_id is None:
+            matches = not steps
+        else:
+            params = steps[0].get("params") if len(steps) == 1 else None
+            matches = isinstance(params, dict) and params.get("calibration_id") == str(calibration_id)
+        if not matches:
+            raise ProjectSessionError("Analysis calibration pipeline does not match its inputs")
     kept = tuple(item for item in session.project.derived if (item.track_id, item.kind) not in expected)
     records_out = []
     for record in records:

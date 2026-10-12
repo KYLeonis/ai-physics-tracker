@@ -318,3 +318,20 @@ def test_reopened_kinematics_cache_is_read_only_until_timing_verified(tmp_path: 
     assert loaded.project == before
     loaded.confirm_video_timing(video_id, TimingReport("cfr", "synthetic test verification"))
     assert len(loaded.compute_kinematics(track.track_id)) == 4
+
+
+@pytest.mark.parametrize("calibrated", [False, True])
+def test_kinematics_batch_rejects_wrong_calibration_recipe(tmp_path: Path, calibrated: bool) -> None:
+    session, video_id, (track,) = _session_with_tracks(tmp_path, track_count=1)
+    if calibrated:
+        session.add_calibration(video_id, (0,0), (100,0), 1, "m")
+    job = prepare_kinematics_job(session, video_id, (track.track_id,), SmoothingParameters())
+    result = run_kinematics_job(job, Event())
+    bad = {"step": "calibration_transform", "params": {"calibration_id": "00000000-0000-0000-0000-000000000000"}}
+    def pipeline(item):
+        return (bad, *item.pipeline[1:]) if calibrated else (bad, *item.pipeline)
+    result = replace(result, records=tuple(replace(item, pipeline=pipeline(item)) for item in result.records))
+    before = session.project
+    with pytest.raises(ProjectSessionError, match="calibration pipeline"):
+        session.apply_kinematics_result(result)
+    assert session.project == before

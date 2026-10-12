@@ -327,3 +327,20 @@ def test_mismatched_angular_result_is_rejected_atomically(tmp_path: Path, change
     with pytest.raises(ProjectSessionError):
         session.apply_angular_result(result)
     assert session.project == before
+
+
+@pytest.mark.parametrize("change", ["wrong_id", "duplicate", "missing"])
+def test_angular_batch_rejects_wrong_calibration_recipe(tmp_path: Path, change: str) -> None:
+    session, video_id, a, b = _calibrated_session_with_two_tracks(tmp_path)
+    job = prepare_angular_job(session, video_id, (AngularSpec(a, TwoPointReference(b)),), SmoothingParameters())
+    result = run_angular_job(job, Event())
+    bad = {"step": "calibration_transform", "params": {"calibration_id": "00000000-0000-0000-0000-000000000000"}}
+    def pipeline(item):
+        if change == "duplicate": return (item.pipeline[0], *item.pipeline)
+        if change == "missing": return item.pipeline[1:]
+        return (bad, *item.pipeline[1:])
+    result = replace(result, records=tuple(replace(item, pipeline=pipeline(item)) for item in result.records))
+    before = session.project
+    with pytest.raises(ProjectSessionError, match="calibration pipeline"):
+        session.apply_angular_result(result)
+    assert session.project == before
