@@ -1236,7 +1236,13 @@ class ProjectSession:
             calibration_ref=cal_ref,
         )
 
-        new_items = (d_theta, d_smooth, d_omega, d_alpha)
+        timing_context: JsonObject = {
+            "fps_nominal": timeline.fps_nominal,
+            "working_zone": list(timeline.working_zone),
+            "approximation": self.measurement_timing_detail(track.video_id),
+        }
+        new_items = tuple(replace(item, extra_fields={"timing_context": deepcopy(timing_context)})
+                          for item in (d_theta, d_smooth, d_omega, d_alpha))
         kept_derived = [
             d
             for d in self._project.derived

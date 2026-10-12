@@ -5,8 +5,7 @@
 """
 
 from concurrent.futures import CancelledError
-from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from threading import Event
 from uuid import UUID
 
@@ -114,14 +113,7 @@ def run_angular_job(job: AngularJob, cancel: Event) -> AngularResult:
             window_length=job.parameters.window_length,
             polyorder=job.parameters.polyorder,
         )
-        for item in computed:
-            extra_fields = deepcopy(item.extra_fields)
-            # 时序上下文不是滤波步骤，使用既有可扩展字段记录，不改 schema。
-            extra_fields["timing_context"] = {
-                "fps_nominal": job.inputs.timeline.fps_nominal,
-                "approximation": job.inputs.timing_detail,
-            }
-            records.append(replace(item, extra_fields=extra_fields))
+        records.extend(computed)
     if cancel.is_set():
         raise CancelledError()
     return AngularResult(job.inputs, job.specs, tuple(records))

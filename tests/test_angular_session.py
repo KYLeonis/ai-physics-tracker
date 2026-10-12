@@ -485,3 +485,44 @@ def test_zone_change_invalidates_both_analysis_families_and_keeps_observations(t
     assert all(item.status == "stale" for item in changed.derived)
     assert changed.observations == before.observations
     assert changed.timelines[0].fps_nominal == before.timelines[0].fps_nominal
+
+
+@pytest.mark.parametrize("mode", ["pendulum", "two_point"])
+def test_calibration_rotation_and_nonzero_zone_keep_angular_speed_and_frames(tmp_path: Path, mode: str) -> None:
+    from math import radians
+    from ai_physics_tracker.domain.project import update_timeline
+    session, video_id, (a, b) = _session_with_calibration(tmp_path, track_names=("A", "B"))
+    calibration = session.active_calibration(video_id)
+    session.update_calibration(replace(calibration, origin_px=(-85, 730),
+                                       known_length=1.5, rotation_deg=37))
+    for f in range(8, 55):
+        pixel_x, pixel_y = _bob_pixel(0.4 + 0.8 * f / FPS)
+        session.mark_point(a.track_id, f, pixel_x=pixel_x, pixel_y=pixel_y)
+        session.mark_point(b.track_id, f, pixel_x=PIVOT_PX[0], pixel_y=PIVOT_PX[1])
+    session._project = update_timeline(session.project,
+        replace(session.project.timelines[0], working_zone=(12, 42)))
+    reference = PendulumReference(PIVOT_PX) if mode == "pendulum" else TwoPointReference(b.track_id)
+    result = session.compute_angular(a.track_id, reference=reference)
+    rotation = radians(37)
+    for frame, row in zip(result[0].frames, result[0].values):
+        # 两点 A→固定 B 与单摆公式相差 +π/2；标定旋转对两种定义均增加同一角度。
+        expected = 0.4 + 0.8 * frame / FPS + rotation + (pi / 2 if mode == "two_point" else 0)
+        assert abs(sin(row[0] - expected)) <= 1e-10
+        assert cos(row[0] - expected) > 0
+    assert all(item.frames == tuple(range(12, 43)) for item in result)
+    assert all(isclose(row[0], 0.8, rel_tol=0, abs_tol=1e-10) for row in result[2].values)
+    assert all(isclose(row[0], 0, rel_tol=0, abs_tol=1e-10) for row in result[3].values)
+
+
+def test_direct_angular_result_preserves_approximate_timing_and_interval(tmp_path: Path) -> None:
+    session, video_id, (bob,) = _session_with_calibration(tmp_path)
+    session.accept_approximate_timing(video_id,
+        TimingReport("near_cfr", "small timing jitter", FRAME_COUNT, FPS, FPS, 0.0001, 0.0001))
+    _mark_pendulum_swing(session, bob.track_id, range(30))
+    result = session.compute_angular(bob.track_id, reference=PendulumReference(PIVOT_PX))
+    expected = {"fps_nominal": FPS, "working_zone": [0, FRAME_COUNT - 1],
+                "approximation": session.measurement_timing_detail(video_id)}
+    assert all(item.extra_fields["timing_context"] == expected for item in result)
+    session.save_as(tmp_path / "approximate")
+    reopened = ProjectSession.load(ProjectRepository(), session.project_root)
+    assert all(item.extra_fields["timing_context"] == expected for item in reopened.project.derived)
