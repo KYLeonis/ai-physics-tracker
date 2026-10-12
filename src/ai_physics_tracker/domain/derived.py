@@ -28,8 +28,8 @@ class DerivedInput:
     track_id: UUID
     source_filter: str | None = None
     include_superseded: bool = False
-    reference_track_id: UUID | None = None
     extra_fields: JsonObject = field(default_factory=dict, repr=False)
+    reference_track_id: UUID | None = None
 
     def __post_init__(self) -> None:
         if self.include_superseded:

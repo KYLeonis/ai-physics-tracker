@@ -1041,6 +1041,8 @@ class ProjectSession:
         track = next((t for t in self._store.tracks if t.track_id == track_id), None)
         if track is None:
             raise ProjectSessionError(f"unknown track_id: {track_id}")
+        if not self.can_measure(track.video_id):
+            raise ProjectSessionError("Video timing is not authorized; cached results are read-only")
 
         timeline = next(
             (item for item in self._project.timelines if item.video_id == track.video_id),

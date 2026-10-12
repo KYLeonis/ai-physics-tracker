@@ -18,6 +18,7 @@ from ai_physics_tracker.application.project_session import (
     ProjectSessionError,
 )
 from ai_physics_tracker.application.video import VideoStreamInfo
+from ai_physics_tracker.application.video_timing import TimingReport
 from ai_physics_tracker.domain.angular import PendulumReference, TwoPointReference
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, DerivedData, DerivedInput
 from ai_physics_tracker.domain.types import utc_now
@@ -355,6 +356,8 @@ def test_angular_serialization_roundtrip_preserves_reference_and_pipeline(
     assert omega.pipeline[1]["params"]["mode"] == "pendulum"
     assert omega.pipeline[1]["params"]["pivot_px"] == [100.0, 1000.0]
 
+    # 重开后只读缓存可浏览；本次媒体验证通过后才能重新计算。
+    loaded.confirm_video_timing(video_id, TimingReport("cfr", "synthetic test verification"))
     # 再算一次两点方向并保存重开：reference_track_id 往返保留
     loaded.compute_angular(
         track_a.track_id,
@@ -442,3 +445,43 @@ def test_first_calibration_leaves_angular_unaffected_scenario_guard(
     # 清除 active 标定 → 角度结果 stale（解释基准消失）
     session.set_active_calibration(video_id, None)
     assert all(d.status == "stale" for d in _angular_records(session, bob.track_id))
+
+
+def test_derived_input_keeps_legacy_positional_extra_fields() -> None:
+    extras = {"future": {"kept": True}}
+    value = DerivedInput(uuid4(), None, False, extras)
+    assert value.extra_fields == extras
+    assert value.reference_track_id is None
+
+
+def test_reopened_angular_cache_requires_fresh_timing_authorization(tmp_path: Path) -> None:
+    session, video_id, (bob,) = _session_with_calibration(tmp_path)
+    _mark_pendulum_swing(session, bob.track_id, range(30))
+    session.compute_angular(bob.track_id, reference=PendulumReference(PIVOT_PX))
+    session.save_as(tmp_path / "reopened")
+    loaded = ProjectSession.load(ProjectRepository(), session.project_root)
+    before = loaded.project
+    assert loaded.derived_data(bob.track_id, "angular_velocity").status == "valid"
+    assert not loaded.can_measure(video_id)
+    with pytest.raises(ProjectSessionError, match="not authorized"):
+        loaded.compute_angular(bob.track_id, reference=PendulumReference(PIVOT_PX))
+    assert loaded.project == before and not loaded.is_dirty
+    loaded.confirm_video_timing(video_id, TimingReport("cfr", "synthetic test verification"))
+    assert len(loaded.compute_angular(bob.track_id, reference=PendulumReference(PIVOT_PX))) == 4
+
+
+def test_zone_change_invalidates_both_analysis_families_and_keeps_observations(tmp_path: Path) -> None:
+    from ai_physics_tracker.domain.project import update_timeline
+    session, video_id, (a, b) = _session_with_calibration(tmp_path, track_names=("A", "B"))
+    _mark_pendulum_swing(session, a.track_id, range(30))
+    for f in range(30):
+        session.mark_point(b.track_id, f, pixel_x=100, pixel_y=900)
+    session.compute_kinematics(a.track_id)
+    session.compute_angular(a.track_id, reference=TwoPointReference(b.track_id))
+    before = session.project
+    assert update_timeline(before, before.timelines[0]).derived == before.derived
+    narrowed = replace(before.timelines[0], working_zone=(5, 20))
+    changed = update_timeline(before, narrowed)
+    assert all(item.status == "stale" for item in changed.derived)
+    assert changed.observations == before.observations
+    assert changed.timelines[0].fps_nominal == before.timelines[0].fps_nominal

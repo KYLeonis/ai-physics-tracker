@@ -177,12 +177,13 @@ def update_timeline(
         rel_tol=0.0,
         abs_tol=1e-12,
     )
-    if not fps_changed and not recalculate_times:
-        return replace(project, timelines=timelines)
-
     affected_track_ids = {
         track.track_id for track in project.tracks if track.video_id == timeline.video_id
     }
+    if not fps_changed and not recalculate_times:
+        derived = (mark_tracks_stale(project.derived, affected_track_ids)
+                   if timeline.working_zone != existing.working_zone else project.derived)
+        return replace(project, timelines=timelines, derived=derived)
     now = utc_now()
     observations: list[TrackPoint] = []
     for point in project.observations:
