@@ -14,9 +14,11 @@ from ai_physics_tracker.application.kinematics_job import (
     SmoothingParameters,
     analysis_inputs,
     validated_batch,
+    derived_result_ids,
+    validate_smoothing_recipe,
 )
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
-from ai_physics_tracker.domain.angular import AngularReference, TwoPointReference
+from ai_physics_tracker.domain.angular import AngularReference, PendulumReference, TwoPointReference
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, DerivedData
 
 
@@ -36,6 +38,7 @@ class AngularJob:
     inputs: AnalysisInputs
     parameters: SmoothingParameters
     specs: tuple[AngularSpec, ...]
+    previous_derived_ids: tuple[UUID, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -43,6 +46,8 @@ class AngularResult:
     inputs: AnalysisInputs
     specs: tuple[AngularSpec, ...]
     records: tuple[DerivedData, ...]
+    parameters: SmoothingParameters = SmoothingParameters()
+    previous_derived_ids: tuple[UUID, ...] = ()
 
 
 def _reference_track_id(reference: AngularReference) -> UUID | None:
@@ -97,6 +102,7 @@ def prepare_angular_job(
         analysis_inputs(snapshot, video_id, _job_track_ids(specs)),
         parameters,
         tuple(specs),
+        derived_result_ids(snapshot, {(track_id, kind) for track_id in target_ids for kind in ANGULAR_KINDS}),
     )
 
 
@@ -116,7 +122,7 @@ def run_angular_job(job: AngularJob, cancel: Event) -> AngularResult:
         records.extend(computed)
     if cancel.is_set():
         raise CancelledError()
-    return AngularResult(job.inputs, job.specs, tuple(records))
+    return AngularResult(job.inputs, job.specs, tuple(records), job.parameters, job.previous_derived_ids)
 
 
 def validated_angular(
@@ -124,7 +130,24 @@ def validated_angular(
 ) -> tuple[DerivedData, ...]:
     """重算提交前复核原输入（含参考轨迹），保留非目标结果及未知扩展字段。"""
 
-    expected = {
-        (spec.track_id, kind) for spec in result.specs for kind in ANGULAR_KINDS
-    }
-    return validated_batch(session, result.inputs, result.records, expected)
+    targets = {spec.track_id: spec for spec in result.specs}
+    if (not targets or len(targets) != len(result.specs)
+            or tuple(track.track_id for track in result.inputs.tracks) != _job_track_ids(result.specs)):
+        raise ProjectSessionError("Angular batch inputs do not match its specs")
+    for record in result.records:
+        spec = targets.get(record.track_id)
+        if spec is None or record.input.reference_track_id != _reference_track_id(spec.reference):
+            raise ProjectSessionError("Angular batch reference does not match its spec")
+        if isinstance(spec.reference, PendulumReference):
+            expected_reference = {"mode": "pendulum", "pivot_px": list(spec.reference.pivot_px)}
+        elif isinstance(spec.reference, TwoPointReference):
+            expected_reference = {"mode": "two_point", "reference_track_id": str(spec.reference.reference_track_id)}
+        else:
+            raise ProjectSessionError("Angular batch has an unsupported reference")
+        steps = [step for step in record.pipeline if isinstance(step, dict)
+                 and step.get("step") == "angular_reference"]
+        if len(steps) != 1 or steps[0].get("params") != expected_reference:
+            raise ProjectSessionError("Angular result does not match the requested reference recipe")
+    expected = {(track_id, kind) for track_id in targets for kind in ANGULAR_KINDS}
+    validate_smoothing_recipe(result.records, result.parameters, result.inputs.timeline.fps_nominal)
+    return validated_batch(session, result.inputs, result.records, expected, result.previous_derived_ids)

@@ -278,3 +278,52 @@ def test_detached_snapshot_saving_keeps_raw_points_before_commit(tmp_path: Path)
     assert loaded.project.observations == session.project.observations
     assert loaded.project.derived == ()
     assert len(session.project.derived) == 4
+
+
+def test_old_angular_batch_cannot_replace_new_reference_result(tmp_path: Path) -> None:
+    session, video_id, a, b = _calibrated_session_with_two_tracks(tmp_path)
+    job = prepare_angular_job(session, video_id,
+        (AngularSpec(a, PendulumReference((100, 1000))),), SmoothingParameters())
+    old = run_angular_job(job, Event())
+    session.compute_angular(a, reference=PendulumReference((100, 999)))
+    before = session.project
+    with pytest.raises(ProjectSessionError, match="results changed"):
+        session.apply_angular_result(old)
+    assert session.project == before
+
+
+def test_unrelated_analysis_family_and_reference_result_do_not_block_batch(tmp_path: Path) -> None:
+    session, video_id, a, b = _calibrated_session_with_two_tracks(tmp_path)
+    job = prepare_angular_job(session, video_id,
+        (AngularSpec(a, TwoPointReference(b)),), SmoothingParameters())
+    result = run_angular_job(job, Event())
+    session.compute_kinematics(a)
+    reference_records = session.compute_angular(b, reference=PendulumReference((100, 1000)))
+    session.apply_angular_result(result)
+    assert all(item in session.project.derived for item in reference_records)
+    assert len(session.project.derived) == 12
+
+
+@pytest.mark.parametrize("changed", ["reference", "inputs", "specs", "pivot", "smoothing"])
+def test_mismatched_angular_result_is_rejected_atomically(tmp_path: Path, changed: str) -> None:
+    from ai_physics_tracker.application.kinematics_job import analysis_inputs
+    session, video_id, a, b = _calibrated_session_with_two_tracks(tmp_path)
+    c = session.add_track(video_id, "Unrelated C").track_id
+    job = prepare_angular_job(session, video_id,
+        (AngularSpec(a, TwoPointReference(b)),), SmoothingParameters())
+    result = run_angular_job(job, Event())
+    if changed == "reference":
+        result = replace(result, records=tuple(replace(item,
+            input=replace(item.input, reference_track_id=c)) for item in result.records))
+    elif changed == "inputs":
+        result = replace(result, inputs=analysis_inputs(session, video_id, (c,)))
+    elif changed == "specs":
+        result = replace(result, specs=())
+    elif changed == "pivot":
+        result = replace(result, specs=(AngularSpec(a, PendulumReference((100, 999))),))
+    else:
+        result = replace(result, parameters=SmoothingParameters(5, 2))
+    before = session.project
+    with pytest.raises(ProjectSessionError):
+        session.apply_angular_result(result)
+    assert session.project == before
