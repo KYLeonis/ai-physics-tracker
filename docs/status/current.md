@@ -72,6 +72,8 @@
 
 ## Recently Completed
 
+- **本机 Codex → ZCode 基础配置（2026-10-13）**：全局 `$codex-zcode` Skill 已安装，复用 ZCode.app 内置 CLI 0.16.9 与现有 BigModel Individual Coding Plan；Flash 常规实现、GLM-5.3 复杂任务 / review、Codex 验收与有限返工。两种模型真实调用及 Flash 写文件链路通过；runner 11 项自检通过，补齐暂存区检查、实际模型核对与 Windows 进程树清理（Windows 仅 mock）。任务 / 日志放本地忽略的 `.zcode-control/`，未修改产品代码 / 启动新阶段；下一步仍按上方 HR 顺序，后续已授权实现可调用该 Skill。
+
 - **HR 反馈修复：K-means 结果未被推荐标注消费（2026-10-13）**：`20261013_test5` 两次真实结果均为跨视频的 20 帧，已有人工标签却为 0–19；根因为 `label_frame` 顺序遍历 working zone，零标签选帧成功后还推荐再选。代码 `2fa955a` 改为沿当前轨迹的实际算法结果启动连续标注；排除已有 manual，不顺序补帧，显式重选时替换旧代表帧批次。新增 5 个回归，定向 88、全量 **938 passed（63.02 s）**，用户原实验四个文件 SHA256 未改变。本轮 HR 待重测，Issue #26 继续 open，未合 main / 未启动 6.2。
   `8153cb1` CI macOS success、Windows 935 passed / 2 skipped / 1 failed（原检查集重建 fixture 无 lineage、粗时钟下 created_at 同值）；fixture 改为明确训练来源并强制相同时间，`653e315` 定向 34 / 最终全量 938 passed（59.72 s），产品时间语义不变。[CI 38361205836](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836) macOS / Windows Python3.11 success。
 
