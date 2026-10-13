@@ -2,6 +2,8 @@
 
 2026-10-11 用户要求其余值得吸收的内容存档，后续相关阶段顺带核对。来源固定于[全量区别文档](../notes/publication-main-feature-ui-differences.md)，主线方程口径以[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)为准。
 
+2026-10-13：只读分析 / 连续修正 / 教师模型、6.1 基础与 20 帧代表帧引导均已按序集成 main；下表中的已实现 / Partial 以此为当前落点，Deferred 不变。
+
 | 待办 | 何时必须重新核对 | 边界 / 来源 | 状态 |
 | --- | --- | --- | --- |
 | autosave `after` 续接 | 触及保存后训练 / 批次修正完成后的保存续接时 | `916adeb`，先复现 busy，同 session / 失败 / 换工程守卫 | 本轮纳入：busy autosave 完成后同 session 续接并再存新改动；失败不执行 after，定向回归 |

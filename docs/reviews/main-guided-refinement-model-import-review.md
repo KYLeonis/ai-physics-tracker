@@ -4,7 +4,7 @@
 - 范围：`6296617..feat/main-guided-refinement-model-import`；S1–S4 与本轮修复。
 - Context：[mini-plan](../status/main-guided-refinement-model-import-plan.md)、ADR-0017/0018、AGENTS §7、workflow §6、CODE_STANDARD。
 - Reviewer：R1 `/root/independent_review`；R2 `/root/independent_r2`，R3 全新会话复核 F4 补漏。
-- 状态：R2 已关闭 F1/F2/F3/F5/F6，F4 busy 入口补漏已修复 `0c71910`，R3 Approve，全部 findings Closed。HR 待用户亲测；此前 HR 不覆盖本轮。
+- 状态：R2 已关闭 F1/F2/F3/F5/F6，F4 busy 入口补漏已修复 `0c71910`，R3 Approve，全部 findings Closed。2026-10-13 用户确认 HR A/B/C 全部通过，已集成 main（`126e71d`）。
 
 ## Findings / Triage
 
@@ -47,11 +47,11 @@ Fix commits：`c998fd0`、`0c71910`。R1 后定向 `45 passed（5.18 s）`；复
 
 ## Final Verdict
 
-Approve；F4 已关闭。本轮 Human Review 已发起，待用户完成；未合并 main，Issue 保持 open。
+Approve；F4 已关闭。2026-10-13 用户确认本轮 Human Review A/B/C 全部通过，已以 `126e71d` 集成 main；合并树与 `a36007e` 相同。本次集成没有修改产品 / 测试，Issue 收尾见 current。
 
 - 实现方收尾确认：最新 `0c71910` [CI 38144024802](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38144024802) macOS/Windows Python 3.11 两个 job 均 success；文档收尾未再修改产品 / 测试。
 
 ## Actual runtime evidence
 
 - 只读本地已有 4-bodypart DLC PyTorch 权重，受管副本 + 临时 320×240 三帧视频；spawn 实际帧自检 `auto → mps`，所有关键点有限；完整三帧指定 tip 推理成功。没有修改已有实验 / 论文 worktree。
-- Windows CUDA 真机和用户 GUI 体验尚未验证；双平台 CI 只证明对应 Python 3.11 自动化测试。
+- 用户 GUI 体验已于 2026-10-13 确认 A/B/C 通过；用户未提供逐项设备 / 平台明细。Windows CUDA 真机仍按原计划延期，双平台 CI 只证明对应 Python 3.11 自动化测试。

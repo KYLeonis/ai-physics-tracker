@@ -1,7 +1,7 @@
 # Review Record — Phase 6.1 Angular Analysis Foundation
 
 - Subphase：[phase-6.1-plan.md](../status/phase-6.1-plan.md) · Issue [#25](https://github.com/KYLeonis/ai-physics-tracker/issues/25)
-- 分支：`feat/p6.1-angular-analysis`（叠加于待 HR 的 `feat/main-guided-refinement-model-import`）
+- 分支：`feat/p6.1-angular-analysis`（此前叠加于 `feat/main-guided-refinement-model-import`，2026-10-13 均已集成 main）
 - Reviewer：Independent code-reviewer（只读，全新实例，Flash 模型）
 - 首轮日期：2026-10-11 · 状态：Final Verdict 已出
 
@@ -128,7 +128,13 @@ R2 旧 Deferred 决定被本轮直接修复取代。上述修复不改 schema、
 ### 6.2 Entry 最终结论
 
 **READY（实现准备）**：本轮新 finding 和原 R2 全部 Closed，独立复审 Approve，最新代码双平台 CI 通过。可进入 6.2 实现准备；[6.2 子计划](../status/phase-6.2-plan.md)已形成。
-main 集成仍须先等 Issue #24 的 HR，再按序集成前置增量和 6.1。本轮没有启动 6.2 实现。
+main 已于 2026-10-13 在前置 HR 通过后按序集成。本轮没有启动 6.2 实现。
 
-本轮最终判定：修改后通过；6.2 技术入口无未处置 blocker。main 集成前仍保持前置 HR 条件，
-未把本轮后端验证扩展为真人 GUI 或 Windows/CUDA 真机验收。
+本轮最终判定：修改后通过；6.2 技术入口无未处置 blocker。未把本轮后端验证扩展为真人 GUI 或 Windows/CUDA 真机验收。
+
+### main 集成记录（2026-10-13）
+
+用户确认前置增量 A/B/C 与后续代表帧修复的 HR 全部通过；按序合并 `126e71d` →
+`890f5b1`（本子阶段）→ `4c8398e`。本次合并树与各分支对应 tip 完全相同，未改本阶段
+科学 / 数据 / 后台逻辑，原独立复审 Approve 保留。main CI / push / Issue #25 收尾见 current；
+6.2 只完成计划，尚未实现。上述先等 HR 的条件已满足，不再作为阻塞项。

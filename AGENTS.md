@@ -8,7 +8,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 - 技术基础：DeepLabCut 3.x（PyTorch 路线）+ 传统运动学分析工作流
 - 核心体验：用户标注少量代表帧 → AI 训练/微调 → 自动跟踪整段视频 → 修正困难帧 → 再训练 → 高质量运动轨迹 → 物理量计算与导出
-- 首次 GUI 学习需当前轨迹 20 个不同人工帧；默认选帧 20 / K-means，推荐框可自定义算法；已有成功训练的轨迹沿用原再训练门槛，教师模型自检 / 推理不要求先训练（2026-10-13 用户授权，当前增量待 HR 集成）。
+- 首次 GUI 学习需当前轨迹 20 个不同人工帧；默认选帧 20 / K-means，推荐框可自定义算法；推荐标注沿真实选帧结果连续推进。已有成功训练的轨迹沿用原再训练门槛，教师模型自检 / 推理不要求先训练（2026-10-13 Human Review 通过，已集成 main）。
 - 最终形态：面向普通 Windows 用户的桌面安装程序（无需配置 Python 环境）
 - 通用分析口径：**用户提供方程 / 公式，平台完成计算与后续分析**；论文线硬编码 ODE 只作复现参考（ADR-0017），不直接作为 main 的分析架构。
 - 基准实验：**单摆**（早期重点测试案例，用于建立算法、数据处理与工作流基准）
@@ -23,7 +23,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表（✅ 已完成，2026-08-31） |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪（✅ 已完成，2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | 代表帧、困难帧、人工修正、迭代比较、交互重构（✅ 已完成，2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 完整复审与修复完成待集成，6.2 子计划已准备，2026-10-13；其余子阶段按 ADR-0017 用户方程口径重规划） |
+| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 完成并集成 main，6.2 子计划就绪尚未实现，2026-10-13；其余子阶段按 ADR-0017 用户方程口径重规划） |
 | Phase 7 | Model Library | 模型保存、版本管理、应用到新视频 |
 | Phase 8 | Export & Scientific Workflow | CSV/Excel/图表/视频导出、项目归档 |
 | Phase 9 | Optimization & Packaging | 性能优化、GPU、Windows 打包发布 |
@@ -85,7 +85,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - Phase 1 数据体系规范（**实现前必读**）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md`（持久化与项目目录）、`docs/spec/phase1-requirements.md`（Phase 1 需求与验收标准）
 - Phase 2 视频/GUI 规范：`docs/spec/phase2-requirements.md`；技术栈与分层决策见 ADR-0005
 - Phase 5 规划入口：`docs/spec/phase5-requirements.md`（需求与边界）、`docs/status/phase-5-plan.md`（Subphase 顺序与验收）
-- Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`、`docs/status/phase-6.2-plan.md`（6.1 已完整复审待集成，6.2 已建立计划，ADR-0019 为其数据契约；6.3 起的拟合部分仍需按 ADR-0017 用户方程口径重规划）
+- Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`、`docs/status/phase-6.2-plan.md`（6.1 已完成并集成 main，6.2 已建立计划，ADR-0019 为其数据契约；6.3 起的拟合部分仍需按 ADR-0017 用户方程口径重规划）
 - 后续回移档案：`docs/status/main-backport-backlog.md`（含执行触发点，后续会话必须随相关阶段核对）
 - 模板：`docs/templates/`（subphase 计划、review）
 - 独立 review 记录（Review Record）：`docs/reviews/`（索引见其 README；生命周期规则以 `docs/workflow.md` §6 为准）

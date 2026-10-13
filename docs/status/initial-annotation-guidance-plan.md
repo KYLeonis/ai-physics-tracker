@@ -3,7 +3,7 @@
 - 日期：2026-10-13；分支 `fix/initial-annotation-guidance`，base `d7b9161`。
 - Issue：[#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。
 - 用户授权：首次学习标注 20 帧、默认 K-means、推荐框直达自定义选帧算法。
-- 状态：S1–S3 完成，S4 Human Review 待反馈；不进入 Phase 6.2 实现，不越过前置增量 Human Review。
+- 状态：S1–S4 完成，2026-10-13 用户确认本轮修复及前置 A/B/C 全部通过；按序 `--no-ff` 集成 main（`4c8398e`）。未进入 Phase 6.2 实现。
 
 ## Goal / Scope
 
@@ -25,7 +25,7 @@
 - [x] S1：首次学习 19 帧不放行，20 帧就绪；批次 / 高级入口一致，再训练不被重设首轮门槛。
 - [x] S2：默认 20 / K-means；推荐框自定义可选 Uniform，确认走同一选帧路径，取消不启动任务；切换项目重置默认。
 - [x] S3：定向 / 全量回归、自检、文档与分支提交 / push。
-- [ ] S4：Human Review 通过后按前置增量 → 6.1 → 本分支顺序集成 main。
+- [x] S4：Human Review 通过后按前置增量 → 6.1 → 本分支顺序集成 main（`4c8398e`）；push / Issue 收尾见 current。
 
 ## Review Gate
 
@@ -34,6 +34,15 @@
 - Human Review：必须，给出启动命令、操作与预期及封闭问题，停止等待真人反馈。
 
 ## Result
+
+### Human Review / main 集成收尾（2026-10-13）
+
+用户确认本轮代表帧修复通过，并明确确认前置三项增量 A/B/C 全部通过。
+三条分支按序 `--no-ff` 合入 main：`126e71d` → `890f5b1` → `4c8398e`；
+每一步合并树都与对应分支 tip 完全相同，最终 main 与已验收 `998501e` 全树一致。
+`998501e` 相比 `653e315` 仅文档变化；产品 / 测试与已通过双平台 CI 的 `653e315` 完全相同。
+用户未提供设备 / 平台明细，不扩展为 Windows CUDA 真机或新的科学准确性验收。
+main CI / push / Issue #26 收尾见 current；以下保留实现及首次 HR 反馈历史。
 
 ### Human Review 反馈修复：建议帧入口顺序扫描（2026-10-13）
 

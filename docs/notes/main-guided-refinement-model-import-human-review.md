@@ -2,6 +2,8 @@
 
 日期：2026-10-11；分支 `feat/main-guided-refinement-model-import`；Issue [#24](https://github.com/KYLeonis/ai-physics-tracker/issues/24)。上一轮 HR 已通过，本轮是新增交互的独立验收。规则：AGENTS.md §7 / workflow.md §5.1，真人反馈后才集成 main。
 
+**验收结论（2026-10-13）**：用户明确确认 A/B/C 全部通过：Analysis 只读与 Acquire 编辑、连续标注修正 / Skip / Esc / Resume / 完成后训练推荐、教师模型导入 / 实际帧自检 / 关键点候选 / 显式采用 / 保存重开。已以 `126e71d` 集成 main；用户未提供逐项设备 / 平台信息，不扩大为 Windows CUDA 真机验收。以下保留体验步骤作为交付说明。
+
 ## 启动
 
 ```sh

@@ -1,10 +1,10 @@
 # Phase 6 Plan — Advanced Physics Analysis
 
-> 2026-10-13：6.1 已实现并完成本轮完整复审 / 修复，待前置增量 HR 后集成。
+> 2026-10-13：前置增量 Human Review 已通过；6.1 完整复审 / 修复完成并已按序集成 main。
 > [6.2 子计划](phase-6.2-plan.md)已形成；6.3 起须按 [ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)
 > 的用户方程口径重新冻结范围，旧固定拟合列表只作历史草案。
 
-- 状态：Phase 6 进行中；6.1 基础完成，6.2 计划准备。
+- 状态：Phase 6 进行中；6.1 基础完成并集成，6.2 计划就绪、未开始实现。
 - 基线 / 最新证据：[current.md](current.md)、[6.1 review](../reviews/phase-6.1-review.md)。
 - 需求入口：[phase6-requirements.md](../spec/phase6-requirements.md)。
 
@@ -12,7 +12,7 @@
 
 | Subphase | 目标 / 验收 | 依赖与 Review Gate |
 | --- | --- | --- |
-| 6.1 — Angular Analysis Foundation（已实现 / 复审） | 固定支点/两点方向定义、θ/ω/α 纯计算与 Session 快照事务；解析测试、依赖失效、保存重开。对应 AC-1/2 及 AC-7 的角运动部分 | 首先执行；High-risk，Independent Review；无 GUI 增量，不触发 Human Review |
+| 6.1 — Angular Analysis Foundation（已完成 / 集成） | 固定支点/两点方向定义、θ/ω/α 纯计算与 Session 快照事务；解析测试、依赖失效、保存重开。对应 AC-1/2 及 AC-7 的角运动部分 | High-risk，Independent Review 已通过；无 GUI 增量，不触发 Human Review |
 | 6.2 — Angular Charts & Phase Space（计划已形成） | 角度配置、三种时间曲线、θ–ω 与 x–vx 相图，源帧导航；AC-3 的角运动部分 | 6.1；科学适配/参考配置需 Independent Review，交互需 Human Review |
 | 6.3 — Period & Fitting | 段内周期；用户方程 / 变量 / 参数 / 拟合接口另行重规划，固定函数只作示例；AC-4、AC-6 的拟合部分、AC-7 的拟合部分 | 6.2；High-risk，Independent Review + Human Review；先冻结真实周期参考，不等拟合结果出来再选 |
 | 6.4 — Comparison & Error Interpretation | 同视频多轨迹比较/同帧差值、周期离散/拟合标准误差及局限展示；AC-3 的比较部分、AC-6 | 6.3；High-risk，Independent Review + Human Review；不做完整系统误差传播 |

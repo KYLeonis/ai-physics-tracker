@@ -2,7 +2,7 @@
 
 - 日期：2026-10-13；状态：**计划已形成，尚未开始实现**。
 - Issue：实现启动时创建；计划分支：`feat/p6.2-angular-charts`。
-- 基线：`feat/p6.1-angular-analysis` 完整复审与修复；具体最终提交 / CI 见 [current.md](current.md)。
+- 基线：已集成 6.1 与已通过 HR 的 GUI 增量的 `main`；具体最终提交 / CI 见 [current.md](current.md)。
 - 风险：High-risk（标量 / 相空间科学适配、双输入参考、异步提交与缓存状态）；GUI 必须 Human Review。
 
 ## Goal
@@ -18,8 +18,8 @@
 1. 6.1 已完成（代码 `4842560` / 全量929 / 独立 Approve / 双平台CI）；实现入口 READY：角量定义 / SG / 标量持久化、多输入失效、时序授权、结果版本与配方核对，
    独立复审及双平台 CI；[最终证据](../reviews/phase-6.1-review.md)。原 R2 的 zone-only 失效已在本轮修复，不留给 6.2 再选择口径。
 2. 可以进入 6.2 实现准备；实际实现需下一条启动指令。本轮只建立计划。
-3. 集成次序仍为 Issue #24 三项增量 HR 通过 → 增量合 main → 6.1 合 main → 6.2 开发周期集成。
-   若前置 HR 尚未结束，可在明确记录基线的工作分支上叠加开发；不得先越过前置 HR 合 main。
+3. 前置条件已于 2026-10-13 满足：Issue #24 三项增量与代表帧修复 HR 均通过，增量、6.1、20 帧引导按序集成 main（`126e71d` / `890f5b1` / `4c8398e`）。
+   后续 6.2 从 main 建分支；自身的 Independent Review / Human Review 仍按下方 Review Gate 执行。
 
 ## Agent Context Pack
 

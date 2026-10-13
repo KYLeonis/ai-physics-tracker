@@ -1,34 +1,29 @@
 # Current Status
 
-> 2026-10-13：当前工作分支 `fix/initial-annotation-guidance`，首次 GUI 学习需 20 个不同人工帧，
-> 默认 20 / K-means，推荐框直达自定义算法；[本轮 Human Review](../notes/initial-annotation-guidance-human-review.md)待反馈。
-> 用户实测发现“选了 K-means 仍标前 20 帧”：算法结果正确，推荐标注入口却顺序扫描；已修复为实际建议帧连续队列，待重新 HR。
-> 最新修复 `2fa955a`；Windows CI 暴露的时钟相关 fixture 已在 `653e315` 修复，定向 34 / 最终全量 **938 passed（59.72 s）**，[双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836)。
-> Phase 6.1 完整代码复审 / 修复完成，新增 R8–R13 和原 R2 全部 Closed；
-> 6.1 复审时全量 **929 passed**、独立复审 Approve、代码 `4842560` 双平台 CI success。
-> [6.2 子计划](phase-6.2-plan.md)已形成，可进入实现准备；本轮未实现 6.2。
-> 分支顺序仍为前置三项增量 → 6.1 → 本轮标注引导；不得越过对应 HR。
+> 2026-10-13：用户确认代表帧修复通过，同时明确确认 Analysis 只读 / 连续修正 / 教师模型 A/B/C 全部通过。
+> 三条分支已按序 `--no-ff` 集成 **main**：`126e71d` → `890f5b1` → `4c8398e`；无冲突，各合并树与对应分支完全相同。
+> 最终产品 / 测试与已验收分支相同，全量 **938 passed（59.72 s）**、源 `653e315` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836)；main CI 待确认。
+> Phase 6.1 完成并集成，原 R2 与 R8–R13 Closed / 独立 Approve。
+> [6.2 子计划](phase-6.2-plan.md)已就绪；本轮仅集成和文档收尾，未开始 6.2 实现。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 > 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
 
-- 最后更新：2026-10-13（HR 反馈修复：推荐标注沿算法返回的帧队列，待重新验证）
+- 最后更新：2026-10-13（全部 HR 通过，三条分支按序集成 main）
 
 ## Current
 
-- **Phase**：Phase 6.1 完整复审完成待集成；Phase 6.2 计划就绪，后续方程部分按 ADR-0017 重规划
-- **Subphase / Slice**：首次标注引导 HR 反馈修复 `2fa955a` 完成，Issue #26；本轮待重新 Human Review，前置增量 HR 仍待反馈；6.2 仅计划就绪
+- **Phase**：Phase 6.1 已完成并集成 main；Phase 6.2 计划就绪，后续方程部分按 ADR-0017 重规划
+- **Subphase / Slice**：Issue #24 / #25 / #26 按序集成完成，HR 已通过；main CI / push / Issue 收尾中；6.2 尚未实现
+- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `main`
 - **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
 
 ## Next Recommended Action
 
-0. **用户重新执行本轮 [Human Review](../notes/initial-annotation-guidance-human-review.md)（A/B/C）**：重点核对 `Label suggested frames` 是否严格沿算法结果跳帧；原实验标注已保留，可重新选帧补标，无须删除。20 帧门槛 / 自定义入口 / 新项目默认仍适用，计划见 [initial-annotation-guidance-plan.md](initial-annotation-guidance-plan.md)。工作分支基于 `d7b9161`，通过后也须按下面的前置顺序集成，不直接将整栈视为 HR 已通过。
-1. **用户执行前置增量的 [Human Review](../notes/main-guided-refinement-model-import-human-review.md)（A/B/C 反馈）**——通过后按 `--no-ff` 集成 `feat/main-guided-refinement-model-import`、验证同树 / main CI、文档收尾 / push、关闭 Issue #24。
-2. 随后按序 `--no-ff` 集成 `feat/p6.1-angular-analysis`，代码 `4842560` [CI 38274300024](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38274300024) 双平台 success；Issue #25 随集成关闭。保存 / 结果身份 / 配方条件见 [review](../reviews/phase-6.1-review.md) 和 ADR-0020。
-   再集成本轮 `fix/initial-annotation-guidance`（需要本轮 HR 已通过），验证 main CI / 文档收尾 / push / 关闭 Issue #26。
-3. 6.2 技术入口 READY，读取 [phase-6.2-plan.md](phase-6.2-plan.md)；下一次用户明确启动后创建 Issue / `feat/p6.2-angular-charts` 并从 S1 科学适配开始。集成仍不能越过前置 HR。
-4. R2 区间失效已经修复；R7 测试竞态已闭环。旧 autosave 期间 Open/Save 菜单静默忽略只留后续 UX 档案，未混入本轮无 GUI 的 6.1 修复。
+1. 本轮集成收尾：确认 main 双平台 CI、推送文档、关闭 Issue #24 / #25 / #26；HR 条件已经满足，不再重复请求真人验收。
+2. 下一次用户明确启动 6.2 后：读取 [phase-6.2-plan.md](phase-6.2-plan.md)，从当前 main 创建 Issue / `feat/p6.2-angular-charts`，先做 S1 标量 / 相空间科学适配和分析缓存族状态。自身 Independent Review / Human Review 仍须执行。
+3. R2 区间失效、R7 重开测试竞态已闭环；旧 autosave 期间 Open/Save 菜单静默忽略仍只保留后续 UX 档案。
 
 后续 Phase 6 其余子阶段必须按[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)的**用户提供方程、通用平台分析**口径重规划，不执行旧固定拟合草案。触及相关阶段时必须核对[后续回移档案](main-backport-backlog.md)。
 
@@ -72,18 +67,20 @@
 
 ## Recently Completed
 
+- **全部 HR 通过 / main 集成（2026-10-13）**：用户确认本轮代表帧修复通过，同时确认此前 A/B/C 全部通过。按序 `--no-ff` 集成三项增量（`126e71d`）、6.1（`890f5b1`）、20 帧 / K-means / 自定义 / 代表帧队列修复（`4c8398e`）。各合并树与分支 tip 完全相同，最终树与已验收 `998501e` 一致；相比已通过双平台 CI 的 `653e315` 仅文档变化。没有新增产品 / 测试代码或 GUI 行为；用户未提供逐项设备 / 平台详情，不扩大为 Windows CUDA 真机或科学准确性验收。main CI / Issue 收尾待记录；论文 worktree 与用户实验未改。
+
 - **本机 Codex → ZCode 基础配置（2026-10-13）**：全局 `$codex-zcode` Skill 已安装，复用 ZCode.app 内置 CLI 0.16.9 与现有 BigModel Individual Coding Plan；Flash 常规实现、GLM-5.3 复杂任务 / review、Codex 验收与有限返工。两种模型真实调用及 Flash 写文件链路通过；runner 11 项自检通过，补齐暂存区检查、实际模型核对与 Windows 进程树清理（Windows 仅 mock）。任务 / 日志放本地忽略的 `.zcode-control/`，未修改产品代码 / 启动新阶段；下一步仍按上方 HR 顺序，后续已授权实现可调用该 Skill。
 
-- **HR 反馈修复：K-means 结果未被推荐标注消费（2026-10-13）**：`20261013_test5` 两次真实结果均为跨视频的 20 帧，已有人工标签却为 0–19；根因为 `label_frame` 顺序遍历 working zone，零标签选帧成功后还推荐再选。代码 `2fa955a` 改为沿当前轨迹的实际算法结果启动连续标注；排除已有 manual，不顺序补帧，显式重选时替换旧代表帧批次。新增 5 个回归，定向 88、全量 **938 passed（63.02 s）**，用户原实验四个文件 SHA256 未改变。本轮 HR 待重测，Issue #26 继续 open，未合 main / 未启动 6.2。
+- **HR 反馈修复：K-means 结果未被推荐标注消费（2026-10-13）**：`20261013_test5` 两次真实结果均为跨视频的 20 帧，已有人工标签却为 0–19；根因为 `label_frame` 顺序遍历 working zone，零标签选帧成功后还推荐再选。代码 `2fa955a` 改为沿当前轨迹的实际算法结果启动连续标注；排除已有 manual，不顺序补帧，显式重选时替换旧代表帧批次。新增 5 个回归，定向 88、全量 **938 passed（63.02 s）**，用户原实验四个文件 SHA256 未改变。当时 HR 待重测；现已通过并集成 main，未启动 6.2。
   `8153cb1` CI macOS success、Windows 935 passed / 2 skipped / 1 failed（原检查集重建 fixture 无 lineage、粗时钟下 created_at 同值）；fixture 改为明确训练来源并强制相同时间，`653e315` 定向 34 / 最终全量 938 passed（59.72 s），产品时间语义不变。[CI 38361205836](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836) macOS / Windows Python3.11 success。
 
-- **首次学习 / 选帧引导（2026-10-13）**：分支 `fix/initial-annotation-guidance`，代码 `b9267e3`，Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。首次 GUI 学习需 20 个不同人工帧，推荐框 / 高级训练 / 连续标注完成提示一致；20 / K-means 默认选帧，推荐框自定义弹窗解释并选择 K-means / Uniform，取消不启动，同一项目沿用算法，新建 / 切换项目恢复默认。已有 completed train 的同轨迹再训练保留门槛，教师模型路径与引擎至少 3 个训练帧契约不变。新增 4 回归；定向 118、末轮 58、最终全量 **933 passed（56.79 s）**，diff 检查通过；`85be73e` [CI 38349426753](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753) macOS / Windows Python3.11 success，Human Review 待反馈。未合 main / 未启动 6.2，实现与集成次序见[计划](initial-annotation-guidance-plan.md)。
+- **首次学习 / 选帧引导（2026-10-13）**：分支 `fix/initial-annotation-guidance`，代码 `b9267e3`，Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。首次 GUI 学习需 20 个不同人工帧，推荐框 / 高级训练 / 连续标注完成提示一致；20 / K-means 默认选帧，推荐框自定义弹窗解释并选择 K-means / Uniform，取消不启动，同一项目沿用算法，新建 / 切换项目恢复默认。已有 completed train 的同轨迹再训练保留门槛，教师模型路径与引擎至少 3 个训练帧契约不变。新增 4 回归；定向 118、末轮 58、最终全量 **933 passed（56.79 s）**，diff 检查通过；`85be73e` [CI 38349426753](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753) macOS / Windows Python3.11 success；后续 HR 已通过并集成 main，未启动 6.2，实现与集成记录见[计划](initial-annotation-guidance-plan.md)。
 
-- **6.1 完整复审 / 6.2 计划（2026-10-12–13）**：复审整个 6.1 调用链，修复原 R2 与新增 R8–R13：旧构造兼容、公共计算时序、近似 / 区间来源、旧批次覆盖新结果、规格 / SG / 引用一致、标定 pipeline 一致；代码 `80661c1` / `aacb379` / `5f50a16` / `4842560`。新增 21 回归，定向87、全量 **929 passed（66.38 s）**，全新最终独立复审 Approve，[CI 38274300024](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38274300024) macOS / Windows Python3.11 success。ADR-0020 与 6.2 mini-plan 已写，未改论文 worktree / 未实现 6.2 / 未合 main；前置 HR 仍待反馈。
+- **6.1 完整复审 / 6.2 计划（2026-10-12–13）**：复审整个 6.1 调用链，修复原 R2 与新增 R8–R13：旧构造兼容、公共计算时序、近似 / 区间来源、旧批次覆盖新结果、规格 / SG / 引用一致、标定 pipeline 一致；代码 `80661c1` / `aacb379` / `5f50a16` / `4842560`。新增 21 回归，定向87、全量 **929 passed（66.38 s）**，全新最终独立复审 Approve，[CI 38274300024](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38274300024) macOS / Windows Python3.11 success。ADR-0020 与 6.2 mini-plan 已写，未改论文 worktree / 未实现 6.2；现已在前置 HR 通过后集成 main。
 
-- **Phase 6.1 角运动分析基础（2026-10-11）**：分支 `feat/p6.1-angular-analysis`（Issue #25），实现+review 修复共 3 提交。交付 ADR-0019、`domain/angular.py`、`DerivedInput.reference_track_id`（双轨迹失效/级联/同视频校验）、`compute_angular`、`angular_job` 后台原子批次与序列化往返；新增 43 测试，本机全量 **908 passed** 零回归，分支 [CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) 双平台 success。Independent Review 首轮 Approve with findings（7 项：5 修复+复审确认、2 延期——R2 zone 失效移交 6.2、R7 父分支 flake 与本 diff 无关）；[review record](../reviews/phase-6.1-review.md)。分支已 push，CI 结果与集成动作见 Next；集成 main 待前置增量 HR 通过。
+- **Phase 6.1 角运动分析基础（2026-10-11）**：分支 `feat/p6.1-angular-analysis`（Issue #25），实现+review 修复共 3 提交。交付 ADR-0019、`domain/angular.py`、`DerivedInput.reference_track_id`（双轨迹失效/级联/同视频校验）、`compute_angular`、`angular_job` 后台原子批次与序列化往返；新增 43 测试，本机全量 **908 passed** 零回归，分支 [CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) 双平台 success。Independent Review 首轮 Approve with findings（7 项：5 修复+复审确认、2 延期——R2 zone 失效移交 6.2、R7 父分支 flake 与本 diff 无关）；[review record](../reviews/phase-6.1-review.md)。原分支已 push；R2 / R7 后续均 Closed，现已在前置 HR 通过后集成 main。
 
-- **本轮三项增量实现 / 复审（2026-10-11）**：工作分支 `feat/main-guided-refinement-model-import`，代码 `1743f61` / `229b7d4` / `c998fd0` / `0c71910`；定向45 + 末轮28通过，全量 **865 passed（77.50 s）**，最新代码 [CI 38144024802](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38144024802) macOS/Windows Python3.11 success。R1/R2/R3 六项 findings Closed / Approve；[review record](../reviews/main-guided-refinement-model-import-review.md)。实际 DLC spawn 四点自检及三帧 tip 推理 `auto → mps` 成功；Human Review 待反馈、Issue #24 open、未合 main。方程口径与后续档案同步 ADR-0017/0018 / AGENTS / roadmap / specs / README。
+- **本轮三项增量实现 / 复审（2026-10-11）**：工作分支 `feat/main-guided-refinement-model-import`，代码 `1743f61` / `229b7d4` / `c998fd0` / `0c71910`；定向45 + 末轮28通过，全量 **865 passed（77.50 s）**，最新代码 [CI 38144024802](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38144024802) macOS/Windows Python3.11 success。R1/R2/R3 六项 findings Closed / Approve；[review record](../reviews/main-guided-refinement-model-import-review.md)。实际 DLC spawn 四点自检及三帧 tip 推理 `auto → mps` 成功；当时 HR 待反馈；现用户确认 A/B/C 全部通过，已集成 main。方程口径与后续档案同步 ADR-0017/0018 / AGENTS / roadmap / specs / README。
 
 - **主线 UI 维护 HR / 集成（2026-10-11）**：用户整体确认“上一轮的HR通过”，五项回移与顶部推荐完成 `--no-ff` 集成 / push（`017cc04`）；无新产品 / 测试修改，合并树与分支 `24ec071` 的双平台 success CI 一致。main [CI 38138010183](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38138010183) 双平台 success，Issue #23 已关闭。用户未提供逐项设备 / 平台明细，不扩大为 Windows/CUDA 全阶段验收。后续优先级见[区别文档 §10](../notes/publication-main-feature-ui-differences.md#10-hr-通过后的回移建议2026-10-11)。
 

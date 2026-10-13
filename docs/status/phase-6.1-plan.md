@@ -2,8 +2,8 @@
 
 > 2026-10-11：用户确认启动本子阶段（角运动基础与 ADR-0017"角运动/求导是通用平台输入能力"口径兼容；6.1 的 non-goals 本就排除周期/拟合，R3 固定拟合部分仍留待按 ADR-0017 重规划）。科学/数据契约见[ADR-0019](../decisions/0019-angular-kinematics-and-multi-input-derived-data.md)。
 
-- Issue / 分支：[#25](https://github.com/KYLeonis/ai-physics-tracker/issues/25) / `feat/p6.1-angular-analysis`（叠加于待 HR 的 `feat/main-guided-refinement-model-import`，集成顺序：增量先行）
-- 日期 / 状态：2026-10-11 · **实现 / 完整复审完成，待按序集成**
+- Issue / 分支：[#25](https://github.com/KYLeonis/ai-physics-tracker/issues/25) / `feat/p6.1-angular-analysis`（此前叠加于 `feat/main-guided-refinement-model-import`，现均已集成 main）
+- 日期 / 状态：2026-10-13 · **实现 / 完整复审 / 按序集成完成**（merge `890f5b1`）
 - 风险等级：High-risk（角度定义、unwrap/微分、多输入依赖与派生结果事务）
 
 ## Goal
@@ -66,7 +66,7 @@ ADR 需决定 scalar kinds/多输入参数的 additive 落点，并核对旧项�
 - [x] Slice 1：扫描调用链，记录 angular/data-dependency ADR（[ADR-0019](../decisions/0019-angular-kinematics-and-multi-input-derived-data.md)），实现纯角度、段内 unwrap 与 SG 导数及解析测试。
 - [x] Slice 2：scalar 结果溯源与多输入依赖失效；Session/保存重开/Undo 回归。
 - [x] Slice 3：快照后台计算、输入复核和原子提交，补取消/迟到/部分批次测试。
-- [x] Slice 4：独立 review → 处置/复审 → 文档同步 → 集成/push/CI（review 闭环；集成 main 待前置增量 HR 通过后按序执行）。
+- [x] Slice 4：独立 review → 处置/复审 → 文档同步 → 集成/push/CI（前置 HR 已通过，main merge `890f5b1`；最新 CI / push 见 current）。
 
 ## Verification
 
@@ -92,8 +92,7 @@ Undo AC-3/4、批次 AC-5），本机全量 **908 passed** 零回归。Independe
 7 findings：R1/R3/R4/R5/R6 修复并经复审确认（[review record](../reviews/phase-6.1-review.md)），
 首轮曾延期 R2 / R7：R7 后续根因修复；R2 已由 2026-10-12–13 完整审查直接修复，
 不再留给 6.2。新增后台版本 / 配方、公共时序边界与计算溯源修复见审查记录。
-分支 `feat/p6.1-angular-analysis` 已 push，[双平台 CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) success；集成 main 须待
-前置增量 `feat/main-guided-refinement-model-import` HR 通过后按序 `--no-ff` 执行。
+当时分支 `feat/p6.1-angular-analysis` 已 push，[双平台 CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) success；前置 HR 后按序集成的条件现已满足，收尾见末节。
 
 ## 完整复审补充（2026-10-13）
 
@@ -103,4 +102,12 @@ Undo AC-3/4、批次 AC-5），本机全量 **908 passed** 零回归。Independe
 最新测试 / CI 以 current 为准；[6.2 子计划](phase-6.2-plan.md)已形成，当前不含 GUI 实现。
 
 最终完整复审：R2 / R8–R13 全部 Closed，最新全量929 passed（66.38 s），
-代码4842560 / 双平台CI38274300024 success；6.2技术入口READY，实际集成依然按前置HR顺序。
+代码4842560 / 双平台CI38274300024 success；6.2技术入口READY。
+
+## main 集成收尾（2026-10-13）
+
+用户确认前置增量 A/B/C 全部通过后，先集成增量 `126e71d`，再以 `--no-ff` 集成本分支
+（`890f5b1`），合并树与 `d7b9161` 完全一致。随后集成已通过 HR 的 20 帧 / 代表帧引导
+（`4c8398e`）；最终产品 / 测试与 `653e315` 双平台 success CI 相同。
+本轮无新科学 / 数据 / GUI 变更，原独立复审结论保留；6.2 仅计划就绪，尚未启动。
+main CI / push / Issue #25 收尾见 current。

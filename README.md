@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:    Phase 6.1 angular foundation（完整复审 / 修复完成，待集成）
-Last Delivered:   Phase 5 + main UI backports；6.1 工作分支已可用
-Next Planned:     前置增量 HR / 顺序集成；Phase 6.2 子计划已准备
+Current Phase:    Phase 6（6.1 angular foundation 已完成并集成 main）
+Last Delivered:   Analysis 只读、连续修正、教师模型与 20 帧 / K-means 引导；Human Review 通过
+Next Planned:     Phase 6.2 角量图表与相空间；子计划就绪，尚未开始实现
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -115,7 +115,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | ⬜ 用户方程平台待重规划 |
+| Phase 6 | Advanced Physics Analysis | 🔄 6.1 已完成并集成；6.2 计划就绪；方程部分按用户输入重规划 |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
 | Phase 9 | Optimization & Packaging | ⬜ |
@@ -135,6 +135,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
+- ✅ Phase 6.1 角运动基础与当前 GUI 增量已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引
@@ -150,17 +151,17 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - [docs/decisions/](docs/decisions/) — 架构决策记录（ADR）
 
 
-### 主线口径与当前增量（2026-10-11）
+### 主线口径与已交付增量（2026-10-13）
 
 后续分析采用**用户提供方程 / 公式，通用平台完成计算与分析**；论文分支固定 ODE 是复现参考，Phase 6 旧草案须重规划（[ADR-0017](docs/decisions/0017-user-defined-equation-analysis-platform.md)）。
 
-当前工作分支新增 Analysis 视频只读、建议帧批量连续标注 / 修正与完成后的训练推荐、教师 DLC 模型受管导入 / 实际帧自检 / 单关键点候选轨迹。模型自检不会证明科学准确性，候选仍需显式采用。自动化 / Independent Review / 双平台 CI 已通过，等待本轮 [Human Review](docs/notes/main-guided-refinement-model-import-human-review.md)，尚未集成 main。其余回移候选在 [后续档案](docs/status/main-backport-backlog.md) 按相关阶段触发核对。
+main 已交付 Analysis 视频只读、建议帧批量连续标注 / 修正与完成后的训练推荐、教师 DLC 模型受管导入 / 实际帧自检 / 单关键点候选轨迹。模型自检不会证明科学准确性，候选仍需显式采用。自动化 / Independent Review 已通过，用户于 2026-10-13 确认 [Human Review A/B/C](docs/notes/main-guided-refinement-model-import-human-review.md) 全部通过；已按序集成。其余回移候选在 [后续档案](docs/status/main-backport-backlog.md) 按相关阶段触发核对。
 
-2026-10-13 首次学习引导增量：当前轨迹需 20 个不同人工帧才可首次学习；默认请求 20 帧 / K-means，顶部推荐的 `Custom frame selection…` 直接切换 K-means / Uniform。已有成功训练的轨迹保持原再训练门槛，教师模型推理仍可直接使用。见[计划](docs/status/initial-annotation-guidance-plan.md)与[真人验收步骤](docs/notes/initial-annotation-guidance-human-review.md)，待 Human Review 后集成。
+2026-10-13 首次学习引导增量已通过 Human Review 并集成 main：当前轨迹需 20 个不同人工帧才可首次学习；默认请求 20 帧 / K-means，顶部推荐的 `Custom frame selection…` 直接切换 K-means / Uniform。已有成功训练的轨迹保持原再训练门槛，教师模型推理仍可直接使用。见[计划](docs/status/initial-annotation-guidance-plan.md)与[真人验收记录](docs/notes/initial-annotation-guidance-human-review.md)。
 用户实测反馈的“选了 K-means 却标前 20 帧”已修复：选帧完成后推荐 `Label suggested frames`，沿实际建议帧连续标注；没有建议结果时先选帧，原有人工标签保留。
 
 ### Phase 6.1 / 6.2 当前进度（2026-10-13）
 
-6.1 已交付 θ/ω/α 的纯计算、双输入依赖与保存 / 后台事务，并完成完整审查和修复，
+6.1 已交付 θ/ω/α 的纯计算、双输入依赖与保存 / 后台事务，完成完整审查和修复并集成 main，
 尚无角量 GUI。当前可进入 [6.2 角量图表与相空间计划](docs/status/phase-6.2-plan.md)的实现准备；
-科学 / 时序 / 结果版本约束见 ADR-0019/0020，实际验证和待集成条件见 current。
+科学 / 时序 / 结果版本约束见 ADR-0019/0020，最新验证和下一步见 current。

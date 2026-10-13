@@ -2,9 +2,11 @@
 
 - 日期：2026-10-13；分支 `fix/initial-annotation-guidance`。
 - 首轮代码 `b9267e3`；当时全量 933 passed；Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。
-- `85be73e` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753)；真人反馈仍待用户执行。
+- 首轮 `85be73e` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753)；后续修复和最终真人验收结论见下。
 - 用户第一次实测发现“标成前 20 帧”，已定位到推荐标注入口忽略算法结果；本轮修复后需重新检查代表帧的连续跳转。本次反馈不替代前置三项增量的 A/B/C 反馈。
 - 本轮修复 `2fa955a`，定向 88；测试时钟稳定性修复后最终全量 938 passed，`653e315` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836)；原实验四个文件 SHA256 未改变。
+
+**验收结论（2026-10-13）**：用户确认本轮通过，同时确认前置增量 A/B/C 全部通过。已按增量 → 6.1 → 本分支顺序集成 main，最后 merge `4c8398e`；未新增 GUI 行为，不再重复发起 HR。以下为已通过验收的操作说明，先前“待反馈”状态仅保留历史。
 
 ## 启动
 
