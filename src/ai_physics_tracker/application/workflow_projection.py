@@ -21,6 +21,11 @@ from typing import Sequence
 from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession
+from ai_physics_tracker.domain.derived import (
+    ANGULAR_KINDS,
+    KINEMATICS_KINDS,
+    DerivedData,
+)
 from ai_physics_tracker.domain.tracking_run import TrackingRun
 
 # --- 执行维度（GUI 瞬时事实，由调用方声明）---
@@ -213,6 +218,36 @@ class TaskCard:
     evidence: tuple[str, ...] = ()               # “依据与本次设置”内容
 
 
+# 分析族 → 该族的四种 derived kind（ADR-0019）。
+_FAMILY_KINDS = {
+    "linear": KINEMATICS_KINDS,
+    "angular": ANGULAR_KINDS,
+}
+
+
+def family_derived_state(
+    derived_items: tuple[DerivedData, ...],
+    track_id: UUID,
+    family_kinds: tuple[str, ...],
+) -> tuple[bool, bool]:
+    """按持久化顺序取各族 kind 的最后一条记录，判定 (完整有效族, 族内存在记录)。
+
+    “完整有效族”= 该族四种 kind 全部存在且最后一条均为 valid；
+    计算批次（ADR-0019/0020）总是整族原子替换，部分存在即视为待更新。
+    """
+
+    last_by_kind: dict[str, DerivedData] = {}
+    for item in derived_items:
+        if item.track_id == track_id and item.kind in family_kinds:
+            last_by_kind[item.kind] = item
+    present = bool(last_by_kind)
+    complete_valid = (
+        len(last_by_kind) == len(family_kinds)
+        and all(item.status == "valid" for item in last_by_kind.values())
+    )
+    return complete_valid, present
+
+
 # ---------------------------------------------------------------------------
 # 事实采集（纯读取）
 # ---------------------------------------------------------------------------
@@ -306,12 +341,23 @@ def trajectory_facts(
     )
 
 
-def analysis_facts(session: ProjectSession, track_id: UUID | None) -> AnalysisFacts:
+def analysis_facts(
+    session: ProjectSession, track_id: UUID | None, *, family: str = "linear"
+) -> AnalysisFacts:
     """四态分析可用性；限制（缺测/待审）在任何状态都保留。
 
-    状态优先级：无有效点 → not_computable；derived 缺失/过期 → needs_update；
-    derived 有效但存在缺测或当前结果待审 → partial；否则 latest。
+    ``family`` 限定检验的分析族（"linear" 四项运动学 / "angular" 四项角运动，
+    ADR-0019/0020）：只有该族的四种 kind 完整且全部 valid 才算 latest，
+    另一族的结果不参与本族判定——angular-only 不会让线性图表显示已就绪。
+
+    状态优先级：无有效点 → not_computable；族 derived 缺失/过期 → needs_update；
+    族 derived 有效但存在缺测或当前结果待审 → partial；否则 latest。
     """
+    family_kinds = _FAMILY_KINDS.get(family)
+    if family_kinds is None:
+        raise ValueError(
+            f"unknown analysis family {family!r}; expected 'linear' or 'angular'"
+        )
     if track_id is None:
         return AnalysisFacts(state=ANALYSIS_NOT_COMPUTABLE, reason="no track selected")
     track = next((t for t in session.tracks if t.track_id == track_id), None)
@@ -348,14 +394,13 @@ def analysis_facts(session: ProjectSession, track_id: UUID | None) -> AnalysisFa
         limitations.append(
             f"{pending} suggested frame(s) of the current result await review")
 
-    derived_valid = any(
-        d.track_id == track_id and d.status == "valid"
-        for d in session.project.derived
-    )
-    derived_present = any(d.track_id == track_id for d in session.project.derived)
+    derived_valid, derived_present = family_derived_state(
+        session.project.derived, track_id, family_kinds)
     if not derived_valid:
         state = ANALYSIS_NEEDS_UPDATE
-        reason = None if derived_present else "charts have not been computed yet"
+        reason = None if derived_present else (
+            "charts have not been computed yet" if family == "linear"
+            else "angular charts have not been computed yet")
     elif has_data_limitations:
         state, reason = ANALYSIS_PARTIAL, None
     else:

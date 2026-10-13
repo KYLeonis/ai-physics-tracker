@@ -284,6 +284,23 @@ def test_valid_cache_from_another_calibration_is_displayed_as_stale_without_muta
     assert build_chart_data(current, video_id, (track_id,), "x_t").series[0].status == "valid"
 
 
+def test_stale_status_is_preserved_when_calibration_and_zone_match() -> None:
+    """status='stale' 不因标定 / 区间恰好一致而被洗白为 valid（回归）。"""
+    track_id = uuid4()
+    project, video_id, _ = _project(track_id=track_id)
+    calibration_id = project.calibrations[0].calibration_id
+    stale = replace(
+        _derived(track_id, "world_position", (2,), ((8, 9),)),
+        calibration_ref=calibration_id,
+        status="stale",
+    )
+    project = replace(project, derived=(stale,))
+    chart = build_chart_data(project, video_id, (track_id,), "x_t")
+    assert len(chart.series) == 1
+    assert chart.series[0].status == "stale"
+    assert any("stale" in message for message in chart.messages)
+
+
 @pytest.mark.parametrize(
     ("values", "frames", "expected_message"),
     [

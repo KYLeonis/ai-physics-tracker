@@ -6,7 +6,7 @@
 
 from dataclasses import asdict, replace
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -207,6 +207,71 @@ def test_analysis_partial_when_active_result_has_pending_review(tmp_path: Path) 
     facts = analysis_facts(session, track.track_id)
     assert facts.state == ANALYSIS_PARTIAL
     assert any("await review" in line for line in facts.limitations)
+
+
+def test_analysis_facts_family_splits_linear_and_angular(tmp_path: Path) -> None:
+    """P6.2 S1：分析族分离——angular-only 不得让默认线性投影显示 latest。"""
+    from ai_physics_tracker.domain.angular import PendulumReference
+
+    session, track, video = _session_with_track(tmp_path, zone_frames=10)
+    for frame in range(10):
+        session.mark_point(track.track_id, frame, 1.0 + frame, 2.0)
+    session.add_calibration(
+        track.video_id,
+        scale_end_1_px=(0.0, 0.0), scale_end_2_px=(10.0, 0.0),
+        known_length=1.0, unit="m")
+
+    linear = analysis_facts(session, track.track_id)
+    assert linear.state == ANALYSIS_NEEDS_UPDATE
+    assert linear.reason == "charts have not been computed yet"
+    angular = analysis_facts(session, track.track_id, family="angular")
+    assert angular.state == ANALYSIS_NEEDS_UPDATE
+    assert angular.reason == "angular charts have not been computed yet"
+
+    session.compute_angular(
+        track.track_id, reference=PendulumReference(pivot_px=(0.0, 0.0)))
+    assert analysis_facts(session, track.track_id).state == ANALYSIS_NEEDS_UPDATE
+    assert analysis_facts(session, track.track_id, family="angular").state == ANALYSIS_LATEST
+
+    session.compute_kinematics(track.track_id)
+    assert analysis_facts(session, track.track_id).state == ANALYSIS_LATEST
+    assert analysis_facts(session, track.track_id, family="angular").state == ANALYSIS_LATEST
+
+
+def test_analysis_facts_rejects_unknown_family(tmp_path: Path) -> None:
+    session, track, _video = _session_with_track(tmp_path)
+    with pytest.raises(ValueError, match="unknown analysis family"):
+        analysis_facts(session, track.track_id, family="torque")
+
+
+def test_family_derived_state_requires_complete_valid_family() -> None:
+    """完整有效族 = 该族四种 kind 的最后一条记录全部 valid。"""
+    from ai_physics_tracker.application.workflow_projection import (
+        family_derived_state,
+    )
+    from ai_physics_tracker.domain.derived import ANGULAR_KINDS, DerivedData, DerivedInput
+    from ai_physics_tracker.domain.types import utc_now
+
+    track_id = uuid4()
+
+    def _record(kind: str, *, status: str = "valid", owner: UUID | None = None):
+        return DerivedData(
+            derived_id=uuid4(), track_id=owner or track_id, kind=kind,
+            input=DerivedInput(owner or track_id), pipeline=(), frames=(), values=(),
+            payload_ref=None, unit="rad", produced_by="test",
+            created_at=utc_now(), status=status)
+
+    assert family_derived_state((), track_id, ANGULAR_KINDS) == (False, False)
+    partial = tuple(_record(kind) for kind in ANGULAR_KINDS[:3])
+    assert family_derived_state(partial, track_id, ANGULAR_KINDS) == (False, True)
+    complete = partial + (_record("angular_acceleration"),)
+    assert family_derived_state(complete, track_id, ANGULAR_KINDS) == (True, True)
+    # 任一 kind 的最后一条 stale（即使更早有 valid）→ 待更新
+    superseded = complete + (_record("angular_velocity", status="stale"),)
+    assert family_derived_state(superseded, track_id, ANGULAR_KINDS) == (False, True)
+    # 其他轨迹的记录不参与本族判定
+    foreign = (_record("angular_position", owner=uuid4()),)
+    assert family_derived_state(foreign, track_id, ANGULAR_KINDS) == (False, False)
 
 
 # ---------------------------------------------------------------------------
