@@ -1,38 +1,34 @@
 # Current Status
 
-> 2026-10-11：用户确认上一轮 HR 通过；五项 UI 修复与顶部下一步推荐已 `--no-ff` 集成 / push main（`017cc04`）。既有全量 820 passed，产品 / 测试树与通过双平台 CI 的 `24ec071` 一致；main [CI 38138010183](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38138010183) macOS / Windows 均 success，Issue #23 已关闭。Phase 6 草案仍待确认。
+> 2026-10-11：已进入用户授权的三项回移增量（Analysis 只读 / 批次修正 / 教师模型导入与实际帧自检），分支 `feat/main-guided-refinement-model-import`；[mini-plan](main-guided-refinement-model-import-plan.md)。用户方程产品口径已确认，Phase 6 旧草案暂停直接实施。
 
-> 两线全量功能 / UI 比较已完成：[区别文档](../notes/publication-main-feature-ui-differences.md)，附 637 文件 / 229 提交 / 80 源码模块清单。新增优先候选为 Analysis 视频只读；比较报告保留扫描快照；当前已完成上一批维护集成，下一批尚未实现。
+> 两线全量功能 / UI 比较已完成：[区别文档](../notes/publication-main-feature-ui-differences.md)，附 637 文件 / 229 提交 / 80 源码模块清单。新增优先候选为 Analysis 视频只读；比较报告保留扫描快照；上一批已集成；本轮三项增量在工作分支实现中，待本轮 HR。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 > 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
 
-- 最后更新：2026-10-11（UI 维护 HR 通过与 main 集成收尾）
+- 最后更新：2026-10-11（本轮三项增量 / 独立审查与 Human Review 准备）
 
 ## Current
 
-- **Phase**：Phase 0–5 通用 UI 维护已完成；Phase 6 规划草案待确认，Phase 5 已完成
-- **Subphase / Slice**：`main-ui-backports` Slice 2 已完成，Slice 2b 已完成；Slice 3 已完成（HR / main 集成 / 双平台 CI / Issue 关闭）；[mini-plan](main-ui-backports-plan.md)
+- **Phase**：主线引导修正与模型导入增量；Phase 6 用户方程平台待重规划
+- **Subphase / Slice**：`main-guided-refinement-model-import` S1–S5 完成；S6 Human Review 待用户反馈
 - **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
 
 ## Next Recommended Action
 
-**后续回移候选先读[区别文档 §8](../notes/publication-main-feature-ui-differences.md#8-建议回移顺序与具体候选)。**
-建议下一批先单独修复 Analysis 视频只读；autosave `after` 续接先复现主线 busy 场景，
-再按后台生命周期风险声明 review。本轮仅给出后续建议，没有实施这两项，不把科学 / 模型 / 打包扩展加入 #23。
+[三项增量 mini-plan](main-guided-refinement-model-import-plan.md) S1–S4 已完成，定向 45 passed / 全量 865 passed、实际 DLC/MPS 自检与推理、[双平台 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38144024802) 通过。Independent R3 Approve、F1–F6 全部 Closed。[本轮 Human Review](../notes/main-guided-refinement-model-import-human-review.md) 已发起：等待用户 A/B/C 反馈；通过前不合并 main / 不关闭 Issue #24。通过后按 `--no-ff` 集成、验证同树 / main CI、文档收尾 / push、关闭 Issue 并停止，Phase 6 重规划等待下一条指令。
 
-**用户确认规划范围与建议验收门槛后，启动 6.1 Slice 1。** 先读
-[Phase 6 requirements](../spec/phase6-requirements.md) → [总计划](phase-6-plan.md) →
-[6.1 mini-plan](phase-6.1-plan.md) 与 Context Pack；创建 `feat/p6.1-angular-analysis` 分支/Issue，
-扫描 scalar kind、双轨迹依赖、首次标定失效与现有消费者，记录契约 ADR，再实现纯数值部分。
-计划确认门来源为 `docs/status/README.md`；本轮仅交付可审查草案，不将建议指标当成已接受标准。
+后续 Phase 6 必须按[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)的**用户提供方程、通用平台分析**口径重规划，不执行旧固定拟合草案。触及相关阶段时必须核对[后续回移档案](main-backport-backlog.md)。
 
 ## Active Constraints
 
 当前仍然影响下一步的规则（只列规则本身，细节以引用为准；新任务不得破坏）：
 
 **数据与科学契约**
+
+- main 用户提供方程 / 公式，由通用平台计算与分析；论文硬编码 ODE 仅作复现参考（ADR-0017）
 
 - raw 层只存像素；世界坐标是 `CalibrationTransform` 的派生结果，`pixel_` / `world_` 前缀严格分层
 - `frame_index` 是 int、时间是 float 秒；换算只经 Timeline 纯函数（nominal 模型 `frame/fps_nominal`，非 VFR 引擎）
@@ -44,7 +40,7 @@
 - `FrameSelectionResult` 只含帧号，不创建 TrackPoint
 - 验证比较资格三态 clean / contaminated / unknown，fail-closed；series ID 相同 ≠ 可独立比较（Resume 祖先暴露）
 - 被 train run 引用的 validation series 拒绝物理删除（Undo 路径同守卫）
-- 保存清空应用内 Undo；激活产物指纹为 size-only（已接受的风险）
+- 显式 Save / Save as 清空应用内 Undo；静默 autosave 保留 Undo/Redo（accept_autosaved_snapshot）；激活产物指纹为 size-only（已接受的风险）
 
 **工程约束**
 
@@ -61,6 +57,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **本轮三项增量实现 / 复审（2026-10-11）**：工作分支 `feat/main-guided-refinement-model-import`，代码 `1743f61` / `229b7d4` / `c998fd0` / `0c71910`；定向45 + 末轮28通过，全量 **865 passed（77.50 s）**，最新代码 [CI 38144024802](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38144024802) macOS/Windows Python3.11 success。R1/R2/R3 六项 findings Closed / Approve；[review record](../reviews/main-guided-refinement-model-import-review.md)。实际 DLC spawn 四点自检及三帧 tip 推理 `auto → mps` 成功；Human Review 待反馈、Issue #24 open、未合 main。方程口径与后续档案同步 ADR-0017/0018 / AGENTS / roadmap / specs / README。
 
 - **主线 UI 维护 HR / 集成（2026-10-11）**：用户整体确认“上一轮的HR通过”，五项回移与顶部推荐完成 `--no-ff` 集成 / push（`017cc04`）；无新产品 / 测试修改，合并树与分支 `24ec071` 的双平台 success CI 一致。main [CI 38138010183](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38138010183) 双平台 success，Issue #23 已关闭。用户未提供逐项设备 / 平台明细，不扩大为 Windows/CUDA 全阶段验收。后续优先级见[区别文档 §10](../notes/publication-main-feature-ui-differences.md#10-hr-通过后的回移建议2026-10-11)。
 

@@ -1,5 +1,7 @@
 # Phase 6 Plan — Advanced Physics Analysis
 
+> 2026-10-11：本文件为旧规划草案，**不得直接启动实施**。用户已确认由用户给出方程、平台通用计算；见[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)。固定拟合模型仅可作为示例，下一轮规划须重新对齐输入 / 求解 / 拟合范围。
+
 - 日期 / 状态：2026-10-11 · **规划草案，待用户确认；未开始产品实现**
 - 需求入口：[phase6-requirements.md](../spec/phase6-requirements.md)
 - 基线：`main @ b997100`，Phase 5 完成、Entry Gate READY，Windows 取消维护修复已集成。

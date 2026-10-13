@@ -335,7 +335,7 @@ class MainWindow(QMainWindow):
         self._analysisReferenceHost = QWidget(self)
         reference_layout = QVBoxLayout(self._analysisReferenceHost)
         reference_layout.setContentsMargins(0, 0, 0, 0)
-        self._analysisReferenceCaption = QLabel("Video reference", self)
+        self._analysisReferenceCaption = QLabel("Video reference — read-only; edit in Acquire", self)
         self._analysisReferenceCaption.setWordWrap(True)
         reference_layout.addWidget(self._analysisReferenceCaption)
         self._analysisSplitter = QSplitter(Qt.Orientation.Horizontal, self)
@@ -400,6 +400,10 @@ class MainWindow(QMainWindow):
         self.reviewActions = DifficultFrameReviewActions(
             self, self.trackingActions.panel
         )
+        from ai_physics_tracker.gui.batch_annotation_actions import BatchAnnotationActions
+        self.batchAnnotationActions = BatchAnnotationActions(self)
+        from ai_physics_tracker.gui.model_actions import ModelActions
+        self.modelActions = ModelActions(self)
         self._installChartPanel(self.chartActions.panel)
         viewMenu.addAction(self.trackingActions.panel.toggleViewAction())
         self.setWorkspace(WORKSPACE_ACQUIRE)
@@ -526,7 +530,11 @@ class MainWindow(QMainWindow):
         """建议帧跳帧（Phase 5.1）：跳转到指定帧，并在有选中 Track 时保持标注模式。"""
         if not self.seekFrame(frame_index):
             return False
-        if self._selected_track_id is not None and self._measurement_allowed and not self.projectActions.busy:
+        if (self._workspace != WORKSPACE_ANALYSIS and self._selected_track_id is not None
+                and self._measurement_allowed and not self.projectActions.busy
+                and not bool(getattr(self, "modelActions", None) and self.modelActions.busy)
+                and not bool(getattr(self, "batchAnnotationActions", None)
+                             and self.batchAnnotationActions.batch and self.batchAnnotationActions.batch.paused)):
             self.videoView.set_annotation_mode(True)
             self.statusBar().showMessage(
                 f"Jumped to frame {frame_index}. Click video to annotate target for selected track."
@@ -554,6 +562,15 @@ class MainWindow(QMainWindow):
 
     def setWorkspace(self, workspace: str) -> None:
         """切换工作区；不取消任务、不改变采用结果、不触发计算。"""
+        if workspace == WORKSPACE_ANALYSIS:
+            if hasattr(self, "batchAnnotationActions"):
+                self.batchAnnotationActions.pause()
+            if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+                self.reviewActions.cancelCorrectMode()
+            self.drawScaleButton.setChecked(False)
+            self.setOriginButton.setChecked(False)
+            self.videoView.set_calibration_mode(None)
+            self.videoView.set_annotation_mode(False)
         if workspace == self._workspace and self._workspaceStack.currentIndex() == (
                 1 if workspace == WORKSPACE_ANALYSIS else 0):
             self.workflowHeader.setWorkspace(workspace)
@@ -565,6 +582,12 @@ class MainWindow(QMainWindow):
             if self._workspace == WORKSPACE_ANALYSIS:
                 self._leaveAnalysis()
         self._workspace = workspace
+        if workspace == WORKSPACE_ACQUIRE:
+            self.videoView.set_annotation_mode(
+                self._selected_track_id is not None and self._measurement_allowed
+                and not self.projectActions.busy
+                and not (hasattr(self, "batchAnnotationActions") and self.batchAnnotationActions.batch is not None)
+                and not (hasattr(self, "modelActions") and self.modelActions.busy))
         if workspace == WORKSPACE_ANALYSIS:
             self._workspaceStack.setCurrentWidget(self._analysisPage)
         else:
@@ -579,6 +602,8 @@ class MainWindow(QMainWindow):
                 # 分析页以图表为主体；AI 状态经状态头任务条常驻（设计 §8.2）
                 panel.hide()
         self.workflowHeader.setWorkspace(workspace)
+        self._refreshDeletePointButton()
+        self._refreshHistoryButtons()
         self.analysisChanged.emit()
         if workspace == WORKSPACE_ANALYSIS:
             self.refreshAnalysisSourceBar()
@@ -775,6 +800,8 @@ class MainWindow(QMainWindow):
         self.startPlayback()
 
     def startPlayback(self) -> None:
+        if hasattr(self, "batchAnnotationActions"):
+            self.batchAnnotationActions.pause()
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             self.reviewActions.cancelCorrectMode()
         snapshot = self._async.snapshot()
@@ -822,6 +849,9 @@ class MainWindow(QMainWindow):
         self._requestFrame(snapshot.current_frame.frame_index + 1)
 
     def _requestFrame(self, frame_index: int) -> None:
+        batch = getattr(self, "batchAnnotationActions", None)
+        if batch is not None and batch.active and frame_index != batch.batch.current_frame:
+            batch.pause()  # 用户离开选定帧时保留队列，避免在错误帧上继续修正。
         self._has_pending_request = True
         self._last_requested_frame = frame_index
         self._latest_request_id = self._async.request_frame(frame_index)
@@ -856,7 +886,14 @@ class MainWindow(QMainWindow):
             self._presentFrame(snapshot.current_frame)
         self.frameRequestFailed.emit()
 
+    def canEditVideo(self) -> bool:
+        """分析页及模型操作期间禁止视频数据的交互写入。"""
+        return (self._workspace != WORKSPACE_ANALYSIS
+                and not (hasattr(self, "modelActions") and self.modelActions.busy))
+
     def _undo(self) -> None:
+        if not self.canEditVideo():
+            return
         # P6R-01：会话层原子拒绝（如撤销越过已登记 AI 任务的建 Track 操作）时，
         # 给出可见反馈而不是让异常穿透 GUI 事件循环；状态已保证完全不变。
         if self._annotation_session is None:
@@ -871,6 +908,8 @@ class MainWindow(QMainWindow):
         self._afterHistoryStep()
 
     def _redo(self) -> None:
+        if not self.canEditVideo():
+            return
         if self._annotation_session is None:
             return
         try:
@@ -902,8 +941,8 @@ class MainWindow(QMainWindow):
 
     def _refreshHistoryButtons(self) -> None:
         session = self._annotation_session
-        self.undoButton.setEnabled(session is not None and session.can_undo)
-        self.redoButton.setEnabled(session is not None and session.can_redo)
+        self.undoButton.setEnabled(self.canEditVideo() and session is not None and session.can_undo)
+        self.redoButton.setEnabled(self.canEditVideo() and session is not None and session.can_redo)
         self._refreshDeletePointButton()
         if hasattr(self, "projectActions"):
             self.projectActions.refresh()
@@ -918,14 +957,16 @@ class MainWindow(QMainWindow):
             pt = session.effective_point(track_id, frame_index)
             if pt is not None and pt.source == "manual":
                 has_manual = True
-        enabled = has_manual and self._measurement_allowed and not self.projectActions.busy
+        enabled = (has_manual and self._measurement_allowed and not self.projectActions.busy
+                   and self.canEditVideo())
         if hasattr(self, "deletePointButton"):
             self.deletePointButton.setEnabled(enabled)
         if hasattr(self, "trackingActions") and hasattr(self.trackingActions.panel, "deleteManualPointButton"):
             self.trackingActions.panel.deleteManualPointButton.setEnabled(enabled)
 
     def _deleteCurrentManualPoint(self) -> None:
-        if not self._measurement_allowed or self.projectActions.busy:
+        if (not self.canEditVideo() or not self._measurement_allowed
+                or self.projectActions.busy):
             return
         if self._has_pending_request:
             self.statusBar().showMessage("Waiting for frame; delete ignored")
@@ -980,6 +1021,8 @@ class MainWindow(QMainWindow):
                 self.reviewActions.startCorrectCurrent()
 
     def _addTrack(self) -> None:
+        if not self.canEditVideo():
+            return
         if not self._measurement_allowed or self.projectActions.busy or self._annotation_session is None or self._annotation_video_id is None:
             return
         track = self._annotation_session.add_track(self._annotation_video_id)
@@ -995,6 +1038,8 @@ class MainWindow(QMainWindow):
         self._refreshHistoryButtons()
 
     def _deleteSelectedTrack(self) -> None:
+        if not self.canEditVideo():
+            return
         tracking = getattr(self, "trackingActions", None)
         if tracking and tracking.pending and tracking.activeTrackId == self._selected_track_id:
             self.statusBar().showMessage("Cancel the AI task before deleting its track")
@@ -1034,7 +1079,12 @@ class MainWindow(QMainWindow):
             self.drawScaleButton.setChecked(False)
             self.setOriginButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
-            self.videoView.set_annotation_mode(self._measurement_allowed and not self.projectActions.busy)
+            self.videoView.set_annotation_mode(
+                self._workspace != WORKSPACE_ANALYSIS and self._measurement_allowed
+                and not self.projectActions.busy
+                and not bool(getattr(self, "modelActions", None) and self.modelActions.busy)
+                and not bool(getattr(self, "batchAnnotationActions", None)
+                             and self.batchAnnotationActions.batch and self.batchAnnotationActions.batch.paused))
             self.statusBar().showMessage(
                 "Annotation mode: click the video to mark; Esc or click an empty "
                 "list area to exit"
@@ -1051,6 +1101,11 @@ class MainWindow(QMainWindow):
         self._refreshDeletePointButton()
 
     def _exitAnnotationMode(self) -> None:
+        batch = getattr(self, "batchAnnotationActions", None)
+        if batch is not None and batch.active:
+            batch.pause()
+            self.statusBar().showMessage("Batch paused; Resume keeps the selected frames")
+            return
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
             self.reviewActions.cancelCorrectMode()
             self.statusBar().showMessage("Correct mode cancelled")
@@ -1158,7 +1213,8 @@ class MainWindow(QMainWindow):
 
     def _toggleDrawScaleMode(self, checked: bool) -> None:
         if checked:
-            if not self._measurement_allowed or self.projectActions.busy:
+            if (not self.canEditVideo() or not self._measurement_allowed
+                    or self.projectActions.busy):
                 self.drawScaleButton.setChecked(False)
                 return
             if self._calibration_return_workspace is None:
@@ -1181,7 +1237,8 @@ class MainWindow(QMainWindow):
 
     def _toggleSetOriginMode(self, checked: bool) -> None:
         if checked:
-            if not self._measurement_allowed or self.projectActions.busy:
+            if (not self.canEditVideo() or not self._measurement_allowed
+                    or self.projectActions.busy):
                 self.setOriginButton.setChecked(False)
                 return
             if self._calibration_return_workspace is None:
@@ -1203,7 +1260,8 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Browse mode")
 
     def _onScaleLineDrawn(self, p1: QPointF, p2: QPointF) -> None:
-        if not self._measurement_allowed or self.projectActions.busy:
+        if (not self.canEditVideo() or not self._measurement_allowed
+                    or self.projectActions.busy):
             self.drawScaleButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
             return
@@ -1264,7 +1322,8 @@ class MainWindow(QMainWindow):
             )
 
     def _onOriginClicked(self, pt: QPointF) -> None:
-        if not self._measurement_allowed or self.projectActions.busy:
+        if (not self.canEditVideo() or not self._measurement_allowed
+                    or self.projectActions.busy):
             self.setOriginButton.setChecked(False)
             self.videoView.set_calibration_mode(None)
             return
@@ -1310,6 +1369,8 @@ class MainWindow(QMainWindow):
             )
 
     def _onRotationChanged(self, deg: float) -> None:
+        if not self.canEditVideo():
+            return
         if self._annotation_session is None or self._annotation_video_id is None:
             return
         active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
@@ -1329,6 +1390,8 @@ class MainWindow(QMainWindow):
 
     def _editActiveScale(self) -> None:
         """复用标尺对话框编辑属性，保留标定 ID、端点与原始观测。"""
+        if not self.canEditVideo():
+            return
 
         session, video_id = self._annotation_session, self._annotation_video_id
         if not self._measurement_allowed or self.projectActions.busy or session is None or video_id is None:
@@ -1363,6 +1426,8 @@ class MainWindow(QMainWindow):
 
     def _deleteInactiveCalibration(self) -> None:
         """选择非生效标定后删除，不为了删除而切换 active 标定。"""
+        if not self.canEditVideo():
+            return
 
         session, video_id = self._annotation_session, self._annotation_video_id
         if not self._measurement_allowed or self.projectActions.busy or session is None or video_id is None:
@@ -1383,6 +1448,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Inactive calibration deleted; active calibration unchanged")
 
     def _deleteActiveCalibration(self) -> None:
+        if not self.canEditVideo():
+            return
         if self._annotation_session is None or self._annotation_video_id is None:
             return
         active_cal = self._annotation_session.active_calibration(self._annotation_video_id)
@@ -1399,6 +1466,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Calibration deleted")
 
     def _onCalibrationSelected(self, _index: int) -> None:
+        if not self.canEditVideo():
+            return
         if self._annotation_session is None or self._annotation_video_id is None:
             return
         cal_id = self.calibrationSelector.currentData(Qt.ItemDataRole.UserRole)
@@ -1446,12 +1515,14 @@ class MainWindow(QMainWindow):
                     self.calibrationSelector.setCurrentIndex(-1)
 
         has_cal = active_cal is not None
-        self.drawScaleButton.setEnabled(self._measurement_allowed)
-        self.setOriginButton.setEnabled(self._measurement_allowed and has_cal)
-        self.rotationSpinBox.setEnabled(self._measurement_allowed and has_cal)
-        self.deleteCalibrationButton.setEnabled(self._measurement_allowed and has_cal)
-        self.editScaleButton.setEnabled(self._measurement_allowed and has_cal)
-        self.deleteInactiveCalibrationButton.setEnabled(self._measurement_allowed and len(video_cals) > int(has_cal))
+        editable = self._measurement_allowed and self.canEditVideo()
+        self.calibrationSelector.setEnabled(editable)
+        self.drawScaleButton.setEnabled(editable)
+        self.setOriginButton.setEnabled(editable and has_cal)
+        self.rotationSpinBox.setEnabled(editable and has_cal)
+        self.deleteCalibrationButton.setEnabled(editable and has_cal)
+        self.editScaleButton.setEnabled(editable and has_cal)
+        self.deleteInactiveCalibrationButton.setEnabled(editable and len(video_cals) > int(has_cal))
 
         if active_cal is not None:
             dx = active_cal.scale_end_2_px[0] - active_cal.scale_end_1_px[0]
@@ -1512,7 +1583,10 @@ class MainWindow(QMainWindow):
         self.videoView.set_calibration(cal_view, image_height=h)
 
     def _onAnnotationClicked(self, view_pos: QPoint) -> None:
-        if not self._measurement_allowed or self.projectActions.busy or not self.videoView.is_annotation_mode():
+        if (not self.canEditVideo() or not self._measurement_allowed
+                or self.projectActions.busy
+                or bool(getattr(self, "modelActions", None) and self.modelActions.busy)
+                or not self.videoView.is_annotation_mode()):
             return
         if self._annotation_session is None or self._selected_track_id is None:
             return
@@ -1531,6 +1605,10 @@ class MainWindow(QMainWindow):
             if handled:
                 self._refreshMarkers()
                 self._refreshHistoryButtons()
+            return
+        batch = getattr(self, "batchAnnotationActions", None)
+        if batch is not None and batch.batch is not None and not batch.batch.finished:
+            batch.handleClick(pixel[0], pixel[1])
             return
         try:
             self._annotation_session.mark_point(

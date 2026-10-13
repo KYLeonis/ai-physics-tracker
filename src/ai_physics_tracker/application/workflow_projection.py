@@ -14,6 +14,8 @@ GUI 侧的瞬时事实（哪个任务在跑、取消中）由调用方作为显�
 高级用户经 Results & history 可达全部 run）。
 """
 
+from ai_physics_tracker.application.annotation_batch import AnnotationBatch
+
 from dataclasses import dataclass
 from typing import Sequence
 from uuid import UUID
@@ -29,6 +31,7 @@ EXEC_TRAINING = "training"
 EXEC_INFERRING = "inferring"
 EXEC_MINING = "mining"
 EXEC_CANCELLING = "cancelling"
+EXEC_MODEL = "model_self_test"
 
 # --- 任务卡 mode（呈现层枚举，不持久化）---
 
@@ -98,6 +101,9 @@ class ExecutionInput:
     review_frame_index: int | None = None
     review_can_previous: bool = False
     review_can_next: bool = False
+    annotation_batch: "AnnotationBatch | None" = None
+    teacher_available: bool = False
+    teacher_verified: bool = False
 
     @property
     def busy(self) -> bool:
@@ -408,7 +414,7 @@ def project_workflow_state(
             # 用创建顺序兼容。字段存在但不匹配时绝不猜测。
             legacy_infer = (
                 completed_infer_runs
-                and all("training_run_id" not in run.config
+                and all("training_run_id" not in run.config and "imported_model_id" not in run.config
                         for run in completed_infer_runs)
                 and completed_infer_runs[-1].created_at > latest_train.created_at
             )
@@ -524,6 +530,25 @@ def select_task_card(state: WorkflowState) -> TaskCard:
     if state.execution.busy:
         return _running_card(state)
 
+    batch = state.execution.annotation_batch
+    if batch is not None:
+        if batch.finished and batch.corrected > 0:
+            return TaskCard(
+                mode=MODE_ANNOTATE, title="Current: selected frames corrected",
+                explanation=(f"{batch.corrected} manual label(s) saved in the session. Next: start learning.",
+                             "Training starts only after your confirmation; skipped frames stay unchanged."),
+                primary=ActionSpec(ACTION_START_LEARNING, "Start learning", enabled=traj.manual_count >= 3,
+                                   reason=None if traj.manual_count >= 3 else "Mark at least 3 distinct frames"),
+                secondary=(ActionSpec(ACTION_PICK_FRAMES, "Select more representative frames"),))
+        if not batch.finished:
+            return TaskCard(
+                mode=MODE_ANNOTATE, title=f"Current: {'paused batch' if batch.paused else 'continuous annotation'} · "
+                                         f"{batch.index + 1}/{len(batch.frames)} · frame {batch.current_frame}",
+                explanation=("Resume the selected batch." if batch.paused else "Click the target in the video; the next selected frame follows.",),
+                primary=ActionSpec("batch_resume" if batch.paused else "batch_pause",
+                                   "Resume batch" if batch.paused else "Pause placement (Esc)"),
+                secondary=() if batch.paused else (ActionSpec("batch_skip", "Skip this frame"),))
+
     # 3. 最近一次相关训练失败（其后无成功）→ 恢复卡
     if state.failed_run_id is not None:
         return TaskCard(
@@ -621,6 +646,17 @@ def select_task_card(state: WorkflowState) -> TaskCard:
             evidence=("Learning and tracking stay two explicit steps.",),
         )
 
+    if state.completed_train_count == 0 and state.execution.teacher_available and not traj.has_active_result:
+        verified = state.execution.teacher_verified
+        return TaskCard(
+            mode=MODE_GENERATE_READY,
+            title="Current: teacher model ready" if verified else "Current: self-test teacher model",
+            explanation=("Generate a candidate trajectory; existing observations stay unchanged." if verified else
+                         "Run the selected model on an actual displayed video frame before using it.",),
+            primary=ActionSpec("teacher_infer" if verified else "teacher_test",
+                               "Generate trajectory with teacher" if verified else "Self-test displayed frame"),
+            secondary=(ActionSpec(ACTION_PICK_FRAMES, "Pick representative frames"),))
+
     # 7. 标注不足 / 首次学习就绪
     if traj.manual_count < _MIN_LABELS_FOR_TRAINING:
         needed = _MIN_LABELS_FOR_TRAINING - traj.manual_count
@@ -711,12 +747,14 @@ def _running_card(state: WorkflowState) -> TaskCard:
         EXEC_TRAINING: "learning example positions",
         EXEC_INFERRING: "generating trajectory",
         EXEC_MINING: "finding frames to check",
+        EXEC_MODEL: "importing / self-testing teacher model",
     }
     modes = {
         EXEC_FRAME_SELECTION: MODE_ANNOTATE,
         EXEC_TRAINING: MODE_LEARNING,
         EXEC_INFERRING: MODE_GENERATING,
         EXEC_MINING: MODE_INSPECT,
+        EXEC_MODEL: MODE_INSPECT,
     }
     return TaskCard(
         mode=modes.get(kind, MODE_BLOCKED),
@@ -724,7 +762,7 @@ def _running_card(state: WorkflowState) -> TaskCard:
         explanation=(
             "The software is working; your data is safe.",
             "Epochs are learning steps, not remaining minutes."),
-        primary=ActionSpec(ACTION_CANCEL_TASK, "Cancel"),
+        primary=ActionSpec("teacher_cancel" if kind == EXEC_MODEL else ACTION_CANCEL_TASK, "Cancel"),
     )
 
 

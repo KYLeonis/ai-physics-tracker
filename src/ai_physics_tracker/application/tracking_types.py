@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, TypeAlias
 from uuid import UUID
 
+from ai_physics_tracker.domain.imported_model import ImportedModel
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import TrackPoint
 from ai_physics_tracker.domain.types import JsonObject
@@ -129,6 +130,9 @@ class InferenceRequest:
     video_sha256: str | None = None
     archive_model: bool = False
     config_sha256: str | None = None
+    imported_model: "ImportedModel | None" = None
+    model_root: Path | None = None
+    bodypart: str = "target"
 
     def __post_init__(self) -> None:
         if type(self.frame_count) is not int or self.frame_count <= 0:

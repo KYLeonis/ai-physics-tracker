@@ -1,3 +1,5 @@
+> 2026-10-11 产品口径确认：main 由用户提供方程 / 公式，通用平台承担后续分析；Phase 6 旧固定模型草案须按 [ADR-0017](decisions/0017-user-defined-equation-analysis-platform.md) 重规划，不直接开工。当前用户授权三项回移增量见 [mini-plan](status/main-guided-refinement-model-import-plan.md)。
+
 # Roadmap — AI Physics Tracker
 
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。

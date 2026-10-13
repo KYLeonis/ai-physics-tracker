@@ -74,6 +74,7 @@ class TaskPanel(QDockWidget):
     runSelected = Signal(object)
     suggestFramesRequested = Signal(int, str)   # (n_frames, algorithm)
     suggestCancelRequested = Signal()           # F4
+    suggestionsChanged = Signal()
     suggestedFrameJumped = Signal(int)           # 用户点击建议帧，发出帧号
     mineDifficultRequested = Signal(object, object)  # (run_id, MiningParams)
     mineCancelRequested = Signal()
@@ -1071,6 +1072,7 @@ class TaskPanel(QDockWidget):
         """
         self.suggestedFramesList.clear()
         if result is None:
+            self.suggestionsChanged.emit()
             return
         for frame in result.suggested_frames:
             item = QListWidgetItem(f"Frame {frame}  (double-click to jump)")
@@ -1082,6 +1084,7 @@ class TaskPanel(QDockWidget):
             f"Suggested {actual} frame(s) · {excluded} existing label(s) excluded · "
             f"algorithm={result.request_algorithm}"
         )
+        self.suggestionsChanged.emit()
 
     def setSuggestStatus(self, message: str) -> None:
         """显示或隐藏建议帧区域的状态标签。"""
@@ -1175,7 +1178,8 @@ class TaskPanel(QDockWidget):
             self.reviewCorrectButton.setText("Correct (C)")
             self.reviewCorrectButton.setStyleSheet("")
             self.deleteManualPointButton.setEnabled(False)
-            self.reviewCandidatesList.clear()
+            with QSignalBlocker(self.reviewCandidatesList):
+                self.reviewCandidatesList.clear()
             return
 
         tot = summary.total_candidates

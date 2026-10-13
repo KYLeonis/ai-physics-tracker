@@ -432,6 +432,9 @@ class DLCAdapter:
         self, run_id: UUID, queue: Any, cancel_event: Any, request: InferenceRequest,
     ) -> InferenceOutcome:
         """使用已选模型在当前子进程推理；真实完成帧数经队列上报。"""
+        if request.imported_model is not None:
+            from ai_physics_tracker.infrastructure.imported_model_inference import infer_imported_model
+            return infer_imported_model(run_id, queue, cancel_event, request)
         import deeplabcut
         from ai_physics_tracker.infrastructure.dlc_predictions import parse_predictions
 
@@ -1058,3 +1061,10 @@ def _kmeans_fallback(
             selected.append(frame)
 
     return sorted(set(selected))
+
+
+def create_teacher_model_runner(pose: dict, checkpoint: Path, device: str, batch_size: int):
+    """DLC 公共 API 仍只在适配器中导入；权重安全加载由已验证 pose 强制。"""
+    from deeplabcut.pose_estimation_pytorch import get_pose_inference_runner
+
+    return get_pose_inference_runner(pose, checkpoint, device=device, batch_size=batch_size)

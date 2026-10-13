@@ -1,5 +1,7 @@
 # Subphase Plan — Phase 6.1 Angular Analysis Foundation
 
+> 2026-10-11：本文件为旧规划草案，**不得直接启动实施**。用户已确认由用户给出方程、平台通用计算；见[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)。固定拟合模型仅可作为示例，下一轮规划须重新对齐输入 / 求解 / 拟合范围。
+
 - Issue / 分支：尚未创建（规划确认后 `feat/p6.1-angular-analysis`）
 - 日期 / 状态：2026-10-11 · **草案，待用户确认**
 - 风险等级：High-risk（角度定义、unwrap/微分、多输入依赖与派生结果事务）

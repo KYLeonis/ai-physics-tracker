@@ -146,7 +146,8 @@ class TrackingActions(QObject):
                self.window.reviewActions.is_correcting
                if hasattr(self.window, "reviewActions") else False,
                self.window.reviewActions.paused_run_id
-               if hasattr(self.window, "reviewActions") else None)
+               if hasattr(self.window, "reviewActions") else None,
+               self._execution_input())
         if key == self._context_key:
             return
         self._context_key = key
@@ -166,6 +167,8 @@ class TrackingActions(QObject):
             reason = "Frame selection is running"
         elif hasattr(self.window, "reviewActions") and self.window.reviewActions.busy:
             reason = "Difficult frame mining is running"
+        elif bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy):
+            reason = "Teacher model operation is running"
         train_reason = reason
         if not train_reason and len(session.manual_points(track_id)) < 3:
             train_reason = "Mark at least 3 frames; cover different target positions"
@@ -240,15 +243,24 @@ class TrackingActions(QObject):
         correcting = bool(review and review.is_correcting)
         paused_run_id = review.paused_run_id if review is not None else None
         controller = review.controller if review is not None else None
-        review_facts = {}
+        batch_actions = getattr(self.window, "batchAnnotationActions", None)
+        review_facts = {"annotation_batch": batch_actions.batch if batch_actions else None}
         if controller is not None and controller.current_candidate is not None:
-            review_facts = {
+            review_facts.update({
                 "review_index": controller.current_index,
                 "review_total": controller.count,
                 "review_frame_index": controller.current_frame_index,
                 "review_can_previous": controller.can_navigate_previous,
                 "review_can_next": controller.can_navigate_next,
-            }
+            })
+        model_actions = getattr(self.window, "modelActions", None)
+        if model_actions:
+            model = model_actions.selectedModel()
+            review_facts.update(teacher_available=model is not None,
+                teacher_verified=model_actions.isVerified(model))
+            if model_actions.busy:
+                from ai_physics_tracker.application.workflow_projection import EXEC_MODEL
+                return ExecutionInput(kind=EXEC_MODEL, **review_facts)
         if self.cancelling:
             return ExecutionInput(
                 kind=EXEC_CANCELLING, cancelling=True,
@@ -545,7 +557,7 @@ class TrackingActions(QObject):
             self._context_key = None
             self.train()
 
-        if changed:
+        if changed or session.is_dirty or self.window.projectActions.busy:
             self.window.projectActions.autosave(
                 "fixed-check frames confirmed", after=start)
         else:
@@ -648,6 +660,13 @@ class TrackingActions(QObject):
         """任务卡动作分发：全部走既有执行入口（与 Advanced 同一验证路径）。"""
         window = self.window
         session = window.analysisSession
+        if action_id in {"teacher_test", "teacher_infer", "teacher_cancel"}:
+            {"teacher_test": window.modelActions.selfTest, "teacher_infer": window.modelActions.infer,
+             "teacher_cancel": window.modelActions.cancel}[action_id]()
+            return
+        if action_id in {"batch_pause", "batch_resume", "batch_skip"}:
+            getattr(window.batchAnnotationActions, action_id.removeprefix("batch_"))()
+            return
         if action_id == "view_analysis":
             window.setWorkspace("analysis")
             return
@@ -668,6 +687,7 @@ class TrackingActions(QObject):
             window.frameSelectionActions.requestSuggestion(10, "kmeans")
             return
         if action_id == "create_track":
+            window.setWorkspace("acquire")
             window.addTrackButton.click()
             return
         if action_id == "save_project":
@@ -805,6 +825,7 @@ class TrackingActions(QObject):
             or self.window.projectActions.busy
             or self.window.frameSelectionActions.busy
             or (hasattr(self.window, "reviewActions") and self.window.reviewActions.busy)
+            or bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy)
         )
 
     def activateRun(self, run_id: UUID) -> None:
@@ -945,8 +966,9 @@ class TrackingActions(QObject):
         self.refresh()
 
     def _start(self, parameters, training_run_id=None,
-               training_mode: str = "restart", resume_from_run_id: UUID | None = None) -> None:
-        if self.pending or self.window.projectActions.busy:
+               training_mode: str = "restart", resume_from_run_id: UUID | None = None,
+               imported_model_id=None, imported_bodypart=None) -> None:
+        if self.pending or self.window.projectActions.busy or bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy):
             return
         if self.window.frameSelectionActions.busy:
             self.panel.setActivity("Cannot start: frame selection is running")
@@ -958,10 +980,14 @@ class TrackingActions(QObject):
         try:
             request = prepare_tracking_request(
                 session, self.window.selectedTrackId, parameters, training_run_id,
-                training_mode=training_mode, resume_from_training_run_id=resume_from_run_id)
-            run = replace(request.run, extra_fields={"log_path": f"data/engines/{request.run.run_id}.log"})
+                training_mode=training_mode, resume_from_training_run_id=resume_from_run_id,
+                imported_model_id=imported_model_id, imported_bodypart=imported_bodypart)
+            run = replace(request.run, extra_fields={**request.run.extra_fields, "log_path": f"data/engines/{request.run.run_id}.log"})
             request = replace(request, run=run)
             session.record_tracking_run(run)
+            batch = getattr(self.window, "batchAnnotationActions", None)
+            if batch is not None:
+                batch.clear()
             self._request, self._session = request, session
             self._generation = self.window.deliveryGeneration
             self._log_run_id = run.run_id
@@ -1299,6 +1325,7 @@ class FrameSelectionActions(QObject):
             or self.window.trackingActions.pending
             or self.window.projectActions.busy
             or (hasattr(self.window, "reviewActions") and self.window.reviewActions.busy)
+            or bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy)
         ):
             return
         session = self.window.analysisSession

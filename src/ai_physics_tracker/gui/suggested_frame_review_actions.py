@@ -215,6 +215,7 @@ class DifficultFrameReviewActions(QObject):
             (hasattr(self.window, "trackingActions") and self.window.trackingActions.pending)
             or (hasattr(self.window, "frameSelectionActions") and self.window.frameSelectionActions.busy)
             or self.window.projectActions.busy
+            or bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy)
         ):
             self.panel.setMineEnabled(False, "Another background task is in progress")
             return
@@ -267,6 +268,7 @@ class DifficultFrameReviewActions(QObject):
             or (hasattr(self.window, "trackingActions") and self.window.trackingActions.pending)
             or (hasattr(self.window, "frameSelectionActions") and self.window.frameSelectionActions.busy)
             or self.window.projectActions.busy
+            or bool(getattr(self.window, "modelActions", None) and self.window.modelActions.busy)
         ):
             return
         session = self.window.analysisSession
@@ -533,6 +535,8 @@ class DifficultFrameReviewActions(QObject):
         self.window.seekFrame(frame_index)
 
     def acceptCurrent(self) -> None:
+        if not self.window.canEditVideo():
+            return
         if self._controller is None or self._controller.current_candidate is None:
             return
         try:
@@ -551,6 +555,8 @@ class DifficultFrameReviewActions(QObject):
         self._notify_workflow_changed()
 
     def skipCurrent(self) -> None:
+        if not self.window.canEditVideo():
+            return
         if self._controller is None or self._controller.current_candidate is None:
             return
         try:
@@ -575,6 +581,8 @@ class DifficultFrameReviewActions(QObject):
     def startCorrectCurrent(self) -> None:
         if self._controller is None or self._controller.current_candidate is None:
             return
+        self.window.batchAnnotationActions.pause()
+        self.window.setWorkspace("acquire")
         c = self._controller.current_candidate
         if self.window.presented_frame_index != c.frame_index:
             self.window.seekFrame(c.frame_index)

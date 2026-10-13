@@ -7,6 +7,7 @@ from typing import cast
 from uuid import UUID
 
 from ai_physics_tracker.domain.calibration import Calibration
+from ai_physics_tracker.domain.imported_model import ImportedModel
 from ai_physics_tracker.domain.derived import DerivedData, DerivedInput
 from ai_physics_tracker.domain.project import Project, Registries
 from ai_physics_tracker.domain.timeline import Timeline, has_time_mismatch
@@ -57,6 +58,11 @@ def project_to_payload(project: Project) -> dict[str, object]:
             "ui_state": project.ui_state,
         }
     )
+    if project.imported_models:
+        payload["imported_models"] = [
+            {**m.extra_fields, "model_id": str(m.model_id), "name": m.name,
+             "bodyparts": list(m.bodyparts), "sha256": dict(m.sha256), "self_test": m.self_test}
+            for m in project.imported_models]
     return payload
 
 
@@ -65,6 +71,7 @@ def project_from_payload(payload: dict[str, object]) -> Project:
 
     known = {
         "schema_version",
+        "imported_models",
         "project_id",
         "name",
         "description",
@@ -133,6 +140,12 @@ def project_from_payload(payload: dict[str, object]) -> Project:
         ),
         ui_state=_json_object(payload.get("ui_state", {}), "ui_state"),
         extra_fields=_unknown(payload, known),
+        imported_models=tuple(ImportedModel(
+            UUID(_string(m, "model_id")), _string(m, "name"),
+            tuple(_expect_string(b, "bodypart") for b in _sequence(m.get("bodyparts"), "bodyparts")),
+            _object(m.get("sha256"), "sha256"), _json_object(m.get("self_test", {}), "self_test"),
+            _unknown(m, {"model_id", "name", "bodyparts", "sha256", "self_test"}))
+            for m in _object_sequence(payload.get("imported_models", []), "imported_models")),
     )
     timeline_by_video = {item.video_id: item for item in project.timelines}
     observations = tuple(
