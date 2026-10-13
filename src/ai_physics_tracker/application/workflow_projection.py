@@ -111,6 +111,7 @@ class ExecutionInput:
     annotation_batch: "AnnotationBatch | None" = None
     teacher_available: bool = False
     teacher_verified: bool = False
+    pending_representative_frames: int = 0
 
     @property
     def busy(self) -> bool:
@@ -673,7 +674,19 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                                "Generate trajectory with teacher" if verified else "Self-test displayed frame"),
             secondary=(ActionSpec(ACTION_PICK_FRAMES, "Pick representative frames"), customize_frames))
 
-    # 7. 标注不足 / 首次学习就绪
+    # 7. 已选代表帧优先进入标注队列，不回退成源视频顺序扫描。
+    if state.execution.pending_representative_frames:
+        return TaskCard(
+            mode=MODE_ANNOTATE,
+            title="Current: representative frames ready",
+            explanation=(f"{state.execution.pending_representative_frames} suggested frame(s) still need labels. "
+                         "Start the batch, then click the target once per suggested frame.",),
+            primary=ActionSpec(ACTION_LABEL_FRAME, "Label suggested frames"),
+            secondary=(customize_frames, ActionSpec(ACTION_PICK_FRAMES, "Select different representative frames")),
+            evidence=("The batch follows the frame-selection result; existing manual labels stay unchanged.",),
+        )
+
+    # 8. 标注不足 / 首次学习就绪
     if traj.manual_count < required:
         needed = required - traj.manual_count
         return TaskCard(
@@ -683,13 +696,8 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 f"{traj.manual_count}/{required} distinct frames marked; {needed} more "
                 "needed before learning can start.",
                 "Default: select 20 frames with K-means. Use Custom frame selection to choose another algorithm."),
-            primary=(
-                ActionSpec(ACTION_PICK_FRAMES, "Pick representative frames")
-                if traj.manual_count == 0 else
-                ActionSpec(ACTION_LABEL_FRAME, "Mark next suggested frame")
-            ),
-            secondary=(customize_frames,) if traj.manual_count == 0 else
-                      (customize_frames, ActionSpec(ACTION_PICK_FRAMES, "Select more representative frames")),
+            primary=ActionSpec(ACTION_PICK_FRAMES, "Pick representative frames"),
+            secondary=(customize_frames,),
             evidence=("Manual positions are the only ground truth; suggestions "
                       "create no labels.",),
         )
@@ -718,11 +726,12 @@ def select_task_card(state: WorkflowState) -> TaskCard:
                 f"{traj.manual_count} manual example(s) ready. The system prepares "
                 "the plan (fixed-check frames, epochs, batch, device); you start it.",),
             primary=ActionSpec(ACTION_START_LEARNING, "Start learning"),
-            secondary=_scale_actions(state),
+            secondary=(ActionSpec(ACTION_PICK_FRAMES, "Select more representative frames"),
+                       customize_frames, *_scale_actions(state)),
             evidence=_learning_evidence(state),
         )
 
-    # 8. 优化 / 分析出口
+    # 9. 优化 / 分析出口
     if state.new_labels_since_last_train > 0:
         return TaskCard(
             mode=MODE_OPTIMIZE,

@@ -120,13 +120,13 @@ def test_header_shows_context_and_card_follows_projection(
     session.mark_point(track.track_id, 0, 10.0, 10.0)
     window.trackingActions._context_key = None
     window.trackingActions.refresh()
-    assert header.nextStepButtons[0].text() == "Mark next suggested frame"
+    assert header.nextStepButtons[0].text() == "Pick representative frames"
     before = session.project.observations
     window.setWorkspace("analysis")
     assert header.nextStepButtons[0].isVisible()
     assert not card.isVisible()
-    # 从隐藏任务卡的工作区进入标注画面，导航本身不写数据。
-    header.nextStepButtons[0].click()
+    # 未选代表帧时不声称能标注“下一建议帧”；旧动作也不会顺序扫描。
+    window.trackingActions._onCardAction("label_frame")
     assert window.currentWorkspace == "acquire"
     assert session.project.observations == before
 

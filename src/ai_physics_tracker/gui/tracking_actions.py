@@ -245,7 +245,8 @@ class TrackingActions(QObject):
         paused_run_id = review.paused_run_id if review is not None else None
         controller = review.controller if review is not None else None
         batch_actions = getattr(self.window, "batchAnnotationActions", None)
-        review_facts = {"annotation_batch": batch_actions.batch if batch_actions else None}
+        review_facts = {"annotation_batch": batch_actions.batch if batch_actions else None,
+                        "pending_representative_frames": len(self._pendingRepresentativeFrames())}
         if controller is not None and controller.current_candidate is not None:
             review_facts.update({
                 "review_index": controller.current_index,
@@ -582,8 +583,24 @@ class TrackingActions(QObject):
         self._context_key = None
         self.infer()
 
+    def _pendingRepresentativeFrames(self) -> tuple[int, ...]:
+        session, track_id = self.window.analysisSession, self.window.selectedTrackId
+        selection = getattr(self.window, "frameSelectionActions", None)
+        if (session is None or track_id is None or selection is None
+                or selection._result_track_id != track_id or selection._cached_result is None):
+            return ()
+        track = next((t for t in session.tracks if t.track_id == track_id), None)
+        timeline = next((t for t in session.project.timelines
+                         if track is not None and t.video_id == track.video_id), None)
+        if timeline is None:
+            return ()
+        manual_frames = {p.frame_index for p in session.manual_points(track_id)}
+        low, high = timeline.working_zone
+        return tuple(frame for frame in selection._cached_result.suggested_frames
+                     if low <= frame <= high and frame not in manual_frames)
+
     def _jump_to_next_attention_frame(self, session, track_id) -> None:
-        """跳到下一个待标注/待审核画面（不创建任何数据）。"""
+        """审核沿用既有入口；代表帧标注沿用连续队列，不扫描任意未标帧。"""
         window = self.window
         review = getattr(window, "reviewActions", None)
         if review is not None and getattr(review, "busy", False):
@@ -594,20 +611,11 @@ class TrackingActions(QObject):
             candidate_run = state.trajectory.candidate.run_id
             window.reviewActions.requestMining(candidate_run)
             return
-        # 标注路径：跳到第一个无 manual 点的帧
-        manual_frames = {p.frame_index for p in session.manual_points(track_id)}
-        track = next((t for t in session.tracks if t.track_id == track_id), None)
-        if track is None:
-            return
-        timeline = next(
-            (t for t in session.project.timelines if t.video_id == track.video_id),
-            None)
-        if timeline is None:
-            return
-        for frame in range(timeline.working_zone[0], timeline.working_zone[1] + 1):
-            if frame not in manual_frames:
-                window.jumpToFrame(frame)
-                return
+        frames = self._pendingRepresentativeFrames()
+        if frames:
+            window.batchAnnotationActions.start(frames)
+        else:
+            self.panel.setSuggestStatus("No unmarked representative frames. Select representative frames first.")
 
     def _adopt_candidate(self, session, track_id, facts) -> None:
         """[采用此轨迹]：单次影响确认 + 既有原子事务（R1 F4：不再叠加
@@ -1373,6 +1381,10 @@ class FrameSelectionActions(QObject):
         self._result_track_id = None
         self._cached_result = None
         self._cached_status = ""
+        batch = getattr(self.window, "batchAnnotationActions", None)
+        if (batch is not None and batch.batch is not None
+                and (batch.batch.finished or batch.batch.run_id is None)):
+            batch.clear()
         self.panel.setSuggestResult(None)
         self.panel.setSuggestStatus("Working…")
         self.panel.setSuggestEnabled(False, "Frame selection running")
@@ -1430,9 +1442,9 @@ class FrameSelectionActions(QObject):
                 self._finish_error(str(error))
 
     def _finish_success(self, result) -> None:
-        self.panel.setSuggestResult(result)
         self._result_track_id = self._running_track_id
         self._cached_result = result
+        self.panel.setSuggestResult(result)
         self._cached_status = self.panel.suggestStatusLabel.text()
         self._reset()
         self._refreshEnabled()
