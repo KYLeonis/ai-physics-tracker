@@ -17,7 +17,7 @@ AI Physics Tracker 结合现代深度学习视觉跟踪方法与传统运动学�
     ↓
 定义需要跟踪的物体或关键点
     ↓
-手工标注少量代表帧
+手工标注 20 个不同代表帧（默认 K-means 选帧）
     ↓
 AI 训练 / 微调
     ↓
@@ -155,6 +155,9 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 后续分析采用**用户提供方程 / 公式，通用平台完成计算与分析**；论文分支固定 ODE 是复现参考，Phase 6 旧草案须重规划（[ADR-0017](docs/decisions/0017-user-defined-equation-analysis-platform.md)）。
 
 当前工作分支新增 Analysis 视频只读、建议帧批量连续标注 / 修正与完成后的训练推荐、教师 DLC 模型受管导入 / 实际帧自检 / 单关键点候选轨迹。模型自检不会证明科学准确性，候选仍需显式采用。自动化 / Independent Review / 双平台 CI 已通过，等待本轮 [Human Review](docs/notes/main-guided-refinement-model-import-human-review.md)，尚未集成 main。其余回移候选在 [后续档案](docs/status/main-backport-backlog.md) 按相关阶段触发核对。
+
+2026-10-13 首次学习引导增量：当前轨迹需 20 个不同人工帧才可首次学习；默认请求 20 帧 / K-means，顶部推荐的 `Custom frame selection…` 直接切换 K-means / Uniform。已有成功训练的轨迹保持原再训练门槛，教师模型推理仍可直接使用。见[计划](docs/status/initial-annotation-guidance-plan.md)与[真人验收步骤](docs/notes/initial-annotation-guidance-human-review.md)，待 Human Review 后集成。
+用户实测反馈的“选了 K-means 却标前 20 帧”已修复：选帧完成后推荐 `Label suggested frames`，沿实际建议帧连续标注；没有建议结果时先选帧，原有人工标签保留。
 
 ### Phase 6.1 / 6.2 当前进度（2026-10-13）
 

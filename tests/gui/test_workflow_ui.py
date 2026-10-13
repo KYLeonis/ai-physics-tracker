@@ -108,7 +108,7 @@ def test_header_shows_context_and_card_follows_projection(
     session = window.analysisSession
     track = session.tracks[0]
 
-    # 保存（选帧/学习前置）后：卡片进入标注模式（<3 帧）
+    # 保存（选帧/学习前置）后：卡片进入首轮标注模式（<20 帧）。
     session.save_as(tmp_path / "proj")
     window.trackingActions._context_key = None
     window.trackingActions.refresh()
@@ -120,13 +120,13 @@ def test_header_shows_context_and_card_follows_projection(
     session.mark_point(track.track_id, 0, 10.0, 10.0)
     window.trackingActions._context_key = None
     window.trackingActions.refresh()
-    assert header.nextStepButtons[0].text() == "Mark next suggested frame"
+    assert header.nextStepButtons[0].text() == "Pick representative frames"
     before = session.project.observations
     window.setWorkspace("analysis")
     assert header.nextStepButtons[0].isVisible()
     assert not card.isVisible()
-    # 从隐藏任务卡的工作区进入标注画面，导航本身不写数据。
-    header.nextStepButtons[0].click()
+    # 未选代表帧时不声称能标注“下一建议帧”；旧动作也不会顺序扫描。
+    window.trackingActions._onCardAction("label_frame")
     assert window.currentWorkspace == "acquire"
     assert session.project.observations == before
 
@@ -136,15 +136,16 @@ def test_header_shows_context_and_card_follows_projection(
     assert window.workflowHeader.trajectoryLabel.text().startswith("Current trajectory:")
 
 
+@pytest.mark.parametrize("synthetic_video_path", [20], indirect=True)
 def test_card_running_task_shows_cancel(qtbot: QtBot, synthetic_video_path: Path,
                                          tmp_path: Path) -> None:
     from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
 
     window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
-                                               _FakeRunner(_FakeHandle()))
+                                               _FakeRunner(_FakeHandle()), manual_count=20)
     panel = window.trackingActions.panel
 
-    # 该 fixture 已标 3 帧：卡片进入“可开始学习”（系统备好计划，用户显式启动）
+    # 首轮已标 20 帧：系统备好计划，用户显式启动。
     window.trackingActions._context_key = None
     window.trackingActions.refresh()
     assert panel.cardPrimaryButton.text() == "Start learning"
@@ -160,6 +161,7 @@ def test_card_running_task_shows_cancel(qtbot: QtBot, synthetic_video_path: Path
 
 
 @pytest.mark.parametrize("from_header", [False, True])
+@pytest.mark.parametrize("synthetic_video_path", [20], indirect=True)
 def test_start_learning_card_confirms_fixed_check_then_trains(
     qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path, monkeypatch, from_header
 ) -> None:
@@ -171,8 +173,7 @@ def test_start_learning_card_confirms_fixed_check_then_trains(
     from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
 
     window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
-                                               _FakeRunner(_FakeHandle()))
-    session.mark_point(track_id, 3, 40.0, 50.0)  # 共 4 帧 → 预选 1 帧检查
+                                               _FakeRunner(_FakeHandle()), manual_count=20)
 
     captured = {}
 
@@ -197,7 +198,7 @@ def test_start_learning_card_confirms_fixed_check_then_trains(
         panel.cardPrimaryButton.click()
 
     # C1：预选集合经用户确认后才 freeze
-    assert captured["frames"] == [1]  # 4 帧 [0,1,2,3] → 预选内部帧 1（floor 平局取早）
+    assert captured["frames"] == [3, 7, 11, 15]  # 20 个标注预选 4 个检查帧。
     state = session.get_refinement_state(track_id)
     assert state.active_series is not None
     assert tuple(state.active_series.frame_indices) == tuple(captured["frames"])
@@ -481,6 +482,7 @@ def test_empty_screening_card_reruns_candidate_with_force(
     assert captured["force"] is True
 
 
+@pytest.mark.parametrize("synthetic_video_path", [20], indirect=True)
 def test_invalid_series_rebuild_flow_via_card(
     qtbot, synthetic_video_path, tmp_path, monkeypatch
 ) -> None:
@@ -492,7 +494,7 @@ def test_invalid_series_rebuild_flow_via_card(
     from tests.gui.test_tracking_actions import _FakeHandle, _FakeRunner, _opened_window
 
     window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
-                                               _FakeRunner(_FakeHandle()))
+                                               _FakeRunner(_FakeHandle()), manual_count=20)
     for frame in (3, 4):
         session.mark_point(track_id, frame, 30.0 + frame, 40.0)
     series = session.create_validation_series(track_id, "old", [4])

@@ -1,26 +1,32 @@
 # Current Status
 
-> 2026-10-13：Phase 6.1 完整代码复审 / 修复完成，新增 R8–R13 和原 R2 全部 Closed；
-> 最新全量 **929 passed**、独立复审 Approve、代码 `4842560` 双平台 CI success。
+> 2026-10-13：当前工作分支 `fix/initial-annotation-guidance`，首次 GUI 学习需 20 个不同人工帧，
+> 默认 20 / K-means，推荐框直达自定义算法；[本轮 Human Review](../notes/initial-annotation-guidance-human-review.md)待反馈。
+> 用户实测发现“选了 K-means 仍标前 20 帧”：算法结果正确，推荐标注入口却顺序扫描；已修复为实际建议帧连续队列，待重新 HR。
+> 最新修复 `2fa955a`；Windows CI 暴露的时钟相关 fixture 已在 `653e315` 修复，定向 34 / 最终全量 **938 passed（59.72 s）**，[双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836)。
+> Phase 6.1 完整代码复审 / 修复完成，新增 R8–R13 和原 R2 全部 Closed；
+> 6.1 复审时全量 **929 passed**、独立复审 Approve、代码 `4842560` 双平台 CI success。
 > [6.2 子计划](phase-6.2-plan.md)已形成，可进入实现准备；本轮未实现 6.2。
-> 分支 `feat/p6.1-angular-analysis` 仍叠加于待 HR 的三项增量，按前置 HR → 增量 → 6.1 顺序集成。
+> 分支顺序仍为前置三项增量 → 6.1 → 本轮标注引导；不得越过对应 HR。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 > 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
 
-- 最后更新：2026-10-13（6.1 完整复审 / 修复闭环，6.2 子计划完成）
+- 最后更新：2026-10-13（HR 反馈修复：推荐标注沿算法返回的帧队列，待重新验证）
 
 ## Current
 
 - **Phase**：Phase 6.1 完整复审完成待集成；Phase 6.2 计划就绪，后续方程部分按 ADR-0017 重规划
-- **Subphase / Slice**：6.1 实现 / 修复 / 独立复审完成，6.2 Entry READY / mini-plan 已建；前置增量 Human Review 待用户反馈
+- **Subphase / Slice**：首次标注引导 HR 反馈修复 `2fa955a` 完成，Issue #26；本轮待重新 Human Review，前置增量 HR 仍待反馈；6.2 仅计划就绪
 - **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
 
 ## Next Recommended Action
 
+0. **用户重新执行本轮 [Human Review](../notes/initial-annotation-guidance-human-review.md)（A/B/C）**：重点核对 `Label suggested frames` 是否严格沿算法结果跳帧；原实验标注已保留，可重新选帧补标，无须删除。20 帧门槛 / 自定义入口 / 新项目默认仍适用，计划见 [initial-annotation-guidance-plan.md](initial-annotation-guidance-plan.md)。工作分支基于 `d7b9161`，通过后也须按下面的前置顺序集成，不直接将整栈视为 HR 已通过。
 1. **用户执行前置增量的 [Human Review](../notes/main-guided-refinement-model-import-human-review.md)（A/B/C 反馈）**——通过后按 `--no-ff` 集成 `feat/main-guided-refinement-model-import`、验证同树 / main CI、文档收尾 / push、关闭 Issue #24。
 2. 随后按序 `--no-ff` 集成 `feat/p6.1-angular-analysis`，代码 `4842560` [CI 38274300024](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38274300024) 双平台 success；Issue #25 随集成关闭。保存 / 结果身份 / 配方条件见 [review](../reviews/phase-6.1-review.md) 和 ADR-0020。
+   再集成本轮 `fix/initial-annotation-guidance`（需要本轮 HR 已通过），验证 main CI / 文档收尾 / push / 关闭 Issue #26。
 3. 6.2 技术入口 READY，读取 [phase-6.2-plan.md](phase-6.2-plan.md)；下一次用户明确启动后创建 Issue / `feat/p6.2-angular-charts` 并从 S1 科学适配开始。集成仍不能越过前置 HR。
 4. R2 区间失效已经修复；R7 测试竞态已闭环。旧 autosave 期间 Open/Save 菜单静默忽略只留后续 UX 档案，未混入本轮无 GUI 的 6.1 修复。
 
@@ -50,6 +56,8 @@
 
 **工程约束**
 
+- 首次 GUI 学习需当前轨迹 20 个不同 active manual 帧；已有 completed train 的该轨迹保留原再训练门槛。默认选帧 20 / K-means，推荐框和高级表单共享选帧信号 / 算法选择；新建 / 切换项目重置默认。不改变引擎至少 3 个训练帧的技术契约；固定检查帧可从 20 个标注中留出。候选 / Skip 不算标签；教师模型自检 / 推理不受此训练门槛限制。
+- 推荐 `label_frame` 仅消费当前 Track 的真实选帧结果，在 working zone 内排除已有 manual 后启动连续队列；没有结果时不能顺序扫描源视频。新选帧取代旧代表帧批次，已保存标签不变。
 - decoder 交付对象走 `queue.SimpleQueue` + 无参 Qt signal 唤醒：禁止 worker 线程直接 emit 携带 Python 对象的 queued signal（Windows heap corruption 教训）
 - 训练强制 fresh per-run DLC 目录（复用旧目录会导致 shuffle 编号错位）
 - Windows 真机 / CUDA 验收已批准延期至 Phase 9 打包前
@@ -63,6 +71,13 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **本机 Codex → ZCode 基础配置（2026-10-13）**：全局 `$codex-zcode` Skill 已安装，复用 ZCode.app 内置 CLI 0.16.9 与现有 BigModel Individual Coding Plan；Flash 常规实现、GLM-5.3 复杂任务 / review、Codex 验收与有限返工。两种模型真实调用及 Flash 写文件链路通过；runner 11 项自检通过，补齐暂存区检查、实际模型核对与 Windows 进程树清理（Windows 仅 mock）。任务 / 日志放本地忽略的 `.zcode-control/`，未修改产品代码 / 启动新阶段；下一步仍按上方 HR 顺序，后续已授权实现可调用该 Skill。
+
+- **HR 反馈修复：K-means 结果未被推荐标注消费（2026-10-13）**：`20261013_test5` 两次真实结果均为跨视频的 20 帧，已有人工标签却为 0–19；根因为 `label_frame` 顺序遍历 working zone，零标签选帧成功后还推荐再选。代码 `2fa955a` 改为沿当前轨迹的实际算法结果启动连续标注；排除已有 manual，不顺序补帧，显式重选时替换旧代表帧批次。新增 5 个回归，定向 88、全量 **938 passed（63.02 s）**，用户原实验四个文件 SHA256 未改变。本轮 HR 待重测，Issue #26 继续 open，未合 main / 未启动 6.2。
+  `8153cb1` CI macOS success、Windows 935 passed / 2 skipped / 1 failed（原检查集重建 fixture 无 lineage、粗时钟下 created_at 同值）；fixture 改为明确训练来源并强制相同时间，`653e315` 定向 34 / 最终全量 938 passed（59.72 s），产品时间语义不变。[CI 38361205836](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836) macOS / Windows Python3.11 success。
+
+- **首次学习 / 选帧引导（2026-10-13）**：分支 `fix/initial-annotation-guidance`，代码 `b9267e3`，Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。首次 GUI 学习需 20 个不同人工帧，推荐框 / 高级训练 / 连续标注完成提示一致；20 / K-means 默认选帧，推荐框自定义弹窗解释并选择 K-means / Uniform，取消不启动，同一项目沿用算法，新建 / 切换项目恢复默认。已有 completed train 的同轨迹再训练保留门槛，教师模型路径与引擎至少 3 个训练帧契约不变。新增 4 回归；定向 118、末轮 58、最终全量 **933 passed（56.79 s）**，diff 检查通过；`85be73e` [CI 38349426753](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753) macOS / Windows Python3.11 success，Human Review 待反馈。未合 main / 未启动 6.2，实现与集成次序见[计划](initial-annotation-guidance-plan.md)。
 
 - **6.1 完整复审 / 6.2 计划（2026-10-12–13）**：复审整个 6.1 调用链，修复原 R2 与新增 R8–R13：旧构造兼容、公共计算时序、近似 / 区间来源、旧批次覆盖新结果、规格 / SG / 引用一致、标定 pipeline 一致；代码 `80661c1` / `aacb379` / `5f50a16` / `4842560`。新增 21 回归，定向87、全量 **929 passed（66.38 s）**，全新最终独立复审 Approve，[CI 38274300024](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38274300024) macOS / Windows Python3.11 success。ADR-0020 与 6.2 mini-plan 已写，未改论文 worktree / 未实现 6.2 / 未合 main；前置 HR 仍待反馈。
 

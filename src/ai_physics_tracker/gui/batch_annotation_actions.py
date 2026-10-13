@@ -210,9 +210,11 @@ class BatchAnnotationActions(QObject):
         batch = self.batch
         self.group.setVisible(batch is not None)
         if batch is not None:
+            learning_reason = w.trackingActions._trainingLabelReason(w.analysisSession, batch.track_id)
             self.status.setText(
                 f"Batch complete: {batch.corrected} manual label(s). "
-                + ("Next: start learning. " if batch.corrected else "No labels added. ")
+                + ((learning_reason + ". " if learning_reason else "Next: start learning. ")
+                   if batch.corrected else "No labels added. ")
                 + "Skipped frames remain unchanged."
                 if batch.finished else
                 f"{'Paused' if batch.paused else 'Click video'} · {batch.index + 1}/{len(batch.frames)} · frame {batch.current_frame}")
@@ -222,7 +224,7 @@ class BatchAnnotationActions(QObject):
             self.resumeButton.setEnabled(not blocked)
             self.skipButton.setEnabled(not blocked)
             self.learnButton.setVisible(batch.finished and batch.corrected > 0)
-            manual_count = len(w.analysisSession.manual_points(batch.track_id)) if w.analysisSession else 0
-            self.learnButton.setEnabled(not blocked and manual_count >= 3)
+            self.learnButton.setEnabled(not blocked and learning_reason is None)
+            self.learnButton.setToolTip(learning_reason or "")
         w.trackingActions._context_key = None
         w.trackingActions.refresh()

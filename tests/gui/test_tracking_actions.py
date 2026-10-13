@@ -4,6 +4,7 @@ from pathlib import Path
 from threading import Event
 import time
 
+import cv2
 import pytest
 from PySide6.QtCore import QTimer
 
@@ -13,6 +14,8 @@ from ai_physics_tracker.gui.main_window import MainWindow
 from ai_physics_tracker.infrastructure.opencv_video_reader import OpenCVVideoReader
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 from ai_physics_tracker.infrastructure.task_runner import TaskResult
+
+pytestmark = pytest.mark.parametrize("synthetic_video_path", [20], indirect=True)
 
 
 class _FakeHandle:
@@ -65,7 +68,7 @@ class _FakeRunner:
         return self.handles.pop(0)
 
 
-def _opened_window(qtbot, synthetic_video_path: Path, tmp_path: Path, runner: _FakeRunner):
+def _opened_window(qtbot, synthetic_video_path: Path, tmp_path: Path, runner: _FakeRunner, *, manual_count=3):
     window = MainWindow(
         lambda: VideoSession(OpenCVVideoReader()),
         ProjectRepository(),
@@ -79,7 +82,7 @@ def _opened_window(qtbot, synthetic_video_path: Path, tmp_path: Path, runner: _F
     assert track_id is not None
     session = window.analysisSession
     assert session is not None
-    for frame_index in (0, 1, 2):
+    for frame_index in range(manual_count):
         session.mark_point(track_id, frame_index, 10.0 + frame_index, 20.0)
     session.save_as(tmp_path / "project")
     window.projectActions.refresh()
@@ -90,13 +93,16 @@ def _opened_window(qtbot, synthetic_video_path: Path, tmp_path: Path, runner: _F
 
 class _StaticTimingProbe:
     def probe(self, path, cancel=None):
-        del path, cancel
+        del cancel
         from ai_physics_tracker.application.video_timing import TimingReport
 
+        capture = cv2.VideoCapture(str(path))
+        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        capture.release()
         return TimingReport(
             status="cfr",
             reason="static GUI test timing",
-            frame_count=5,
+            frame_count=frame_count,
             fps_measured=10.0,
             fps_reference=10.0,
         )
@@ -116,7 +122,7 @@ def test_cancel_returns_immediately_while_qt_event_loop_stays_responsive(
 ) -> None:
     handle = _FakeHandle(block_cancel=True)
     runner = _FakeRunner(handle)
-    window, session, _track_id = _opened_window(qtbot, synthetic_video_path, tmp_path, runner)
+    window, session, _track_id = _opened_window(qtbot, synthetic_video_path, tmp_path, runner, manual_count=20)
     actions = window.trackingActions
     actions.train()
     _wait_started(qtbot, actions, handle)
@@ -147,7 +153,7 @@ def test_late_success_after_cancel_is_ignored_and_next_task_can_start(
     first = _FakeHandle()
     second = _FakeHandle()
     runner = _FakeRunner(first, second)
-    window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path, runner)
+    window, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path, runner, manual_count=20)
     actions = window.trackingActions
 
     actions.train()
@@ -165,7 +171,7 @@ def test_late_success_after_cancel_is_ignored_and_next_task_can_start(
         )
     )
     qtbot.wait(150)
-    assert len(session.project.observations) == 3
+    assert len(session.project.observations) == 20
 
     actions.train()
     _wait_started(qtbot, actions, second)
@@ -182,8 +188,7 @@ def test_runner_start_failure_marks_run_failed_and_clears_pending(
     tmp_path: Path,
 ) -> None:
     window, session, _track_id = _opened_window(
-        qtbot, synthetic_video_path, tmp_path, _FakeRunner()
-    )
+        qtbot, synthetic_video_path, tmp_path, _FakeRunner(), manual_count=20)
 
     window.trackingActions.train()
     qtbot.waitUntil(lambda: not window.trackingActions.pending, timeout=3000)
@@ -202,8 +207,7 @@ def test_context_change_cancels_unified_task(
 ) -> None:
     handle = _FakeHandle()
     window, session, _track_id = _opened_window(
-        qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle)
-    )
+        qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle), manual_count=20)
     actions = window.trackingActions
     actions.train()
     _wait_started(qtbot, actions, handle)
@@ -224,8 +228,7 @@ def test_ordinary_save_keeps_session_identity_and_concurrent_edit_dirty(
     qtbot, synthetic_video_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     window, session, track_id = _opened_window(
-        qtbot, synthetic_video_path, tmp_path, _FakeRunner()
-    )
+        qtbot, synthetic_video_path, tmp_path, _FakeRunner(), manual_count=20)
     session.mark_point(track_id, 3, 13.0, 20.0)
     entered = Event()
     release = Event()
@@ -255,7 +258,7 @@ def test_cancel_during_evaluation_keeps_model_and_ignores_late_terminal(qtbot, s
     from ai_physics_tracker.infrastructure.project_serializer import tracking_run_to_payload
 
     handle = _FakeHandle()
-    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle))
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle), manual_count=20)
     actions = window.trackingActions
     actions.train()
     _wait_started(qtbot, actions, handle)
@@ -283,7 +286,7 @@ def test_navigation_cancel_keeps_task_and_confirmed_discard_cancels_before_switc
     from PySide6.QtWidgets import QMessageBox
 
     handle = _FakeHandle()
-    window, original, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle))
+    window, original, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle), manual_count=20)
     actions = window.trackingActions
     actions.train()
     _wait_started(qtbot, actions, handle)
@@ -308,7 +311,7 @@ def test_file_chooser_cancel_and_context_breaking_actions_do_not_cancel_or_mutat
     from PySide6.QtWidgets import QFileDialog
 
     handle = _FakeHandle()
-    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle))
+    window, session, _ = _opened_window(qtbot, synthetic_video_path, tmp_path, _FakeRunner(handle), manual_count=20)
     actions = window.trackingActions
     actions.train()
     _wait_started(qtbot, actions, handle)
@@ -334,7 +337,7 @@ def test_frame_selection_running_blocks_training_start(
     from uuid import uuid4
 
     runner = _FakeRunner(_FakeHandle())
-    window, session, _track_id = _opened_window(qtbot, synthetic_video_path, tmp_path, runner)
+    window, session, _track_id = _opened_window(qtbot, synthetic_video_path, tmp_path, runner, manual_count=20)
     actions = window.trackingActions
 
     window.frameSelectionActions._request_id = uuid4()

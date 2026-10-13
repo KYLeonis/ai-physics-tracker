@@ -4,7 +4,7 @@
 分析可用性四态、candidate/active 分离。
 """
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from uuid import uuid4
 
@@ -379,11 +379,15 @@ def test_card_insufficient_labels_then_learn_ready() -> None:
     card3 = select_task_card(_state(trajectory=TrajectoryFacts(manual_count=2)))
     assert card3.mode == "annotate"
 
-    card4 = select_task_card(_state(
-        trajectory=TrajectoryFacts(manual_count=4), completed_train_count=0))
-    assert card4.mode == "learn_ready"
-    assert card4.primary.action_id == ACTION_START_LEARNING
-    assert any("fixed-check" in line for line in card4.evidence)
+    card19 = select_task_card(_state(trajectory=TrajectoryFacts(manual_count=19)))
+    assert card19.mode == "annotate"
+    assert "19/20" in card19.explanation[0]
+    assert any(a.action_id == "customize_frames" for a in card19.secondary)
+
+    card20 = select_task_card(_state(trajectory=TrajectoryFacts(manual_count=20)))
+    assert card20.mode == "learn_ready"
+    assert card20.primary.action_id == ACTION_START_LEARNING
+    assert any("fixed-check" in line for line in card20.evidence)
 
 
 def test_card_failure_recovery_beats_learning() -> None:
@@ -392,6 +396,8 @@ def test_card_failure_recovery_beats_learning() -> None:
         failed_run_id=uuid4(), completed_train_count=0)
     card = select_task_card(state)
     assert card.primary.action_id == ACTION_RETRY_LEARNING
+    assert not card.primary.enabled
+    assert any(a.action_id == ACTION_PICK_FRAMES for a in card.secondary)
     assert any("unchanged" in line for line in card.explanation)
 
 
@@ -420,14 +426,14 @@ def test_card_optimize_then_analysis_exit() -> None:
 
 
 def test_projection_from_real_session_lifecycle(tmp_path: Path) -> None:
-    session, track, video = _session_with_track(tmp_path, zone_frames=8)
+    session, track, video = _session_with_track(tmp_path, zone_frames=20)
 
     # 初始：无标签 → annotate
     state = project_workflow_state(session, track.track_id, session.tracking_runs())
     assert select_task_card(state).mode == "annotate"
 
-    # 3+ 标签 → learn_ready
-    for frame in range(4):
+    # 首轮 20 个不同人工帧 → learn_ready。
+    for frame in range(20):
         session.mark_point(track.track_id, frame, 1.0, 1.0)
     state = project_workflow_state(session, track.track_id, session.tracking_runs())
     card = select_task_card(state)
@@ -725,6 +731,14 @@ def test_invalid_fixed_check_set_drives_rebuild_card(tmp_path: Path) -> None:
     # 使集合失效：改动检查帧上的 manual 点
     session.mark_point(track.track_id, 5, 99.0, 99.0)
     assert not session.validate_active_validation_series(track.track_id)[0]
+
+    training = _run(session, track, "train")
+    latest_infer = _run(session, track, "infer", with_observations=True,
+                        config={"training_run_id": str(training.run_id)})
+    # Windows 粗时钟可生成同一 created_at；关联应由训练来源明确表达。
+    latest_infer = replace(latest_infer, created_at=training.created_at)
+    session.update_tracking_run(latest_infer)
+    session.activate_infer_run(track.track_id, latest_infer.run_id)
 
     state = project_workflow_state(session, track.track_id, session.tracking_runs())
     card = select_task_card(state)

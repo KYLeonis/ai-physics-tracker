@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QListWidget,
     QListWidgetItem,
@@ -25,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from ai_physics_tracker.application.difficult_frames import MiningParams
+from ai_physics_tracker.application.workflow_projection import INITIAL_ANNOTATION_FRAME_COUNT
 from ai_physics_tracker.domain.tracking_run import TrackingRun
 from ai_physics_tracker.application.refinement_history import validation_comparison_exposure
 from ai_physics_tracker.application.tracking_types import (
@@ -146,7 +148,7 @@ class TaskPanel(QDockWidget):
         # --- 建议帧（Phase 5.1）---
         self.nFramesSpinBox = QSpinBox()
         self.nFramesSpinBox.setRange(1, 200)
-        self.nFramesSpinBox.setValue(10)
+        self.nFramesSpinBox.setValue(INITIAL_ANNOTATION_FRAME_COUNT)
         self.algorithmComboBox = QComboBox()
         self.algorithmComboBox.addItem("K-means", "kmeans")
         self.algorithmComboBox.addItem("Uniform", "uniform")
@@ -1119,6 +1121,20 @@ class TaskPanel(QDockWidget):
             algo_text = self.algorithmComboBox.currentText()
             algorithm = "kmeans" if "k" in algo_text.lower() else "uniform"
         self.suggestFramesRequested.emit(n, str(algorithm))
+
+    def customizeFrameSelection(self) -> None:
+        """推荐框直达已有算法选项，确认后复用同一选帧信号。"""
+        choices = [self.algorithmComboBox.itemText(i)
+                   for i in range(self.algorithmComboBox.count())]
+        choice, accepted = QInputDialog.getItem(
+            self, "Custom frame selection",
+            "K-means selects visually diverse frames.\n"
+            "Uniform selects frames evenly across the working zone.\n"
+            f"Select {self.nFramesSpinBox.value()} frames using:",
+            choices, self.algorithmComboBox.currentIndex(), False)
+        if accepted:
+            self.algorithmComboBox.setCurrentIndex(choices.index(choice))
+            self._onSuggestClicked()
 
     def _onSuggestedFrameDoubleClicked(self, item: QListWidgetItem) -> None:
         frame = item.data(Qt.ItemDataRole.UserRole)

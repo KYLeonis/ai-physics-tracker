@@ -157,7 +157,7 @@ class TestTaskPanelSuggestControls:
         panel = window.trackingActions.panel
         assert panel.nFramesSpinBox.minimum() >= 1
         assert panel.nFramesSpinBox.maximum() >= 10
-        assert panel.nFramesSpinBox.value() == 10
+        assert panel.nFramesSpinBox.value() == 20
 
     def test_algorithm_combobox_has_items(self, qtbot, window):
         panel = window.trackingActions.panel

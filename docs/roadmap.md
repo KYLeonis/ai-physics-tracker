@@ -7,6 +7,7 @@
 
 - 最近交付：**Phase 5 — AI-assisted Annotation & Refinement（2026-09-18；5.0–5.7 全部完成，最终 Human Review 通过）**
 - 当前阶段：**Phase 6 进行中（2026-10-13，6.1 完整复审 / 修复完成待集成，6.2 子计划已准备）**
+- 当前 GUI 增量：首次学习 20 个人工帧、默认 K-means、推荐框自定义算法；[计划](status/initial-annotation-guidance-plan.md)，Human Review 待反馈。
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---

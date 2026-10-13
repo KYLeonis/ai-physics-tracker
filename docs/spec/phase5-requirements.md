@@ -89,11 +89,12 @@ AI 只负责指出“哪些帧值得看”和解释原因；用户负责提供�
 
 ### R1 初始代表帧
 
-1. 第一次训练前可为当前 video/track 请求 N 个建议帧，只扫描 Timeline working zone。
-2. 默认 DLC K-means visual selection；DLC uniform selection 作为快速选项和基线。
+1. 第一次训练前可为当前 video/track 请求 N 个建议帧，只扫描 Timeline working zone；默认 N=20，首次 GUI 学习需 20 个不同的 active manual 帧（2026-10-13 用户授权调整）。已有成功训练的轨迹保留原再训练门槛；教师自检 / 推理不要求先标 20 帧。引擎训练集至少 3 帧的技术约束不变，20 个人工帧仍可留出固定检查帧。
+2. 默认 DLC K-means visual selection；DLC uniform selection 作为快速选项和基线。推荐框直接提供自定义算法入口，并解释视觉多样性 / 时间均匀采样；确认启动选帧，取消不改变设置或数据，同一项目后续选帧沿用选择，新建 / 切换项目恢复 20 / K-means 默认。
 3. 排除已有 active manual 帧；候选不足 N 时返回实际数量，不重复帧。
 4. 后台执行、可取消；记录算法、N、seed、working zone、`cluster_step` 与颜色模式等实际参数。
 5. 结果只是 frame index 建议，不直接创建 manual 点。
+   选帧完成后的推荐标注入口必须按返回的帧号启动连续标注，排除已标帧；没有建议结果时提示选帧，不按 working zone 从头补帧。用户仍可在列表选择子集单独标注。
 6. 不自研第二套 K-means；DLC 小版本兼容只在 adapter 内处理。
 
 ### R2 困难帧挖掘
