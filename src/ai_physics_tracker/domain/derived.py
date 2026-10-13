@@ -8,19 +8,34 @@ from ai_physics_tracker.domain.types import JsonObject, require_aware_datetime
 
 KINEMATICS_KINDS = ("world_position", "smoothed_position", "velocity", "acceleration")
 
+# 角运动标量 kind（ADR-0019）：单位依次为 rad / rad / rad/s / rad/s²。
+ANGULAR_KINDS = (
+    "angular_position",
+    "smoothed_angular_position",
+    "angular_velocity",
+    "angular_acceleration",
+)
+
 
 @dataclass(frozen=True)
 class DerivedInput:
-    """生成派生序列时所依据的原始观测选择条件。"""
+    """生成派生序列时所依据的原始观测选择条件。
+
+    reference_track_id 表达双轨迹派生（如两点方向角）的第二输入轨迹；
+    None 表示单轨迹输入（既有四项运动学与其他单轨迹派生）。
+    """
 
     track_id: UUID
     source_filter: str | None = None
     include_superseded: bool = False
     extra_fields: JsonObject = field(default_factory=dict, repr=False)
+    reference_track_id: UUID | None = None
 
     def __post_init__(self) -> None:
         if self.include_superseded:
             raise ValueError("Phase 1 derived inputs cannot include superseded points")
+        if self.reference_track_id is not None and self.reference_track_id == self.track_id:
+            raise ValueError("derived input cannot reference its own track")
 
 
 @dataclass(frozen=True)
@@ -74,11 +89,22 @@ def mark_calibrations_stale(
 def mark_tracks_stale(
     derived: tuple[DerivedData, ...], track_ids: set[UUID]
 ) -> tuple[DerivedData, ...]:
-    """将原始观测或时间输入发生变化的派生序列标记为 stale。"""
+    """将原始观测或时间输入发生变化的派生序列标记为 stale。
+
+    双轨迹派生（ADR-0019）的参考轨迹同样是完整计算依赖：
+    主 track_id 或 input.reference_track_id 命中即失效。
+    """
 
     return tuple(
         replace(item, status="stale")
-        if item.track_id in track_ids and item.status != "stale"
+        if (
+            item.track_id in track_ids
+            or (
+                item.input.reference_track_id is not None
+                and item.input.reference_track_id in track_ids
+            )
+        )
+        and item.status != "stale"
         else item
         for item in derived
     )

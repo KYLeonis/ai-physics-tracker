@@ -281,3 +281,57 @@ def test_missing_video_revokes_detached_timing_authorization_before_batch_prepar
             (track.track_id,),
             SmoothingParameters(),
         )
+
+
+def test_old_kinematics_batch_cannot_replace_new_window_result(tmp_path: Path) -> None:
+    session, video_id, (track,) = _session_with_tracks(tmp_path, track_count=1)
+    job = prepare_kinematics_job(session, video_id, (track.track_id,), SmoothingParameters(7, 2))
+    result = run_kinematics_job(job, Event())
+    session.compute_kinematics(track.track_id, window_length=5)
+    before = session.project
+    with pytest.raises(ProjectSessionError, match="results changed"):
+        session.apply_kinematics_result(result)
+    assert session.project == before
+
+
+def test_kinematics_batch_rejects_foreign_reference(tmp_path: Path) -> None:
+    session, video_id, tracks = _session_with_tracks(tmp_path)
+    job = prepare_kinematics_job(session, video_id, (tracks[0].track_id,), SmoothingParameters())
+    result = run_kinematics_job(job, Event())
+    result = replace(result, records=tuple(replace(item,
+        input=replace(item.input, reference_track_id=tracks[1].track_id)) for item in result.records))
+    before = session.project
+    with pytest.raises(ProjectSessionError, match="reference tracks"):
+        session.apply_kinematics_result(result)
+    assert session.project == before
+
+
+def test_reopened_kinematics_cache_is_read_only_until_timing_verified(tmp_path: Path) -> None:
+    from ai_physics_tracker.application.video_timing import TimingReport
+    session, video_id, (track,) = _session_with_tracks(tmp_path, track_count=1)
+    session.compute_kinematics(track.track_id)
+    session.save_as(tmp_path / "cached")
+    loaded = ProjectSession.load(ProjectRepository(), session.project_root)
+    before = loaded.project
+    with pytest.raises(ProjectSessionError, match="not authorized"):
+        loaded.compute_kinematics(track.track_id)
+    assert loaded.project == before
+    loaded.confirm_video_timing(video_id, TimingReport("cfr", "synthetic test verification"))
+    assert len(loaded.compute_kinematics(track.track_id)) == 4
+
+
+@pytest.mark.parametrize("calibrated", [False, True])
+def test_kinematics_batch_rejects_wrong_calibration_recipe(tmp_path: Path, calibrated: bool) -> None:
+    session, video_id, (track,) = _session_with_tracks(tmp_path, track_count=1)
+    if calibrated:
+        session.add_calibration(video_id, (0,0), (100,0), 1, "m")
+    job = prepare_kinematics_job(session, video_id, (track.track_id,), SmoothingParameters())
+    result = run_kinematics_job(job, Event())
+    bad = {"step": "calibration_transform", "params": {"calibration_id": "00000000-0000-0000-0000-000000000000"}}
+    def pipeline(item):
+        return (bad, *item.pipeline[1:]) if calibrated else (bad, *item.pipeline)
+    result = replace(result, records=tuple(replace(item, pipeline=pipeline(item)) for item in result.records))
+    before = session.project
+    with pytest.raises(ProjectSessionError, match="calibration pipeline"):
+        session.apply_kinematics_result(result)
+    assert session.project == before

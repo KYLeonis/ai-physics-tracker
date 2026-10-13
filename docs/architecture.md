@@ -175,12 +175,24 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 - [0014 — 结果激活与固定验证历史](decisions/0014-result-activation-and-fixed-validation-history.md)
 - [0015 — Training Advisor 与 Resume 再训练](decisions/0015-training-advisor-and-resume-retraining.md)
 - [0016 — 固定检查帧预选与推荐计划执行](decisions/0016-fixed-check-preselection-and-recommended-plan-execution.md)
+- [0017 — 用户方程通用分析平台口径](decisions/0017-user-defined-equation-analysis-platform.md)
+- [0018 — 受管教师模型导入](decisions/0018-managed-teacher-model-import.md)
+- [0019 — 角运动计算与多输入派生数据 additive 契约](decisions/0019-angular-kinematics-and-multi-input-derived-data.md)
 
 
 ## 主线后续分析与受管教师模型（2026-10-11）
 
 用户定义方程 / 公式，由通用计算平台完成求解、拟合、比较和导出；论文固定 ODE 仅作为示例。当前只确认口径，Phase 6 须按 [ADR-0017](decisions/0017-user-defined-equation-analysis-platform.md) 重规划。
 
+角运动分析（Phase 6.1）作为通用平台的首批标量分析能力落地：domain `angular` 提供单摆/两点方向 θ、段内 unwrap 与标量稀疏记录；`DerivedInput.reference_track_id`（additive）承载双轨迹依赖，`compute_angular` 产出四种 rad 系标量 kind，`angular_job` 复用 detached 快照 / 输入复核 / 原子批次提交骨架。契约见 [ADR-0019](decisions/0019-angular-kinematics-and-multi-input-derived-data.md)；图表消费留待 6.2。
+
 教师模型由 domain `ImportedModel` + Project 集合保存身份，infrastructure `imported_models` 管理安全 YAML / staged copy / SHA256，`imported_model_inference` 共用实际帧探针与全视频 runner。GUI `ModelActions` 拥有导入线程 / 自检 spawn 的完整生命周期；`imported_model_job` 将选定关键点接入既有跟踪候选 / 激活事务。[ADR-0018](decisions/0018-managed-teacher-model-import.md) 规定 schema v1 可选扩展、身份和不伪造训练履历。
 
 连续建议帧队列 `AnnotationBatch` 只存瞬时选择 / 进度；GUI `BatchAnnotationActions` 委托原 Session 写人工点 / corrected provenance / skipped 记录，完成后显式推荐训练。Analysis 视频只读，Acquire 是编辑入口。
+
+### 分析结果提交边界（2026-10-13）
+
+角运动和线性运动学共用输入 / 目标结果版本 / 配方 / 标定一致性校验，
+拒绝旧任务覆盖新参数结果；参考依赖和时序授权由应用边界守住。
+同步角运动保存 fps / 区间 / 近似来源，后台复用相同溯源，见
+[ADR-0020](decisions/0020-analysis-batch-result-and-recipe-consistency.md)。

@@ -1,9 +1,9 @@
 # Subphase Plan — Phase 6.1 Angular Analysis Foundation
 
-> 2026-10-11：本文件为旧规划草案，**不得直接启动实施**。用户已确认由用户给出方程、平台通用计算；见[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)。固定拟合模型仅可作为示例，下一轮规划须重新对齐输入 / 求解 / 拟合范围。
+> 2026-10-11：用户确认启动本子阶段（角运动基础与 ADR-0017"角运动/求导是通用平台输入能力"口径兼容；6.1 的 non-goals 本就排除周期/拟合，R3 固定拟合部分仍留待按 ADR-0017 重规划）。科学/数据契约见[ADR-0019](../decisions/0019-angular-kinematics-and-multi-input-derived-data.md)。
 
-- Issue / 分支：尚未创建（规划确认后 `feat/p6.1-angular-analysis`）
-- 日期 / 状态：2026-10-11 · **草案，待用户确认**
+- Issue / 分支：[#25](https://github.com/KYLeonis/ai-physics-tracker/issues/25) / `feat/p6.1-angular-analysis`（叠加于待 HR 的 `feat/main-guided-refinement-model-import`，集成顺序：增量先行）
+- 日期 / 状态：2026-10-11 · **实现 / 完整复审完成，待按序集成**
 - 风险等级：High-risk（角度定义、unwrap/微分、多输入依赖与派生结果事务）
 
 ## Goal
@@ -17,6 +17,7 @@
 - [phase6-requirements.md](../spec/phase6-requirements.md) R1/R5、AC-1/2/7；[总计划](phase-6-plan.md)。
 - [data-model.md](../spec/data-model.md) §3.8/§4/§6：派生数据、有效观测及坐标契约。
 - ADR-0008：SG 的物理 dt、NaN 分段与短段；ADR-0009：后台快照与原子结果提交。
+- [ADR-0020](../decisions/0020-analysis-batch-result-and-recipe-consistency.md)：本轮结果版本、配方一致性与公共时序边界修复。
 - `CODE_STANDARD.md`；`docs/research/open-source-project-map.md` §3.3/3.11/3.12/§7。
 
 ### Relevant Historical Findings
@@ -53,19 +54,19 @@ ADR 需决定 scalar kinds/多输入参数的 additive 落点，并核对旧项�
 
 ## Acceptance Criteria
 
-- [ ] AC-1：单摆/两点方向的基准方向、符号、±π 跨界、恒角速/恒角加速、缺测/重合/短段测试通过。
-- [ ] AC-2：requirements AC-1/2 的解析精度和物理单位门槛通过；端点误差单独报告。
-- [ ] AC-3：两点任一输入编辑/删除、标定/时序变化使结果失效；Undo/Redo 不留下悬空引用。
-- [ ] AC-4：保存重开保留完整参考/算法参数/单位/未知字段；旧项目和既有四项运动学结果不退化。
-- [ ] AC-5：后台取消、输入变化、迟到与部分批次不提交；成功批次原子提交。
-- [ ] AC-6：Independent Review findings 已处置，定向/全量验证及双平台 CI 通过。
+- [x] AC-1：单摆/两点方向的基准方向、符号、±π 跨界、恒角速/恒角加速、缺测/重合/短段测试通过（`tests/test_angular.py` 19 项）。
+- [x] AC-2：requirements AC-1/2 的解析精度和物理单位门槛通过；端点误差单独报告（随断言消息披露，不设门槛）。
+- [x] AC-3：两点任一输入编辑/删除、标定/时序变化使结果失效；Undo/Redo 不留下悬空引用（`tests/test_angular_session.py` + 域校验测试）。
+- [x] AC-4：保存重开保留完整参考/算法参数/单位/未知字段；旧项目和既有四项运动学结果不退化（round-trip 测试 + 全量 908 passed 零回归）。
+- [x] AC-5：后台取消、输入变化、迟到与部分批次不提交；成功批次原子提交（`tests/test_angular_job.py` 9 项）。
+- [x] AC-6：Independent Review findings 已处置，定向/全量验证及双平台 CI 通过（[review record](../reviews/phase-6.1-review.md) 闭环；[CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) macOS/Windows Python 3.11 success）。
 
 ## Slices
 
-- [ ] Slice 1：扫描调用链，记录 angular/data-dependency ADR，实现纯角度、段内 unwrap 与 SG 导数及解析测试。
-- [ ] Slice 2：scalar 结果溯源与多输入依赖失效；Session/保存重开/Undo 回归。
-- [ ] Slice 3：快照后台计算、输入复核和原子提交，补取消/迟到/部分批次测试。
-- [ ] Slice 4：独立 review → 处置/复审 → 文档同步 → 集成/push/CI。
+- [x] Slice 1：扫描调用链，记录 angular/data-dependency ADR（[ADR-0019](../decisions/0019-angular-kinematics-and-multi-input-derived-data.md)），实现纯角度、段内 unwrap 与 SG 导数及解析测试。
+- [x] Slice 2：scalar 结果溯源与多输入依赖失效；Session/保存重开/Undo 回归。
+- [x] Slice 3：快照后台计算、输入复核和原子提交，补取消/迟到/部分批次测试。
+- [x] Slice 4：独立 review → 处置/复审 → 文档同步 → 集成/push/CI（review 闭环；集成 main 待前置增量 HR 通过后按序执行）。
 
 ## Verification
 
@@ -82,4 +83,24 @@ ADR 需决定 scalar kinds/多输入参数的 additive 落点，并核对旧项�
 
 ## Result
 
-本轮只完成 mini-plan 草案；没有实现、没有勾选 AC，也未执行实现的 Independent Review。
+2026-10-11 完成 Slice 1–4 实现（用户本日确认启动，与 ADR-0017 口径兼容：角运动/求导是
+通用平台的输入能力；6.3 固定拟合仍留待按 ADR-0017 重规划）。交付：`domain/angular.py`
+（θ 定义/段内 unwrap/标量记录）、`DerivedInput.reference_track_id` additive 扩展与
+失效/级联/聚合校验、`compute_angular` 四种标量 kind（rad 系）、`angular_job` 后台批次
+（复用 detached/复核/原子提交骨架）、序列化往返；新增 43 项测试（解析 AC-1/2、失效与
+Undo AC-3/4、批次 AC-5），本机全量 **908 passed** 零回归。Independent Review 首轮
+7 findings：R1/R3/R4/R5/R6 修复并经复审确认（[review record](../reviews/phase-6.1-review.md)），
+首轮曾延期 R2 / R7：R7 后续根因修复；R2 已由 2026-10-12–13 完整审查直接修复，
+不再留给 6.2。新增后台版本 / 配方、公共时序边界与计算溯源修复见审查记录。
+分支 `feat/p6.1-angular-analysis` 已 push，[双平台 CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) success；集成 main 须待
+前置增量 `feat/main-guided-refinement-model-import` HR 通过后按序 `--no-ff` 执行。
+
+## 完整复审补充（2026-10-13）
+
+用户要求完整复审后直接修复潜在问题；新 finding / 复现 / 修复与独立确认统一记在
+[review record](../reviews/phase-6.1-review.md) 的“完整复审”章节。新增 ADR-0020 分析结果版本 / 配方策略，
+补旧构造兼容、时序授权、区间失效、近似来源，以及两种模式在旋转 / 非零区间下的解析回归。
+最新测试 / CI 以 current 为准；[6.2 子计划](phase-6.2-plan.md)已形成，当前不含 GUI 实现。
+
+最终完整复审：R2 / R8–R13 全部 Closed，最新全量929 passed（66.38 s），
+代码4842560 / 双平台CI38274300024 success；6.2技术入口READY，实际集成依然按前置HR顺序。

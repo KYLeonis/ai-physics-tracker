@@ -764,7 +764,10 @@ def test_save_and_reopen_restores_review_state_ac5(test_window: MainWindow, tmp_
 
     # 重开项目
     window.projectActions._load(lambda service, cancel: service.open_project(proj_root, cancel))
-    qtbot.waitUntil(lambda: window.analysisSession is not None, timeout=3000)
+    # 等待 adopt 完成的身份变化（见 reliability 测试同款注释），避免操作旧 session。
+    qtbot.waitUntil(
+        lambda: window.analysisSession is not None and window.analysisSession is not session,
+        timeout=3000)
     new_session = window.analysisSession
     assert new_session is not None
     window.reviewActions.onRunSelected(valid_run.run_id)

@@ -424,14 +424,16 @@ def _calibration_from_payload(payload: dict[str, object]) -> Calibration:
 
 
 def _derived_to_payload(item: DerivedData) -> dict[str, object]:
-    input_payload = _merge_extra(
-        item.input.extra_fields,
-        {
-            "track_id": str(item.input.track_id),
-            "source_filter": item.input.source_filter,
-            "include_superseded": item.input.include_superseded,
-        },
-    )
+    input_known = {
+        "track_id": str(item.input.track_id),
+        "source_filter": item.input.source_filter,
+        "include_superseded": item.input.include_superseded,
+    }
+    # reference_track_id 仅在双轨迹派生时写入（ADR-0019）；
+    # 旧版本实现读取时该键落入 extra_fields（tolerant read）。
+    if item.input.reference_track_id is not None:
+        input_known["reference_track_id"] = str(item.input.reference_track_id)
+    input_payload = _merge_extra(item.input.extra_fields, input_known)
     return _merge_extra(
         item.extra_fields,
         {
@@ -474,6 +476,9 @@ def _derived_from_payload(payload: dict[str, object]) -> DerivedData:
     }
     input_payload = _object(payload.get("input"), "input")
     input_known = {"track_id", "source_filter", "include_superseded"}
+    reference_raw = _optional_string(input_payload.get("reference_track_id"))
+    if reference_raw is not None:
+        input_known = input_known | {"reference_track_id"}
     calibration_ref = _optional_string(payload.get("calibration_ref"))
     values_payload = payload.get("values")
     values = None
@@ -493,6 +498,7 @@ def _derived_from_payload(payload: dict[str, object]) -> DerivedData:
                 input_payload.get("include_superseded", False),
                 "include_superseded",
             ),
+            reference_track_id=UUID(reference_raw) if reference_raw is not None else None,
             extra_fields=_unknown(input_payload, input_known),
         ),
         calibration_ref=UUID(calibration_ref) if calibration_ref is not None else None,

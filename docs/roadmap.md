@@ -6,7 +6,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近交付：**Phase 5 — AI-assisted Annotation & Refinement（2026-09-18；5.0–5.7 全部完成，最终 Human Review 通过）**
-- 当前阶段：**Phase 6 规划中（2026-10-11，草案待确认；未开始产品实现）**
+- 当前阶段：**Phase 6 进行中（2026-10-13，6.1 完整复审 / 修复完成待集成，6.2 子计划已准备）**
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
 ---
@@ -187,13 +187,13 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 **目标**：更丰富的物理分析能力。
 
-**状态**：需求/总计划/6.1 mini-plan 已起草，待用户确认；以下既有验收标准保持未完成。
+**状态**：6.1 角运动基础已实现 / 复审并修复；6.2 子计划已准备，GUI 尚未实现。整个 Phase 6 的周期 / 拟合 / 误差验收仍未完成。
 规划入口：[phase6-requirements.md](spec/phase6-requirements.md)、
-[phase-6-plan.md](status/phase-6-plan.md)、[phase-6.1-plan.md](status/phase-6.1-plan.md)。
+[phase-6-plan.md](status/phase-6-plan.md)、[phase-6.1-plan.md](status/phase-6.1-plan.md)、[phase-6.2-plan.md](status/phase-6.2-plan.md)。
 
 **Deliverables**
 - θ/ω/α 计算（含刚体角度定义）、phase space 与单摆相图、θ-ω 相图
-- 周期分析、数据拟合、运动模型拟合（如单摆阻尼模型）
+- 周期分析、数据拟合、运动模型拟合（用户提供方程，单摆阻尼模型可作示例）
 - 多目标数据分析、数据误差分析
 - 后续研究：FFT、参数识别、阻尼分析、能量变化、理论模型对比
 

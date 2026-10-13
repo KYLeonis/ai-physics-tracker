@@ -215,19 +215,26 @@ def test_save_reopen_and_resume_review_matrix(rel_window: MainWindow, qtbot):
 
     # 1. 接受候选 1
     panel.reviewAcceptButton.click()
-    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 2, timeout=3000)
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 2, timeout=15000)
 
     # 2. 修正候选 2
     panel.reviewCorrectButton.click()
     click_pos = _inside_point(window, 18.0, 28.0)
     window._onAnnotationClicked(click_pos)
-    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 3, timeout=3000)
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 3, timeout=15000)
 
-    # 保存并重开
+    # 保存并重开。Correct 已触发静默 autosave（projectActions.busy）；
+    # _load 在 busy 时静默丢弃请求，必须先等 autosave 结束再发起重开
+    # （对照 test_suggested_frame_review_actions.py 的同款等待）。
+    qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=15000)
     session.save()
     proj_root = session.project_root
     window.projectActions._load(lambda service, cancel: service.open_project(proj_root, cancel))
-    qtbot.waitUntil(lambda: window.analysisSession is not None, timeout=3000)
+    # _load 期间 analysisSession 仍是旧对象，adopt 完成才替换；
+    # 必须等到身份变化，否则后续步骤会操作旧 session、被迟到的 adopt 重置。
+    qtbot.waitUntil(
+        lambda: window.analysisSession is not None and window.analysisSession is not session,
+        timeout=15000)
 
     # 验证重开后恢复
     new_session = window.analysisSession
@@ -266,7 +273,7 @@ def test_save_reopen_and_resume_review_matrix(rel_window: MainWindow, qtbot):
     qtbot.waitUntil(
         lambda: "Processed" in panel.reviewProgressLabel.text()
         and "left undecided" in panel.reviewProgressLabel.text(),
-        timeout=3000)
+        timeout=15000)
 
 
 def test_interleaved_undo_redo_matrix(rel_window: MainWindow, qtbot):
@@ -292,7 +299,7 @@ def test_interleaved_undo_redo_matrix(rel_window: MainWindow, qtbot):
 
     # 2. Accept candidate 1 (帧 1)
     panel.reviewAcceptButton.click()
-    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 2, timeout=3000)
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 2, timeout=15000)
 
     # 3. Correct candidate 2 (帧 2)
     panel.reviewCorrectButton.click()
@@ -300,7 +307,7 @@ def test_interleaved_undo_redo_matrix(rel_window: MainWindow, qtbot):
     window._onAnnotationClicked(click_pos)
     qtbot.waitUntil(
         lambda: not window._has_pending_request and not window.projectActions.busy,
-        timeout=3000)
+        timeout=15000)
 
     summary = session.get_review_summary(run.run_id)
     assert summary.accepted_count == 1
@@ -482,12 +489,12 @@ def test_candidate_with_preexisting_manual_point(rel_window: MainWindow, qtbot):
 
     # 触发 Correct 重标
     panel.reviewCorrectButton.click()
-    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 1, timeout=3000)
+    qtbot.waitUntil(lambda: not window._has_pending_request and window.presented_frame_index == 1, timeout=15000)
     click_pos = _inside_point(window, 30.0, 40.0)
     window._onAnnotationClicked(click_pos)
     qtbot.waitUntil(
         lambda: not window._has_pending_request and not window.projectActions.busy,
-        timeout=3000)
+        timeout=15000)
 
     # 新 manual 点覆盖旧 manual 点
     pt = session.effective_point(track_id, 1)

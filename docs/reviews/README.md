@@ -23,6 +23,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | 5.5 | [phase-5.5-review.md](phase-5.5-review.md) | 修改后通过；R1 三路 20 条 findings 全部闭环（含 2 Blocker），693 测试 + 真实 DLC restart/resume smoke + Human Review 通过 | 2026-09-04 |
 | 5.6 | [phase-5.6-review.md](phase-5.6-review.md) | 自查（用户指示不用 subagent；2 次 subagent 因配额失败）：F1–F5 记录、2 项缺陷修复（含 1 Blocker）、AC-9 明示缺口；699 测试 | 2026-09-16 |
 | 5.7 | [phase-5.7-review.md](phase-5.7-review.md) | R1/R2 findings 全闭环；HR1 与两轮补充实测修复完成；804 测试 + 最终 Human Review 通过 | 2026-09-18 |
+| 6.1 | [phase-6.1-review.md](phase-6.1-review.md) | 修改后通过；首轮 7 findings（6 修复、1 延期 R2 移交 6.2；R7 父分支重开测试竞态根因修复），43 项新测试，全量 908 passed | 2026-10-11 |
 
 > 4.3 / 4.4 的独立 review 发生于本机制建立之前，不回溯补建独立文件；自下一个触发的 subphase 起使用本目录。
 
@@ -35,3 +36,6 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 ## Main 后续增量
 
 - [引导修正与教师模型导入](main-guided-refinement-model-import-review.md)：Issue #24，R1/R2/R3 F1–F6 Closed / Approve，本轮 Human Review 待反馈。
+
+- 2026-10-13：Phase 6.1 用户要求的完整复审追加于原记录，R2 / R8–R13 Closed / Approve，
+  929 全量 / 最新代码双平台 CI 通过；6.2 入口准备就绪，前置增量 HR / 集成仍待执行。

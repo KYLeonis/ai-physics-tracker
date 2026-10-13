@@ -1,26 +1,30 @@
 # Current Status
 
-> 2026-10-11：已进入用户授权的三项回移增量（Analysis 只读 / 批次修正 / 教师模型导入与实际帧自检），分支 `feat/main-guided-refinement-model-import`；[mini-plan](main-guided-refinement-model-import-plan.md)。用户方程产品口径已确认，Phase 6 旧草案暂停直接实施。
-
-> 两线全量功能 / UI 比较已完成：[区别文档](../notes/publication-main-feature-ui-differences.md)，附 637 文件 / 229 提交 / 80 源码模块清单。新增优先候选为 Analysis 视频只读；比较报告保留扫描快照；上一批已集成；本轮三项增量在工作分支实现中，待本轮 HR。
+> 2026-10-13：Phase 6.1 完整代码复审 / 修复完成，新增 R8–R13 和原 R2 全部 Closed；
+> 最新全量 **929 passed**、独立复审 Approve、代码 `4842560` 双平台 CI success。
+> [6.2 子计划](phase-6.2-plan.md)已形成，可进入实现准备；本轮未实现 6.2。
+> 分支 `feat/p6.1-angular-analysis` 仍叠加于待 HR 的三项增量，按前置 HR → 增量 → 6.1 顺序集成。
 
 > 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
 > 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
 > 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
 
-- 最后更新：2026-10-11（本轮三项增量 / 独立审查与 Human Review 准备）
+- 最后更新：2026-10-13（6.1 完整复审 / 修复闭环，6.2 子计划完成）
 
 ## Current
 
-- **Phase**：主线引导修正与模型导入增量；Phase 6 用户方程平台待重规划
-- **Subphase / Slice**：`main-guided-refinement-model-import` S1–S5 完成；S6 Human Review 待用户反馈
+- **Phase**：Phase 6.1 完整复审完成待集成；Phase 6.2 计划就绪，后续方程部分按 ADR-0017 重规划
+- **Subphase / Slice**：6.1 实现 / 修复 / 独立复审完成，6.2 Entry READY / mini-plan 已建；前置增量 Human Review 待用户反馈
 - **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
 
 ## Next Recommended Action
 
-[三项增量 mini-plan](main-guided-refinement-model-import-plan.md) S1–S4 已完成，定向 45 passed / 全量 865 passed、实际 DLC/MPS 自检与推理、[双平台 CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38144024802) 通过。Independent R3 Approve、F1–F6 全部 Closed。[本轮 Human Review](../notes/main-guided-refinement-model-import-human-review.md) 已发起：等待用户 A/B/C 反馈；通过前不合并 main / 不关闭 Issue #24。通过后按 `--no-ff` 集成、验证同树 / main CI、文档收尾 / push、关闭 Issue 并停止，Phase 6 重规划等待下一条指令。
+1. **用户执行前置增量的 [Human Review](../notes/main-guided-refinement-model-import-human-review.md)（A/B/C 反馈）**——通过后按 `--no-ff` 集成 `feat/main-guided-refinement-model-import`、验证同树 / main CI、文档收尾 / push、关闭 Issue #24。
+2. 随后按序 `--no-ff` 集成 `feat/p6.1-angular-analysis`，代码 `4842560` [CI 38274300024](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38274300024) 双平台 success；Issue #25 随集成关闭。保存 / 结果身份 / 配方条件见 [review](../reviews/phase-6.1-review.md) 和 ADR-0020。
+3. 6.2 技术入口 READY，读取 [phase-6.2-plan.md](phase-6.2-plan.md)；下一次用户明确启动后创建 Issue / `feat/p6.2-angular-charts` 并从 S1 科学适配开始。集成仍不能越过前置 HR。
+4. R2 区间失效已经修复；R7 测试竞态已闭环。旧 autosave 期间 Open/Save 菜单静默忽略只留后续 UX 档案，未混入本轮无 GUI 的 6.1 修复。
 
-后续 Phase 6 必须按[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)的**用户提供方程、通用平台分析**口径重规划，不执行旧固定拟合草案。触及相关阶段时必须核对[后续回移档案](main-backport-backlog.md)。
+后续 Phase 6 其余子阶段必须按[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)的**用户提供方程、通用平台分析**口径重规划，不执行旧固定拟合草案。触及相关阶段时必须核对[后续回移档案](main-backport-backlog.md)。
 
 ## Active Constraints
 
@@ -29,6 +33,8 @@
 **数据与科学契约**
 
 - main 用户提供方程 / 公式，由通用平台计算与分析；论文硬编码 ODE 仅作复现参考（ADR-0017）
+- 同步 / 后台计算均需本次时序授权；修改区间置相关派生 stale，不改 raw 时间；提交还核对目标结果版本 / 配方 / 标定（ADR-0020）。
+- 角运动四种标量 kind（angular_position / smoothed_angular_position / angular_velocity / angular_acceleration，rad 系，单列 values）；每轨迹每种 kind 至多一条，重算整组替换（ADR-0019）；6.2 前图表不消费角运动数据
 
 - raw 层只存像素；世界坐标是 `CalibrationTransform` 的派生结果，`pixel_` / `world_` 前缀严格分层
 - `frame_index` 是 int、时间是 float 秒；换算只经 Timeline 纯函数（nominal 模型 `frame/fps_nominal`，非 VFR 引擎）
@@ -57,6 +63,10 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **6.1 完整复审 / 6.2 计划（2026-10-12–13）**：复审整个 6.1 调用链，修复原 R2 与新增 R8–R13：旧构造兼容、公共计算时序、近似 / 区间来源、旧批次覆盖新结果、规格 / SG / 引用一致、标定 pipeline 一致；代码 `80661c1` / `aacb379` / `5f50a16` / `4842560`。新增 21 回归，定向87、全量 **929 passed（66.38 s）**，全新最终独立复审 Approve，[CI 38274300024](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38274300024) macOS / Windows Python3.11 success。ADR-0020 与 6.2 mini-plan 已写，未改论文 worktree / 未实现 6.2 / 未合 main；前置 HR 仍待反馈。
+
+- **Phase 6.1 角运动分析基础（2026-10-11）**：分支 `feat/p6.1-angular-analysis`（Issue #25），实现+review 修复共 3 提交。交付 ADR-0019、`domain/angular.py`、`DerivedInput.reference_track_id`（双轨迹失效/级联/同视频校验）、`compute_angular`、`angular_job` 后台原子批次与序列化往返；新增 43 测试，本机全量 **908 passed** 零回归，分支 [CI 38157600556](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38157600556) 双平台 success。Independent Review 首轮 Approve with findings（7 项：5 修复+复审确认、2 延期——R2 zone 失效移交 6.2、R7 父分支 flake 与本 diff 无关）；[review record](../reviews/phase-6.1-review.md)。分支已 push，CI 结果与集成动作见 Next；集成 main 待前置增量 HR 通过。
 
 - **本轮三项增量实现 / 复审（2026-10-11）**：工作分支 `feat/main-guided-refinement-model-import`，代码 `1743f61` / `229b7d4` / `c998fd0` / `0c71910`；定向45 + 末轮28通过，全量 **865 passed（77.50 s）**，最新代码 [CI 38144024802](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38144024802) macOS/Windows Python3.11 success。R1/R2/R3 六项 findings Closed / Approve；[review record](../reviews/main-guided-refinement-model-import-review.md)。实际 DLC spawn 四点自检及三帧 tip 推理 `auto → mps` 成功；Human Review 待反馈、Issue #24 open、未合 main。方程口径与后续档案同步 ADR-0017/0018 / AGENTS / roadmap / specs / README。
 

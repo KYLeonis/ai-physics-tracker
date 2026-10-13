@@ -10,7 +10,7 @@ import logging
 import json
 from copy import deepcopy
 from dataclasses import replace
-from math import isfinite
+from math import isfinite, pi
 from pathlib import Path
 from typing import Any, Iterable, Protocol, TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -42,6 +42,15 @@ from ai_physics_tracker.application.suggested_frame_review import (
 )
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
+from ai_physics_tracker.domain.angular import (
+    AngularReference,
+    PendulumReference,
+    TwoPointReference,
+    dense_to_sparse_scalar_records,
+    direction_theta_world,
+    pendulum_theta_world,
+    unwrap_per_segment,
+)
 from ai_physics_tracker.domain.calibration import Calibration, CalibrationTransform
 from ai_physics_tracker.domain.kinematics import (
     batch_pixel_to_world,
@@ -63,7 +72,12 @@ from ai_physics_tracker.domain.project import (
     replace_calibration as replace_domain_calibration,
     set_active_calibration as set_domain_active_calibration,
 )
-from ai_physics_tracker.domain.derived import DerivedData, DerivedInput, mark_tracks_stale
+from ai_physics_tracker.domain.derived import (
+    ANGULAR_KINDS,
+    DerivedData,
+    DerivedInput,
+    mark_tracks_stale,
+)
 from ai_physics_tracker.domain.timeline import (
     TIME_COMPARISON_TOLERANCE_S,
     Timeline,
@@ -85,6 +99,7 @@ from ai_physics_tracker.domain.video import Video
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from ai_physics_tracker.application.angular_job import AngularResult
     from ai_physics_tracker.application.kinematics_job import KinematicsResult
     from ai_physics_tracker.application.tracking_job import TrackingCandidate
 
@@ -784,6 +799,8 @@ class ProjectSession:
         track = next((t for t in self._store.tracks if t.track_id == track_id), None)
         if track is None:
             raise ProjectSessionError(f"unknown track_id: {track_id}")
+        if not self.can_measure(track.video_id):
+            raise ProjectSessionError("Video timing is not authorized; cached results are read-only")
 
         timeline = next(
             (item for item in self._project.timelines if item.video_id == track.video_id),
@@ -997,6 +1014,254 @@ class ProjectSession:
 
     recompute_kinematics = compute_kinematics
 
+    def compute_angular(
+        self,
+        track_id: UUID,
+        *,
+        reference: AngularReference,
+        window_length: int = 7,
+        polyorder: int = 2,
+    ) -> tuple[DerivedData, ...]:
+        """对指定 Track 按给定角度参考计算角运动管线。
+
+        角度定义与数值规则见 phase6-requirements.md R1 与 ADR-0019：
+        原始 wrapped θ → 段内 unwrap → SG(deriv=0/1/2)。首版要求有效标定，
+        不提供像素角度模式；重算即整组替换本轨迹全部角运动结果（含更换
+        参考模式，ADR-0019 第 1 节）。
+
+        Args:
+            track_id: 目标轨迹（单摆摆球 / 两点方向中的 A 点）。
+            reference: PendulumReference（固定支点，像素）或 TwoPointReference（B 轨迹）。
+            window_length: Savitzky-Golay 滤波窗口长度（正奇数，默认 7）。
+            polyorder: Savitzky-Golay 多项式拟合阶数（默认 2）。
+
+        Returns:
+            (angular_position, smoothed_angular_position, angular_velocity,
+             angular_acceleration) 四条 DerivedData。
+        """
+
+        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        if track is None:
+            raise ProjectSessionError(f"unknown track_id: {track_id}")
+        if not self.can_measure(track.video_id):
+            raise ProjectSessionError("Video timing is not authorized; cached results are read-only")
+
+        timeline = next(
+            (item for item in self._project.timelines if item.video_id == track.video_id),
+            None,
+        )
+        if timeline is None:
+            raise ProjectSessionError(f"no timeline registered for video of track {track.name}")
+
+        video = next(
+            (item for item in self._project.videos if item.video_id == track.video_id),
+            None,
+        )
+        if video is None:
+            raise ProjectSessionError(f"no video registered for track {track.name}")
+
+        active_cal = self.active_calibration(track.video_id)
+        if active_cal is None:
+            raise ProjectSessionError(
+                "angular analysis requires an active calibration (phase6 R1)"
+            )
+
+        delta = 1.0 / timeline.fps_nominal
+        transform = CalibrationTransform(calibration=active_cal, height_px=video.height_px)
+        points_a = self.effective_points(track_id)
+
+        try:
+            frames, px_ax, px_ay = expand_to_dense_grid(
+                points_a, frame_range=timeline.working_zone
+            )
+            world_ax, world_ay = batch_pixel_to_world(px_ax, px_ay, transform)
+
+            if isinstance(reference, PendulumReference):
+                reference_track_id: UUID | None = None
+                pivot_wx, pivot_wy = transform.pixel_to_world(reference.pivot_px)
+                theta = pendulum_theta_world(world_ax, world_ay, pivot_wx, pivot_wy)
+                angle_params: JsonObject = {
+                    "mode": "pendulum",
+                    "pivot_px": [reference.pivot_px[0], reference.pivot_px[1]],
+                }
+            elif isinstance(reference, TwoPointReference):
+                if reference.reference_track_id == track_id:
+                    raise ProjectSessionError(
+                        "angular two-point reference must differ from the target track"
+                    )
+                ref_track = next(
+                    (t for t in self._store.tracks
+                     if t.track_id == reference.reference_track_id),
+                    None,
+                )
+                if ref_track is None:
+                    raise ProjectSessionError(
+                        f"unknown reference track_id: {reference.reference_track_id}"
+                    )
+                if ref_track.video_id != track.video_id:
+                    raise ProjectSessionError(
+                        "angular reference track must belong to the same video"
+                    )
+                reference_track_id = reference.reference_track_id
+                points_b = self.effective_points(reference.reference_track_id)
+                _, px_bx, px_by = expand_to_dense_grid(
+                    points_b, frame_range=timeline.working_zone
+                )
+                world_bx, world_by = batch_pixel_to_world(px_bx, px_by, transform)
+                theta = direction_theta_world(world_ax, world_ay, world_bx, world_by)
+                angle_params = {
+                    "mode": "two_point",
+                    "reference_track_id": str(reference_track_id),
+                }
+            else:
+                raise ProjectSessionError(
+                    f"unsupported angular reference: {type(reference).__name__}"
+                )
+
+            unwrapped = unwrap_per_segment(theta)
+            smooth_theta = smooth_savgol(
+                unwrapped, window_length=window_length, polyorder=polyorder
+            )
+            omega = differentiate_savgol(
+                unwrapped,
+                window_length=window_length,
+                polyorder=polyorder,
+                deriv=1,
+                delta=delta,
+            )
+            alpha = differentiate_savgol(
+                unwrapped,
+                window_length=window_length,
+                polyorder=polyorder,
+                deriv=2,
+                delta=delta,
+            )
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
+
+        now = utc_now()
+        derived_input = DerivedInput(
+            track_id=track_id,
+            source_filter=None,
+            include_superseded=False,
+            reference_track_id=reference_track_id,
+            extra_fields={"observation_selection": "effective"},
+        )
+        produced_by = "ai_physics_tracker.angular.v1"
+        cal_step = {
+            "step": "calibration_transform",
+            "params": {"calibration_id": str(active_cal.calibration_id)},
+        }
+        angle_step = {"step": "angular_reference", "params": angle_params}
+        unwrap_step = {"step": "angular_unwrap", "params": {"discont": pi}}
+        cal_ref = active_cal.calibration_id
+
+        theta_frames, theta_values = dense_to_sparse_scalar_records(frames, theta)
+        smooth_frames, smooth_values = dense_to_sparse_scalar_records(frames, smooth_theta)
+        omega_frames, omega_values = dense_to_sparse_scalar_records(frames, omega)
+        alpha_frames, alpha_values = dense_to_sparse_scalar_records(frames, alpha)
+
+        def _sg_step(deriv: int) -> JsonObject:
+            params: JsonObject = {
+                "window_length": window_length,
+                "polyorder": polyorder,
+                "deriv": deriv,
+                "mode": "interp",
+            }
+            if deriv > 0:
+                params["delta"] = delta
+            return {"step": "savitzky_golay", "params": params}
+
+        common_pipeline = (cal_step, angle_step)
+
+        d_theta = DerivedData(
+            derived_id=uuid4(),
+            track_id=track_id,
+            kind="angular_position",
+            input=derived_input,
+            pipeline=common_pipeline,
+            frames=theta_frames,
+            values=theta_values,
+            payload_ref=None,
+            unit="rad",
+            produced_by=produced_by,
+            created_at=now,
+            status="valid",
+            calibration_ref=cal_ref,
+        )
+
+        d_smooth = DerivedData(
+            derived_id=uuid4(),
+            track_id=track_id,
+            kind="smoothed_angular_position",
+            input=derived_input,
+            pipeline=(*common_pipeline, unwrap_step, _sg_step(0)),
+            frames=smooth_frames,
+            values=smooth_values,
+            payload_ref=None,
+            unit="rad",
+            produced_by=produced_by,
+            created_at=now,
+            status="valid",
+            calibration_ref=cal_ref,
+        )
+
+        d_omega = DerivedData(
+            derived_id=uuid4(),
+            track_id=track_id,
+            kind="angular_velocity",
+            input=derived_input,
+            pipeline=(*common_pipeline, unwrap_step, _sg_step(1)),
+            frames=omega_frames,
+            values=omega_values,
+            payload_ref=None,
+            unit=derive_unit("rad", 1),
+            produced_by=produced_by,
+            created_at=now,
+            status="valid",
+            calibration_ref=cal_ref,
+        )
+
+        d_alpha = DerivedData(
+            derived_id=uuid4(),
+            track_id=track_id,
+            kind="angular_acceleration",
+            input=derived_input,
+            pipeline=(*common_pipeline, unwrap_step, _sg_step(2)),
+            frames=alpha_frames,
+            values=alpha_values,
+            payload_ref=None,
+            unit=derive_unit("rad", 2),
+            produced_by=produced_by,
+            created_at=now,
+            status="valid",
+            calibration_ref=cal_ref,
+        )
+
+        timing_context: JsonObject = {
+            "fps_nominal": timeline.fps_nominal,
+            "working_zone": list(timeline.working_zone),
+            "approximation": self.measurement_timing_detail(track.video_id),
+        }
+        new_items = tuple(replace(item, extra_fields={"timing_context": deepcopy(timing_context)})
+                          for item in (d_theta, d_smooth, d_omega, d_alpha))
+        kept_derived = [
+            d
+            for d in self._project.derived
+            if not (d.track_id == track_id and d.kind in ANGULAR_KINDS)
+        ]
+        updated_derived = tuple(kept_derived) + new_items
+
+        self._commit_store(self._store, updated_derived)
+        logger.info(
+            "computed angular analysis for track=%s (mode=%s, cal=%s, valid_points=%d)",
+            track.name,
+            angle_params["mode"],
+            cal_ref,
+            len(theta_frames),
+        )
+        return new_items
+
     def clear_derived(self, track_id: UUID) -> None:
         """清除指定 Track 的全部 DerivedData。"""
         updated_derived = tuple(
@@ -1028,6 +1293,12 @@ class ProjectSession:
 
         from ai_physics_tracker.application.kinematics_job import validated_derived
         self._commit_store(self._store, validated_derived(self, result))
+
+    def apply_angular_result(self, result: "AngularResult") -> None:
+        """主线程原子提交角运动批次，共用现有 Undo/Redo 快照边界。"""
+
+        from ai_physics_tracker.application.angular_job import validated_angular
+        self._commit_store(self._store, validated_angular(self, result))
 
     @staticmethod
     def _with_import_summary(
