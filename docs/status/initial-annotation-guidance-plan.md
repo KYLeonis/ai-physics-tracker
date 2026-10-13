@@ -39,4 +39,4 @@
 
 Self-review：全部 GUI 训练入口共享同一标签条件；推荐框与高级表单共用选帧信号，算法仍由现有 adapter 执行；未改数据格式、训练器、教师模型路径、数值算法或依赖。候选不足时仍返回实际数量，无法凑足 20 个不同人工帧时不降低首轮门槛。
 
-分支已提交 / push；远程 CI 结果待记录。真人体验按[本轮验收](../notes/initial-annotation-guidance-human-review.md)反馈后，才可在前置三项增量及 6.1 集成后合入 main / 关闭 Issue。未运行真实 DLC 完整训练，未操作用户工程或论文 worktree。
+分支已提交 / push；`85be73e` [CI 38349426753](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753) macOS / Windows Python3.11 均 success（代码 / 测试与 `b9267e3` 相同）。真人体验按[本轮验收](../notes/initial-annotation-guidance-human-review.md)反馈后，才可在前置三项增量及 6.1 集成后合入 main / 关闭 Issue。未运行真实 DLC 完整训练，未操作用户工程或论文 worktree。

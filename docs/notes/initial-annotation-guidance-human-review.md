@@ -2,6 +2,7 @@
 
 - 日期：2026-10-13；分支 `fix/initial-annotation-guidance`。
 - 代码 `b9267e3`；最终全量 933 passed；Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。
+- `85be73e` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753)；真人反馈仍待用户执行。
 - 自动验证完成后待用户真人测试；本次反馈只覆盖首次标注 / 选帧入口，不替代前置三项增量的 A/B/C 反馈。
 
 ## 启动

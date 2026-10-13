@@ -2,8 +2,9 @@
 
 > 2026-10-13：当前工作分支 `fix/initial-annotation-guidance`，首次 GUI 学习需 20 个不同人工帧，
 > 默认 20 / K-means，推荐框直达自定义算法；[本轮 Human Review](../notes/initial-annotation-guidance-human-review.md)待反馈。
+> 最新全量 **933 passed**，`85be73e` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753)。
 > Phase 6.1 完整代码复审 / 修复完成，新增 R8–R13 和原 R2 全部 Closed；
-> 最新全量 **929 passed**、独立复审 Approve、代码 `4842560` 双平台 CI success。
+> 6.1 复审时全量 **929 passed**、独立复审 Approve、代码 `4842560` 双平台 CI success。
 > [6.2 子计划](phase-6.2-plan.md)已形成，可进入实现准备；本轮未实现 6.2。
 > 分支顺序仍为前置三项增量 → 6.1 → 本轮标注引导；不得越过对应 HR。
 
@@ -69,7 +70,7 @@
 
 ## Recently Completed
 
-- **首次学习 / 选帧引导（2026-10-13）**：分支 `fix/initial-annotation-guidance`，代码 `b9267e3`，Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。首次 GUI 学习需 20 个不同人工帧，推荐框 / 高级训练 / 连续标注完成提示一致；20 / K-means 默认选帧，推荐框自定义弹窗解释并选择 K-means / Uniform，取消不启动，同一项目沿用算法，新建 / 切换项目恢复默认。已有 completed train 的同轨迹再训练保留门槛，教师模型路径与引擎至少 3 个训练帧契约不变。新增 4 回归；定向 118、末轮 58、最终全量 **933 passed（56.79 s）**，diff 检查通过；CI 待记录，Human Review 待反馈。未合 main / 未启动 6.2，实现与集成次序见[计划](initial-annotation-guidance-plan.md)。
+- **首次学习 / 选帧引导（2026-10-13）**：分支 `fix/initial-annotation-guidance`，代码 `b9267e3`，Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。首次 GUI 学习需 20 个不同人工帧，推荐框 / 高级训练 / 连续标注完成提示一致；20 / K-means 默认选帧，推荐框自定义弹窗解释并选择 K-means / Uniform，取消不启动，同一项目沿用算法，新建 / 切换项目恢复默认。已有 completed train 的同轨迹再训练保留门槛，教师模型路径与引擎至少 3 个训练帧契约不变。新增 4 回归；定向 118、末轮 58、最终全量 **933 passed（56.79 s）**，diff 检查通过；`85be73e` [CI 38349426753](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753) macOS / Windows Python3.11 success，Human Review 待反馈。未合 main / 未启动 6.2，实现与集成次序见[计划](initial-annotation-guidance-plan.md)。
 
 - **6.1 完整复审 / 6.2 计划（2026-10-12–13）**：复审整个 6.1 调用链，修复原 R2 与新增 R8–R13：旧构造兼容、公共计算时序、近似 / 区间来源、旧批次覆盖新结果、规格 / SG / 引用一致、标定 pipeline 一致；代码 `80661c1` / `aacb379` / `5f50a16` / `4842560`。新增 21 回归，定向87、全量 **929 passed（66.38 s）**，全新最终独立复审 Approve，[CI 38274300024](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38274300024) macOS / Windows Python3.11 success。ADR-0020 与 6.2 mini-plan 已写，未改论文 worktree / 未实现 6.2 / 未合 main；前置 HR 仍待反馈。
 
