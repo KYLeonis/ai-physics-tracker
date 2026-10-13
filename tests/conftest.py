@@ -11,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 @pytest.fixture
-def synthetic_video_path(tmp_path: Path) -> Path:
+def synthetic_video_path(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     """生成一个微型 CFR MJPEG 视频，避免向仓库提交媒体 fixture。"""
 
     path = tmp_path / "synthetic.avi"
@@ -31,7 +31,8 @@ def synthetic_video_path(tmp_path: Path) -> Path:
         (50, 100, 150),
         (0, 0, 0),
     )
-    for color in colors_bgr:
+    for index in range(getattr(request, "param", len(colors_bgr))):
+        color = colors_bgr[index % len(colors_bgr)]
         frame = np.full((size[1], size[0], 3), color, dtype=np.uint8)
         writer.write(frame)
     writer.release()

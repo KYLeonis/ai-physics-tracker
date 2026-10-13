@@ -8,6 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
 from PySide6.QtWidgets import QApplication
 
 from ai_physics_tracker.application.training_advisor import (
@@ -126,11 +127,12 @@ def test_refresh_computes_advisor_from_session_state(
     assert "fix_prerequisite" in panel.advisorLabel.text()
 
 
+@pytest.mark.parametrize("synthetic_video_path", [20], indirect=True)
 def test_resume_mode_requires_source_and_passes_it_when_present(
     qtbot, synthetic_video_path: Path, tmp_path: Path
 ) -> None:
     win, session, track_id = _opened_window(qtbot, synthetic_video_path, tmp_path,
-                                            _FakeRunner(_FakeHandle()))
+                                            _FakeRunner(_FakeHandle()), manual_count=20)
     runner = _FakeRunner(_FakeHandle())
     win.trackingActions.runner = runner
     panel = win.trackingActions.panel
