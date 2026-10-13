@@ -1,4 +1,9 @@
-"""图表控件：只渲染适配后的序列并发出导航意图，不计算运动学或修改项目。"""
+"""图表控件：只渲染适配后的序列并发出导航意图，不计算运动学或修改项目。
+
+Phase 6.2 在既有线性五图之外新增角运动时间图（theta_t / omega_t / alpha_t）
+与相空间图（theta_omega / x_vx）；前五个标签页与 API 保持不变。相空间图
+没有时间游标，点击按屏幕距离选择真实样本的源帧，绝不把横轴当秒。
+"""
 
 from uuid import UUID
 from math import isclose
@@ -23,22 +28,51 @@ from PySide6.QtWidgets import (
 )
 import pyqtgraph as pg
 
-from ai_physics_tracker.application.chart_data import ChartData, ChartKind
+from ai_physics_tracker.application.chart_data import (
+    ANGLE_UNIT_DEGREE,
+    ANGLE_UNIT_RAD,
+    ChartData,
+    ChartKind,
+    ChartSeries,
+)
 from ai_physics_tracker.application.kinematics_job import SmoothingParameters
 from ai_physics_tracker.domain.track import Track
+from ai_physics_tracker.gui.angular_chart_controls import AngularReferenceControls
 
-CHART_KINDS: tuple[ChartKind, ...] = ("x_t", "y_t", "v_t", "a_t", "xy")
+LINEAR_CHART_KINDS: tuple[ChartKind, ...] = ("x_t", "y_t", "v_t", "a_t", "xy")
+ANGULAR_CHART_KINDS: tuple[ChartKind, ...] = (
+    "theta_t", "omega_t", "alpha_t", "theta_omega", "x_vx",
+)
+CHART_KINDS: tuple[ChartKind, ...] = LINEAR_CHART_KINDS + ANGULAR_CHART_KINDS
+TAB_TITLES: tuple[str, ...] = (
+    "x-t", "y-t", "v-t", "a-t", "x-y", "θ(t)", "ω(t)", "α(t)", "θ–ω", "x–vx",
+)
+
+# 横轴为绝对源帧时间的图（有 actual / seek 双游标）；其余是相空间类图。
+_TIME_CHART_KINDS = frozenset(
+    {"x_t", "y_t", "v_t", "a_t", "theta_t", "omega_t", "alpha_t"}
+)
+# 图例中追加参考披露（实际支点或 A→B）的角运动图。
+_LEGEND_REFERENCE_KINDS = frozenset(
+    {"theta_t", "omega_t", "alpha_t", "theta_omega"}
+)
 
 
 class ChartPlot(pg.PlotWidget):
-    """正式游标不可拖拽；单独的请求游标表示尚未呈现的 seek 目标。"""
+    """正式游标不可拖拽；单独的请求游标表示尚未呈现的 seek 目标。
+
+    相空间类图（xy / theta_omega / x_vx）没有时间游标；点击按屏幕距离
+    选择真实样本的源帧，重合时按确定性顺序决胜并披露定位轨迹。
+    """
 
     timeRequested = Signal(float)
     frameRequested = Signal(int)
+    sampleLocated = Signal(int, str)
 
     def __init__(self, kind: ChartKind, parent: QWidget) -> None:
         super().__init__(parent, enableMenu=False)
         self.kind = kind
+        self.is_time_chart = kind in _TIME_CHART_KINDS
         self.data: ChartData | None = None
         self.activeTrack: UUID | None = None
         self.currentFrame: int | None = None
@@ -55,11 +89,13 @@ class ChartPlot(pg.PlotWidget):
             self.getAxis(axis).setPen(self.palette().color(QPalette.ColorRole.Text))
             self.getAxis(axis).setTextPen(self.palette().color(QPalette.ColorRole.Text))
         self.showGrid(x=True, y=True, alpha=0.2)
+        # 仅 xy（两轴同量同单位）锁定纵横比；θ–ω / x–vx 两轴单位不同，
+        # 锁定会任意拉伸数据形状，属误导。
         self.setAspectLocked(kind == "xy")
         self.actualLine = pg.InfiniteLine(pen=pg.mkPen("#008ca8", width=2), movable=False)
         self.requestLine = pg.InfiniteLine(pen=pg.mkPen("#c07800", style=Qt.PenStyle.DotLine),
                                            movable=True, label="seek")
-        if kind != "xy":
+        if self.is_time_chart:
             self.addItem(self.actualLine, ignoreBounds=True)
             self.addItem(self.requestLine, ignoreBounds=True)
         self.actualLine.hide()
@@ -86,10 +122,21 @@ class ChartPlot(pg.PlotWidget):
                 connect=np.asarray(series.connect, dtype=bool), pen=pg.mkPen(color, width=2, style=style),
                 symbol="o", symbolSize=5, symbolBrush=color, symbolPen=None,
                 data=[(series.track_id, frame) for frame in series.frames],
-                name=f"{series.name} · {series.component}" + (" [stale]" if series.status == "stale" else ""))
+                name=self._legendName(series))
             self._items.append(item)
         self.fitData()
         self._updateHighlight()
+
+    def _legendName(self, series: ChartSeries) -> str:
+        name = f"{series.name} · {series.component}" + (" [stale]" if series.status == "stale" else "")
+        if self.kind in _LEGEND_REFERENCE_KINDS and series.pipeline_summary:
+            # 角运动图例披露实际参考（实际支点或 A→B）；S1 的管线摘要以
+            # "参考 · SG · 时序" 组成，参考段本身不含分隔符，取首段即可。
+            name += " · " + series.pipeline_summary.split(" · ")[0]
+        if self.kind == "theta_t":
+            name += " · " + ("smoothed unwrapped" if "Savitzky-Golay" in series.pipeline_summary
+                              else "raw wrapped")
+        return name
 
     def fitData(self) -> None:
         self.enableAutoRange(x=False, y=False)
@@ -97,8 +144,8 @@ class ChartPlot(pg.PlotWidget):
 
     def setFrame(self, frame_index: int | None, time_s: float | None) -> None:
         self.currentFrame = frame_index
-        self.actualLine.setVisible(time_s is not None and self.kind != "xy")
-        self.requestLine.setVisible(time_s is not None and self.canNavigate and self.kind != "xy")
+        self.actualLine.setVisible(time_s is not None and self.is_time_chart)
+        self.requestLine.setVisible(time_s is not None and self.canNavigate and self.is_time_chart)
         if time_s is not None:
             self.actualLine.setValue(time_s)
             if (not self._dragging and (self._requested_time_s is None
@@ -148,19 +195,36 @@ class ChartPlot(pg.PlotWidget):
         if (not self.canNavigate or event.button() != Qt.MouseButton.LeftButton
                 or not self.getViewBox().sceneBoundingRect().contains(event.scenePos())):
             return
-        if self.kind != "xy":
+        if self.is_time_chart:
             self.timeRequested.emit(float(self.getViewBox().mapSceneToView(event.scenePos()).x()))
             return
-        # 用 scatter 的屏幕命中范围查找实际点；重合时按活动轨迹/距当前帧/帧号决胜。
-        candidates = []
+        # 相空间：只在真实样本的命中半径内挑选，先比屏幕距离；距离相同/
+        # 重合时按活动轨迹 → 离当前帧 → 帧号 → trackID 决胜。绝不从横轴
+        # 反推时间，也不吸附到最近插值位置。
+        best_key = None
+        best = None
         for item in self._items:
             local = item.scatter.mapFromScene(event.scenePos())
             for point in item.scatter.pointsAt(local):
                 track_id, frame_index = point.data()
-                candidates.append((track_id != self.activeTrack,
-                                   abs(frame_index - (self.currentFrame or 0)), frame_index, str(track_id)))
-        if candidates:
-            self.frameRequested.emit(min(candidates)[2])
+                scene_pos = item.scatter.mapToScene(point.pos())
+                dx = scene_pos.x() - event.scenePos().x()
+                dy = scene_pos.y() - event.scenePos().y()
+                # 屏幕上无法区分的浮点尾差按重合处理，保留确定的帧决胜顺序。
+                key = (round(dx * dx + dy * dy, 9),
+                       track_id != self.activeTrack,
+                       abs(frame_index - (self.currentFrame or 0)),
+                       frame_index, str(track_id))
+                if best_key is None or key < best_key:
+                    best_key = key
+                    best = (track_id, frame_index)
+        if best is not None:
+            track_id, frame_index = best
+            assert self.data is not None
+            name = next((series.name for series in self.data.series
+                         if series.track_id == track_id), str(track_id))
+            self.sampleLocated.emit(frame_index, name)
+            self.frameRequested.emit(frame_index)
 
 
 class _PanelWheelForwarder(QObject):
@@ -187,7 +251,11 @@ class _PanelWheelForwarder(QObject):
 
 
 class ChartPanel(QWidget):
-    """五个图表与独立的 Track 勾选/计算设置；不复用标注列表的选择模式。
+    """十个图表与独立的 Track 勾选/计算设置；不复用标注列表的选择模式。
+
+    前五个标签是既有线性图；后五个是角运动时间图与相空间图。角运动族
+    额外显示参考配置行（:class:`AngularReferenceControls`）；当前分析的
+    族由 ``currentFamily`` 披露，供任务卡投影与重算路由使用。
 
     Phase 5.7 起作为“分析与图表”工作区的主体（非 dock）；由 MainWindow
     挂入分析页。
@@ -195,10 +263,13 @@ class ChartPanel(QWidget):
 
     selectionChanged = Signal()
     parametersChanged = Signal()
+    displayChanged = Signal()      # 仅显示选项（角度单位），无需重算
+    familyChanged = Signal(str)    # 当前标签的分析族切换（"linear"/"angular"）
     recomputeRequested = Signal()
     cancelRequested = Signal()
     timeRequested = Signal(float)
     frameRequested = Signal(int)
+    sampleLocated = Signal(int, str)
 
     def _make_help_label(self, text: str) -> QLabel:
         """参数旁的 "?" 提示：hover 显示自绘气泡（QToolTip 在 macOS 渲染异常）。"""
@@ -270,6 +341,7 @@ class ChartPanel(QWidget):
     def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self._help_bubble: QLabel | None = None
+        self._family = "linear"
         self.setObjectName("kinematicsCharts")
         self.trackChoices = QListWidget()
         self.trackChoices.setMaximumHeight(72)
@@ -285,7 +357,10 @@ class ChartPanel(QWidget):
         self.polyorder.setValue(2)
         self.positionSource = QComboBox()
         self.positionSource.addItems(["Measured position", "Smoothed position"])
-        self.positionSource.setToolTip("Position charts only; velocity and acceleration use the recorded SG pipeline.")
+        self.positionSource.setToolTip("Position and θ charts only; velocity, acceleration, ω and α use the recorded SG pipeline.")
+        self.angleUnit = QComboBox()
+        self.angleUnit.addItems([ANGLE_UNIT_RAD, ANGLE_UNIT_DEGREE])
+        self.angleUnit.setToolTip("Display unit for angular charts. Display-only conversion; stored results stay in radians.")
         # QToolTip 中文在部分平台渲染为乱码（HR 反馈），提示统一用英文
         self.sgHelp = self._make_help_label(
             "Savitzky-Golay smoothing window, in frames.\n"
@@ -304,12 +379,20 @@ class ChartPanel(QWidget):
             "noise; must stay below the SG window length."
         )
         self.sourceHelp = self._make_help_label(
-            "Which position the position charts (x-t / y-t / x-y) show:\n"
-            "Measured position = the raw annotated points; Smoothed position = after "
-            "smoothing.\n"
-            "Velocity and acceleration charts always come from the same smoothing "
-            "pipeline and ignore this switch."
+            "Which recorded result the position and θ charts show:\n"
+            "Measured = the raw points (θ stays wrapped at ±π); Smoothed = after "
+            "smoothing (θ shown unwrapped).\n"
+            "Velocity, acceleration, ω and α charts always come from the same "
+            "smoothing pipeline and ignore this switch."
         )
+        self.unitHelp = self._make_help_label(
+            "Display unit for the angular charts (θ, ω, α, θ–ω):\n"
+            "degree only converts numbers for display; the project always stores "
+            "rad, rad/s and rad/s². Changing it never triggers a recomputation."
+        )
+        self.angularControls = AngularReferenceControls()
+        self.angularControls._help.installEventFilter(self)
+        self.angularControls.setVisible(False)
         self.recomputeButton = QPushButton("Recompute checked tracks")
         self.cancelButton = QPushButton("Cancel calculation")
         self.cancelButton.setEnabled(False)
@@ -320,7 +403,8 @@ class ChartPanel(QWidget):
         settings = QHBoxLayout()
         for widget in (QLabel("SG window (frames)"), self.sgHelp, self.windowLength,
                        QLabel("Order"), self.orderHelp, self.polyorder,
-                       self.positionSource, self.sourceHelp):
+                       self.positionSource, self.sourceHelp,
+                       self.angleUnit, self.unitHelp):
             settings.addWidget(widget)
         settings.addStretch(1)
         buttons = QHBoxLayout()
@@ -339,15 +423,17 @@ class ChartPanel(QWidget):
         self.statusLabel.setWordWrap(True)
         self.tabs = QTabWidget()
         self.plots = {kind: ChartPlot(kind, self) for kind in CHART_KINDS}
-        for kind, title in zip(CHART_KINDS, ("x-t", "y-t", "v-t", "a-t", "x-y")):
+        for kind, title in zip(CHART_KINDS, TAB_TITLES):
             plot = self.plots[kind]
             self.tabs.addTab(plot, title)
             plot.timeRequested.connect(self.timeRequested)
             plot.frameRequested.connect(self.frameRequested)
+            plot.sampleLocated.connect(self._showLocatedSample)
         layout = QVBoxLayout()
         layout.addLayout(header)
         layout.addWidget(self.contextLabel)
         layout.addWidget(self.jobLabel)
+        layout.addWidget(self.angularControls)
         layout.addWidget(self.tabs, 1)
         layout.addWidget(self.statusLabel)
         content = QWidget()
@@ -361,12 +447,13 @@ class ChartPanel(QWidget):
         panel_layout.addWidget(scroll)
         self.trackChoices.itemChanged.connect(lambda _item: self.selectionChanged.emit())
         self.positionSource.currentIndexChanged.connect(lambda _index: self.selectionChanged.emit())
+        self.angleUnit.currentIndexChanged.connect(lambda _index: self.displayChanged.emit())
         self.windowLength.valueChanged.connect(lambda _value: self.parametersChanged.emit())
         self.polyorder.valueChanged.connect(lambda _value: self.parametersChanged.emit())
         self.recomputeButton.clicked.connect(self.recomputeRequested)
         self.cancelButton.clicked.connect(self.cancelRequested)
         self.fitButton.clicked.connect(lambda: self.currentPlot.fitData())
-        self.tabs.currentChanged.connect(lambda _index: self.updateStatus())
+        self.tabs.currentChanged.connect(self._tabChanged)
         # dock 过矮时控制区可能被滚出视口，而滚轮悬在图上默认被 pyqtgraph
         # 消费（缩放），面板滚动条收不到事件，macOS 覆盖式滚动条又不可见，
         # 用户会彻底失去滚回顶部的途径（HR 反馈）。内容被裁剪时接管图表上的
@@ -378,6 +465,68 @@ class ChartPanel(QWidget):
     @property
     def currentPlot(self) -> ChartPlot:
         return self.plots[CHART_KINDS[self.tabs.currentIndex()]]
+
+    @staticmethod
+    def familyForIndex(index: int) -> str:
+        return "angular" if 0 <= index < len(CHART_KINDS) and CHART_KINDS[index] in _LEGEND_REFERENCE_KINDS else "linear"
+
+    @property
+    def currentFamily(self) -> str:
+        """当前标签的分析族（"linear" / "angular"）；任务卡与重算路由据此分流。"""
+
+        return self.familyForIndex(self.tabs.currentIndex())
+
+    def currentAngleUnit(self) -> str:
+        """当前角度显示单位（combo 只含两个合法值）。"""
+
+        return self.angleUnit.currentText()
+
+    def _tabChanged(self, index: int) -> None:
+        angular = self.familyForIndex(index) == "angular"
+        self.angularControls.setVisible(angular)
+        if self._family != ("angular" if angular else "linear"):
+            self._family = self.currentFamily
+            self.familyChanged.emit(self._family)
+        self.updateStatus()
+
+    def _showLocatedSample(self, frame_index: int, track_name: str) -> None:
+        self.statusLabel.setText(f"Located frame {frame_index} · track '{track_name}'")
+
+    def captureViewState(self, previous: dict | None = None) -> dict:
+        """图表显示选项的 additive 视图状态；未知字段由 update_view_state 保留。"""
+
+        state = dict(previous) if isinstance(previous, dict) else {}
+        if state.get("version", 1) != 1:
+            return state
+        state.update({
+            "version": 1,
+            "current_tab": self.tabs.currentIndex(),
+            "angle_unit": self.angleUnit.currentText(),
+            "position_source_index": self.positionSource.currentIndex(),
+        })
+        return state
+
+    def restoreViewState(self, state: dict) -> None:
+        """恢复显示选项；缺省 / 未来版本字段安静保持当前值，不降级覆盖。"""
+
+        with QSignalBlocker(self.angleUnit), QSignalBlocker(self.positionSource), QSignalBlocker(self.tabs):
+            self.angleUnit.setCurrentIndex(0)
+            self.positionSource.setCurrentIndex(0)
+            self.tabs.setCurrentIndex(0)
+        self._tabChanged(0)
+        if not isinstance(state, dict) or state.get("version", 1) != 1:
+            return
+        unit = state.get("angle_unit")
+        if unit in (ANGLE_UNIT_RAD, ANGLE_UNIT_DEGREE):
+            index = self.angleUnit.findText(unit)
+            if index >= 0:
+                self.angleUnit.setCurrentIndex(index)
+        source = state.get("position_source_index")
+        if type(source) is int and 0 <= source < self.positionSource.count():
+            self.positionSource.setCurrentIndex(source)
+        tab = state.get("current_tab")
+        if type(tab) is int and 0 <= tab < self.tabs.count():
+            self.tabs.setCurrentIndex(tab)
 
     def checkedTracks(self) -> tuple[UUID, ...]:
         return tuple(self.trackChoices.item(index).data(Qt.ItemDataRole.UserRole)

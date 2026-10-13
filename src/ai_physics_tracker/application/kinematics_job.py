@@ -97,9 +97,11 @@ def run_kinematics_job(job: KinematicsJob, cancel: Event) -> KinematicsResult:
             window_length=job.parameters.window_length, polyorder=job.parameters.polyorder)
         for item in computed:
             extra_fields = deepcopy(item.extra_fields)
-            # 时序上下文不是滤波步骤，使用既有可扩展字段记录，不改 schema。
+            # 时序上下文不是滤波步骤，使用既有可扩展字段记录，不改 schema；
+            # 字段口径与同步 compute_kinematics 及角运动批次一致（ADR-0020）。
             extra_fields["timing_context"] = {
                 "fps_nominal": job.inputs.timeline.fps_nominal,
+                "working_zone": list(job.inputs.timeline.working_zone),
                 "approximation": job.inputs.timing_detail,
             }
             records.append(replace(item, extra_fields=extra_fields))

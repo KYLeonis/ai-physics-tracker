@@ -539,11 +539,6 @@ def _build_phase_chart(
         # mixed valid/stale：整组按 stale 展示（phase-6.2 计划 Invariants）；
         # DerivedData 的 status 只可能是 valid/stale，无 stale 即 valid。
         group_stale = primary.status == "stale" or derivative.status == "stale"
-        if group_stale:
-            messages.append(
-                f"Track {track.name!r} phase pair contains stale results; "
-                "the whole pair is shown as stale"
-            )
         if _phase_pair_rejected(primary, derivative, track, timeline, spec, messages):
             continue
         pending_primary: ComparisonBasis | None = None
@@ -573,6 +568,17 @@ def _build_phase_chart(
         )
         if chart_series is None:
             continue
+        # 仅对实际展示的曲线披露 stale，拒绝或空数据不能承诺已绘制。
+        if group_stale:
+            messages.append(
+                f"Track {track.name!r} phase pair contains stale results; "
+                "the whole pair is shown as stale"
+            )
+        if _context_mismatch((primary, derivative), spec.expected_calibration, timeline):
+            messages.append(
+                f"Track {track.name!r} phase pair uses a different calibration or "
+                "working zone; shown as stale. Recompute the track"
+            )
         if not have_basis:
             # 比较基准只由实际可展示的配对建立；空交集 / 畸形首轨迹不得
             # 绑定后续正常轨迹。
@@ -713,13 +719,6 @@ def _phase_pair_rejected(
             "and was ignored"
         )
         return True
-    if _context_mismatch(
-        (primary, derivative), spec.expected_calibration, timeline
-    ):
-        messages.append(
-            f"Track {track.name!r} phase pair uses a different calibration or "
-            "working zone; shown as stale. Recompute the track"
-        )
     for record in (primary, derivative):
         reject = _phase_record_reject_reason(record, angular=spec.angular)
         if reject is not None:

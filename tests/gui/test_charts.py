@@ -155,16 +155,23 @@ def _with_results(
     return window, tracks
 
 
-def test_chart_panel_exposes_five_tabs_pixel_y_and_multi_track_selection(
+def test_chart_panel_exposes_ten_tabs_with_linear_first_five_preserved(
     qtbot: QtBot,
     synthetic_video_path: Path,
 ) -> None:
     window, tracks = _with_results(qtbot, synthetic_video_path, track_count=2)
     panel = window.chartActions.panel
 
-    assert panel.tabs.count() == 5
-    assert tuple(panel.plots) == ("x_t", "y_t", "v_t", "a_t", "xy")
+    # Phase 6.2：新增角运动/相空间五图，线性前五标签与顺序保留。
+    assert panel.tabs.count() == 10
+    assert tuple(panel.plots) == (
+        "x_t", "y_t", "v_t", "a_t", "xy", "theta_t", "omega_t", "alpha_t", "theta_omega", "x_vx",
+    )
     assert [panel.tabs.tabText(index) for index in range(5)] == ["x-t", "y-t", "v-t", "a-t", "x-y"]
+    assert [panel.tabs.tabText(index) for index in range(5, 10)] == [
+        "θ(t)", "ω(t)", "α(t)", "θ–ω", "x–vx"]
+    assert panel.currentFamily == "linear"
+    assert panel.familyForIndex(4) == "linear" and panel.familyForIndex(5) == "angular"
     assert panel.checkedTracks() == tuple(track.track_id for track in tracks)
     assert len(panel.plots["x_t"].data.series) == 2
     assert panel.plots["xy"].data.pixel_coordinates is True

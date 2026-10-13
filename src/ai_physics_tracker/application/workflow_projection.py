@@ -419,8 +419,14 @@ def project_workflow_state(
     track_id: UUID | None,
     runs: Sequence[TrackingRun],
     execution: ExecutionInput | None = None,
+    *,
+    analysis_family: str = "linear",
 ) -> WorkflowState:
-    """三维修量 + 前置缺失 + 学习/生成推进度的一次性投影（纯读取）。"""
+    """三维修量 + 前置缺失 + 学习/生成推进度的一次性投影（纯读取）。
+
+    ``analysis_family`` 指定分析可用性检验的族（"linear" / "angular"），
+    由当前图表分析族决定；其余投影维度与族无关。
+    """
     execution = execution or ExecutionInput()
     if session is None:
         return WorkflowState(
@@ -438,7 +444,7 @@ def project_workflow_state(
         prerequisites.append("save the project before AI tasks")
 
     trajectory = trajectory_facts(session, track_id, runs)
-    analysis = analysis_facts(session, track_id)
+    analysis = analysis_facts(session, track_id, family=analysis_family)
 
     fixed_frames = 0
     fixed_valid = False

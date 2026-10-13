@@ -974,6 +974,38 @@ def test_phase_basis_follows_first_displayable_pair() -> None:
     assert any("no common source frames" in message for message in chart.messages)
 
 
+def test_rejected_phase_pair_does_not_claim_stale_display() -> None:
+    project, video_id, bob = _pair_project(
+        omega_fn=lambda cal: _angular_pipeline(cal, deriv=1, window=9)
+    )
+    records = tuple(replace(record, status="stale", extra_fields={
+        "timing_context": _timing(zone=(0, 50))
+    }) for record in project.derived)
+    chart = build_chart_data(replace(project, derived=records), video_id, (bob,), "theta_omega")
+
+    assert chart.series == ()
+    assert any("ignored" in message for message in chart.messages)
+    assert not any("shown as stale" in message for message in chart.messages)
+
+
+def test_equivalent_nested_extension_parameters_do_not_hide_comparable_track() -> None:
+    project, video_id, tracks = _project(track_names=("Bob", "Other"))
+    cal = _cal_id(project)
+    records = []
+    for name, params in (("Bob", {"gain": 1.0, "options": {"a": 1, "b": 2}}),
+                         ("Other", {"options": {"b": 2, "a": 1}, "gain": 1.0})):
+        record = _angular_record(tracks[name].track_id, "angular_position", (5,), ((0.2,),),
+                                 pipeline=(*_angular_pipeline(cal),
+                                           {"step": "extension", "params": params}),
+                                 calibration_id=cal, timing=_timing())
+        record = replace(record, input=replace(record.input, extra_fields={"extension": params}))
+        records.append(record)
+    chart = build_chart_data(_with_derived(project, *records), video_id,
+                            tuple(record.track_id for record in records), "theta_t")
+
+    assert [series.name for series in chart.series] == ["Bob", "Other"]
+
+
 def test_theta_omega_probes_reject_input_recipe_and_approximation_drift() -> None:
     """F1 探针回归：配对任一侧的输入选择 / SG 契约值 / 近似授权漂移，
     都把 1 条可展示序列拒为 0 条；一致配对保持可显示。"""

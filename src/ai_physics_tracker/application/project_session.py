@@ -995,6 +995,15 @@ class ProjectSession:
         )
 
         new_items = (d_pos, d_smooth, d_vel, d_acc)
+        # 线性批次与角运动批次共用时序来源口径（ADR-0020）：fps / 区间 /
+        # 近似授权记入既有可扩展字段，不改 schema；相空间配对依赖完整来源。
+        timing_context: JsonObject = {
+            "fps_nominal": timeline.fps_nominal,
+            "working_zone": list(timeline.working_zone),
+            "approximation": self.measurement_timing_detail(track.video_id),
+        }
+        new_items = tuple(replace(item, extra_fields={"timing_context": deepcopy(timing_context)})
+                          for item in new_items)
         new_kinds = {item.kind for item in new_items}
         kept_derived = [
             d

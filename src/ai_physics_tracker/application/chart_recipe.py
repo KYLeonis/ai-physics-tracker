@@ -534,19 +534,14 @@ class ComparisonBasis:
     reference: dict[str, object] | None   # 角图比较用；非角图为 None
     smoothing: dict[str, object] | None   # 该 kind 无 SG 步骤时为 None
     unwrap: float | None                  # 无 unwrap 步骤时为 None
-    unknown_steps: tuple[tuple[str, str], ...]
+    unknown_steps: tuple[tuple[str, object], ...]
     timing: TimingIdentity
 
 
 def input_selection(derived: DerivedData) -> tuple[object, ...]:
     """输入选择身份；不含主轨迹 id（多轨迹比较时必然不同）。"""
 
-    extras = tuple(
-        sorted(
-            (str(key), repr(value))
-            for key, value in derived.input.extra_fields.items()
-        )
-    )
+    extras = tuple(sorted(derived.input.extra_fields.items()))
     return (
         derived.input.source_filter,
         derived.input.include_superseded,
@@ -555,11 +550,11 @@ def input_selection(derived: DerivedData) -> tuple[object, ...]:
     )
 
 
-def _unknown_steps(derived: DerivedData) -> tuple[tuple[str, str], ...]:
-    """未知步骤的稳定摘要：名称 + 参数 repr（同写入者即同顺序，可比）。"""
+def _unknown_steps(derived: DerivedData) -> tuple[tuple[str, object], ...]:
+    """按参数结构比较未知步骤，JSON 字典键序不改变计算配方。"""
 
     return tuple(
-        (str(step.get("step")), repr(step.get("params")))
+        (str(step.get("step")), step.get("params"))
         for step in derived.pipeline
         if isinstance(step, Mapping) and step.get("step") not in _KNOWN_STEP_NAMES
     )
@@ -654,6 +649,8 @@ def _reference_mismatch_text(
 
     derived_mode = reference.get("mode") if reference else None
     basis_mode = basis_reference.get("mode") if basis_reference else None
+    if not derived_mode or not basis_mode:
+        return "has an unreadable angle reference; comparability cannot be confirmed"
     if derived_mode == basis_mode:
         return (
             "uses a different reference parameter set within the same "
