@@ -737,7 +737,7 @@ def test_invalid_fixed_check_set_drives_rebuild_card(tmp_path: Path) -> None:
                         config={"training_run_id": str(training.run_id)})
     # Windows 粗时钟可生成同一 created_at；关联应由训练来源明确表达。
     latest_infer = replace(latest_infer, created_at=training.created_at)
-    session.record_tracking_run(latest_infer)
+    session.update_tracking_run(latest_infer)
     session.activate_infer_run(track.track_id, latest_infer.run_id)
 
     state = project_workflow_state(session, track.track_id, session.tracking_runs())
