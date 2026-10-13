@@ -25,7 +25,7 @@
 - [x] S1：首次学习 19 帧不放行，20 帧就绪；批次 / 高级入口一致，再训练不被重设首轮门槛。
 - [x] S2：默认 20 / K-means；推荐框自定义可选 Uniform，确认走同一选帧路径，取消不启动任务；切换项目重置默认。
 - [x] S3：定向 / 全量回归、自检、文档与分支提交 / push。
-- [x] S4：Human Review 通过后按前置增量 → 6.1 → 本分支顺序集成 main（`4c8398e`）；push / Issue 收尾见 current。
+- [x] S4：Human Review 通过后按前置增量 → 6.1 → 本分支顺序集成 main（`4c8398e`）、push；main `24403f0` 双平台 CI success，Issue #26 Closed。
 
 ## Review Gate
 
@@ -42,7 +42,7 @@
 每一步合并树都与对应分支 tip 完全相同，最终 main 与已验收 `998501e` 全树一致。
 `998501e` 相比 `653e315` 仅文档变化；产品 / 测试与已通过双平台 CI 的 `653e315` 完全相同。
 用户未提供设备 / 平台明细，不扩展为 Windows CUDA 真机或新的科学准确性验收。
-main CI / push / Issue #26 收尾见 current；以下保留实现及首次 HR 反馈历史。
+main `24403f0` [CI 38364390179](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38364390179) macOS / Windows Python3.11 success；已 push，Issue #26 已更新最终 Result 并 Closed。以下保留实现及首次 HR 反馈历史。
 
 ### Human Review 反馈修复：建议帧入口顺序扫描（2026-10-13）
 

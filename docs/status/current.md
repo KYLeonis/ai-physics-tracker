@@ -2,7 +2,7 @@
 
 > 2026-10-13：用户确认代表帧修复通过，同时明确确认 Analysis 只读 / 连续修正 / 教师模型 A/B/C 全部通过。
 > 三条分支已按序 `--no-ff` 集成 **main**：`126e71d` → `890f5b1` → `4c8398e`；无冲突，各合并树与对应分支完全相同。
-> 最终产品 / 测试与已验收分支相同，全量 **938 passed（59.72 s）**、源 `653e315` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836)；main CI 待确认。
+> 最终产品 / 测试与已验收分支相同，全量 **938 passed（59.72 s）**；main `24403f0` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38364390179)。Issue #24 / #25 / #26 已 Closed。
 > Phase 6.1 完成并集成，原 R2 与 R8–R13 Closed / 独立 Approve。
 > [6.2 子计划](phase-6.2-plan.md)已就绪；本轮仅集成和文档收尾，未开始 6.2 实现。
 
@@ -15,14 +15,14 @@
 ## Current
 
 - **Phase**：Phase 6.1 已完成并集成 main；Phase 6.2 计划就绪，后续方程部分按 ADR-0017 重规划
-- **Subphase / Slice**：Issue #24 / #25 / #26 按序集成完成，HR 已通过；main CI / push / Issue 收尾中；6.2 尚未实现
+- **Subphase / Slice**：Issue #24 / #25 / #26 按序集成 / HR / main CI / Issue 收尾完成；6.2 尚未实现
 - **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `main`
 - **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
 
 ## Next Recommended Action
 
-1. 本轮集成收尾：确认 main 双平台 CI、推送文档、关闭 Issue #24 / #25 / #26；HR 条件已经满足，不再重复请求真人验收。
-2. 下一次用户明确启动 6.2 后：读取 [phase-6.2-plan.md](phase-6.2-plan.md)，从当前 main 创建 Issue / `feat/p6.2-angular-charts`，先做 S1 标量 / 相空间科学适配和分析缓存族状态。自身 Independent Review / Human Review 仍须执行。
+1. **下一次用户明确启动 Phase 6.2**：读取 [phase-6.2-plan.md](phase-6.2-plan.md)，从当前 main 创建 Issue / `feat/p6.2-angular-charts`，先做 S1 标量 / 相空间科学适配和分析缓存族状态。自身 Independent Review / Human Review 仍须执行。
+2. 前置 HR、顺序集成、main 双平台 CI、Issue #24 / #25 / #26 已闭环，无剩余集成阻塞；不重复请求已通过的真人验收。
 3. R2 区间失效、R7 重开测试竞态已闭环；旧 autosave 期间 Open/Save 菜单静默忽略仍只保留后续 UX 档案。
 
 后续 Phase 6 其余子阶段必须按[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)的**用户提供方程、通用平台分析**口径重规划，不执行旧固定拟合草案。触及相关阶段时必须核对[后续回移档案](main-backport-backlog.md)。
@@ -67,7 +67,7 @@
 
 ## Recently Completed
 
-- **全部 HR 通过 / main 集成（2026-10-13）**：用户确认本轮代表帧修复通过，同时确认此前 A/B/C 全部通过。按序 `--no-ff` 集成三项增量（`126e71d`）、6.1（`890f5b1`）、20 帧 / K-means / 自定义 / 代表帧队列修复（`4c8398e`）。各合并树与分支 tip 完全相同，最终树与已验收 `998501e` 一致；相比已通过双平台 CI 的 `653e315` 仅文档变化。没有新增产品 / 测试代码或 GUI 行为；用户未提供逐项设备 / 平台详情，不扩大为 Windows CUDA 真机或科学准确性验收。main CI / Issue 收尾待记录；论文 worktree 与用户实验未改。
+- **全部 HR 通过 / main 集成（2026-10-13）**：用户确认本轮代表帧修复通过，同时确认此前 A/B/C 全部通过。按序 `--no-ff` 集成三项增量（`126e71d`）、6.1（`890f5b1`）、20 帧 / K-means / 自定义 / 代表帧队列修复（`4c8398e`）。各合并树与分支 tip 完全相同，最终树与已验收 `998501e` 一致；相比已通过双平台 CI 的 `653e315` 仅文档变化。main 文档收尾 `24403f0` [CI 38364390179](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38364390179) macOS / Windows Python3.11 success；Issue #24 / #25 / #26 已更新 Result 并 Closed。没有新增产品 / 测试代码或 GUI 行为；用户未提供逐项设备 / 平台详情，不扩大为 Windows CUDA 真机或科学准确性验收。论文 worktree 与用户实验未改。
 
 - **本机 Codex → ZCode 基础配置（2026-10-13）**：全局 `$codex-zcode` Skill 已安装，复用 ZCode.app 内置 CLI 0.16.9 与现有 BigModel Individual Coding Plan；Flash 常规实现、GLM-5.3 复杂任务 / review、Codex 验收与有限返工。两种模型真实调用及 Flash 写文件链路通过；runner 11 项自检通过，补齐暂存区检查、实际模型核对与 Windows 进程树清理（Windows 仅 mock）。任务 / 日志放本地忽略的 `.zcode-control/`，未修改产品代码 / 启动新阶段；下一步仍按上方 HR 顺序，后续已授权实现可调用该 Skill。
 

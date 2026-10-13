@@ -28,7 +28,7 @@
 - [x] S3：模型导入边界 / SHA / 原子发布 / schema v1 roundtrip / Save as；无伪训练 run。
 - [x] S4：实际帧后台自检 / GPU 路由 / 取消 / 身份复核；导入模型推理 / 候选登记 / 显式采用。
 - [x] S5：定向 + 全量、Independent Review（处置 findings）、分支双平台 CI、文档同步。
-- [x] S6：新 GUI Human Review A/B/C 全部通过，--no-ff 合入 main（`126e71d`）；push / Issue 收尾见 current。
+- [x] S6：新 GUI Human Review A/B/C 全部通过，--no-ff 合入 main（`126e71d`）、push；main `24403f0` 双平台 CI success，Issue #24 Closed。
 
 ## Review Gate
 
@@ -45,3 +45,5 @@
 代码 checkpoint `1743f61` / `229b7d4` / `c998fd0` / `8018566` / `0c71910` 已 push。R1 F1–F6 处置见[review record](../reviews/main-guided-refinement-model-import-review.md)，R2 已关闭 F1/F2/F3/F5/F6，R3 Approve，F4 `0c71910` 补漏已关闭。修复定向 **45 passed（5.18 s）**；全量 **865 passed（77.50 s）**；[CI 38144024802](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38144024802) macOS/Windows Python 3.11 均 success（`0c71910`）。真实 DLC spawn 四关键点 actual-frame probe、3 帧 tip infer：`auto → mps` 成功。末轮 GUI guard 定向 28 passed，最新代码双平台 CI 已最终确认。
 
 2026-10-13 用户确认 Analysis 只读 / Acquire 编辑（A）、连续标注修正 / Skip / Esc / Resume / 训练推荐（B）、教师模型导入 / 实际帧自检 / 关键点候选 / 显式采用 / 保存重开（C）全部通过。合并 `126e71d` 的树与分支 `a36007e` 完全相同；后续 6.1 和 20 帧引导按序集成，最终 main 产品 / 测试与 `653e315` 双平台 success CI 一致。main 验证及 Issue 收尾见 current。用户未提供逐项设备 / 平台详情，不扩大为 Windows CUDA 真机验收。
+
+main `24403f0` [CI 38364390179](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38364390179) macOS / Windows Python3.11 success；Issue #24 已更新最终 Result 并 Closed。

@@ -110,4 +110,4 @@ Undo AC-3/4、批次 AC-5），本机全量 **908 passed** 零回归。Independe
 （`890f5b1`），合并树与 `d7b9161` 完全一致。随后集成已通过 HR 的 20 帧 / 代表帧引导
 （`4c8398e`）；最终产品 / 测试与 `653e315` 双平台 success CI 相同。
 本轮无新科学 / 数据 / GUI 变更，原独立复审结论保留；6.2 仅计划就绪，尚未启动。
-main CI / push / Issue #25 收尾见 current。
+main `24403f0` [CI 38364390179](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38364390179) macOS / Windows Python3.11 success；已 push，Issue #25 已更新最终 Result 并 Closed。
