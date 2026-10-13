@@ -4,7 +4,7 @@
 分析可用性四态、candidate/active 分离。
 """
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from uuid import uuid4
 
@@ -732,9 +732,12 @@ def test_invalid_fixed_check_set_drives_rebuild_card(tmp_path: Path) -> None:
     session.mark_point(track.track_id, 5, 99.0, 99.0)
     assert not session.validate_active_validation_series(track.track_id)[0]
 
-    _run(session, track, "train")
-    _run(session, track, "infer", with_observations=True)
-    latest_infer = session.tracking_runs()[-1]
+    training = _run(session, track, "train")
+    latest_infer = _run(session, track, "infer", with_observations=True,
+                        config={"training_run_id": str(training.run_id)})
+    # Windows 粗时钟可生成同一 created_at；关联应由训练来源明确表达。
+    latest_infer = replace(latest_infer, created_at=training.created_at)
+    session.record_tracking_run(latest_infer)
     session.activate_infer_run(track.track_id, latest_infer.run_id)
 
     state = project_workflow_state(session, track.track_id, session.tracking_runs())
