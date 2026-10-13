@@ -67,6 +67,8 @@
 
 ## Recently Completed
 
+- **通用 ZCode Skill 公开发布（2026-10-13）**：独立仓库 [KYLeonis/codex-zcode](https://github.com/KYLeonis/codex-zcode)，MIT / `v0.1.0`。已移除个人路径与项目记录，保留派工、模型核验、5 小时限额接管及 Desktop 对话登记；新增本地任务 / 日志 Git exclude 保护。18 项回归、Skill 格式校验、GitHub 安装器远端安装与安装后测试通过，本机全局 Skill 已同步。CI 模板已附，但当前 OAuth 缺少 workflow 权限，未启用云端 CI；Windows 真机与其他 ZCode 版本仍待验证。本轮未改产品代码 / 启动 6.2。
+
 - **本机 ZCode 桌面对话同步（2026-10-13）**：全局 `$codex-zcode` runner 自动为派工会话登记 Desktop 项目索引，保留原生历史与已有用户记录；超时会话仅在工作区 / 时间 / 完整任务文本匹配唯一时登记。15 项回归与真实派工通过，Desktop 搜索 / 打开历史及 `DESKTOP_AUTO_OK` 回复已实测；客户端无需常驻，已打开的侧栏可能需搜索打开以刷新。5 小时额度用尽后由 Codex 检查增量并接续的授权已写入 Skill。本轮未改产品代码 / 开始新阶段；后续已授权派工沿项目状态入口推进。
 
 - **全部 HR 通过 / main 集成（2026-10-13）**：用户确认本轮代表帧修复通过，同时确认此前 A/B/C 全部通过。按序 `--no-ff` 集成三项增量（`126e71d`）、6.1（`890f5b1`）、20 帧 / K-means / 自定义 / 代表帧队列修复（`4c8398e`）。各合并树与分支 tip 完全相同，最终树与已验收 `998501e` 一致；相比已通过双平台 CI 的 `653e315` 仅文档变化。main 文档收尾 `24403f0` [CI 38364390179](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38364390179) macOS / Windows Python3.11 success；Issue #24 / #25 / #26 已更新 Result 并 Closed。没有新增产品 / 测试代码或 GUI 行为；用户未提供逐项设备 / 平台详情，不扩大为 Windows CUDA 真机或科学准确性验收。论文 worktree 与用户实验未改。
