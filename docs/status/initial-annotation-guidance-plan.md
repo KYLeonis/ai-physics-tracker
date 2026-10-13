@@ -45,7 +45,9 @@
 
 修复范围：选帧完成后推荐 `Label suggested frames`，按当前 Track / working zone 内未标的实际算法结果启动既有连续标注队列；不顺序补帧、不覆盖已有 manual。新一轮选帧取代旧代表帧批次（含暂停队列）及已完成批次；选帧本身仍不写标签。旧项目已有 20 帧时也能显式选代表帧补标。数据、算法、worker 与教师路径不变，风险仍为 Normal-risk；Human Review 需重新验证本入口。
 
-修复代码 `2fa955a`。新增 5 个回归：顶部 / 面板启动真实非连续 20 帧队列、排除已有 manual 且结果耗尽不顺序补帧、暂停 / 完成的旧代表帧批次被新选帧替换。定向 **88 passed（11.36 s）**，最终全量 **938 passed（63.02 s）**；diff 检查通过。原实验四个文件 SHA256 均未改变。远程 CI 待记录，Human Review 待反馈；没有重跑真实 K-means / DLC 训练，没有修改用户实验或删除已有标签。
+修复代码 `2fa955a`。新增 5 个回归：顶部 / 面板启动真实非连续 20 帧队列、排除已有 manual 且结果耗尽不顺序补帧、暂停 / 完成的旧代表帧批次被新选帧替换。定向 **88 passed（11.36 s）**，全量 **938 passed（63.02 s）**；diff 检查通过。原实验四个文件 SHA256 均未改变。Human Review 待反馈；未对用户视频重新运行 K-means，未重跑 DLC 训练，没有修改用户实验或删除已有标签。
+
+首轮修复 CI `8153cb1` [38360297373](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38360297373)：macOS success，Windows 935 passed / 2 skipped / 1 failed，失败仅在既有检查集重建测试，新的 5 个代表帧回归均通过。根因为上轮添加的 train / infer fixture 缺少明确 lineage，粗时钟下同一 created_at 不满足 legacy 时序推断。测试修复 `81ac173` / `653e315` 改为显式 training_run_id，并强制相同 created_at 验证不依赖时间精度；未改产品时间 / lineage 语义。修复后定向 **34 passed（3.76 s）**、最终全量 **938 passed（59.72 s）**；`653e315` [CI 38361205836](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836) macOS / Windows Python3.11 均 success。Human Review 仍待反馈，Issue #26 保持 open。
 
 ### 首轮自动交付（后续反馈不视为 HR 通过）
 

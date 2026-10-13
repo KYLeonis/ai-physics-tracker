@@ -3,7 +3,7 @@
 > 2026-10-13：当前工作分支 `fix/initial-annotation-guidance`，首次 GUI 学习需 20 个不同人工帧，
 > 默认 20 / K-means，推荐框直达自定义算法；[本轮 Human Review](../notes/initial-annotation-guidance-human-review.md)待反馈。
 > 用户实测发现“选了 K-means 仍标前 20 帧”：算法结果正确，推荐标注入口却顺序扫描；已修复为实际建议帧连续队列，待重新 HR。
-> 最新修复 `2fa955a`，定向 88 / 全量 **938 passed**，CI 待记录；首轮 `85be73e` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753)。
+> 最新修复 `2fa955a`；Windows CI 暴露的时钟相关 fixture 已在 `653e315` 修复，定向 34 / 最终全量 **938 passed（59.72 s）**，[双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836)。
 > Phase 6.1 完整代码复审 / 修复完成，新增 R8–R13 和原 R2 全部 Closed；
 > 6.1 复审时全量 **929 passed**、独立复审 Approve、代码 `4842560` 双平台 CI success。
 > [6.2 子计划](phase-6.2-plan.md)已形成，可进入实现准备；本轮未实现 6.2。
@@ -72,7 +72,8 @@
 
 ## Recently Completed
 
-- **HR 反馈修复：K-means 结果未被推荐标注消费（2026-10-13）**：`20261013_test5` 两次真实结果均为跨视频的 20 帧，已有人工标签却为 0–19；根因为 `label_frame` 顺序遍历 working zone，零标签选帧成功后还推荐再选。代码 `2fa955a` 改为沿当前轨迹的实际算法结果启动连续标注；排除已有 manual，不顺序补帧，显式重选时替换旧代表帧批次。新增 5 个回归，定向 88、全量 **938 passed（63.02 s）**，用户原实验四个文件 SHA256 未改变。CI 待记录，本轮 HR 待重测，Issue #26 继续 open，未合 main / 未启动 6.2。
+- **HR 反馈修复：K-means 结果未被推荐标注消费（2026-10-13）**：`20261013_test5` 两次真实结果均为跨视频的 20 帧，已有人工标签却为 0–19；根因为 `label_frame` 顺序遍历 working zone，零标签选帧成功后还推荐再选。代码 `2fa955a` 改为沿当前轨迹的实际算法结果启动连续标注；排除已有 manual，不顺序补帧，显式重选时替换旧代表帧批次。新增 5 个回归，定向 88、全量 **938 passed（63.02 s）**，用户原实验四个文件 SHA256 未改变。本轮 HR 待重测，Issue #26 继续 open，未合 main / 未启动 6.2。
+  `8153cb1` CI macOS success、Windows 935 passed / 2 skipped / 1 failed（原检查集重建 fixture 无 lineage、粗时钟下 created_at 同值）；fixture 改为明确训练来源并强制相同时间，`653e315` 定向 34 / 最终全量 938 passed（59.72 s），产品时间语义不变。[CI 38361205836](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836) macOS / Windows Python3.11 success。
 
 - **首次学习 / 选帧引导（2026-10-13）**：分支 `fix/initial-annotation-guidance`，代码 `b9267e3`，Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。首次 GUI 学习需 20 个不同人工帧，推荐框 / 高级训练 / 连续标注完成提示一致；20 / K-means 默认选帧，推荐框自定义弹窗解释并选择 K-means / Uniform，取消不启动，同一项目沿用算法，新建 / 切换项目恢复默认。已有 completed train 的同轨迹再训练保留门槛，教师模型路径与引擎至少 3 个训练帧契约不变。新增 4 回归；定向 118、末轮 58、最终全量 **933 passed（56.79 s）**，diff 检查通过；`85be73e` [CI 38349426753](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753) macOS / Windows Python3.11 success，Human Review 待反馈。未合 main / 未启动 6.2，实现与集成次序见[计划](initial-annotation-guidance-plan.md)。
 

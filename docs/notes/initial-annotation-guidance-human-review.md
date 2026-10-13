@@ -4,7 +4,7 @@
 - 首轮代码 `b9267e3`；当时全量 933 passed；Issue [#26](https://github.com/KYLeonis/ai-physics-tracker/issues/26)。
 - `85be73e` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38349426753)；真人反馈仍待用户执行。
 - 用户第一次实测发现“标成前 20 帧”，已定位到推荐标注入口忽略算法结果；本轮修复后需重新检查代表帧的连续跳转。本次反馈不替代前置三项增量的 A/B/C 反馈。
-- 本轮修复 `2fa955a`，定向 88 / 全量 938 passed；原实验四个文件 SHA256 未改变，CI 待记录。
+- 本轮修复 `2fa955a`，定向 88；测试时钟稳定性修复后最终全量 938 passed，`653e315` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38361205836)；原实验四个文件 SHA256 未改变。
 
 ## 启动
 
