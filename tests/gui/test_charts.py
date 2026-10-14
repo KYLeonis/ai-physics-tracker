@@ -8,7 +8,7 @@ from threading import Event
 import pytest
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QImage, QPainterPath
-from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox
+from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QStyle, QStyleOptionViewItem
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
@@ -153,6 +153,60 @@ def _with_results(
     window.chartActions.refresh()
     qtbot.wait(20)
     return window, tracks
+
+
+@pytest.mark.parametrize("target", ["label", "indicator", "keyboard"])
+def test_chart_tracks_can_be_checked_independently_through_real_input(
+    qtbot: QtBot, synthetic_video_path: Path, target: str,
+) -> None:
+    window = _opened(qtbot, synthetic_video_path)
+    tracks = tuple(_add_track(window, offset=float(index)) for index in range(3))
+    window.setWorkspace("analysis")
+    window.trackList.setCurrentRow(0)
+    actions, session = window.chartActions, window.analysisSession
+    panel, choices = actions.panel, actions.panel.trackChoices
+    panel.setTracks(tracks, tracks[0].track_id, reset=True)
+    actions.refresh()
+    before = session.project
+    choices.setCurrentRow(0)
+
+    def toggle(row: int) -> None:
+        item = choices.item(row)
+        if target == "keyboard":
+            choices.setFocus()
+            current = choices.currentRow()
+            assert current >= 0
+            key = Qt.Key.Key_Down if row > current else Qt.Key.Key_Up
+            for _ in range(abs(row - current)):
+                qtbot.keyClick(choices, key)
+            assert choices.currentRow() == row, (current, choices.currentRow(), row)
+            qtbot.keyClick(choices, Qt.Key.Key_Space)
+        else:
+            rect = choices.visualItemRect(item)
+            point = rect.center()
+            if target == "indicator":
+                option = QStyleOptionViewItem()
+                option.initFrom(choices)
+                choices.itemDelegate().initStyleOption(option, choices.indexFromItem(item))
+                option.rect = rect
+                point = choices.style().subElementRect(
+                    QStyle.SubElement.SE_ItemViewItemCheckIndicator, option, choices).center()
+            qtbot.mouseClick(choices.viewport(), Qt.MouseButton.LeftButton, pos=point)
+        qtbot.waitUntil(lambda: not actions._refresh_timer.isActive(), timeout=5000)
+
+    toggle(1)
+    qtbot.waitUntil(lambda: panel.checkedTracks() == tuple(t.track_id for t in tracks[:2]), timeout=1000)
+    toggle(0)
+    qtbot.waitUntil(lambda: panel.checkedTracks() == (tracks[1].track_id,), timeout=1000)
+    toggle(0)
+    actions.refresh()
+    assert panel.checkedTracks() == tuple(t.track_id for t in tracks[:2])
+    assert window.selectedTrackId == tracks[0].track_id
+    assert session.project == before
+    actions.recompute()
+    qtbot.waitUntil(lambda: not actions.pending, timeout=5000)
+    assert {record.track_id for record in session.project.derived} == {t.track_id for t in tracks[:2]}
+    assert len(panel.plots["x_t"].data.series) == 2
 
 
 def test_chart_panel_exposes_ten_tabs_with_linear_first_five_preserved(

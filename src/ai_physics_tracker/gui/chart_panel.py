@@ -9,8 +9,8 @@ from uuid import UUID
 from math import isclose
 
 import numpy as np
-from PySide6.QtCore import QEvent, QObject, QPoint, Qt, Signal, QSignalBlocker
-from PySide6.QtGui import QPalette
+from PySide6.QtCore import QAbstractItemModel, QEvent, QModelIndex, QObject, QPoint, Qt, Signal, QSignalBlocker
+from PySide6.QtGui import QKeyEvent, QMouseEvent, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -21,6 +21,9 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QSpinBox,
+    QStyleFactory,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QScrollArea,
     QTabWidget,
     QVBoxLayout,
@@ -56,6 +59,23 @@ _TIME_CHART_KINDS = frozenset(
 _LEGEND_REFERENCE_KINDS = frozenset(
     {"theta_t", "omega_t", "alpha_t", "theta_omega"}
 )
+
+
+class _TrackChoiceDelegate(QStyledItemDelegate):
+    """整行点击切换勾选；键盘仍沿用 Qt 的复选操作。"""
+
+    def editorEvent(self, event: QEvent, model: QAbstractItemModel,
+                    option: QStyleOptionViewItem, index: QModelIndex) -> bool:
+        if (isinstance(event, QMouseEvent)
+                and event.type() == QEvent.Type.MouseButtonRelease
+                and event.button() == Qt.MouseButton.LeftButton
+                and option.rect.contains(event.position().toPoint())
+                and index.flags() & Qt.ItemFlag.ItemIsEnabled
+                and index.flags() & Qt.ItemFlag.ItemIsUserCheckable):
+            checked = index.data(Qt.ItemDataRole.CheckStateRole) == Qt.CheckState.Checked.value
+            state = Qt.CheckState.Unchecked if checked else Qt.CheckState.Checked
+            return model.setData(index, state.value, Qt.ItemDataRole.CheckStateRole)
+        return super().editorEvent(event, model, option, index)
 
 
 class ChartPlot(pg.PlotWidget):
@@ -305,6 +325,12 @@ class ChartPanel(QWidget):
             self.statusLabel.setText(f"Failed to save chart: {path}")
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        if (obj is self.trackChoices and event.type() == QEvent.Type.ShortcutOverride
+                and isinstance(event, QKeyEvent) and event.key() == Qt.Key.Key_Space
+                and event.modifiers() == Qt.KeyboardModifier.NoModifier):
+            # 列表中的空格用于勾选，不触发窗口的全局播放快捷键。
+            event.accept()
+            return True
         # 拦截原生 Tooltip 事件（平台渲染不可靠），Enter/Leave 控制自绘气泡
         if event.type() == QEvent.Type.Enter and obj.property("helpText"):
             self._showHelpBubble(obj)
@@ -344,6 +370,15 @@ class ChartPanel(QWidget):
         self._family = "linear"
         self.setObjectName("kinematicsCharts")
         self.trackChoices = QListWidget()
+        self.trackChoices.installEventFilter(self)
+        self.trackChoices.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        self.trackChoices.setItemDelegate(_TrackChoiceDelegate(self.trackChoices))
+        # macOS 原生列表的空框不明显，限定此列表使用清晰的复选框样式。
+        style = QStyleFactory.create("Fusion")
+        if style is not None:
+            style.setParent(self.trackChoices)
+            self.trackChoices.setStyle(style)
+        self.trackChoices.setToolTip("Click a track name or checkbox to include it in charts. Multiple tracks can be checked.")
         self.trackChoices.setMaximumHeight(72)
         self.trackChoices.setMaximumWidth(240)
         self.windowLength = QSpinBox()
@@ -540,6 +575,14 @@ class ChartPanel(QWidget):
         return SmoothingParameters(self.windowLength.value(), self.polyorder.value())
 
     def setTracks(self, tracks: tuple[Track, ...], selected: UUID | None, *, reset: bool = False) -> None:
+        for plot in self.plots.values():
+            plot.activeTrack = selected
+        # 勾选刷新不重建相同列表，保留当前行和键盘焦点。
+        if not reset and tuple((self.trackChoices.item(i).data(Qt.ItemDataRole.UserRole),
+                                self.trackChoices.item(i).text())
+                               for i in range(self.trackChoices.count())) == tuple(
+                                   (track.track_id, track.name) for track in tracks):
+            return
         checked = set() if reset else set(self.checkedTracks())
         previous = set() if reset else {self.trackChoices.item(i).data(Qt.ItemDataRole.UserRole)
                                       for i in range(self.trackChoices.count())}
@@ -555,8 +598,6 @@ class ChartPanel(QWidget):
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                 item.setCheckState(Qt.CheckState.Checked if track.track_id in checked else Qt.CheckState.Unchecked)
                 self.trackChoices.addItem(item)
-        for plot in self.plots.values():
-            plot.activeTrack = selected
 
     def updateStatus(self) -> None:
         data = self.currentPlot.data
