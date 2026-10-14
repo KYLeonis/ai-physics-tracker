@@ -8,7 +8,7 @@ from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.calibration import Calibration
-from ai_physics_tracker.domain.derived import DerivedData, KINEMATICS_KINDS
+from ai_physics_tracker.domain.derived import DerivedData, KINEMATICS_KINDS, preserve_derived_extensions
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.video import Video
@@ -97,9 +97,11 @@ def run_kinematics_job(job: KinematicsJob, cancel: Event) -> KinematicsResult:
             window_length=job.parameters.window_length, polyorder=job.parameters.polyorder)
         for item in computed:
             extra_fields = deepcopy(item.extra_fields)
-            # 时序上下文不是滤波步骤，使用既有可扩展字段记录，不改 schema。
+            # 时序上下文不是滤波步骤，使用既有可扩展字段记录，不改 schema；
+            # 字段口径与同步 compute_kinematics 及角运动批次一致（ADR-0020）。
             extra_fields["timing_context"] = {
                 "fps_nominal": job.inputs.timeline.fps_nominal,
+                "working_zone": list(job.inputs.timeline.working_zone),
                 "approximation": job.inputs.timing_detail,
             }
             records.append(replace(item, extra_fields=extra_fields))
@@ -157,12 +159,7 @@ def validated_batch(
     records_out = []
     for record in records:
         previous = session.derived_data(record.track_id, record.kind)
-        extras = deepcopy(previous.extra_fields) if previous else {}
-        extras.update(record.extra_fields)
-        input_extras = deepcopy(previous.input.extra_fields) if previous else {}
-        input_extras.update(record.input.extra_fields)
-        records_out.append(replace(record, extra_fields=extras,
-                                   input=replace(record.input, extra_fields=input_extras)))
+        records_out.append(preserve_derived_extensions(record, previous))
     return kept + tuple(records_out)
 
 

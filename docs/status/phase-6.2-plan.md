@@ -1,7 +1,7 @@
 # Subphase Plan — Phase 6.2 Angular Charts and Phase Space
 
-- 日期：2026-10-13；状态：**计划已形成，尚未开始实现**。
-- Issue：实现启动时创建；计划分支：`feat/p6.2-angular-charts`。
+- 日期：2026-10-15；状态：**S1–S5验收通过，独立复审 / 双平台CI / Human Review全部闭环，准备集成main**。
+- Issue：[#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)；分支：`feat/p6.2-angular-charts`；基线 `main @ 8b8fa93`。
 - 基线：已集成 6.1 与已通过 HR 的 GUI 增量的 `main`；具体最终提交 / CI 见 [current.md](current.md)。
 - 风险：High-risk（标量 / 相空间科学适配、双输入参考、异步提交与缓存状态）；GUI 必须 Human Review。
 
@@ -17,7 +17,7 @@
 
 1. 6.1 已完成（代码 `4842560` / 全量929 / 独立 Approve / 双平台CI）；实现入口 READY：角量定义 / SG / 标量持久化、多输入失效、时序授权、结果版本与配方核对，
    独立复审及双平台 CI；[最终证据](../reviews/phase-6.1-review.md)。原 R2 的 zone-only 失效已在本轮修复，不留给 6.2 再选择口径。
-2. 可以进入 6.2 实现准备；实际实现需下一条启动指令。本轮只建立计划。
+2. 用户于2026-10-13明确授权以codex-zcode进入6.2，当前执行S1–S5关卡。
 3. 前置条件已于 2026-10-13 满足：Issue #24 三项增量与代表帧修复 HR 均通过，增量、6.1、20 帧引导按序集成 main（`126e71d` / `890f5b1` / `4c8398e`）。
    后续 6.2 从 main 建分支；自身的 Independent Review / Human Review 仍按下方 Review Gate 执行。
 
@@ -90,13 +90,15 @@ Windows/CUDA 真机仍按原批准延期；已有 PNG 入口继续适用，不�
 
 ## Acceptance Criteria
 
-- [ ] AC-1：两种参考明确配置；无标定 / 未授权时序 / 自引用 / 跨视频拒绝，失败不改变 raw、AI 激活或既有结果。
-- [ ] AC-2：四种角运动单列数据可消费；rad / degree 转换数值正确，模型仍存 rad；旧 x/y/v/a/xy 图不退化。
-- [ ] AC-3：θ–ω / x–vx 按源帧交集建立，稀疏错位、不同配方 / 参考、缺测、wrapped 跨界均有可复现数据测试。
-- [ ] AC-4：时间图与相空间点击定位准确源帧；请求 / 呈现不混淆，多轨迹重合点确定；Analysis 视频始终只读。
-- [ ] AC-5：同量比较、图例参考 / 单位、短段 / 无数据 / stale / 近似时序提示可用；angular-only 不误标线性 latest。
-- [ ] AC-6：改参数 / 参考 / track / project / 区间后不接受旧任务；只替换目标族、原子 Undo/Redo、保存重开和旧项目兼容。
+- [x] AC-1：两种参考明确配置；无标定 / 未授权时序 / 自引用 / 跨视频拒绝，失败不改变 raw、AI 激活或既有结果。
+- [x] AC-2：四种角运动单列数据可消费；rad / degree 转换数值正确，模型仍存 rad；旧 x/y/v/a/xy 图不退化。
+- [x] AC-3：θ–ω / x–vx 按源帧交集建立，稀疏错位、不同配方 / 参考、缺测、wrapped 跨界均有可复现数据测试。
+- [x] AC-4：时间图与相空间点击定位准确源帧；请求 / 呈现不混淆，多轨迹重合点确定；Analysis 视频始终只读。
+- [x] AC-5：同量比较、图例参考 / 单位、短段 / 无数据 / stale / 近似时序提示可用；angular-only 不误标线性 latest。
+- [x] AC-6：改参数 / 参考 / track / project / 区间后不接受旧任务；只替换目标族、原子 Undo/Redo、保存重开和旧项目兼容。
 - [ ] AC-7：定向 / 全量 / macOS+Windows CI、Independent Review 及新 Human Review 通过后集成。
+
+AC-1–6均已核对：原本机全量1007 / 独立复审、最新51项GUI回归、双平台CI和用户全部HR反馈通过；AC-7仅待实际集成后勾选。整个Phase 6仍有后续范围。
 
 ## Slices / Verify
 
@@ -116,6 +118,26 @@ Windows/CUDA 真机仍按原批准延期；已有 PNG 入口继续适用，不�
 - PR：可选完整 diff 容器。
 - Human：必须，新配置、多图与帧导航为新交互，前一轮 HR 不覆盖；具体体验问题在可运行增量完成后提交。
 
+HR局部修复 `76e9439` 为 Normal-risk：仅轨迹列表的绘制 / 点击 / 键盘和同列表刷新，未改变科学算法、数据格式或后台事务；Self-review、51项GUI回归、最新CI及这一项Human补测。原高风险科学 / 事务Independent结论保留在对应提交，不将UI自检当真人验收。
+
 ## Result
 
-本轮只交付计划；6.2 产品代码尚未实现。实施前读取本计划、6.1 最终审查记录及 current 的确切基线。
+2026-10-13 用户明确授权以 codex-zcode 进入 P6.2。Codex 负责范围、验收、提交与 HR，GLM-5.3 先完成 S1 科学适配；后续按 S2/S3 → 独立审查 → CI → 新 HR 顺序推进。
+
+### S1 checkpoint（2026-10-13）
+
+GLM-5.3 首轮与 Flash 定向返工1因1200 / 1800秒执行上限保留增量；一次 CLI Bash测试审批配置问题已单独记录，测试改由runner/Codex执行。最后定向返工2正常完成，实际GLM-5.3-Flash/现有BigModel套餐核对通过。纯数据定向 **74 passed（1.84s）**，diff/暂存检查通过；真实保存demo上stale及5组输入/SG/参考/时序不兼容探针通过。角标量/相图按源帧适配，完整配方及时序来源核对，按族缓存就绪，未改变数学算法/格式/用户实验。S2/S3复用现有ChartActions开始GUI集成；Independent/CI/Human仍待完成。
+
+S1 独立审查：冻结 `5cdf5ed`，全新 GLM-5.3 / plan 返回 Approve with findings（无 P1/P2，F1–F3 为 P3）。F1 linear完整来源已在S2计划/生产线处理中；F2 stale提示顺序、F3参数字典键序及不可读参考提示在GUI任务退出后由Codex局部修复，完整复审后关闭。详见 [review record](../reviews/phase-6.2-review.md)。
+
+### GUI / Codex continuation（2026-10-13）
+
+ZCode Flash GUI首轮超时保留代码；定向返工出现明确网络`ECONNRESET`，未自动重试或推断额度耗尽。Codex保留增量，在既有范围内收尾路由/点选/参数恢复/未知view字段和回归。S1独立F2/F3由Codex先加红色回归再修，数据76通过；新GUI18项（含7个取消/上下文分支）与旧图表 / 后台定向共55通过；全量991通过（66.72s）。代码 `365c2cc` 的 [CI38413697035](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38413697035) macOS / Windows 均 success；完整review / HR待完成，未集成main。
+
+### Complete review / fixes（2026-10-14）
+
+R2 本地全新只读审查关闭 S1 的 F1–F3，发现旧线性缓存时序来源、同步扩展保留、未来 view 和领域变化取消四项（2P2 / 2P3）。Codex另复现参考编辑按钮未刷新的P3。统一修复 `ead9b0d` 已 push，定向186通过，最终全量 **1007 passed（88.42s）**；R3全新只读复审 **Approve / F1–F8 Closed**，[最新代码CI38512989022](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38512989022) macOS / Windows均success。原 ZCode 网络错误未重试，Codex reviewer 的限额中断经用户要求继续后恢复，不混为 ZCode 额度。详见[review](../reviews/phase-6.2-review.md)，[本轮HR说明](../notes/phase-6.2-human-review.md)已正式交付，等待反馈，未集成main / 进入6.3。
+
+### HR feedback / checkbox fix（2026-10-14）
+
+用户确认其余HR通过，轨迹列表无法勾选两条。修复 `76e9439` 已在原P6.2分支，空框可见且名称 / 框均能独立切换，刷新保持当前行，列表空格不触发视频播放。新增3个真实鼠标 / 键盘回归，51项GUI通过；最新双平台CI38580981879通过。仅请求[多选补测](../notes/phase-6.2-human-review.md#仅需补测轨迹多选)，通过前不集成main。

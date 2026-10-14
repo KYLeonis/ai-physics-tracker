@@ -137,6 +137,12 @@ class TrackingActions(QObject):
             return
         session = self.window.analysisSession
         video_id, track_id = self.window.activeVideoId, self.window.selectedTrackId
+        # 分析族的就绪状态随当前图表标签分流（Analysis 工作区之外恒线性）。
+        chart_actions = getattr(self.window, "chartActions", None)
+        chart_family = (
+            getattr(chart_actions.panel, "currentFamily", "linear")
+            if chart_actions is not None and self.window.currentWorkspace == "analysis"
+            else "linear")
         key = (id(session.project) if session else None, video_id, track_id, self.pending,
                self.panel.selectedTrainingRunId(),
                session.can_measure(video_id) if session and video_id else False,
@@ -148,6 +154,7 @@ class TrackingActions(QObject):
                if hasattr(self.window, "reviewActions") else False,
                self.window.reviewActions.paused_run_id
                if hasattr(self.window, "reviewActions") else None,
+               chart_family,
                self._execution_input())
         if key == self._context_key:
             return
@@ -292,7 +299,17 @@ class TrackingActions(QObject):
         from ai_physics_tracker.application.workflow_projection import (
             project_workflow_state,
         )
-        return project_workflow_state(session, track_id, runs, self._execution_input())
+        return project_workflow_state(
+            session, track_id, runs, self._execution_input(),
+            analysis_family=self._current_chart_family())
+
+    def _current_chart_family(self) -> str:
+        """任务卡投影使用的分析族；与 refresh 上下文键同一来源。"""
+
+        chart_actions = getattr(self.window, "chartActions", None)
+        if chart_actions is None or self.window.currentWorkspace != "analysis":
+            return "linear"
+        return getattr(chart_actions.panel, "currentFamily", "linear")
 
     def _refresh_workflow_ui(self, session, track_id, runs, video, track) -> None:
         """把投影结果推到任务卡与常驻状态头；决策失败不阻塞面板。"""

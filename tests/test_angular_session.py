@@ -21,6 +21,7 @@ from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.application.video_timing import TimingReport
 from ai_physics_tracker.domain.angular import PendulumReference, TwoPointReference
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, DerivedData, DerivedInput
+from ai_physics_tracker.domain.project import update_timeline
 from ai_physics_tracker.domain.types import utc_now
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
 
@@ -76,6 +77,39 @@ def _angular_records(session: ProjectSession, track_id) -> tuple[DerivedData, ..
         for record in session.project.derived
         if record.track_id == track_id and record.kind in ANGULAR_KINDS
     )
+
+
+@pytest.mark.parametrize("family", ["angular", "linear"])
+def test_sync_recompute_preserves_extensions_and_updates_owned_fields(tmp_path: Path, family: str) -> None:
+    session, video_id, (bob,) = _session_with_calibration(tmp_path)
+    _mark_pendulum_swing(session, bob.track_id, range(30))
+    def compute():
+        return (session.compute_angular(bob.track_id, reference=PendulumReference(PIVOT_PX))
+                if family == "angular" else session.compute_kinematics(bob.track_id))
+    compute()
+    previous = tuple(replace(
+        record,
+        extra_fields={**record.extra_fields, "future_key": {"kind": record.kind}},
+        input=replace(record.input, extra_fields={"future_input": record.kind,
+                                               "observation_selection": "obsolete"}),
+    ) for record in session.project.derived)
+    session._project = replace(session.project, derived=previous)
+    raw = session.project.observations
+    session._project = update_timeline(session.project, replace(session.project.timelines[0], working_zone=(5, 20)))
+
+    computed = compute()
+
+    for record in computed:
+        assert record.extra_fields["future_key"] == {"kind": record.kind}
+        assert record.input.extra_fields["future_input"] == record.kind
+        assert record.input.extra_fields["observation_selection"] == "effective"
+        assert record.extra_fields["timing_context"]["working_zone"] == [5, 20]
+    assert session.project.observations == raw
+    assert session.undo() and all(record.status == "stale" for record in session.project.derived)
+    assert session.redo() and session.project.derived == computed
+    session.save_as(tmp_path / "sync-extras")
+    loaded = ProjectSession.load(ProjectRepository(), tmp_path / "sync-extras")
+    assert loaded.project.derived == computed
 
 
 # ---------------------------------------------------------------------------

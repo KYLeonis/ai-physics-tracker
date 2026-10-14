@@ -787,6 +787,8 @@ class MainWindow(QMainWindow):
     def captureProjectView(self) -> dict:
         state = dict(workflow_state(self._annotation_session)) if self._annotation_session else {}
         state.update({"version": 1, "video_id": str(self._annotation_video_id) if self._annotation_video_id else None})
+        # 图表显示选项走既有 workflow 命名空间 additive 保存；未知字段保留。
+        state["charts"] = self.chartActions.panel.captureViewState(state.get("charts", {}))
         if self._presented_frame_index is not None:
             state.update({"frame_index": self._presented_frame_index,
                 "selected_track_id": str(self._selected_track_id) if self._selected_track_id else None,

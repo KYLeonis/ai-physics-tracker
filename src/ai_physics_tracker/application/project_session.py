@@ -77,6 +77,7 @@ from ai_physics_tracker.domain.derived import (
     DerivedData,
     DerivedInput,
     mark_tracks_stale,
+    preserve_derived_extensions,
 )
 from ai_physics_tracker.domain.timeline import (
     TIME_COMPARISON_TOLERANCE_S,
@@ -995,6 +996,16 @@ class ProjectSession:
         )
 
         new_items = (d_pos, d_smooth, d_vel, d_acc)
+        # 线性批次与角运动批次共用时序来源口径（ADR-0020）：fps / 区间 /
+        # 近似授权记入既有可扩展字段，不改 schema；相空间配对依赖完整来源。
+        timing_context: JsonObject = {
+            "fps_nominal": timeline.fps_nominal,
+            "working_zone": list(timeline.working_zone),
+            "approximation": self.measurement_timing_detail(track.video_id),
+        }
+        new_items = tuple(preserve_derived_extensions(
+            replace(item, extra_fields={"timing_context": deepcopy(timing_context)}),
+            self.derived_data(item.track_id, item.kind)) for item in new_items)
         new_kinds = {item.kind for item in new_items}
         kept_derived = [
             d
@@ -1243,8 +1254,10 @@ class ProjectSession:
             "working_zone": list(timeline.working_zone),
             "approximation": self.measurement_timing_detail(track.video_id),
         }
-        new_items = tuple(replace(item, extra_fields={"timing_context": deepcopy(timing_context)})
-                          for item in (d_theta, d_smooth, d_omega, d_alpha))
+        new_items = tuple(preserve_derived_extensions(
+            replace(item, extra_fields={"timing_context": deepcopy(timing_context)}),
+            self.derived_data(item.track_id, item.kind))
+            for item in (d_theta, d_smooth, d_omega, d_alpha))
         kept_derived = [
             d
             for d in self._project.derived
