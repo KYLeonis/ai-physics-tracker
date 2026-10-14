@@ -2,21 +2,21 @@
 
 > 2026-10-13：用户明确授权使用 codex-zcode 进入 P6.2；Codex 派工和验收，ZCode/GLM 实现。
 > main `8b8fa93` 干净基线，Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`。
-> 前置 P6.1 与三项 GUI HR / main CI 已闭环；P6.2 独立复审已 Approve，用户确认其余 HR 通过，轨迹多选修复待补测。
+> P6.2全部HR已通过，独立复审 / 最新双平台CI均通过，准备集成main；本轮仅收尾P6.2。
 
-- 最后更新：2026-10-14（P6.2 HR其余通过，轨迹列表修复 / 51项GUI回归 / 最新双平台CI通过，等待多选补测）
+- 最后更新：2026-10-15（P6.2全部HR通过，集成收尾）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 完成，6.2 进行中；后续用户方程范围另行重规划
-- **Subphase / Slice**：P6.2 S5轨迹多选补测；其余HR通过；控件修复 `76e9439` 已同步到P6.2分支，51项GUI回归 / 最新双平台CI通过；科学 / 事务原R3 Approve仍有效，未集成 main
+- **Subphase / Slice**：P6.2全部验收通过，待实际main集成 / 文档收尾；源码 `76e9439` 与已通过CI / HR的分支 `fb071d8` 相同，仅后者增加文档
 - **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `fix/p62-track-checkbox`；P6.2集成分支为原项目目录的 `feat/p6.2-angular-charts`，两份源码同步
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **停止等待轨迹多选这一项补测**，按[验收说明](../notes/phase-6.2-human-review.md)从原项目目录重启；其余HR已通过，代码 `76e9439` 的[双平台CI38580981879](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879)已成功。
-2. 若补测失败，按实际反馈定向修复；若通过，核对AC-5/7，`--no-ff` 集成P6.2 / 文档同步 / push并关闭Issue #27；[草稿PR #28](https://github.com/KYLeonis/ai-physics-tracker/pull/28)为完整diff容器。
+1. 用户已确认多选补测“通过”，将P6.2以 `--no-ff` 集成main；源码 / 测试保持已验收版本，不重复运行已通过测试。
+2. 更新AC-7及收尾文档，push并关闭Issue #27 / PR #28；核对合并树和main CI。
 3. 不进入 6.3 周期 / 拟合；继续遵守 ADR-0017 用户提供方程的通用平台口径，并核对 [后续回移档案](main-backport-backlog.md)。
 
 ## Active Constraints

@@ -1,6 +1,6 @@
 # Phase 6.2 Human Review
 
-2026-10-14；状态：**用户确认其余 HR 通过；轨迹多选修复待补测**。原科学 / 事务独立复审通过；最新控件修复 `76e9439` 的51项GUI回归及[macOS / Windows CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879)通过，尚未合并 main。
+状态：**全部 Human Review 通过，准备集成 main（收尾记录2026-10-15）**。用户先确认其余HR通过，本轮再回复“通过”确认轨迹多选补测。原科学 / 事务独立复审通过，控件修复 `76e9439` 的51项GUI回归及[macOS / Windows CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879)通过。
 分支 `feat/p6.2-angular-charts`；Issue #27 / draft PR #28。前轮 HR 不覆盖这些新图表 / 参考配置。
 
 ## 启动
@@ -45,8 +45,8 @@ cd /Users/leonis/Documents/ai-physics-tracker
 2. 再勾回 Bob 1、Bob 2，重算 → 两条曲线都显示，Pivot B 保持未勾选。
 3. 焦点在列表时用方向键 / 空格选择 → 正常切换勾选，视频不开始播放。
 
-请只反馈这一项：通过 / 不通过（不通过注明现象）。
+最终反馈：用户回复“通过”，轨迹多选补测通过；本轮A/B/C/D全部闭环。反馈未提供逐项设备详情，不扩大为Windows/CUDA真机或真实实验科学准确性验收。
 
 ## 停止关卡
 
-[AGENTS.md §7](../../AGENTS.md)要求“停止并等待用户亲自测试的反馈”。本轮反馈通过前不合并main、不结束P6.2、不进入6.3。自动化测试与独立review不替代体验验收。
+[AGENTS.md §7](../../AGENTS.md)要求“停止并等待用户亲自测试的反馈”；本轮已获得反馈，可以集成并收尾P6.2。整个Phase 6未完成，6.3仍须按用户方程口径另行立项。

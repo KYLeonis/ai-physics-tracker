@@ -1,6 +1,6 @@
 # Subphase Plan — Phase 6.2 Angular Charts and Phase Space
 
-- 日期：2026-10-14；状态：**S1–S4完成，原1007全量 / 独立复审Approve / 双平台CI通过；S5其余HR通过，轨迹多选控件修复待补测**。
+- 日期：2026-10-15；状态：**S1–S5验收通过，独立复审 / 双平台CI / Human Review全部闭环，准备集成main**。
 - Issue：[#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)；分支：`feat/p6.2-angular-charts`；基线 `main @ 8b8fa93`。
 - 基线：已集成 6.1 与已通过 HR 的 GUI 增量的 `main`；具体最终提交 / CI 见 [current.md](current.md)。
 - 风险：High-risk（标量 / 相空间科学适配、双输入参考、异步提交与缓存状态）；GUI 必须 Human Review。
@@ -94,11 +94,11 @@ Windows/CUDA 真机仍按原批准延期；已有 PNG 入口继续适用，不�
 - [x] AC-2：四种角运动单列数据可消费；rad / degree 转换数值正确，模型仍存 rad；旧 x/y/v/a/xy 图不退化。
 - [x] AC-3：θ–ω / x–vx 按源帧交集建立，稀疏错位、不同配方 / 参考、缺测、wrapped 跨界均有可复现数据测试。
 - [x] AC-4：时间图与相空间点击定位准确源帧；请求 / 呈现不混淆，多轨迹重合点确定；Analysis 视频始终只读。
-- [ ] AC-5：同量比较、图例参考 / 单位、短段 / 无数据 / stale / 近似时序提示可用；angular-only 不误标线性 latest。
+- [x] AC-5：同量比较、图例参考 / 单位、短段 / 无数据 / stale / 近似时序提示可用；angular-only 不误标线性 latest。
 - [x] AC-6：改参数 / 参考 / track / project / 区间后不接受旧任务；只替换目标族、原子 Undo/Redo、保存重开和旧项目兼容。
 - [ ] AC-7：定向 / 全量 / macOS+Windows CI、Independent Review 及新 Human Review 通过后集成。
 
-AC-1/2/3/6 原全量1007与独立复审通过；用户确认除轨迹多选以外的HR通过，AC-4结合既有回归与C反馈勾选。AC-5的多轨迹交互待控件修复补测，AC-7在反馈 / 集成之前保留未勾，不代表整个Phase 6完成。
+AC-1–6均已核对：原本机全量1007 / 独立复审、最新51项GUI回归、双平台CI和用户全部HR反馈通过；AC-7仅待实际集成后勾选。整个Phase 6仍有后续范围。
 
 ## Slices / Verify
 

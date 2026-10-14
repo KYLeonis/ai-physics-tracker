@@ -3,7 +3,7 @@
 - 日期：2026-10-13–14；Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`，基线 `main @ 8b8fa93`。
 - Context：[6.2 mini-plan](../status/phase-6.2-plan.md)、ADR-0008/0009/0019/0020、CODE_STANDARD。
 - R1 Reviewer 为全新 ZCode GLM-5.3 / plan 只读会话，R2 为全新本地 Codex 只读 reviewer；Codex 汇总记录、处置 findings 与最终验收。
-- 当前：原科学 / 事务 R3 **Approve**，F1–F8 Closed；用户确认其余HR通过，新增GUI finding F9修复待多选补测，尚未集成 main。
+- 当前：原科学 / 事务R3 **Approve**，F1–F9全部Closed；用户确认其余HR及轨迹多选补测通过，准备集成main。
 
 ## Scope
 
@@ -80,7 +80,7 @@ S1 首轮與定向返工中由 Codex 复现并修复输入 / SG / 时序配对�
 - Decision：Fix Before Close。控件局部使用清晰空框，整行左键切换CheckState；保持原itemChanged / checkedTracks / 计算管线。相同轨迹列表刷新保留当前行，空格在列表内接管，键盘选择不触发播放。
 - Fix：`76e9439`；Normal-risk，仅GUI控件与回归，未改变科学计算或事务代码。
 - Verification：新增名称 / 框 / 方向键+空格3个真实输入回归；名称点击先失败，连续键盘再复现刷新 / 播放快捷键干扰，修复后GUI定向 **51 passed（32.09s）**。验证取消某项不会取消另一项、勾选不改raw或Acquire目标、重算只选中的两轨迹且显示两曲线；diff检查及[CI38580981879](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879) macOS / Windows Python3.11均通过。
-- Status：Fixed / Awaiting Human Recheck，仅这一项请求用户补测，保留其余HR通过结果。
+- Status：Closed。用户本轮回复“通过”确认多选补测；与此前“其余HR通过”合并记录，F9闭环（收尾记录2026-10-15）。
 
 ## Review Log
 
@@ -101,7 +101,7 @@ S1 首轮與定向返工中由 Codex 复现并修复输入 / SG / 时序配对�
 
 ## Final Verdict
 
-**Approve（R3，`ead9b0d`，2026-10-14，科学 / 事务范围）**。F1–F8 已修复并经独立复审确认关闭，原全量1007 / 双平台CI通过。后续Normal-risk GUI修复 `76e9439` 的Self-review / 51项GUI回归通过；[Human Review](../notes/phase-6.2-human-review.md)其余通过，F9多选补测与main集成未完成，不能计作P6.2收尾或整个Phase 6完成。
+**Approve**。科学 / 事务R3在 `ead9b0d` 上通过；后续Normal-risk GUI修复 `76e9439` 的Self-review / 51项GUI回归及双平台CI通过，用户本轮确认多选补测通过。[Human Review](../notes/phase-6.2-human-review.md)全部闭环，F1–F9 Closed，P6.2允许集成；整个Phase 6的周期 / 用户方程 / 误差范围仍未完成。
 
 ### S1–S3 checkpoint evidence（2026-10-13）
 
