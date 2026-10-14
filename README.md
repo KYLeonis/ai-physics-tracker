@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:    Phase 6（6.1 已完成并集成 main；6.2 已实现待验收）
-Last Delivered:   Analysis 只读、连续修正、教师模型与 20 帧 / K-means 引导；Human Review 通过
-Current Subphase: Phase 6.2 角量图表与相空间（Issue #27，GLM主体增量、Codex收尾 / 验收）
+Current Phase:    Phase 6（6.1 / 6.2 已完成并集成 main）
+Last Delivered:   Phase 6.2 角量图表、相空间、参考配置与多轨迹比较；全部 Human Review 通过
+Current Subphase: Phase 6.2 已完成；等待下一条指令，6.3 用户方程范围需重规划
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -115,7 +115,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | 🔄 6.1 已完成并集成；6.2 已实现待验收；方程部分按用户输入重规划 |
+| Phase 6 | Advanced Physics Analysis | 🔄 6.1 / 6.2 已完成并集成；方程部分按用户输入重规划 |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
 | Phase 9 | Optimization & Packaging | ⬜ |
@@ -135,7 +135,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
-- ✅ Phase 6.1 角运动基础与当前 GUI 增量已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
+- ✅ Phase 6.1 角运动基础 / 6.2 图表与相空间已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引
@@ -160,10 +160,10 @@ main 已交付 Analysis 视频只读、建议帧批量连续标注 / 修正与�
 2026-10-13 首次学习引导增量已通过 Human Review 并集成 main：当前轨迹需 20 个不同人工帧才可首次学习；默认请求 20 帧 / K-means，顶部推荐的 `Custom frame selection…` 直接切换 K-means / Uniform。已有成功训练的轨迹保持原再训练门槛，教师模型推理仍可直接使用。见[计划](docs/status/initial-annotation-guidance-plan.md)与[真人验收记录](docs/notes/initial-annotation-guidance-human-review.md)。
 用户实测反馈的“选了 K-means 却标前 20 帧”已修复：选帧完成后推荐 `Label suggested frames`，沿实际建议帧连续标注；没有建议结果时先选帧，原有人工标签保留。
 
-### Phase 6.1 / 6.2 当前进度（2026-10-14）
+### Phase 6.1 / 6.2 当前进度（2026-10-15）
 
 6.1 已交付 θ/ω/α 的纯计算、双输入依赖与保存 / 后台事务，完成完整审查和修复并集成 main，
-P6.2 已按 [角量图表与相空间计划](docs/status/phase-6.2-plan.md)完成S1–S3；新增两种参考、θ/ω/α时间图、θ–ω / x–vx、degree显示和只读源帧导航；
+P6.2 已按 [角量图表与相空间计划](docs/status/phase-6.2-plan.md)完成S1–S5并集成main；新增两种参考、θ/ω/α时间图、θ–ω / x–vx、degree显示和只读源帧导航；
 科学 / 时序 / 结果版本约束见 ADR-0019/0020，最新验证和下一步见 current。
 
-P6.2分支 `feat/p6.2-angular-charts` 的科学 / 事务修复 `ead9b0d` 全量 **1007 passed（88.42s）**、独立复审 **Approve**、[双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38512989022)通过。用户确认其余HR通过，只有轨迹列表多选阻塞；最新控件修复 `76e9439` 已同步原P6.2分支，名称 / 框 / 键盘真实输入及相关GUI **51项通过**、[最新双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879)通过，仅请求多选补测；[Review记录](docs/reviews/phase-6.2-review.md)及[补测步骤](docs/notes/phase-6.2-human-review.md)。ZCode网络连接重置后按Skill不自动重试，Codex在授权范围内完成剩余修复 / 测试；未合并main、未进入6.3。
+P6.2科学 / 事务修复全量 **1007 passed（88.42s）**、独立复审 **Approve**；轨迹多选修复含名称 / 框 / 键盘真实输入，相关GUI **51项通过**，最终双平台 **1008 passed / 2 skipped**。用户确认全部Human Review通过，已以 `12b0911` 集成main；[CI证据](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294)、[Review记录](docs/reviews/phase-6.2-review.md)及[真人验收记录](docs/notes/phase-6.2-human-review.md)。6.3未启动，后续须按用户提供方程口径另行规划。

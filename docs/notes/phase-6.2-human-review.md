@@ -1,7 +1,7 @@
 # Phase 6.2 Human Review
 
-状态：**全部 Human Review 通过，准备集成 main（收尾记录2026-10-15）**。用户先确认其余HR通过，本轮再回复“通过”确认轨迹多选补测。原科学 / 事务独立复审通过，控件修复 `76e9439` 的51项GUI回归及[macOS / Windows CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879)通过。
-分支 `feat/p6.2-angular-charts`；Issue #27 / draft PR #28。前轮 HR 不覆盖这些新图表 / 参考配置。
+状态：**全部 Human Review 通过，已集成 main（`12b0911`）（收尾记录2026-10-15）**。用户先确认其余HR通过，本轮再回复“通过”确认轨迹多选补测。原科学 / 事务独立复审通过，控件修复 `76e9439` 的51项GUI回归及[macOS / Windows CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879)通过。
+分支 `feat/p6.2-angular-charts`；Issue #27 / PR #28。前轮 HR 不覆盖这些新图表 / 参考配置。
 
 ## 启动
 
@@ -49,4 +49,4 @@ cd /Users/leonis/Documents/ai-physics-tracker
 
 ## 停止关卡
 
-[AGENTS.md §7](../../AGENTS.md)要求“停止并等待用户亲自测试的反馈”；本轮已获得反馈，可以集成并收尾P6.2。整个Phase 6未完成，6.3仍须按用户方程口径另行立项。
+[AGENTS.md §7](../../AGENTS.md)要求“停止并等待用户亲自测试的反馈”；本轮已获得反馈，P6.2已集成main（`12b0911`）。整个Phase 6未完成，6.3仍须按用户方程口径另行立项。

@@ -1,6 +1,6 @@
 # Subphase Plan — Phase 6.2 Angular Charts and Phase Space
 
-- 日期：2026-10-15；状态：**S1–S5验收通过，独立复审 / 双平台CI / Human Review全部闭环，准备集成main**。
+- 日期：2026-10-15；状态：**S1–S5验收通过，独立复审 / 双平台CI / Human Review全部闭环，已集成main（`12b0911`）**。
 - Issue：[#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)；分支：`feat/p6.2-angular-charts`；基线 `main @ 8b8fa93`。
 - 基线：已集成 6.1 与已通过 HR 的 GUI 增量的 `main`；具体最终提交 / CI 见 [current.md](current.md)。
 - 风险：High-risk（标量 / 相空间科学适配、双输入参考、异步提交与缓存状态）；GUI 必须 Human Review。
@@ -96,9 +96,9 @@ Windows/CUDA 真机仍按原批准延期；已有 PNG 入口继续适用，不�
 - [x] AC-4：时间图与相空间点击定位准确源帧；请求 / 呈现不混淆，多轨迹重合点确定；Analysis 视频始终只读。
 - [x] AC-5：同量比较、图例参考 / 单位、短段 / 无数据 / stale / 近似时序提示可用；angular-only 不误标线性 latest。
 - [x] AC-6：改参数 / 参考 / track / project / 区间后不接受旧任务；只替换目标族、原子 Undo/Redo、保存重开和旧项目兼容。
-- [ ] AC-7：定向 / 全量 / macOS+Windows CI、Independent Review 及新 Human Review 通过后集成。
+- [x] AC-7：定向 / 全量 / macOS+Windows CI、Independent Review 及新 Human Review 通过后集成。
 
-AC-1–6均已核对：原本机全量1007 / 独立复审、最新51项GUI回归、双平台CI和用户全部HR反馈通过；AC-7仅待实际集成后勾选。整个Phase 6仍有后续范围。
+AC-1–6均已核对：原本机全量1007 / 独立复审、最新51项GUI回归、双平台CI和用户全部HR反馈通过；AC-7已随 `12b0911` 实际集成完成。整个Phase 6仍有后续范围。
 
 ## Slices / Verify
 
@@ -141,3 +141,7 @@ R2 本地全新只读审查关闭 S1 的 F1–F3，发现旧线性缓存时序�
 ### HR feedback / checkbox fix（2026-10-14）
 
 用户确认其余HR通过，轨迹列表无法勾选两条。修复 `76e9439` 已在原P6.2分支，空框可见且名称 / 框均能独立切换，刷新保持当前行，列表空格不触发视频播放。新增3个真实鼠标 / 键盘回归，51项GUI通过；最新双平台CI38580981879通过。仅请求[多选补测](../notes/phase-6.2-human-review.md#仅需补测轨迹多选)，通过前不集成main。
+
+### Final acceptance / integration（2026-10-15）
+
+用户确认轨迹多选补测“通过”，全部Human Review闭环，AC-1–7完成。`12b0911` 以 `--no-ff` 集成 `feat/p6.2-angular-charts @ 8b1221b`；合并树与分支tip完全相同，源码 / 测试与最终控件修复 `76e9439` 一致。[最新分支CI38582553294](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294)双平台success；原科学 / 事务R3 Approve及控件Normal-risk验证保留各自范围。6.3未启动，周期 / 用户方程范围须另行规划。

@@ -1,9 +1,9 @@
 # Review Record — Phase 6.2 Angular Charts and Phase Space
 
-- 日期：2026-10-13–14；Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`，基线 `main @ 8b8fa93`。
+- 日期：2026-10-13–15；Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`，基线 `main @ 8b8fa93`。
 - Context：[6.2 mini-plan](../status/phase-6.2-plan.md)、ADR-0008/0009/0019/0020、CODE_STANDARD。
 - R1 Reviewer 为全新 ZCode GLM-5.3 / plan 只读会话，R2 为全新本地 Codex 只读 reviewer；Codex 汇总记录、处置 findings 与最终验收。
-- 当前：原科学 / 事务R3 **Approve**，F1–F9全部Closed；用户确认其余HR及轨迹多选补测通过，准备集成main。
+- 当前：原科学 / 事务R3 **Approve**，F1–F9全部Closed；用户确认其余HR及轨迹多选补测通过，已集成main（`12b0911`）。
 
 ## Scope
 
@@ -101,7 +101,7 @@ S1 首轮與定向返工中由 Codex 复现并修复输入 / SG / 时序配对�
 
 ## Final Verdict
 
-**Approve**。科学 / 事务R3在 `ead9b0d` 上通过；后续Normal-risk GUI修复 `76e9439` 的Self-review / 51项GUI回归及双平台CI通过，用户本轮确认多选补测通过。[Human Review](../notes/phase-6.2-human-review.md)全部闭环，F1–F9 Closed，P6.2允许集成；整个Phase 6的周期 / 用户方程 / 误差范围仍未完成。
+**Approve**。科学 / 事务R3在 `ead9b0d` 上通过；后续Normal-risk GUI修复 `76e9439` 的Self-review / 51项GUI回归及双平台CI通过，用户本轮确认多选补测通过。[Human Review](../notes/phase-6.2-human-review.md)全部闭环，F1–F9 Closed，P6.2已集成main（`12b0911`）；整个Phase 6的周期 / 用户方程 / 误差范围仍未完成。
 
 ### S1–S3 checkpoint evidence（2026-10-13）
 
@@ -129,3 +129,7 @@ GUI / remaining P3 fixes `365c2cc`：数据76 / GUI55通过，完整本机 **991
 用户确认除轨迹多选以外的HR通过；F9控件修复及真实鼠标 / 键盘回归由Codex直接完成，同步原P6.2工作分支。科学 / 数据 / 后台模块未变更，原R3结论保留对应范围；此增量按mini-plan补充的Normal-risk关卡验证，仅等待多选补测。
 
 `76e9439` 的 CI38580981879：macOS / Windows Python3.11 两作业均 **1008 passed / 2 skipped**（分别101.29s / 114.29s）；不将已有可选依赖跳过扩大为真人设备验收。
+
+### Final Human acceptance / integration（2026-10-15）
+
+用户确认多选补测“通过”，F9 Closed，全部HR闭环。最终验收分支 `fb071d8` 的[CI38582553294](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294) macOS / Windows均success；后续 `8b1221b` 仅HR记录文档变化。main合并 `12b0911` 的树与分支tip完全一致，源码 / 测试与 `76e9439` 一致，无新增实现或独立review范围扩张。
