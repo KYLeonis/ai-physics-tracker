@@ -166,4 +166,4 @@ main 已交付 Analysis 视频只读、建议帧批量连续标注 / 修正与�
 P6.2 已按 [角量图表与相空间计划](docs/status/phase-6.2-plan.md)完成S1–S3；新增两种参考、θ/ω/α时间图、θ–ω / x–vx、degree显示和只读源帧导航；
 科学 / 时序 / 结果版本约束见 ADR-0019/0020，最新验证和下一步见 current。
 
-P6.2分支 `feat/p6.2-angular-charts` 完成完整独立审查提出的修复，最新代码 `ead9b0d` 全量 **1007 passed（88.42s）**、全新独立复审 **Approve**、[macOS / Windows CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38512989022)通过。新GUI Human Review已发起，等待用户反馈；[Review记录](docs/reviews/phase-6.2-review.md)及[本轮验收步骤](docs/notes/phase-6.2-human-review.md)。ZCode网络连接重置后按Skill不自动重试，Codex在本轮授权范围内完成剩余修复 / 测试；未合并main、未进入6.3。
+P6.2分支 `feat/p6.2-angular-charts` 的科学 / 事务修复 `ead9b0d` 全量 **1007 passed（88.42s）**、独立复审 **Approve**、[双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38512989022)通过。用户确认其余HR通过，只有轨迹列表多选阻塞；最新控件修复 `76e9439` 已同步原P6.2分支，名称 / 框 / 键盘真实输入及相关GUI **51项通过**、[最新双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879)通过，仅请求多选补测；[Review记录](docs/reviews/phase-6.2-review.md)及[补测步骤](docs/notes/phase-6.2-human-review.md)。ZCode网络连接重置后按Skill不自动重试，Codex在授权范围内完成剩余修复 / 测试；未合并main、未进入6.3。

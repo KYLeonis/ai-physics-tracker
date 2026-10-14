@@ -3,7 +3,7 @@
 - 日期：2026-10-13–14；Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`，基线 `main @ 8b8fa93`。
 - Context：[6.2 mini-plan](../status/phase-6.2-plan.md)、ADR-0008/0009/0019/0020、CODE_STANDARD。
 - R1 Reviewer 为全新 ZCode GLM-5.3 / plan 只读会话，R2 为全新本地 Codex 只读 reviewer；Codex 汇总记录、处置 findings 与最终验收。
-- 当前：R3 **Approve**，F1–F8 全部 Closed，全量1007 / 最新双平台CI通过；已发起本轮 Human Review，待用户反馈，尚未集成 main。
+- 当前：原科学 / 事务 R3 **Approve**，F1–F8 Closed；用户确认其余HR通过，新增GUI finding F9修复待多选补测，尚未集成 main。
 
 ## Scope
 
@@ -74,6 +74,14 @@ S1 首轮與定向返工中由 Codex 复现并修复输入 / SG / 时序配对�
 - Verification：先排空原刷新计时器，再仅修改参考；修复前 waitUntil 明确失败，不能靠别的 UI 事件触发刷新。
 - Status：Closed，修复 `ead9b0d`，R3确认参考编辑后按钮及时禁用。
 
+### F9 — 轨迹列表无法直观勾选多条（P2，Human Review）
+
+- Evidence：用户截图 / 反馈“在这个框无法勾选两个轨迹，其余HR通过”。名称点击只高亮单行而不勾选，macOS原生列表的未勾选标识不明显。
+- Decision：Fix Before Close。控件局部使用清晰空框，整行左键切换CheckState；保持原itemChanged / checkedTracks / 计算管线。相同轨迹列表刷新保留当前行，空格在列表内接管，键盘选择不触发播放。
+- Fix：`76e9439`；Normal-risk，仅GUI控件与回归，未改变科学计算或事务代码。
+- Verification：新增名称 / 框 / 方向键+空格3个真实输入回归；名称点击先失败，连续键盘再复现刷新 / 播放快捷键干扰，修复后GUI定向 **51 passed（32.09s）**。验证取消某项不会取消另一项、勾选不改raw或Acquire目标、重算只选中的两轨迹且显示两曲线；diff检查及[CI38580981879](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879) macOS / Windows Python3.11均通过。
+- Status：Fixed / Awaiting Human Recheck，仅这一项请求用户补测，保留其余HR通过结果。
+
 ## Review Log
 
 ### R1 — S1 Scientific Review
@@ -93,7 +101,7 @@ S1 首轮與定向返工中由 Codex 复现并修复输入 / SG / 时序配对�
 
 ## Final Verdict
 
-**Approve（R3，`ead9b0d`，2026-10-14）**。F1–F8 已修复并经独立复审确认关闭；全量1007 / 最新双平台CI通过。本轮[Human Review](../notes/phase-6.2-human-review.md)已发起，用户反馈与 main 集成仍未完成，不能计作 P6.2 收尾或整个 Phase 6 完成。
+**Approve（R3，`ead9b0d`，2026-10-14，科学 / 事务范围）**。F1–F8 已修复并经独立复审确认关闭，原全量1007 / 双平台CI通过。后续Normal-risk GUI修复 `76e9439` 的Self-review / 51项GUI回归通过；[Human Review](../notes/phase-6.2-human-review.md)其余通过，F9多选补测与main集成未完成，不能计作P6.2收尾或整个Phase 6完成。
 
 ### S1–S3 checkpoint evidence（2026-10-13）
 
@@ -115,3 +123,9 @@ GUI / remaining P3 fixes `365c2cc`：数据76 / GUI55通过，完整本机 **991
 - 结论：**Approve**，无新增 P1/P2/P3；逐项确认 F4–F8 Closed；此前 F1–F3 已由 R2 确认 Closed。
 - 科学配对 / 源帧、Undo/Redo、保存与 GUI 生命周期未见修复回归；Reviewer 定向 **131 passed**，补充生命周期 / 保存 **5 passed**，compileall / diff 检查通过。
 - 真人体验尚无反馈，Windows/CUDA 真机仍未覆盖；后者沿用已批准的 Phase 9 前延期。
+
+### HR1 / normal-risk UI fix（2026-10-14）
+
+用户确认除轨迹多选以外的HR通过；F9控件修复及真实鼠标 / 键盘回归由Codex直接完成，同步原P6.2工作分支。科学 / 数据 / 后台模块未变更，原R3结论保留对应范围；此增量按mini-plan补充的Normal-risk关卡验证，仅等待多选补测。
+
+`76e9439` 的 CI38580981879：macOS / Windows Python3.11 两作业均 **1008 passed / 2 skipped**（分别101.29s / 114.29s）；不将已有可选依赖跳过扩大为真人设备验收。

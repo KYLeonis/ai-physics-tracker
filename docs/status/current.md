@@ -2,21 +2,21 @@
 
 > 2026-10-13：用户明确授权使用 codex-zcode 进入 P6.2；Codex 派工和验收，ZCode/GLM 实现。
 > main `8b8fa93` 干净基线，Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`。
-> 前置 P6.1 与三项 GUI HR / main CI 已闭环；P6.2 自身 Independent Review 已 Approve，等待本轮 Human Review。
+> 前置 P6.1 与三项 GUI HR / main CI 已闭环；P6.2 独立复审已 Approve，用户确认其余 HR 通过，轨迹多选修复待补测。
 
-- 最后更新：2026-10-14（P6.2完整review修复 / 全量1007 / 最新双平台CI / 独立复审通过，等待本轮HR）
+- 最后更新：2026-10-14（P6.2 HR其余通过，轨迹列表修复 / 51项GUI回归 / 最新双平台CI通过，等待多选补测）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 完成，6.2 进行中；后续用户方程范围另行重规划
-- **Subphase / Slice**：P6.2 S1–S4完成，S5等待HR；代码 `ead9b0d` 已push，定向186 / 全量1007 / 最新双平台CI / R3 Approve；本轮Human已发起，未集成 main
-- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.2-angular-charts`
+- **Subphase / Slice**：P6.2 S5轨迹多选补测；其余HR通过；控件修复 `76e9439` 已同步到P6.2分支，51项GUI回归 / 最新双平台CI通过；科学 / 事务原R3 Approve仍有效，未集成 main
+- **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `fix/p62-track-checkbox`；P6.2集成分支为原项目目录的 `feat/p6.2-angular-charts`，两份源码同步
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **停止等待本轮 GUI Human Review A/B/C/D 反馈**，按[验收说明](../notes/phase-6.2-human-review.md)使用本机合成工程；未获得反馈前不合并 main，不重复既已完成的审查 / 全量验证。
-2. 若有失败，按实际反馈定向修复并验证；若本轮通过，核对AC-4/5/7，`--no-ff` 集成 / 文档同步 / push并关闭Issue #27；[草稿PR #28](https://github.com/KYLeonis/ai-physics-tracker/pull/28)为完整diff容器。
+1. **停止等待轨迹多选这一项补测**，按[验收说明](../notes/phase-6.2-human-review.md)从原项目目录重启；其余HR已通过，代码 `76e9439` 的[双平台CI38580981879](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38580981879)已成功。
+2. 若补测失败，按实际反馈定向修复；若通过，核对AC-5/7，`--no-ff` 集成P6.2 / 文档同步 / push并关闭Issue #27；[草稿PR #28](https://github.com/KYLeonis/ai-physics-tracker/pull/28)为完整diff容器。
 3. 不进入 6.3 周期 / 拟合；继续遵守 ADR-0017 用户提供方程的通用平台口径，并核对 [后续回移档案](main-backport-backlog.md)。
 
 ## Active Constraints
@@ -58,6 +58,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.2 HR轨迹多选修复（2026-10-14）**：用户反馈列表无法勾选两条、其余HR通过。局部控件修复 `76e9439`：可见空框、整行点击独立勾选、保持键盘当前行并由列表接管空格，原勾选信号 / 计算入口不变。新增名称 / 框 / 键盘3个真实输入回归，修复前名称点击失败；连续键盘回归另暴露刷新与全局播放快捷键问题，一并修复。51项GUI回归通过（32.09s），最新双平台CI38580981879通过；修复同步原P6.2分支供重启补测，真实项目 / 科学算法 / 论文worktree未改。
 
 - **P6.2 完整review闭环 / HR交付（2026-10-14）**：R2关闭F1–F3，F4–F7（2P2 / 2P3）与自查F8修复 `ead9b0d`；旧线性来源披露与needs_update、两族同步 / 后台未知扩展保留、未来视图、领域变化即时取消、参考编辑刷新。定向186 / 全量 **1007 passed（88.42s）**，全新R3独立复审 **Approve / F1–F8 Closed**，[CI38512989022](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38512989022) macOS / Windows Python3.11均success。本轮Human A/B/C/D已发起，等待反馈；合成媒体已补齐且真实打开路径通过，用户实验和论文worktree未改。[review](../reviews/phase-6.2-review.md)。
 
