@@ -238,6 +238,27 @@ def test_analysis_facts_family_splits_linear_and_angular(tmp_path: Path) -> None
     assert analysis_facts(session, track.track_id, family="angular").state == ANALYSIS_LATEST
 
 
+@pytest.mark.parametrize("family", ["linear", "angular"])
+def test_analysis_cache_without_timing_source_needs_recompute(tmp_path: Path, family: str) -> None:
+    from ai_physics_tracker.domain.angular import PendulumReference
+    session, track, _video = _session_with_track(tmp_path, zone_frames=10)
+    for frame in range(10):
+        session.mark_point(track.track_id, frame, 1.0 + frame, 2.0)
+    session.add_calibration(track.video_id, scale_end_1_px=(0., 0.),
+                            scale_end_2_px=(10., 0.), known_length=1., unit="m")
+    if family == "linear":
+        session.compute_kinematics(track.track_id)
+    else:
+        session.compute_angular(track.track_id, reference=PendulumReference((0., 0.)))
+    assert analysis_facts(session, track.track_id, family=family).state == ANALYSIS_LATEST
+    session._project = replace(session.project, derived=tuple(
+        replace(record, extra_fields={}) for record in session.project.derived))
+
+    facts = analysis_facts(session, track.track_id, family=family)
+
+    assert facts.state == ANALYSIS_NEEDS_UPDATE
+    assert "timing source" in facts.reason
+
 def test_analysis_facts_rejects_unknown_family(tmp_path: Path) -> None:
     session, track, _video = _session_with_track(tmp_path)
     with pytest.raises(ValueError, match="unknown analysis family"):

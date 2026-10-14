@@ -367,8 +367,8 @@ def fps_mismatch_reason(derived: DerivedData, timeline: Timeline) -> str | None:
     if context is None:
         return None
     fps = recorded_fps(context)
-    if fps is None:
-        return "has an unreadable recorded timing context"
+    if fps is None or fps <= 0:
+        return None  # 不可读来源由 timing_identity_reject_reason 披露。
     if abs(fps - timeline.fps_nominal) > _FPS_TOLERANCE:
         return (
             f"was computed at {fps:g} fps while the current timeline runs "
@@ -383,13 +383,8 @@ def zone_mismatch(derived: DerivedData, timeline: Timeline) -> bool:
     context = timing_context(derived)
     if context is None:
         return False
-    zone = context.get("working_zone")
-    if not isinstance(zone, (list, tuple)) or len(zone) != 2:
-        return False
-    try:
-        return (int(zone[0]), int(zone[1])) != timeline.working_zone
-    except (TypeError, ValueError):
-        return False
+    zone = _strict_zone_pair(context.get("working_zone"))
+    return zone is not None and zone != timeline.working_zone
 
 
 def has_approximate_timing(derived: DerivedData) -> bool:
@@ -735,8 +730,8 @@ def _smoothing_summary(derived: DerivedData) -> str:
     return "raw"
 
 
-def timing_summary(derived: DerivedData) -> str | None:
-    """缓存时序来源披露：记录 fps / 区间 / 近似授权（无记录返回 None）。
+def timing_summary(derived: DerivedData) -> str:
+    """缓存时序来源披露：记录 fps / 区间 / 近似授权，包括不可读来源。
 
     与写入契约的缺口同样披露（如线性结果暂无 working_zone 记录时显示
     "zone unrecorded"），让"来源未记录"可见而不是伪装完整。
@@ -744,19 +739,18 @@ def timing_summary(derived: DerivedData) -> str | None:
 
     context = timing_context(derived)
     if context is None:
-        return None
+        return ("timing source unreadable" if "timing_context" in derived.extra_fields
+                else "timing source unrecorded")
     fps = recorded_fps(context)
     fps_text = f"{fps:g} fps" if fps is not None else "fps unrecorded"
-    zone = context.get("working_zone")
-    zone_text = "zone unrecorded"
-    if isinstance(zone, (list, tuple)) and len(zone) == 2:
-        try:
-            zone_text = f"frames {int(zone[0])}–{int(zone[1])}"
-        except (TypeError, ValueError):
-            zone_text = "zone unrecorded"
-    if "approximation" not in context:
+    zone = _strict_zone_pair(context.get("working_zone"))
+    zone_text = (f"frames {zone[0]}–{zone[1]}" if zone is not None else
+                 "zone unreadable" if "working_zone" in context else "zone unrecorded")
+    reason = timing_identity_reject_reason(derived)
+    if reason is not None:
         # 字段缺失 ≠ 精确时序：来源未按契约写入时如实披露缺口。
-        approx_text = "timing source unrecorded"
+        approx_text = ("timing source unreadable" if "unreadable" in reason
+                       else "timing source unrecorded")
     else:
         approximation = context.get("approximation")
         if approximation is None:
@@ -770,11 +764,11 @@ def timing_summary(derived: DerivedData) -> str | None:
 
 
 def pipeline_summary(derived: DerivedData) -> str:
-    """线性记录的管线摘要：SG 实际参数 + 缓存时序披露（无记录不追加）。"""
+    """线性记录的管线摘要：SG 实际参数 + 缓存时序披露。"""
 
     base = _smoothing_summary(derived)
     timing = timing_summary(derived)
-    return f"{base} · {timing}" if timing is not None else base
+    return f"{base} · {timing}"
 
 
 def angular_pipeline_summary(
@@ -786,8 +780,7 @@ def angular_pipeline_summary(
     if has_step(derived, "savitzky_golay"):
         parts.append(_smoothing_summary(derived))
     timing = timing_summary(derived)
-    if timing is not None:
-        parts.append(timing)
+    parts.append(timing)
     return " · ".join(parts)
 
 

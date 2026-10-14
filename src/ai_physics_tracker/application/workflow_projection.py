@@ -21,6 +21,7 @@ from typing import Sequence
 from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession
+from ai_physics_tracker.application.chart_recipe import timing_identity
 from ai_physics_tracker.domain.derived import (
     ANGULAR_KINDS,
     KINEMATICS_KINDS,
@@ -396,11 +397,20 @@ def analysis_facts(
 
     derived_valid, derived_present = family_derived_state(
         session.project.derived, track_id, family_kinds)
+    records = {record.kind: record for record in session.project.derived
+               if record.track_id == track_id and record.kind in family_kinds}
+    timing_incomplete = derived_valid and any(timing_identity(record) is None
+                                             for record in records.values())
+    if timing_incomplete:
+        derived_valid = False
     if not derived_valid:
         state = ANALYSIS_NEEDS_UPDATE
-        reason = None if derived_present else (
-            "charts have not been computed yet" if family == "linear"
-            else "angular charts have not been computed yet")
+        reason = None
+        if timing_incomplete:
+            reason = "cached timing source incomplete; recompute charts"
+        elif not derived_present:
+            reason = ("charts have not been computed yet" if family == "linear"
+                      else "angular charts have not been computed yet")
     elif has_data_limitations:
         state, reason = ANALYSIS_PARTIAL, None
     else:

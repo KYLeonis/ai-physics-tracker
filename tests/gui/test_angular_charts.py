@@ -14,6 +14,7 @@ from ai_physics_tracker.application.chart_recipe import timing_identity
 from ai_physics_tracker.application.video_timing import TimingReport
 from ai_physics_tracker.domain.angular import PendulumReference, TwoPointReference
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS
+from ai_physics_tracker.domain.project import update_timeline
 from ai_physics_tracker.gui.chart_panel import ChartPlot
 from test_charts import _add_track, _BlockingJob, _opened, _SceneMouseEvent
 
@@ -38,6 +39,17 @@ def _angular_window(qtbot, path, *, calibrated=True):
 def _compute(qtbot, window):
     window.chartActions.recompute()
     qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
+
+
+def test_editing_confirmed_reference_disables_recompute_without_other_ui_actions(qtbot, synthetic_video_path):
+    window, _track = _angular_window(qtbot, synthetic_video_path)
+    actions = window.chartActions
+    qtbot.waitUntil(lambda: not actions._refresh_timer.isActive(), timeout=5000)
+    assert actions.panel.recomputeButton.isEnabled()
+
+    actions.panel.angularControls.pivotX.setValue(11.)
+
+    qtbot.waitUntil(lambda: not actions.panel.recomputeButton.isEnabled(), timeout=500)
 
 
 def test_confirmed_reference_computes_rad_results_and_degree_is_display_only(qtbot, synthetic_video_path):
@@ -122,12 +134,12 @@ def test_angular_prerequisite_failure_preserves_raw_and_cached_results(qtbot, sy
     assert session.project == before
 
 
-@pytest.mark.parametrize("change", ["sg", "reference", "checked_track", "active_track", "family", "project", "cancel"])
+@pytest.mark.parametrize("change", ["sg", "reference", "checked_track", "active_track", "family", "project", "cancel",
+                                    "raw", "calibration", "timing", "zone", "workspace"])
 def test_changed_gui_context_discards_even_cancel_ignoring_angular_result(qtbot, synthetic_video_path, monkeypatch, change):
     window, track = _angular_window(qtbot, synthetic_video_path)
     session, actions = window.analysisSession, window.chartActions
     session.compute_kinematics(track.track_id)
-    baseline = session.project
     import ai_physics_tracker.gui.chart_actions as module
     real_run = module.run_angular_job
     gate = _BlockingJob(lambda job, _cancel: real_run(job, Event()), cancel_aware=False)
@@ -148,15 +160,52 @@ def test_changed_gui_context_discards_even_cancel_ignoring_angular_result(qtbot,
             actions.panel.tabs.setCurrentIndex(9)
         elif change == "project":
             window.adoptEmptyProject()
+        elif change == "raw":
+            session.mark_point(track.track_id, 0, 50., 51.)
+            window._refreshHistoryButtons()
+        elif change == "calibration":
+            calibration = session.active_calibration(track.video_id)
+            session.update_calibration(replace(calibration, origin_px=(1., 2.)))
+            window._refreshHistoryButtons()
+        elif change == "timing":
+            session.confirm_video_timing(track.video_id, TimingReport("unknown", "test"))
+            window.analysisChanged.emit()
+        elif change == "zone":
+            session._project = update_timeline(session.project, replace(session.project.timelines[0], working_zone=(1, 4)))
+            window.analysisChanged.emit()
+        elif change == "workspace":
+            window.setWorkspace("acquire")
         else:
             actions.cancel()
+        assert actions._cancel.is_set()
+        expected = session.project
         gate.release.set()
         qtbot.waitUntil(gate.finished.is_set, timeout=5000)
         qtbot.waitUntil(lambda: not actions.pending, timeout=5000)
-        assert session.project.derived == baseline.derived
-        assert session.project.observations == baseline.observations
+        assert session.project.derived == expected.derived
+        assert session.project.observations == expected.observations
         if change == "project":
             assert window.analysisSession.project.derived == ()
+    finally:
+        gate.release.set()
+        qtbot.waitUntil(gate.finished.is_set, timeout=5000)
+
+
+def test_analysis_refresh_without_input_change_keeps_running_job(qtbot, synthetic_video_path, monkeypatch):
+    window, _track = _angular_window(qtbot, synthetic_video_path)
+    actions = window.chartActions
+    import ai_physics_tracker.gui.chart_actions as module
+    gate = _BlockingJob(module.run_angular_job, cancel_aware=False)
+    monkeypatch.setattr(module, "run_angular_job", gate)
+    try:
+        actions.recompute()
+        qtbot.waitUntil(gate.started.is_set, timeout=5000)
+        window.analysisChanged.emit()
+        actions.panel.angleUnit.setCurrentText("degree")
+        assert not actions._cancel.is_set()
+        gate.release.set()
+        qtbot.waitUntil(lambda: not actions.pending, timeout=5000)
+        assert len(window.analysisSession.project.derived) == 4
     finally:
         gate.release.set()
         qtbot.waitUntil(gate.finished.is_set, timeout=5000)
@@ -215,6 +264,12 @@ def test_save_reopen_restores_recipe_display_and_unknown_chart_preferences(qtbot
     window.adoptEmptyProject()
     assert panel.currentAngleUnit() == "rad" and panel.currentPlot.kind == "x_t"
     future = {"version": 2, "custom": {"keep": [1, 2]}}
+    panel.tabs.setCurrentIndex(8)
+    panel.angleUnit.setCurrentText("degree")
+    panel.positionSource.setCurrentIndex(1)
+    panel.restoreViewState(future)
+    assert panel.currentPlot.kind == "theta_omega" and panel.currentAngleUnit() == "degree"
+    assert panel.positionSource.currentIndex() == 1
     window.analysisSession.update_view_state({"charts": future})
     assert window.captureProjectView()["charts"] == future
 

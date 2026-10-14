@@ -77,6 +77,7 @@ from ai_physics_tracker.domain.derived import (
     DerivedData,
     DerivedInput,
     mark_tracks_stale,
+    preserve_derived_extensions,
 )
 from ai_physics_tracker.domain.timeline import (
     TIME_COMPARISON_TOLERANCE_S,
@@ -1002,8 +1003,9 @@ class ProjectSession:
             "working_zone": list(timeline.working_zone),
             "approximation": self.measurement_timing_detail(track.video_id),
         }
-        new_items = tuple(replace(item, extra_fields={"timing_context": deepcopy(timing_context)})
-                          for item in new_items)
+        new_items = tuple(preserve_derived_extensions(
+            replace(item, extra_fields={"timing_context": deepcopy(timing_context)}),
+            self.derived_data(item.track_id, item.kind)) for item in new_items)
         new_kinds = {item.kind for item in new_items}
         kept_derived = [
             d
@@ -1252,8 +1254,10 @@ class ProjectSession:
             "working_zone": list(timeline.working_zone),
             "approximation": self.measurement_timing_detail(track.video_id),
         }
-        new_items = tuple(replace(item, extra_fields={"timing_context": deepcopy(timing_context)})
-                          for item in (d_theta, d_smooth, d_omega, d_alpha))
+        new_items = tuple(preserve_derived_extensions(
+            replace(item, extra_fields={"timing_context": deepcopy(timing_context)}),
+            self.derived_data(item.track_id, item.kind))
+            for item in (d_theta, d_smooth, d_omega, d_alpha))
         kept_derived = [
             d
             for d in self._project.derived

@@ -337,6 +337,12 @@ def _time_record_state(
     # 持久化的 stale 状态是事实，不因标定 / 区间恰好一致而被洗白成 valid；
     # 标定 / 区间不一致只会让展示进一步降级为 stale。
     status = record.status
+    timing_reason = timing_identity_reject_reason(record)
+    if timing_reason is not None:
+        status = "stale"
+        messages.append(
+            f"Track {track.name!r} {timing_reason}; shown as stale. Recompute the track"
+        )
     if record.calibration_ref != expected_calibration:
         status = "stale"
         messages.append(

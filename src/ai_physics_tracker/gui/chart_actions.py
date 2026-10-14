@@ -20,8 +20,10 @@ from ai_physics_tracker.application.chart_data import ChartData, build_chart_dat
 from ai_physics_tracker.application.chart_recipe import reference_recipe, smoothing_recipe
 from ai_physics_tracker.application.project_media import workflow_state
 from ai_physics_tracker.application.kinematics_job import (
-    KinematicsJob, KinematicsResult, prepare_kinematics_job, run_kinematics_job,
+    AnalysisInputs, KinematicsJob, KinematicsResult, analysis_inputs,
+    prepare_kinematics_job, run_kinematics_job,
 )
+from ai_physics_tracker.application.project_session import ProjectSessionError
 from ai_physics_tracker.domain.angular import AngularReference, PendulumReference, TwoPointReference
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS
 from ai_physics_tracker.domain.timeline import frame_to_time, time_to_frame, clamp_to_working_zone
@@ -50,6 +52,8 @@ class ChartActions(QObject):
         self._cancel = Event()
         self._future: Future[KinematicsResult | AngularResult] | None = None
         self._job_generation = -1
+        self._job_inputs: AnalysisInputs | None = None
+        self._job_workspace = window.currentWorkspace
         self._context_generation = window.deliveryGeneration
         self._render_key = None
         self._seeded_controls = None
@@ -63,7 +67,7 @@ class ChartActions(QObject):
         window.presentedFrameChanged.connect(self.presentFrame)
         window.frameRequestFailed.connect(self.clearRequest)
         window.frameRequested.connect(self.requestFrame)
-        window.analysisChanged.connect(self.scheduleRefresh)
+        window.analysisChanged.connect(self._analysisChanged)
         window.projectChanged.connect(self.resetContext)
         window.selectedTrackChanged.connect(self._windowSelectionChanged)
         window.closing.connect(self.shutdown)
@@ -87,9 +91,25 @@ class ChartActions(QObject):
         if not self._closed and not self._refresh_timer.isActive():
             self._refresh_timer.start(0)
 
+    def _analysisChanged(self) -> None:
+        # 保存 / 视图刷新也发同一信号，只取消科学输入或工作区已变化的任务。
+        if self.pending and self._job_inputs is not None:
+            inputs = self._job_inputs
+            session = self.window.analysisSession
+            try:
+                current = (analysis_inputs(session, inputs.video.video_id,
+                           tuple(track.track_id for track in inputs.tracks))
+                           if session is not None else None)
+            except ProjectSessionError:
+                current = None
+            if current != inputs or self.window.currentWorkspace != self._job_workspace:
+                self.cancel()
+        self.scheduleRefresh()
+
     def resetContext(self) -> None:
         self._cancel.set()
         self._future = None
+        self._job_inputs = None
         self._timer.stop()
         self._context_generation = self.window.deliveryGeneration
         self._render_key = None
@@ -251,6 +271,7 @@ class ChartActions(QObject):
         if self.pending:
             self.cancel()
         self.panel.jobLabel.setText("Settings not applied — recompute checked tracks")
+        self.scheduleRefresh()
 
     def _referenceApplied(self) -> None:
         self.scheduleRefresh()
@@ -319,6 +340,8 @@ class ChartActions(QObject):
             return
         self._cancel = Event()
         self._job_generation = self.window.deliveryGeneration
+        self._job_inputs = job.inputs
+        self._job_workspace = self.window.currentWorkspace
         self._future = self._executor.submit(_run_chart_job, job, self._cancel)
         self.panel.jobLabel.setText("Computing: " + ", ".join(
             track.name for track in job.inputs.tracks if track.track_id in track_ids))
@@ -351,6 +374,7 @@ class ChartActions(QObject):
             return
         self._timer.stop()
         self._future = None
+        self._job_inputs = None
         try:
             result = future.result()
             if self._cancel.is_set() or self._job_generation != self.window.deliveryGeneration:

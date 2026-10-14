@@ -274,7 +274,9 @@ def test_valid_cache_from_another_calibration_is_displayed_as_stale_without_muta
         derived=(_derived(track_id, "world_position", (2,), ((8, 9),)),))
     active = project.calibrations[0]
     other = replace(active, calibration_id=uuid4(), name="other", origin_px=(30, 0))
-    old_result = replace(project.derived[0], calibration_ref=other.calibration_id)
+    old_result = replace(project.derived[0], calibration_ref=other.calibration_id,
+                         extra_fields={"timing_context": {"fps_nominal": 29.97,
+                                       "working_zone": [0, 99], "approximation": None}})
     project = replace(project, calibrations=(active, other), derived=(old_result,))
     chart = build_chart_data(project, video_id, (track_id,), "x_t")
     assert chart.series[0].status == "stale"
@@ -299,6 +301,28 @@ def test_stale_status_is_preserved_when_calibration_and_zone_match() -> None:
     assert len(chart.series) == 1
     assert chart.series[0].status == "stale"
     assert any("stale" in message for message in chart.messages)
+
+
+@pytest.mark.parametrize("context", [None, "invalid", {},
+    {"fps_nominal": 29.97, "working_zone": ["0", "99"], "approximation": None},
+    {"fps_nominal": 29.97, "working_zone": [0.5, 99], "approximation": None}])
+def test_linear_legacy_or_unreadable_timing_is_visible_but_never_valid(context) -> None:
+    project, video_id, track_id = _project()
+    record = replace(
+        _derived(track_id, "world_position", (2,), ((8, 9),)),
+        calibration_ref=project.calibrations[0].calibration_id,
+        extra_fields={} if context is None else {"timing_context": context},
+    )
+    project = replace(project, derived=(record,))
+
+    chart = build_chart_data(project, video_id, (track_id,), "x_t")
+
+    assert len(chart.series) == 1
+    assert chart.series[0].status == "stale"
+    assert "timing source" in chart.series[0].pipeline_summary
+    assert "exact timing" not in chart.series[0].pipeline_summary
+    assert any("shown as stale" in message for message in chart.messages)
+    assert project.derived[0] is record and record.status == "valid"
 
 
 @pytest.mark.parametrize(

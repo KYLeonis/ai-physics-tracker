@@ -1,5 +1,6 @@
 """派生数据的溯源值对象与失效标记辅助函数。"""
 
+from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from uuid import UUID
@@ -71,6 +72,17 @@ class DerivedData:
         if self.values is not None and self.payload_ref is not None:
             raise ValueError("values and payload_ref are mutually exclusive")
         require_aware_datetime(self.created_at, "created_at")
+
+
+def preserve_derived_extensions(record: DerivedData, previous: DerivedData | None) -> DerivedData:
+    """替换结果时保留旧的未知扩展，本次计算拥有的字段以新值为准。"""
+
+    extras = deepcopy(previous.extra_fields) if previous else {}
+    extras.update(record.extra_fields)
+    input_extras = deepcopy(previous.input.extra_fields) if previous else {}
+    input_extras.update(record.input.extra_fields)
+    return replace(record, extra_fields=extras,
+                   input=replace(record.input, extra_fields=input_extras))
 
 
 def mark_calibrations_stale(

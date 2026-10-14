@@ -507,14 +507,17 @@ class ChartPanel(QWidget):
         return state
 
     def restoreViewState(self, state: dict) -> None:
-        """恢复显示选项；缺省 / 未来版本字段安静保持当前值，不降级覆盖。"""
+        """缺省恢复默认显示；未来版本保持当前值，不降级覆盖。"""
+
+        if isinstance(state, dict) and state.get("version", 1) != 1:
+            return
 
         with QSignalBlocker(self.angleUnit), QSignalBlocker(self.positionSource), QSignalBlocker(self.tabs):
             self.angleUnit.setCurrentIndex(0)
             self.positionSource.setCurrentIndex(0)
             self.tabs.setCurrentIndex(0)
         self._tabChanged(0)
-        if not isinstance(state, dict) or state.get("version", 1) != 1:
+        if not isinstance(state, dict):
             return
         unit = state.get("angle_unit")
         if unit in (ANGLE_UNIT_RAD, ANGLE_UNIT_DEGREE):

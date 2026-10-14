@@ -8,7 +8,7 @@ from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.calibration import Calibration
-from ai_physics_tracker.domain.derived import DerivedData, KINEMATICS_KINDS
+from ai_physics_tracker.domain.derived import DerivedData, KINEMATICS_KINDS, preserve_derived_extensions
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.video import Video
@@ -159,12 +159,7 @@ def validated_batch(
     records_out = []
     for record in records:
         previous = session.derived_data(record.track_id, record.kind)
-        extras = deepcopy(previous.extra_fields) if previous else {}
-        extras.update(record.extra_fields)
-        input_extras = deepcopy(previous.input.extra_fields) if previous else {}
-        input_extras.update(record.input.extra_fields)
-        records_out.append(replace(record, extra_fields=extras,
-                                   input=replace(record.input, extra_fields=input_extras)))
+        records_out.append(preserve_derived_extensions(record, previous))
     return kept + tuple(records_out)
 
 
