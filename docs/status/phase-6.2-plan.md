@@ -145,3 +145,5 @@ R2 本地全新只读审查关闭 S1 的 F1–F3，发现旧线性缓存时序�
 ### Final acceptance / integration（2026-10-15）
 
 用户确认轨迹多选补测“通过”，全部Human Review闭环，AC-1–7完成。`12b0911` 以 `--no-ff` 集成 `feat/p6.2-angular-charts @ 8b1221b`；合并树与分支tip完全相同，源码 / 测试与最终控件修复 `76e9439` 一致。[最新分支CI38582553294](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294)双平台success；原科学 / 事务R3 Approve及控件Normal-risk验证保留各自范围。6.3未启动，周期 / 用户方程范围须另行规划。
+
+收尾回执：文档同步 `a26f968` 已push main；PR #28 Merged（merge `12b0911`），Issue #27 Closed。[main CI38595699864](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38595699864) macOS / Windows Python3.11均success。后续只记录本回执，产品源码 / 测试不变；P6.2正式结束，等待下一条指令。

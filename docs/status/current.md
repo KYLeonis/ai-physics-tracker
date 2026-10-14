@@ -59,7 +59,7 @@
 
 ## Recently Completed
 
-- **P6.2全部HR通过 / main集成（2026-10-15）**：用户先确认其余HR，再确认轨迹多选补测“通过”，F1–F9 Closed。`--no-ff` 合并 `12b0911` 的树与 `feat/p6.2-angular-charts @ 8b1221b` 完全一致；源码 / 测试与 `76e9439` 一致。科学 / 事务全量1007及R3 Approve，控件51项GUI和最终双平台 **1008 passed / 2 skipped**；[已验收分支CI38582553294](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294) success。同步AC-7、README / roadmap / AGENTS / review及后续档案；main推送及GitHub收尾回执见下方记录。本轮未新增产品代码 / 开始6.3，论文worktree与用户实验未改。
+- **P6.2全部HR通过 / main集成（2026-10-15）**：用户先确认其余HR，再确认轨迹多选补测“通过”，F1–F9 Closed。`--no-ff` 合并 `12b0911` 的树与 `feat/p6.2-angular-charts @ 8b1221b` 完全一致；源码 / 测试与 `76e9439` 一致。科学 / 事务全量1007及R3 Approve，控件51项GUI和最终双平台 **1008 passed / 2 skipped**；[已验收分支CI38582553294](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294) success。同步AC-7、README / roadmap / AGENTS / review及后续档案；main已推送，PR #28 Merged / Issue #27 Closed；收尾文档 `a26f968` 的[main CI38595699864](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38595699864) macOS / Windows Python3.11均success。之后仅补此回执，不重复测试。本轮未新增产品代码 / 开始6.3，论文worktree与用户实验未改。
 
 - **P6.2 HR轨迹多选修复（2026-10-14）**：用户反馈列表无法勾选两条、其余HR通过。局部控件修复 `76e9439`：可见空框、整行点击独立勾选、保持键盘当前行并由列表接管空格，原勾选信号 / 计算入口不变。新增名称 / 框 / 键盘3个真实输入回归，修复前名称点击失败；连续键盘回归另暴露刷新与全局播放快捷键问题，一并修复。51项GUI回归通过（32.09s），最新双平台CI38580981879通过；修复同步原P6.2分支供重启补测，真实项目 / 科学算法 / 论文worktree未改。
 
