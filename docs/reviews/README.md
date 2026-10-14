@@ -23,6 +23,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | 5.5 | [phase-5.5-review.md](phase-5.5-review.md) | 修改后通过；R1 三路 20 条 findings 全部闭环（含 2 Blocker），693 测试 + 真实 DLC restart/resume smoke + Human Review 通过 | 2026-09-04 |
 | 5.6 | [phase-5.6-review.md](phase-5.6-review.md) | 自查（用户指示不用 subagent；2 次 subagent 因配额失败）：F1–F5 记录、2 项缺陷修复（含 1 Blocker）、AC-9 明示缺口；699 测试 | 2026-09-16 |
 | 5.7 | [phase-5.7-review.md](phase-5.7-review.md) | R1/R2 findings 全闭环；HR1 与两轮补充实测修复完成；804 测试 + 最终 Human Review 通过 | 2026-09-18 |
+| 6.2 | [phase-6.2-review.md](phase-6.2-review.md) | R3 Approve / F1–F8 Closed；全量1007 / 双平台CI通过，等待本轮Human，未集成main | 2026-10-14 |
 | 6.1 | [phase-6.1-review.md](phase-6.1-review.md) | 完整复审 Approve；原 R2 及新增 R8–R13 Closed，929 全量 / 双平台 CI 通过；已集成 main | 2026-10-13 |
 
 > 4.3 / 4.4 的独立 review 发生于本机制建立之前，不回溯补建独立文件；自下一个触发的 subphase 起使用本目录。

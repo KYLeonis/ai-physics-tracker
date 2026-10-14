@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:    Phase 6（6.1 angular foundation 已完成并集成 main）
+Current Phase:    Phase 6（6.1 已完成并集成 main；6.2 已实现待验收）
 Last Delivered:   Analysis 只读、连续修正、教师模型与 20 帧 / K-means 引导；Human Review 通过
-Next Planned:     Phase 6.2 角量图表与相空间；子计划就绪，尚未开始实现
+Current Subphase: Phase 6.2 角量图表与相空间（Issue #27，GLM主体增量、Codex收尾 / 验收）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -115,7 +115,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | 🔄 6.1 已完成并集成；6.2 计划就绪；方程部分按用户输入重规划 |
+| Phase 6 | Advanced Physics Analysis | 🔄 6.1 已完成并集成；6.2 已实现待验收；方程部分按用户输入重规划 |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
 | Phase 9 | Optimization & Packaging | ⬜ |
@@ -160,8 +160,10 @@ main 已交付 Analysis 视频只读、建议帧批量连续标注 / 修正与�
 2026-10-13 首次学习引导增量已通过 Human Review 并集成 main：当前轨迹需 20 个不同人工帧才可首次学习；默认请求 20 帧 / K-means，顶部推荐的 `Custom frame selection…` 直接切换 K-means / Uniform。已有成功训练的轨迹保持原再训练门槛，教师模型推理仍可直接使用。见[计划](docs/status/initial-annotation-guidance-plan.md)与[真人验收记录](docs/notes/initial-annotation-guidance-human-review.md)。
 用户实测反馈的“选了 K-means 却标前 20 帧”已修复：选帧完成后推荐 `Label suggested frames`，沿实际建议帧连续标注；没有建议结果时先选帧，原有人工标签保留。
 
-### Phase 6.1 / 6.2 当前进度（2026-10-13）
+### Phase 6.1 / 6.2 当前进度（2026-10-14）
 
 6.1 已交付 θ/ω/α 的纯计算、双输入依赖与保存 / 后台事务，完成完整审查和修复并集成 main，
-尚无角量 GUI。当前可进入 [6.2 角量图表与相空间计划](docs/status/phase-6.2-plan.md)的实现准备；
+P6.2 已按 [角量图表与相空间计划](docs/status/phase-6.2-plan.md)完成S1–S3；新增两种参考、θ/ω/α时间图、θ–ω / x–vx、degree显示和只读源帧导航；
 科学 / 时序 / 结果版本约束见 ADR-0019/0020，最新验证和下一步见 current。
+
+P6.2分支 `feat/p6.2-angular-charts` 完成完整独立审查提出的修复，最新代码 `ead9b0d` 全量 **1007 passed（88.42s）**、全新独立复审 **Approve**、[macOS / Windows CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38512989022)通过。新GUI Human Review已发起，等待用户反馈；[Review记录](docs/reviews/phase-6.2-review.md)及[本轮验收步骤](docs/notes/phase-6.2-human-review.md)。ZCode网络连接重置后按Skill不自动重试，Codex在本轮授权范围内完成剩余修复 / 测试；未合并main、未进入6.3。

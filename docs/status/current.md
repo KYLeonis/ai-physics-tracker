@@ -1,31 +1,23 @@
 # Current Status
 
-> 2026-10-13：用户确认代表帧修复通过，同时明确确认 Analysis 只读 / 连续修正 / 教师模型 A/B/C 全部通过。
-> 三条分支已按序 `--no-ff` 集成 **main**：`126e71d` → `890f5b1` → `4c8398e`；无冲突，各合并树与对应分支完全相同。
-> 最终产品 / 测试与已验收分支相同，全量 **938 passed（59.72 s）**；main `24403f0` [双平台 CI success](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38364390179)。Issue #24 / #25 / #26 已 Closed。
-> Phase 6.1 完成并集成，原 R2 与 R8–R13 Closed / 独立 Approve。
-> [6.2 子计划](phase-6.2-plan.md)已就绪；本轮仅集成和文档收尾，未开始 6.2 实现。
+> 2026-10-13：用户明确授权使用 codex-zcode 进入 P6.2；Codex 派工和验收，ZCode/GLM 实现。
+> main `8b8fa93` 干净基线，Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`。
+> 前置 P6.1 与三项 GUI HR / main CI 已闭环；P6.2 自身 Independent Review 已 Approve，等待本轮 Human Review。
 
-> 项目"现在在哪、下一步做什么"的**唯一权威运行时入口**——不知道该做什么时先读这个文件。
-> 每个开发会话结束时由 Agent 更新（规则见 `docs/workflow.md` §11.3）；人类可随时手写修改，人类改动优先于 Agent 的判断。
-> 本文件是运行时入口，**不是历史日志**：与当前工作无关的条目随手移出（Phase 历史见 roadmap，finding 见 `docs/reviews/`，实现历史见 git log）。
-
-- 最后更新：2026-10-13（全部 HR 通过，三条分支按序集成 main）
+- 最后更新：2026-10-14（P6.2完整review修复 / 全量1007 / 最新双平台CI / 独立复审通过，等待本轮HR）
 
 ## Current
 
-- **Phase**：Phase 6.1 已完成并集成 main；Phase 6.2 计划就绪，后续方程部分按 ADR-0017 重规划
-- **Subphase / Slice**：Issue #24 / #25 / #26 按序集成 / HR / main CI / Issue 收尾完成；6.2 尚未实现
-- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `main`
-- **Development Mode**：Build Mode（见 `docs/workflow.md` §13）
+- **Phase**：Phase 6；6.1 完成，6.2 进行中；后续用户方程范围另行重规划
+- **Subphase / Slice**：P6.2 S1–S4完成，S5等待HR；代码 `ead9b0d` 已push，定向186 / 全量1007 / 最新双平台CI / R3 Approve；本轮Human已发起，未集成 main
+- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.2-angular-charts`
+- **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **下一次用户明确启动 Phase 6.2**：读取 [phase-6.2-plan.md](phase-6.2-plan.md)，从当前 main 创建 Issue / `feat/p6.2-angular-charts`，先做 S1 标量 / 相空间科学适配和分析缓存族状态。自身 Independent Review / Human Review 仍须执行。
-2. 前置 HR、顺序集成、main 双平台 CI、Issue #24 / #25 / #26 已闭环，无剩余集成阻塞；不重复请求已通过的真人验收。
-3. R2 区间失效、R7 重开测试竞态已闭环；旧 autosave 期间 Open/Save 菜单静默忽略仍只保留后续 UX 档案。
-
-后续 Phase 6 其余子阶段必须按[ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)的**用户提供方程、通用平台分析**口径重规划，不执行旧固定拟合草案。触及相关阶段时必须核对[后续回移档案](main-backport-backlog.md)。
+1. **停止等待本轮 GUI Human Review A/B/C/D 反馈**，按[验收说明](../notes/phase-6.2-human-review.md)使用本机合成工程；未获得反馈前不合并 main，不重复既已完成的审查 / 全量验证。
+2. 若有失败，按实际反馈定向修复并验证；若本轮通过，核对AC-4/5/7，`--no-ff` 集成 / 文档同步 / push并关闭Issue #27；[草稿PR #28](https://github.com/KYLeonis/ai-physics-tracker/pull/28)为完整diff容器。
+3. 不进入 6.3 周期 / 拟合；继续遵守 ADR-0017 用户提供方程的通用平台口径，并核对 [后续回移档案](main-backport-backlog.md)。
 
 ## Active Constraints
 
@@ -35,7 +27,7 @@
 
 - main 用户提供方程 / 公式，由通用平台计算与分析；论文硬编码 ODE 仅作复现参考（ADR-0017）
 - 同步 / 后台计算均需本次时序授权；修改区间置相关派生 stale，不改 raw 时间；提交还核对目标结果版本 / 配方 / 标定（ADR-0020）。
-- 角运动四种标量 kind（angular_position / smoothed_angular_position / angular_velocity / angular_acceleration，rad 系，单列 values）；每轨迹每种 kind 至多一条，重算整组替换（ADR-0019）；6.2 前图表不消费角运动数据
+- 角运动四种标量 kind（angular_position / smoothed_angular_position / angular_velocity / angular_acceleration，rad 系，单列 values）；每轨迹每种 kind 至多一条，重算整组替换（ADR-0019）；6.2已显式消费标量与按帧配对的相图
 
 - raw 层只存像素；世界坐标是 `CalibrationTransform` 的派生结果，`pixel_` / `world_` 前缀严格分层
 - `frame_index` 是 int、时间是 float 秒；换算只经 Timeline 纯函数（nominal 模型 `frame/fps_nominal`，非 VFR 引擎）
@@ -66,6 +58,11 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.2 完整review闭环 / HR交付（2026-10-14）**：R2关闭F1–F3，F4–F7（2P2 / 2P3）与自查F8修复 `ead9b0d`；旧线性来源披露与needs_update、两族同步 / 后台未知扩展保留、未来视图、领域变化即时取消、参考编辑刷新。定向186 / 全量 **1007 passed（88.42s）**，全新R3独立复审 **Approve / F1–F8 Closed**，[CI38512989022](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38512989022) macOS / Windows Python3.11均success。本轮Human A/B/C/D已发起，等待反馈；合成媒体已补齐且真实打开路径通过，用户实验和论文worktree未改。[review](../reviews/phase-6.2-review.md)。
+
+- **P6.2 实现 checkpoint（2026-10-13）**：S1由ZCode GLM-5.3 / Flash交付并独立GLM-5.3科学审查Approve with P3；GUI增量由Flash交付，后续返工报明确ECONNRESET，CLI已退出，按Skill不自动重试、没有额度耗尽证据。Codex完成授权范围内GUI局部修复及测试。新增角量3时间图、θ–ω / x–vx、两种参考、rad/degree只显示、按源帧导航、按族状态 / 单executor / 缓存配方与显示恢复。数据76 / GUI55 / 全量 **991 passed（66.72s）**；代码 `365c2cc` 的[双平台CI38413697035](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38413697035)通过，当时完整独立review / HR待完成；后续闭环见上方2026-10-14记录，尚未集成main。[草稿PR #28](https://github.com/KYLeonis/ai-physics-tracker/pull/28)作为完整diff容器。局部证据与HR合成工程位于本地忽略`.zcode-control/`；2026-10-14补齐合成媒体并验证实际打开路径，真实实验和论文worktree未改。
+
 
 - **通用 ZCode Skill 公开发布（2026-10-13）**：独立仓库 [KYLeonis/codex-zcode](https://github.com/KYLeonis/codex-zcode)，MIT / `v0.1.0`。已移除个人路径与项目记录，保留派工、模型核验、5 小时限额接管及 Desktop 对话登记；新增本地任务 / 日志 Git exclude 保护。18 项回归、Skill 格式校验、GitHub 安装器远端安装与安装后测试通过，本机全局 Skill 已同步。CI 模板已附，但当前 OAuth 缺少 workflow 权限，未启用云端 CI；Windows 真机与其他 ZCode 版本仍待验证。本轮未改产品代码 / 启动 6.2。
 

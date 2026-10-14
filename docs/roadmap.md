@@ -6,7 +6,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近交付：**Phase 6.1 角运动基础，以及只读分析 / 连续修正 / 教师模型 / 20 帧选帧引导（2026-10-13；相关 Human Review 通过，已集成 main）**
-- 当前阶段：**Phase 6 进行中（2026-10-13，6.1 完成并集成 main，6.2 子计划就绪尚未实现）**
+- 当前阶段：**Phase 6 进行中（2026-10-14，6.1 完成并集成 main，6.2 已实现，全量1007 / 独立复审 / 双平台CI通过，等待本轮HR）**
 - 已交付 GUI 增量：首次学习 20 个人工帧、默认 K-means、推荐框自定义算法及沿真实建议帧连续标注；[计划](status/initial-annotation-guidance-plan.md)，Human Review 已通过。
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
@@ -188,7 +188,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 **目标**：更丰富的物理分析能力。
 
-**状态**：6.1 角运动基础已实现 / 复审并修复、集成 main；6.2 子计划已准备，角量 GUI 尚未实现。整个 Phase 6 的周期 / 拟合 / 误差验收仍未完成。
+**状态**：6.1 角运动基础已实现 / 复审并修复、集成 main；6.2 图表 / 相空间及完整review修复已实现（Issue #27）；1007全量 / 独立复审 / 双平台CI通过，等待本轮HR，未集成main。整个 Phase 6 的周期 / 拟合 / 误差验收仍未完成。
 规划入口：[phase6-requirements.md](spec/phase6-requirements.md)、
 [phase-6-plan.md](status/phase-6-plan.md)、[phase-6.1-plan.md](status/phase-6.1-plan.md)、[phase-6.2-plan.md](status/phase-6.2-plan.md)。
 

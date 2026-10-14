@@ -9,7 +9,7 @@
 | autosave `after` 续接 | 触及保存后训练 / 批次修正完成后的保存续接时 | `916adeb`，先复现 busy，同 session / 失败 / 换工程守卫 | 本轮纳入：busy autosave 完成后同 session 续接并再存新改动；失败不执行 after，定向回归 |
 | tests 支持 codex/** | 下次 CI / branch 配置维护 | `.github/workflows/tests.yml`；当前 feat/** 已覆盖 | Deferred |
 | 允许预建空工程目录 | 下次新建工程 / Save as UX | `2b77d2e` + `199bc52` 并发文件保护必须成套 | Deferred |
-| 角量 / 相图 / 周期 / 可见参数 | 重规划 Phase 6 时 | 复用纯计算；SG 口径、α、参考定义按 main 决策 | Partial：6.1 角量基础已实现 / 复审；图表 / 参考配置纳入 phase-6.2-plan；周期仍 Deferred |
+| 角量 / 相图 / 周期 / 可见参数 | 重规划 Phase 6 时 | 复用纯计算；SG 口径、α、参考定义按 main 决策 | Partial：6.1 角量基础已实现 / 复审；6.2图表 / 相图 / 参考 / 可见配方已在工作分支实现（1007全量 / 复审 / CI通过，等待本轮HR）；周期仍 Deferred |
 | 输入身份、历史结果、stale、可追溯参数 | Phase 6 结果契约实施时 | 不直接复制 publication schema v2 | Partial：6.1 输入 / 区间失效、结果版本和配方、时序来源已补齐（ADR-0020）；完整历史 / 通用结果契约仍 Deferred |
 | 通用方程 / ODE / 拟合 / 比较 | Phase 6 方程平台立项时 | 用户提供方程；论文 M0/M1 为示例，E3 30/48、E2 47/48 保留限制 | Deferred |
 | 参数等价教学页 | 通用求解 / 拟合稳定后 | 不将条件目标谷当完整置信区间 | Deferred |

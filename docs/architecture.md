@@ -184,9 +184,11 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 
 用户定义方程 / 公式，由通用计算平台完成求解、拟合、比较和导出；论文固定 ODE 仅作为示例。当前只确认口径，Phase 6 须按 [ADR-0017](decisions/0017-user-defined-equation-analysis-platform.md) 重规划。
 
-角运动分析（Phase 6.1）作为通用平台的首批标量分析能力落地：domain `angular` 提供单摆/两点方向 θ、段内 unwrap 与标量稀疏记录；`DerivedInput.reference_track_id`（additive）承载双轨迹依赖，`compute_angular` 产出四种 rad 系标量 kind，`angular_job` 复用 detached 快照 / 输入复核 / 原子批次提交骨架。契约见 [ADR-0019](decisions/0019-angular-kinematics-and-multi-input-derived-data.md)；图表消费留待 6.2。
+角运动分析（Phase 6.1）作为通用平台的首批标量分析能力落地：domain `angular` 提供单摆/两点方向 θ、段内 unwrap 与标量稀疏记录；`DerivedInput.reference_track_id`（additive）承载双轨迹依赖，`compute_angular` 产出四种 rad 系标量 kind，`angular_job` 复用 detached 快照 / 输入复核 / 原子批次提交骨架。契约见 [ADR-0019](decisions/0019-angular-kinematics-and-multi-input-derived-data.md)；6.2 的 Qt-free `chart_data` 已消费单列角量和按源帧配对的相空间，`chart_recipe` 核对输入 / 参考 / SG / 标定 / 时序并披露缓存来源；GUI已接入十图和参考配置，复用同一ChartActions executor/取消/提交管线；显示选择走workflow.charts视图状态，科学配方仍由DerivedData提供。
 
 教师模型由 domain `ImportedModel` + Project 集合保存身份，infrastructure `imported_models` 管理安全 YAML / staged copy / SHA256，`imported_model_inference` 共用实际帧探针与全视频 runner。GUI `ModelActions` 拥有导入线程 / 自检 spawn 的完整生命周期；`imported_model_job` 将选定关键点接入既有跟踪候选 / 激活事务。[ADR-0018](decisions/0018-managed-teacher-model-import.md) 规定 schema v1 可选扩展、身份和不伪造训练履历。
+
+派生重算的扩展保留统一使用 `domain.derived.preserve_derived_extensions`：同步线性 / 角运动与后台提交均保留旧未知字段，由本次 owned 字段覆盖旧值。旧线性缓存缺少完整时序来源时只读显示 stale，工作流提示重算，不猜测旧来源。
 
 连续建议帧队列 `AnnotationBatch` 只存瞬时选择 / 进度；GUI `BatchAnnotationActions` 委托原 Session 写人工点 / corrected provenance / skipped 记录，完成后显式推荐训练。Analysis 视频只读，Acquire 是编辑入口。
 
