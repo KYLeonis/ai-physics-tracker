@@ -93,6 +93,7 @@ class ChartActions(QObject):
         self.signalPanel.fitRequested.connect(lambda: self.analyzeSignal(True))
         self.signalPanel.recurrenceRequested.connect(lambda: self.analyzeSignal(False))
         self.signalPanel.previewRequested.connect(self.previewSignal)
+        self.signalPanel.sourcePreviewRequested.connect(self.previewRecurrence)
         self.signalPanel.cancelRequested.connect(self.cancel)
         self.signalPanel.settingsChanged.connect(self._signalEdited)
         self.signalPanel.targetChanged.connect(self._signalTargetChanged)
@@ -444,7 +445,7 @@ class ChartActions(QObject):
     def _signalEdited(self) -> None:
         if self._signal_job is not None:
             self.cancel()
-        self.signalPanel.displaySaved()
+        self.signalPanel.refreshDraftDisplay()
 
     def analysisHistory(self, redo: bool) -> None:
         if self.pending or self.window.projectActions.busy or self._closed:
@@ -465,6 +466,8 @@ class ChartActions(QObject):
     def _signalTargetChanged(self) -> None:
         self._signalEdited()
         self.signalPanel.displaySaved()
+        if self.signalPanel.methods.currentIndex() == 1:
+            self.previewRecurrence()
 
     def _prepareSignal(self, fitting: bool):
         session = self.window.analysisSession
@@ -473,6 +476,20 @@ class ChartActions(QObject):
         panel = self.signalPanel
         return prepare_signal_analysis(session, panel.selection(), panel.fitSpec() if fitting else panel.recurrenceSpec(),
                                        panel.resultFormulas() if fitting else ())
+
+    def previewRecurrence(self) -> None:
+        """只展示实际源样本，不计算或发布事件；调线后显式Measure才产生结果。"""
+        if self.pending:
+            return
+        try:
+            job = self._prepareSignal(False)
+            self.signalPanel.renderSamples(job.samples, job.source.unit,
+                                           wrapped=job.source.kind == "angular_position")
+            self.signalPanel.jobLabel.setText("Source preview — adjust reference, then Measure crossing intervals")
+        except (ValueError, ProjectSessionError) as error:
+            self.signalPanel.signalPlot.clear()
+            self.signalPanel._valueRange = None
+            self.signalPanel.jobLabel.setText(str(error))
 
     def previewSignal(self) -> None:
         if self.pending:

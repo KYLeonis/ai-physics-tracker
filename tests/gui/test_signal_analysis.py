@@ -188,6 +188,125 @@ def test_prominent_tools_entry_opens_editor_from_any_workspace_without_changing_
         assert window.currentWorkspace == 'analysis'
         assert window.analysisTabs.currentIndex() == 1
         assert window.chartActions.signalPanel.editor.isVisible()
-        assert window.analysisToolsHint.isVisible()
+        assert not window.analysisToolsHint.isVisible()
         assert session.project.observations == observations
         assert session.project.derived == derived
+
+
+def test_wheel_scrolls_page_and_only_control_wheel_zooms(qtbot, synthetic_video_path):
+    from PySide6.QtCore import QPoint, QPointF
+    from PySide6.QtGui import QWheelEvent
+    from PySide6.QtWidgets import QApplication, QStyle
+    import numpy as np
+    window, _, _ = _window(qtbot, synthetic_video_path)
+    panel, scroll = window.chartActions.signalPanel, window._analysisToolsScroll
+    panel.previewButton.click()
+    qtbot.wait(20)
+    bar = scroll.verticalScrollBar()
+    bar.setValue(bar.maximum() // 2)
+    old_scroll = bar.value()
+    before = np.array(panel.signalPlot.viewRange())
+    def wheel(modifiers, target=None):
+        event = QWheelEvent(QPointF(50, 50), QPointF(50, 50), QPoint(), QPoint(0, -120),
+                            Qt.MouseButton.NoButton, modifiers, Qt.ScrollPhase.NoScrollPhase, False)
+        QApplication.sendEvent(target or panel.signalPlot.viewport(), event)
+    wheel(Qt.KeyboardModifier.NoModifier)
+    assert bar.value() > old_scroll
+    np.testing.assert_allclose(panel.signalPlot.viewRange(), before)
+    old_scroll = bar.value()
+    wheel(Qt.KeyboardModifier.ControlModifier)
+    assert bar.value() == old_scroll
+    assert not np.allclose(panel.signalPlot.viewRange(), before)
+    assert scroll.verticalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOn
+    assert not bar.style().styleHint(QStyle.StyleHint.SH_ScrollBar_Transient, None, bar)
+    panel.resetViewButton.click()
+    np.testing.assert_allclose(panel.signalPlot.viewRange(), before)
+    old_frame = panel.startFrame.value()
+    wheel(Qt.KeyboardModifier.NoModifier, panel.startFrame)
+    assert panel.startFrame.value() == old_frame
+
+
+def test_reference_controls_keep_curve_and_hide_old_events_until_measure(qtbot, synthetic_video_path):
+    import numpy as np
+    window, session, track = _window(qtbot, synthetic_video_path)
+    panel = window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(1)
+    assert panel.signalPlot.listDataItems()
+    panel.centerReferenceButton.click()
+    assert panel.level.value() == 14
+    assert panel.levelSlider.value() == 500
+    panel.level.setValue(13)
+    panel.recurrenceButton.click()
+    qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
+    record = session.derived_data(track, 'signal_recurrence_x')
+    assert len(panel._eventLines) == 1 and panel._eventLines[0].isVisible()
+    curve = panel.signalPlot.listDataItems()[0]
+    before = np.array(panel.signalPlot.viewRange())
+    panel.referenceLine.setValue(15)
+    assert panel.level.value() == 15
+    assert panel.levelSlider.value() == 625
+    assert panel.signalPlot.listDataItems()[0] is curve
+    assert not panel._eventLines[0].isVisible()
+    np.testing.assert_allclose(panel.signalPlot.viewRange(), before)
+    assert session.derived_data(track, 'signal_recurrence_x') == record
+    panel.level.setValue(250)
+    assert 'outside signal' in panel.referenceStatus.text()
+    panel.showReferenceButton.click()
+    assert panel.signalPlot.viewRange()[1][1] >= 250
+    panel.centerReferenceButton.click()
+    assert panel.level.value() == 14
+    np.testing.assert_allclose(panel.signalPlot.viewRange(), before)
+    panel.level.setValue(13)
+    assert panel._eventLines[0].isVisible()
+    assert not panel.summary.isVisible()
+    panel.detailsGroup.setChecked(True)
+    assert panel.summary.isVisible()
+    panel.sourceChoice.setCurrentIndex(1)
+    assert not panel._eventLines
+    assert session.derived_data(track, 'signal_recurrence_x') == record
+    panel.renderSamples([(0, 0., 0., 0., 0), (1, .1, .1, 1e-20, 0)], 'px')
+    assert panel.signalPlot.viewRange()[1][1] - panel.signalPlot.viewRange()[1][0] < 1e-19
+    panel.level.setValue(250)
+    assert panel.levelSlider.value() == 1000
+    assert panel.level.value() == 250
+
+
+def test_analysis_tools_fit_narrow_viewport_and_initial_curve_cannot_hide_signal(qtbot, synthetic_video_path):
+    window, _, _ = _window(qtbot, synthetic_video_path)
+    window.resize(1024, 640)
+    panel = window.chartActions.signalPanel
+    panel.editor.setText('c')
+    panel.parameterTable.item(0, 1).setText('1e24')
+    panel.previewButton.click()
+    qtbot.wait(30)
+    scroll = window._analysisToolsScroll
+    assert panel.width() <= scroll.viewport().width()
+    assert panel.signalPlot.width() <= panel.width()
+    low, high = panel.signalPlot.viewRange()[1]
+    assert low < 10 < 18 < high < 100
+    assert not panel.signalPlot.getAxis('left').autoSIPrefix
+    assert panel.residualPlot.isHidden()
+    panel.plotTabs.setCurrentIndex(1)
+    assert panel.residualPlot.isVisible()
+
+
+def test_live_reference_edit_cancels_pending_measurement_without_publishing(qtbot, synthetic_video_path, monkeypatch):
+    window, session, track = _window(qtbot, synthetic_video_path)
+    actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(1)
+    panel.centerReferenceButton.click()
+    pending, captured = Future(), []
+    def submit(run, job, cancel):
+        captured.append((run, job, cancel))
+        return pending
+    monkeypatch.setattr(actions._executor, 'submit', submit)
+    panel.recurrenceButton.click()
+    run, job, cancel = captured[0]
+    result = run(job, Event())
+    panel.referenceLine.setValue(15)
+    assert cancel.is_set()
+    assert panel.level.value() == 15
+    pending.set_result(result)
+    actions._poll()
+    assert session.derived_data(track, 'signal_recurrence_x') is None
+    assert panel.referenceLine in panel.signalPlot.items()

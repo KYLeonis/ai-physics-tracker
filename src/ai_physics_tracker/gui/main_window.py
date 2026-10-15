@@ -624,7 +624,10 @@ class MainWindow(QMainWindow):
             source = (f"Using {traj.active_label} AI result + {manual_count} "
                       "manual position(s)")
         else:
-            source = f"Using manual positions only ({manual_count})"
+            from collections import Counter
+            counts = Counter(point.source for point in session.effective_points(track_id))
+            source = (f"Using manual positions only ({manual_count})" if not counts or set(counts) == {"manual"}
+                      else "Observations: " + ", ".join(f"{count} {name}" for name, count in sorted(counts.items())))
         track = next((t for t in session.tracks if t.track_id == track_id), None)
         if track is not None:
             calibration = self.activeCalibrationFor(track.video_id) \
@@ -658,21 +661,21 @@ class MainWindow(QMainWindow):
         host_layout = self._analysisChartHost.layout()
         host_layout.setContentsMargins(0, 0, 0, 0)
         self.analysisToolsHint = QLabel(
-            "Want to fit your formula or measure repeat intervals? "
-            "Use the highlighted 'Fit formula / Measure intervals' button above "
-            "or the 'Formula fitting & intervals' tab below.")
+            "Fit your formula or measure repeat intervals: open the Formula fitting & intervals tab.")
         self.analysisToolsHint.setWordWrap(True)
         self.analysisToolsHint.setStyleSheet(
             "background: #eaf3ff; color: #172b4d; padding: 6px; border-radius: 4px;")
         host_layout.addWidget(self.analysisToolsHint)
         self.analysisTabs = QTabWidget()
         self.analysisTabs.addTab(panel, "Charts & source data")
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
+        from ai_physics_tracker.gui.analysis_plot import AnalysisScrollArea
+        scroll = AnalysisScrollArea()
         scroll.setWidget(self.chartActions.signalPanel)
+        self.chartActions.signalPanel.pageScrollRequested.connect(scroll.scrollPage)
         self.analysisTabs.addTab(scroll, "Formula fitting & intervals")
         self._analysisToolsScroll = scroll
         self.workflowHeader.analysisToolsRequested.connect(self.openAnalysisTools)
+        self.analysisTabs.currentChanged.connect(lambda index: self.analysisToolsHint.setVisible(index == 0))
         self.analysisTabs.currentChanged.connect(lambda _index: self.chartActions.cancel() if self.chartActions.pending else None)
         host_layout.addWidget(self.analysisTabs)
 
