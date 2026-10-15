@@ -318,3 +318,59 @@ def test_live_reference_edit_cancels_pending_measurement_without_publishing(qtbo
     actions._poll()
     assert session.derived_data(track, 'signal_recurrence_x') is None
     assert panel.referenceLine in panel.signalPlot.items()
+
+
+def test_reopened_near_cfr_explains_disabled_fit_and_confirmation_is_visible_in_analysis(
+    qtbot, synthetic_video_path, tmp_path, monkeypatch,
+):
+    from PySide6.QtWidgets import QMessageBox
+    window, session, _ = _window(qtbot, synthetic_video_path)
+    root = tmp_path / 'reopened-near-cfr'
+    session.save_as(root)
+    original_points = session.project.observations
+    class NearProbe:
+        def probe(self, path, cancel=None):
+            return TimingReport('near_cfr', 'bounded near-CFR', 5, 10., 10.,
+                                max_grid_error_s=.0001, max_interval_error_s=.0002)
+    window._timing_probe = NearProbe()
+    token, service = window.candidateService()
+    window.adoptPrepared(service.open_project(root, Event()), token)
+    window.trackList.setCurrentRow(0)
+    window.openAnalysisTools()
+    qtbot.wait(20)
+    session, panel = window.analysisSession, window.chartActions.signalPanel
+    panel.editor.setText('A*exp(-gamma*t)*cos(omega*t+phi)+y0')
+    assert not panel.fitButton.isEnabled()
+    assert panel.fitReadinessLabel.isVisible()
+    assert 'Timing not authorized' in panel.fitReadinessLabel.text()
+    assert 'Timing not authorized' in panel.fitButton.toolTip()
+    assert 'not authorized' in window._analysisSourceLabel.text()
+    assert 'verified CFR' not in window._analysisSourceLabel.text()
+    assert window.timingLabel.isVisible() and window.timingButton.isVisible()
+    assert window.timingButton.parent() is window._analysisReferenceHost
+    assert 'Use approximate timing' in window.timingButton.text()
+    monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.StandardButton.No)
+    window.timingButton.click()
+    assert not session.can_measure(window.activeVideoId)
+    assert not panel.fitButton.isEnabled()
+    monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.StandardButton.Yes)
+    window.timingButton.click()
+    qtbot.waitUntil(panel.fitButton.isEnabled)
+    assert 'approximate timing' in window._analysisSourceLabel.text()
+    assert panel.fitReadinessLabel.isHidden()
+    assert window.timingButton.isHidden()
+    panel.previewButton.click()
+    assert 'recompute source first' in panel.jobLabel.text()
+    session.compute_kinematics(session.tracks[0].track_id)
+    window.chartActions.refresh()
+    panel.previewButton.click()
+    assert 'Initial curve only' in panel.jobLabel.text()
+    assert session.project.observations == original_points
+    for workspace in ('acquire', 'analysis', 'setup', 'analysis'):
+        window.setWorkspace(workspace)
+        assert window.timingLabel.isVisible()
+        assert window.timingButton.isHidden()
+        if workspace != 'analysis':
+            assert window._videoColumn.indexOf(window.timingLabel) == 1
+            assert window._videoColumn.indexOf(window.timingButton) == 2
+            assert window._videoColumn.indexOf(window.videoView) == 3

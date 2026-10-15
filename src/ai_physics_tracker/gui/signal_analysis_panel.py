@@ -69,6 +69,9 @@ class SignalAnalysisPanel(QWidget):
         self.contextLabel.setWordWrap(True)
         self.jobLabel = QLabel()
         self.jobLabel.setWordWrap(True)
+        self.fitReadinessLabel, self.crossingReadinessLabel = QLabel(), QLabel()
+        for label in (self.fitReadinessLabel, self.crossingReadinessLabel):
+            label.setWordWrap(True)
         self.draftLabel = QLabel("Draft — no analysis applied")
         self.draftLabel.setWordWrap(True)
         self.editor = FormulaEditor()
@@ -122,6 +125,7 @@ class SignalAnalysisPanel(QWidget):
         fitButtons = QHBoxLayout()
         fitButtons.addWidget(self.previewButton)
         fitButtons.addWidget(self.fitButton)
+        fitLayout.addWidget(self.fitReadinessLabel)
         fitLayout.addLayout(fitButtons)
         self.methods.addTab(fit, "Function fit")
         recurrence = QWidget()
@@ -158,6 +162,7 @@ class SignalAnalysisPanel(QWidget):
         noiseFields.hide()
         noiseOptions.toggled.connect(noiseFields.setVisible)
         recurrenceLayout.addRow(noiseOptions)
+        recurrenceLayout.addRow(self.crossingReadinessLabel)
         recurrenceLayout.addRow(self.recurrenceButton)
         self.methods.addTab(recurrence, "Crossing intervals")
         self.signalPlot, self.residualPlot = AnalysisPlot(), AnalysisPlot()
@@ -428,9 +433,22 @@ class SignalAnalysisPanel(QWidget):
         changed_context = context != self._context
         self._context = context
         self._loading = False
-        enabled = bool(tracks) and session.can_measure(video_id) and not pending
+        if pending:
+            reason = "Calculation in progress — wait or Cancel calculation."
+        elif session is None or video_id is None:
+            reason = "Open a project and select a video before fitting or measuring."
+        elif not tracks:
+            reason = "Add a track before fitting or measuring."
+        elif not session.can_measure(video_id):
+            reason = "Timing not authorized. See the timing status and confirmation / retry button beside the video. Cached results remain readable."
+        else:
+            reason = ""
+        for label in (self.fitReadinessLabel, self.crossingReadinessLabel):
+            label.setText(reason)
+            label.setVisible(bool(reason))
         for button in (self.previewButton, self.fitButton, self.recurrenceButton):
-            button.setEnabled(enabled)
+            button.setEnabled(not reason)
+            button.setToolTip(reason)
         self.cancelButton.setEnabled(pending)
         self.undoButton.setEnabled(bool(session) and not pending and session.can_undo_analysis)
         self.redoButton.setEnabled(bool(session) and not pending and session.can_redo_analysis)
@@ -443,7 +461,8 @@ class SignalAnalysisPanel(QWidget):
         if timeline:
             self.contextLabel.setToolTip(session.measurement_timing_detail(video_id) or "Nominal video time is retained with every sample.")
             self.contextLabel.setText("Source charts required · t = 0 at interval start · angles: rad · derivatives: recorded SG. "
-                                      + ("Approximate timing (details retained)." if session.measurement_timing_detail(video_id) else "Verified nominal timing."))
+                                      + ("Timing not authorized; cached results only." if not session.can_measure(video_id)
+                                         else "Approximate timing (details retained)." if session.measurement_timing_detail(video_id) else "Verified nominal timing."))
         key = (context, self.trackChoice.currentData(), self.quantityChoice.currentText(), session.project.derived if session else ())
         if key != self._cache:
             self._cache = key
