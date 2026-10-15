@@ -140,13 +140,18 @@ def test_tampered_sample_snapshot_is_rejected_atomically(signal_session):
     assert session.project == before
 
 
-def test_reopen_checks_source_freshness_from_older_writers(signal_session, tmp_path):
+@pytest.mark.parametrize('change', ['id', 'values_same_id'])
+def test_reopen_checks_source_freshness_from_older_writers(signal_session, tmp_path, change):
     session, _, track = signal_session
     session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
     saved = session.project
     source = session.derived_data(track, 'world_position')
     from uuid import uuid4
-    changed = replace(saved, derived=tuple(replace(item, derived_id=uuid4()) if item == source else item for item in saved.derived))
+    changed_source = (replace(source, derived_id=uuid4()) if change == 'id' else
+                      replace(source, values=((source.values[0][0]+1, source.values[0][1]),)+source.values[1:]))
+    if change == 'values_same_id':
+        assert changed_source.derived_id == source.derived_id
+    changed = replace(saved, derived=tuple(changed_source if item == source else item for item in saved.derived))
     repository = ProjectRepository()
     root = tmp_path / 'older-writer'
     repository.create_from_project(root, changed)
@@ -170,15 +175,22 @@ def test_nested_summary_and_input_extensions_survive_replacement(signal_session)
     assert current.input.extra_fields['future_selector'] == 3
 
 
-@pytest.mark.parametrize('corruption', ['unit', 'raw_with_smoothing', 'derivative_delta'])
+@pytest.mark.parametrize('corruption', ['unit', 'raw_with_smoothing', 'derivative_delta', 'step_order'])
 def test_rejects_inconsistent_source_recipe_even_if_marked_valid(signal_session, corruption):
     session, _, track = signal_session
-    quantity = 'vx' if corruption == 'derivative_delta' else 'x'
+    if corruption == 'step_order':
+        video_id = session.tracks[0].video_id
+        session.add_calibration(video_id, (0, 0), (100, 0), 1, unit='m')
+        session.compute_kinematics(track)
+    quantity = 'vx' if corruption in ('derivative_delta', 'step_order') else 'x'
     source = session.derived_data(track, 'velocity' if quantity == 'vx' else 'world_position')
     if corruption == 'unit':
         changed = replace(source, unit='m')
     elif corruption == 'raw_with_smoothing':
         changed = replace(source, pipeline=session.derived_data(track, 'smoothed_position').pipeline)
+    elif corruption == 'step_order':
+        assert len(source.pipeline) == 2
+        changed = replace(source, pipeline=source.pipeline[::-1])
     else:
         changed = replace(source, pipeline=tuple(step | {'params': step['params'] | {'delta': 1.0}}
                                                  if step['step'] == 'savitzky_golay' else step for step in source.pipeline))
