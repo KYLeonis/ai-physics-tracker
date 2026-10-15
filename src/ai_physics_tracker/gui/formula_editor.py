@@ -153,24 +153,34 @@ class FormulaEditor(QWidget):
             self.formulaEdit.setAccessibleDescription(self.errorLabel.text())
             return
 
-        parsed = self._mathTextParser.parse(
-            expression.latex,
-            dpi=120,
-            prop=FontProperties(size=18),
-        )
-        alpha = np.asarray(parsed.image)
-        rgba = np.empty((*alpha.shape, 4), dtype=np.uint8)
-        color = self.palette().color(self.foregroundRole()).getRgb()
-        rgba[:, :, :3] = color[:3]
-        rgba[:, :, 3] = alpha
-        image = QImage(
-            rgba.data,
-            alpha.shape[1],
-            alpha.shape[0],
-            int(rgba.strides[0]),
-            QImage.Format.Format_RGBA8888,
-        ).copy()
-        self.previewLabel.setPixmap(QPixmap.fromImage(image))
+        try:
+            parsed = self._mathTextParser.parse(
+                f"${expression.latex}$",
+                dpi=120,
+                prop=FontProperties(size=18),
+            )
+            alpha = np.asarray(parsed.image)
+            rgba = np.empty((*alpha.shape, 4), dtype=np.uint8)
+            color = self.palette().color(self.foregroundRole()).getRgb()
+            rgba[:, :, :3] = color[:3]
+            rgba[:, :, 3] = alpha
+            image = QImage(
+                rgba.data,
+                alpha.shape[1],
+                alpha.shape[0],
+                int(rgba.strides[0]),
+                QImage.Format.Format_RGBA8888,
+            ).copy()
+            self.previewLabel.setPixmap(QPixmap.fromImage(image))
+        except Exception as error:
+            self.previewLabel.clear()
+            self.previewLabel.setAccessibleDescription(
+                "MathText could not render this formula preview."
+            )
+            self.errorLabel.setText(f"MathText preview failed: {error}")
+            self.formulaEdit.setAccessibleDescription(self.errorLabel.text())
+            self._expression = expression
+            return
         self.previewLabel.setAccessibleDescription(f"Rendered expression: {text}")
         self.formulaEdit.setAccessibleDescription(
             "Enter an explicit multiplication expression using t for time."

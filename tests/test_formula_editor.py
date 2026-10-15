@@ -55,6 +55,49 @@ def test_negative_power_and_fraction_render_distinct_previews(qtbot) -> None:
     assert power_size != fraction_size
 
 
+def test_mathtext_math_mode_renders_supported_expression_grammar(qtbot, monkeypatch) -> None:
+    editor = _editor(qtbot)
+    real_parse = editor._mathTextParser.parse
+    parsed_sources: list[str] = []
+
+    def record_mathtext_source(source: str, *args, **kwargs):
+        parsed_sources.append(source)
+        return real_parse(source, *args, **kwargs)
+
+    monkeypatch.setattr(editor._mathTextParser, "parse", record_mathtext_source)
+    formulas = (
+        "alpha_beta*t + 1e-300",
+        "1e-300*t + 1e300",
+        "sin(" * 24 + "t" + ")" * 24,
+    )
+
+    for formula in formulas:
+        editor.setText(formula)
+        expression = editor.expression()
+
+        assert expression is not None
+        assert parsed_sources[-1] == f"${expression.latex}$"
+        assert editor.previewLabel.pixmap() is not None
+        assert not editor.previewLabel.pixmap().isNull()
+        assert editor.errorLabel.text() == ""
+
+
+def test_mathtext_render_failure_clears_preview_and_reports_error(qtbot, monkeypatch) -> None:
+    editor = _editor(qtbot)
+
+    def fail_render(*args, **kwargs):
+        raise ValueError("unsupported MathText command")
+
+    monkeypatch.setattr(editor._mathTextParser, "parse", fail_render)
+
+    editor.setText("a*t + c")
+
+    assert editor.expression() == parse_expression("a*t + c")
+    assert editor.previewLabel.pixmap().isNull()
+    assert "MathText preview failed" in editor.errorLabel.text()
+    assert "unsupported MathText command" in editor.errorLabel.text()
+
+
 def test_invalid_formula_clears_preview_and_reports_original_position(qtbot) -> None:
     editor = _editor(qtbot)
 
