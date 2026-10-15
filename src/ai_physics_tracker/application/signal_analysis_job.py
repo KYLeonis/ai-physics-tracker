@@ -21,6 +21,7 @@ from ai_physics_tracker.domain.analysis import QUANTITIES, source_fingerprint, s
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, DerivedData, DerivedInput
 from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula, parse_expression
 from ai_physics_tracker.domain.function_fit import FitOutcome, FitSpec, fit_function
+from ai_physics_tracker.domain.kinematics import derive_unit
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec, measure_recurrence
 from ai_physics_tracker.domain.timeline import frame_to_time
 from ai_physics_tracker.domain.types import utc_now
@@ -145,8 +146,24 @@ def _validate_source(source: DerivedData, inputs: AnalysisInputs) -> None:
     if any(reason is not None for reason in reasons):
         raise ProjectSessionError("Source recipe unreadable: " + "; ".join(reason for reason in reasons if reason))
     names = [step["step"] for step in source.pipeline]
-    if any(name not in ("calibration_transform", "angular_reference", "angular_unwrap", "savitzky_golay") for name in names):
-        raise ProjectSessionError("Source has an unsupported processing step")
+    angular = source.kind in ANGULAR_KINDS
+    raw = source.kind in ("world_position", "angular_position")
+    expected_steps = (["calibration_transform"] if calibration_id else [])
+    if angular:
+        if calibration_id is None:
+            raise ProjectSessionError("Angular source requires an active calibration")
+        expected_steps += ["angular_reference"] + ([] if raw else ["angular_unwrap"])
+    if not raw:
+        expected_steps.append("savitzky_golay")
+    if names != expected_steps:
+        raise ProjectSessionError("Source processing steps do not match its declared kind")
+    derivative_order = 1 if source.kind in ("velocity", "angular_velocity") else 2 if source.kind in ("acceleration", "angular_acceleration") else 0
+    base_unit = "rad" if angular else inputs.calibration.unit if inputs.calibration else "px"
+    if source.unit != derive_unit(base_unit, derivative_order):
+        raise ProjectSessionError("Source unit does not match its quantity / calibration")
+    smoothing = smoothing_recipe(source)
+    if derivative_order and (smoothing is None or abs(smoothing["delta"] - 1/inputs.timeline.fps_nominal) > 1e-12):
+        raise ProjectSessionError("Source derivative timing does not match the current timeline")
     if source.kind in ("smoothed_position", "velocity", "acceleration") and smoothing_recipe(source) is None:
         raise ProjectSessionError("Source requires a readable smoothing recipe")
     if (source.input.source_filter is not None or source.input.include_superseded

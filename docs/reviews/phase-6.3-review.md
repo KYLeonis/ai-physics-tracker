@@ -52,3 +52,10 @@ R0没有可用结论；R1 Approve，无实质finding。
 - F5：Luna控件初版缺少MathText `$...$` 分隔，图片存在但只是普通文本。已定向返工、真实MathText及错误路径测试补齐，7项通过；不把初版假预览当完成。
 - 拟合提交额外复核参数约束、模型预测 / 残差和摘要；周期提交核对信号与事件 / 摘要，篡改样本拒绝。
 - 当前全量基线1081 passed（97.42s）；此轮修复后最终全量 / 双平台与完整独立review待执行。
+
+
+### CI快照共享回归修复（2026-10-15，e0431eb）
+
+- 用户收到失败邮件后核对旧run [38701032845](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38701032845)：macOS与Windows均仅失败`test_detached_shares_frozen_project_without_copying`；各1083 passed / 2 skipped / 1 failed，依赖安装全部通过。
+- 原因：R2 F1修复把归一化放在Session构造器，每次detached重建Project，破坏已有O(1)共享契约。已将指纹复核移到`ProjectSession.load`实际加载入口，保留构造 / detached共享；旧写入方回归走真实save→load。
+- 修复本机全量1086 passed（98.27s）；[e0431eb PR CI38701431104](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38701431104)及[push CI38701424825](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38701424825)双平台所有步骤success。不把旧失败run重跑冒充代码修复。

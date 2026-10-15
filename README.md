@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:    Phase 6（6.1 / 6.2 已完成并集成 main）
 Last Delivered:   Phase 6.2 角量图表、相空间、参考配置与多轨迹比较；全部 Human Review 通过
-Current Subphase: Phase 6.3 计划已冻结；显式函数拟合 / 通用信号重复间隔，S0待启动
+Current Subphase: Phase 6.3 计划已冻结；显式函数拟合 / 通用信号重复间隔，S0–S4已实现，S5验收中（尚未集成main）
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -166,6 +166,6 @@ main 已交付 Analysis 视频只读、建议帧批量连续标注 / 修正与�
 P6.2 已按 [角量图表与相空间计划](docs/status/phase-6.2-plan.md)完成S1–S5并集成main；新增两种参考、θ/ω/α时间图、θ–ω / x–vx、degree显示和只读源帧导航；
 科学 / 时序 / 结果版本约束见 ADR-0019/0020，最新验证和下一步见 current。
 
-P6.2科学 / 事务修复全量 **1007 passed（88.42s）**、独立复审 **Approve**；轨迹多选修复含名称 / 框 / 键盘真实输入，相关GUI **51项通过**，最终双平台 **1008 passed / 2 skipped**。用户确认全部Human Review通过，已以 `12b0911` 集成main；[CI证据](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294)、[Review记录](docs/reviews/phase-6.2-review.md)及[真人验收记录](docs/notes/phase-6.2-human-review.md)。6.3计划已于2026-10-15获用户认可，产品尚未实现；下一步从真实基准与数据契约开始。
+P6.2科学 / 事务修复全量 **1007 passed（88.42s）**、独立复审 **Approve**；轨迹多选修复含名称 / 框 / 键盘真实输入，相关GUI **51项通过**，最终双平台 **1008 passed / 2 skipped**。用户确认全部Human Review通过，已以 `12b0911` 集成main；[CI证据](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294)、[Review记录](docs/reviews/phase-6.2-review.md)及[真人验收记录](docs/notes/phase-6.2-human-review.md)。6.3计划已于2026-10-15获用户认可，S0真实基准和数据契约已冻结，S1–S4已实现；当前进行S5独立复审 / 全量 / 双平台CI，之后需本轮HR，尚未集成main。
 
 P6.3范围为用户显式函数编辑 / 数学预览、单标量拟合、参数与残差、可选结果公式，以及独立的信号重复间隔 / 周期工具。单摆仅作示例；非周期信号不强求周期，多峰信号不把交叉间隔自动称为基本周期。详见[6.3计划](docs/status/phase-6.3-plan.md)。ODE、单位管理与参数置信区间留后续。

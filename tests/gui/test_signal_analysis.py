@@ -116,3 +116,15 @@ def test_invalid_formula_clears_initial_preview(qtbot, synthetic_video_path):
     panel.fitButton.click()
     assert not window.chartActions.pending
     assert panel.jobLabel.text()
+
+
+def test_formula_typing_owns_letter_and_space_keys_in_analysis(qtbot, synthetic_video_path):
+    window, session, _ = _window(qtbot, synthetic_video_path)
+    edit = window.chartActions.signalPanel.editor.formulaEdit
+    edit.setFocus()
+    edit.selectAll()
+    before = session.project.observations
+    qtbot.keyClicks(edit, 'A*sin(t) + c')
+    assert edit.text() == 'A*sin(t) + c'
+    assert session.project.observations == before
+    assert not window._is_playing

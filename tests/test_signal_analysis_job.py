@@ -168,3 +168,20 @@ def test_nested_summary_and_input_extensions_survive_replacement(signal_session)
     current = session.derived_data(track, 'function_fit_x')
     assert current.extra_fields['analysis']['summary']['future_metric'] == {'score': 8}
     assert current.input.extra_fields['future_selector'] == 3
+
+
+@pytest.mark.parametrize('corruption', ['unit', 'raw_with_smoothing', 'derivative_delta'])
+def test_rejects_inconsistent_source_recipe_even_if_marked_valid(signal_session, corruption):
+    session, _, track = signal_session
+    quantity = 'vx' if corruption == 'derivative_delta' else 'x'
+    source = session.derived_data(track, 'velocity' if quantity == 'vx' else 'world_position')
+    if corruption == 'unit':
+        changed = replace(source, unit='m')
+    elif corruption == 'raw_with_smoothing':
+        changed = replace(source, pipeline=session.derived_data(track, 'smoothed_position').pipeline)
+    else:
+        changed = replace(source, pipeline=tuple(step | {'params': step['params'] | {'delta': 1.0}}
+                                                 if step['step'] == 'savitzky_golay' else step for step in source.pipeline))
+    session._project = replace(session.project, derived=tuple(changed if item == source else item for item in session.project.derived))
+    with pytest.raises(ProjectSessionError):
+        prepare_signal_analysis(session, SignalSelection(track, quantity, 20, 70), FitSpec('c', (FitParameter('c'),)))

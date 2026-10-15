@@ -2,20 +2,20 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-15（P6.3 S0完成，S1 / S2实现中）
+- 最后更新：2026-10-15（P6.3 S0–S4实现，S5验收中）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3 / S1–S2实现中，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)。S0已冻结：人工7事件 / 6间隔、用户提供P011标定与旧DLC、近似时序明确授权；[ADR-0021 Accepted](../decisions/0021-function-fit-and-recurrence-result-contract.md)，定向独立检查Approve。表达式 / 拟合 / 重复间隔首轮共50项测试通过；真实周期首次对照差0.220%，尚未完成应用 / GUI / 全量Gate。
+- **Subphase / Slice**：P6.3 / S5验收中，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)、草稿[PR #30](https://github.com/KYLeonis/ai-physics-tracker/pull/30)。S0–S4实现 / 定向通过；真实应用管线对照差0.21996%，独立R2四项finding修复，完整R3 / e0431eb全量1086通过 / 双平台CI success，R3完整复审进行中，HR未发起。
 - **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3-function-fitting`；原目录仍main，论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 继续S1 / S2边界自查与S3应用 / 持久化：精确上游版本、源样本 / 时间快照、失效与原子提交；保留冻结基准参数，不按算法效果改门槛。
-2. Codex负责数值与生命周期；隔离managed worktree的Luna-max负责公式编辑控件。GLM本轮只读review调用超时且无有效输出（非额度耗尽证据），已由全新Luna完成数据契约定向检查；完整产品独立review另做。
-3. S4 / S5完成后运行定向 / 全量、macOS+Windows CI、新Independent Review / 修复复审；给出启动和体验步骤，停止等待本轮真人HR。未通过HR前不集成main，不进入6.4 / 6.5。
+1. 完成冻结核心 / GUI完整独立R3审查；如有finding由Codex修复并发起新独立复审。当前修复e0431eb：加载复核源指纹，保留detached的O(1)共享契约；公式控件紧凑布局 / 可滚动数学预览。55项相关回归通过；e0431eb全量1086通过 / 双平台CI success，新增源配方一致性定向14通过；R3完整review进行中。
+2. 全部自动Gate通过后发起本轮Human Review：从当前managed worktree启动，打开原目录本地`experiment/p63-reference/analysis-result-project`；该工程含真实媒体路径、2个已保存结果和原始 / 角源。实际应用open_project / 首帧解码 / Near-CFR探针通过，冻结基准工程未改。
+3. 停止等待用户亲测反馈；未通过HR前不集成main，不进入6.4 / 6.5。原目录main / 论文worktree保持原样。GLM本轮600s调用超时、无有效输出；Codex完成主体，Luna-max交付公式控件与独立检查。
 
 ## Active Constraints
 
@@ -56,6 +56,9 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3 S1–S4增量 / R2修复（2026-10-15）**：实现安全表达式、单初值有界等权最小二乘、可辨识 / 失败 / 取消状态、通用交叉事件 / 段内重复间隔、结果换算。源 / 目标双版本、样本 / 时间快照、独立槽 / Undo / stale、删除参考轨迹历史保留与保存重开；Analysis中公式 / 参数 / 初值预览、叠图 / 残差、真实帧导航和保存设置恢复。复用一个执行器。R2发现2P2 / 2P3已修复待完整复审；全量基线1081通过，后续1085通过 / 1失败定位为detached共享契约，已e0431eb修复并定向55通过。最终全量 / CI / R3 / HR仍待，不宣称收尾。
+
 
 - **P6.3 S0完成 / S1–S2初版（2026-10-15）**：用户提供P011原TOML，标定 / 支点 / 竖直方向及旧DLC哈希核对通过，600点连续轨迹与现有角量管线生成可重开的基准工程；无需改变角参考验收条件。冻结协议SHA `64ccd90b…53e63e`。首次新重复间隔算法获得7事件 / 6间隔，均值1.041266844s，人工1.0389815s，相对差0.21996%，全部交叉帧夹点与人工一致；此为领域算法对照，不代替后续应用 / GUI Gate。表达式28、拟合9、重复间隔13测试通过。公式控件已派给隔离Luna-max，复杂算法由Codex实现。
 
@@ -110,3 +113,5 @@
 - **Phase 5 收官（2026-09-18）**：5.7 R1/R2 CLOSED + 最终 Human Review 通过；全量 **804 passed**，双平台 CI 绿（[run 35319559409](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/35319559409)）。Phase 5.0–5.7 全部完成；AC-9 缺口保持归档。各 subphase 交付与 review 见 `docs/status/phase-5.*-plan.md` 与 `docs/reviews/`。
 - **Pre-Phase 6 Stabilization（2026-09-16，已合并）**：P6R-01/02/03/04 及 R1 补漏（P6R-02-R1 / 03-R1 / 05）全部关闭，生命周期见 [pre-phase6-project-review.md](../reviews/pre-phase6-project-review.md) §17–19 与 [pre-phase6-stabilization-review.md](../reviews/pre-phase6-stabilization-review.md)；**Phase 6 Entry Gate：READY**。
 - **Windows CI heap corruption 根治（2026-09-16）**：根因为 decoder worker 线程 emit 携带 Python 对象的 queued Qt signal；`_DecodeDeliveryBridge` 修复 + 4 项回归（取证与细节见 git log `fix/windows-ci-crash` 与 pre-phase6 review §5）。
+
+CI回执：用户报告旧53a0dfd失败邮件，已取回双平台日志确认均仅快照共享断言失败；e0431eb修复后push与PR CI全部success，[记录](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38701431104)。
