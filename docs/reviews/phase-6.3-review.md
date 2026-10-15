@@ -59,3 +59,14 @@ R0没有可用结论；R1 Approve，无实质finding。
 - 用户收到失败邮件后核对旧run [38701032845](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38701032845)：macOS与Windows均仅失败`test_detached_shares_frozen_project_without_copying`；各1083 passed / 2 skipped / 1 failed，依赖安装全部通过。
 - 原因：R2 F1修复把归一化放在Session构造器，每次detached重建Project，破坏已有O(1)共享契约。已将指纹复核移到`ProjectSession.load`实际加载入口，保留构造 / detached共享；旧写入方回归走真实save→load。
 - 修复本机全量1086 passed（98.27s）；[e0431eb PR CI38701431104](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38701431104)及[push CI38701424825](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38701424825)双平台所有步骤success。不把旧失败run重跑冒充代码修复。
+
+
+### R3 — 全新Luna-max完整独立检查（2026-10-15）
+
+- 冻结53a0dfd完整产品 / 调用者 / GUI / 依赖与许可，76项定向通过；全量1085通过 / 1失败（同快照共享回归）。Verdict Request changes。未做真实实验 / Windows CI / 真人HR。
+- R2 F2 / F3 / F4确认Closed；F1功能成立但引发O(1)回归，修复位置e0431eb待新冻结复审。
+- F6 P2：Session构造重建Project，破坏detached O(1)身份 / 性能契约；e0431eb已移至load边界，1086全量及双平台CI通过。
+- F7 P3：缓存source_snapshot.extra_fields.timing_context为标量时，displaySaved串联get触发AttributeError。已显式判mapping并披露“时序不可读 / 缓存只读”，GUI回归覆盖。
+- F8 P3：多项式fixture实际参数断言1e-6，宽于计划1e-7。已按模型分别断言绝对容差、rel=0，定向通过；不改变冻结门槛。
+- 实现方另补F9：旧分析区间超出当前working zone时，恢复控件会静默钳位并声称恢复成功。现明确拒绝 / 提示先扩展zone，保存结果仍可只读查看；新增GUI回归。
+- 修复后63项相关回归通过；待新R4独立复审。

@@ -279,6 +279,12 @@ class SignalAnalysisPanel(QWidget):
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
             self.jobLabel.setText("No readable saved settings for this track / quantity / tool")
             return
+        interval = metadata.get("interval")
+        if (not isinstance(interval, list) or len(interval) != 2
+                or not all(type(value) is int for value in interval)
+                or not self.startFrame.minimum() <= interval[0] <= interval[1] <= self.endFrame.maximum()):
+            self.jobLabel.setText("Saved interval is outside the working zone or unreadable; expand the working zone before restoring")
+            return
         self._loading = True
         try:
             selection = metadata["selection"]
@@ -305,6 +311,8 @@ class SignalAnalysisPanel(QWidget):
                 self.direction.setCurrentIndex(0 if spec["direction"] == "rising" else 1)
         except (KeyError, TypeError, ValueError) as error:
             self.jobLabel.setText(f"Saved settings are unreadable: {error}")
+            self.draftLabel.setText("Saved settings could not be fully restored")
+            return
         finally:
             self._loading = False
         self.settingsChanged.emit()
@@ -373,9 +381,15 @@ class SignalAnalysisPanel(QWidget):
                     details += f"\nEvent: frames {event['lower_frame_index']}–{event['upper_frame_index']}, video time {event['time_s']:.6f} s"
                 self.signalPlot.addItem(pg.InfiniteLine(pos=metadata["spec"]["level"], angle=0,
                                                        pen=pg.mkPen("#666666", style=Qt.PenStyle.DashLine), label="saved reference"))
+            source_extras = source.get("extra_fields")
+            timing = source_extras.get("timing_context") if isinstance(source_extras, dict) else None
+            if not isinstance(timing, dict):
+                timing_message = "Saved timing metadata unreadable; cached result only\n"
+            else:
+                timing_message = "Approximate timing\n" if timing.get("approximation") else ""
             self.summary.setPlainText(f"Saved result: {record.status} — {source['kind']} [{record.unit}]\n"
                                      + f"Samples: {len(samples)}; source frames {metadata['interval']}; t=0 at interval start\n"
-                                     + ("Approximate timing\n" if source.get("extra_fields", {}).get("timing_context", {}).get("approximation") else "")
+                                     + timing_message
                                      + details)
         except (KeyError, IndexError, TypeError, ValueError) as error:
             self.summary.setPlainText(f"Saved result is read-only; metadata cannot be displayed: {error}")

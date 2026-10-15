@@ -24,7 +24,8 @@ def test_recovers_identifiable_user_functions(formula, truth, initial):
     assert outcome.status == "success", outcome.message
     assert outcome.rmse < 1e-8
     for name, value in outcome.parameter_values:
-        assert value == pytest.approx(truth[name], abs=1e-6)
+        tolerance = 1e-6 if "cos" in formula else 1e-7
+        assert value == pytest.approx(truth[name], rel=0, abs=tolerance)
     np.testing.assert_allclose(outcome.residual, measured - outcome.prediction, atol=1e-12)
 
 

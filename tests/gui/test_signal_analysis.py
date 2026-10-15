@@ -128,3 +128,31 @@ def test_formula_typing_owns_letter_and_space_keys_in_analysis(qtbot, synthetic_
     assert edit.text() == 'A*sin(t) + c'
     assert session.project.observations == before
     assert not window._is_playing
+
+
+def test_unreadable_cached_timing_metadata_remains_read_only(qtbot, synthetic_video_path):
+    window, session, track = _window(qtbot, synthetic_video_path)
+    panel = window.chartActions.signalPanel
+    panel.fitButton.click()
+    qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
+    record = session.derived_data(track, 'function_fit_x')
+    from copy import deepcopy
+    extras = deepcopy(record.extra_fields)
+    extras['analysis']['source_snapshot']['extra_fields']['timing_context'] = 'future-scalar'
+    changed = replace(record, extra_fields=extras)
+    session._project = replace(session.project, derived=tuple(changed if item == record else item for item in session.project.derived))
+    panel.displaySaved()
+    assert 'timing metadata unreadable' in panel.summary.toPlainText()
+    assert 'RMSE' in panel.summary.toPlainText()
+
+
+def test_restoring_old_interval_does_not_silently_clamp_settings(qtbot, synthetic_video_path):
+    window, _, _ = _window(qtbot, synthetic_video_path)
+    panel = window.chartActions.signalPanel
+    panel.fitButton.click()
+    qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
+    panel.startFrame.setRange(2, 4)
+    panel.endFrame.setRange(2, 4)
+    panel.restoreButton.click()
+    assert 'outside the working zone' in panel.jobLabel.text()
+    assert 'Saved settings restored' not in panel.draftLabel.text()
