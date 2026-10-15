@@ -119,3 +119,13 @@ F12自动验证回执：04495a4的[CI38732368831](https://github.com/KYLeonis/ai
 - 冻结3cc546a；全新只读Luna-max聚焦R7-F1/F2及其必要调用链，不重开数值 / schema范围。**Approve，无新增实质bug；R7-F1 / F2 Closed**。
 - 独立验证：14项GUI定向、额外1项窄窗回归通过；diff检查通过。核对700px缩窗尝试不裁切、源切回事件恢复、实际样本不匹配时不复用标记、SG说明恢复。
 - 主Agent末轮35项GUI / 工作区 / Analysis只读回归通过（11.06s）。[最终CI38760538586](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38760538586)：macOS1100 passed / 2 skipped（77.92s）、Windows1100 passed / 2 skipped（158.54s），安装 / FFprobe / 测试 / 清理均success。
+
+
+### HR反馈 — Fit禁用而时序入口不可见（2026-10-16）
+
+- 风险：Normal-risk局部GUI bugfix；不改变数值 / schema / 时序授权策略 / 结果提交或Undo契约，不重开已关闭核心finding。
+- 原因：P011重开后can_measure=False是正确门禁；时序确认按钮留在Acquire，被父页面隐藏。来源条 / 工具说明却错误将无近似授权等同为已验证CFR，且在同页重开工程 / 接受授权后没有完整刷新。
+- 修复e4f04a0：时序标签和按钮复用同一实例随videoView重挂 / 恢复原布局；Analysis来源条监听当前工程 / 轨迹 / 分析变化并正确区分无授权。Fit和交叉工具显示禁用原因 / tooltip，确认后撤去提示。
+- 自审：保留原TimingActions确认对话框、No分支、重开再确认、后台验证 / 重试与prepare源配方校验；未将历史授权偷偷恢复为当前权限，未添加训练帧门槛。15项定向通过，含5帧工程重开后的完整确认流程、CFR→Near-CFR时仍要求重算不兼容源、任意合法阻尼余弦预览，以及来回切页的原布局索引 / 隐藏按钮状态。
+- 真实只读检查：P011结果工程near_cfr / Fit禁用 / 确认入口不可见已复现；修复后入口可见、禁用原因 / 来源正确，project.json SHA256仍037e243d16a26b85093f9f8c9d3d5b6ac39485b96b9b816a6aade2217d95fdde。在独立内存会话按既有用户授权确认后，x / theta各215样本prepare通过，未apply或save。此非真人HR替代。
+- e4f04a0本机全量1103 passed（123.20s），diff检查通过；e4f04a0的[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892) macOS1101 passed / 2 skipped（103.07s）、Windows1101 passed / 2 skipped（153.89s），全部步骤success。界面体验待用户按[HR补测](../notes/phase-6.3-human-review.md)亲自确认。

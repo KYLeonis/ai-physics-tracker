@@ -191,3 +191,8 @@ P011应用层完整prepare→run→apply→save→load对照通过（原冻结�
 
 
 2026-10-15 HR进展：用户A / C通过；B因滚轮 / 图表拖动 / 参考线及信息密度不通过，D未反馈。交互修复2eeee68及独立复审返工3cc546a已推送，补测见[HR文档](../notes/phase-6.3-human-review.md)。最终35项定向通过；R8新只读独立复审Approve、R7两项finding Closed；3cc546a[双平台CI38760538586](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38760538586)各1100 passed / 2 skipped。科学协议 / 数据契约未改，不提前关闭AC-8。
+
+
+2026-10-16 Fit禁用追踪：e4f04a0修复Analysis缺少当前会话时序确认入口和无授权误报CFR；按钮附近显示禁用原因，沿用既有授权 / 源配方门，不增加标注或训练条件。15项定向通过；真实P011只读复现与确认后的x / theta prepare通过。最终验证见[current](current.md)与[review](../reviews/phase-6.3-review.md)，此入口与原B / D仍待真人HR。
+
+最终验证回执（e4f04a0）：本机全量1103 passed，定向15 passed；[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，全部步骤success。其后仅文档同步，不改变已验证产品 / 测试树，等待真人HR，不集成main。

@@ -78,3 +78,17 @@ D仍按原D步骤独立反馈；本轮没有更改P011冻结数据、算法 / �
 
 
 最终自动验证回执：3cc546a的[CI38760538586](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38760538586) macOS / Windows Python3.11各1100 passed / 2 skipped，所有步骤success。其后仅文档同步，不改变产品 / 测试树。请重启后补测B，并反馈尚未验收的D。
+
+
+### Fit禁用 / 时序确认入口补测（2026-10-16）
+
+P011是Near-CFR；每次重开工程沿既有契约重新核对当前媒体会话。此前Analysis只重挂视频，时序状态 / 按钮留在Acquire，因此Fit禁用却无法在当前页看到确认入口，来源条还将无授权误写为verified CFR。已由e4f04a0修复：同一时序状态及按钮随视频移动；Fit / Preview / 交叉测量按钮旁直接显示禁用原因，来源条与当前会话同步。没有增加20帧训练条件，也不根据函数是否适合数据决定按钮能否点击。
+
+1. 保存并关闭旧窗口，按上方绝对路径命令重启，打开P011结果工程，进入Fit formula / Measure intervals。
+2. 视频旁应显示Near-CFR状态和Use approximate timing…按钮；Fit旁提示Timing not authorized，来源条不能写verified CFR。先拒绝确认，应继续只读且Fit仍禁用。
+3. 再点击Use approximate timing…并接受本次近似：Fit / Preview应启用，来源条改为approximate timing，确认按钮隐藏。选择合法公式及有效参数后可以尝试预览 / 拟合，函数是否合适由结果判断。当前P011在当前探针确认后，x / theta源准备均通过。若其他工程源的时间配方确有变化，仍须重新计算源图表，不绕过旧源配方校验。
+4. 往返Acquire / Analysis，时序状态和按钮应保持对应状态，视频与控件不重复、不丢失；原始点不改变。
+
+封闭问题：现在禁用原因是否清楚，能否直接在Analysis确认时序并正常启用Fit？通过 / 不通过。A / C原通过记录保留，B交互补测 / D仍待反馈。
+
+时序入口补丁自动验证：e4f04a0本机全量1103 passed；[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)macOS / Windows各1101 passed / 2 skipped，全部步骤success。自动化不代替以上入口可见性 / 操作体验的本人确认。
