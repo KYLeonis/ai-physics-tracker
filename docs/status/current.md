@@ -2,22 +2,22 @@
 
 > 2026-10-13：用户明确授权使用 codex-zcode 进入 P6.2；Codex 派工和验收，ZCode/GLM 实现。
 > main `8b8fa93` 干净基线，Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`。
-> P6.2全部HR已通过，独立复审 / 双平台CI均通过，已以 `12b0911` 集成main；P6.2已收尾；2026-10-15用户启动P6.3规划与grill-me访谈，尚未启动实现。
+> P6.2全部HR已通过，独立复审 / 双平台CI均通过，已以 `12b0911` 集成main；P6.2已收尾；2026-10-15用户完成P6.3 grilling并回复“认可”，计划已冻结，S0尚未启动。
 
-- 最后更新：2026-10-15（P6.3规划草稿 / P011候选样本准备）
+- 最后更新：2026-10-15（P6.3计划冻结 / 规划收尾）
 
 ## Current
 
-- **Phase**：Phase 6；6.1 / 6.2 完成并集成 main；6.3用户显式函数 / 通用周期工具正在规划
-- **Subphase / Slice**：P6.2已完成；P6.3访谈已确认主要范围，[6.3计划草稿](phase-6.3-plan.md)的通用周期适用条件 / 整体口径待最终确认，未实现
+- **Phase**：Phase 6；6.1 / 6.2 完成并集成 main；6.3用户显式函数 / 通用周期工具计划已冻结，未实现
+- **Subphase / Slice**：P6.2已完成；用户已认可[6.3计划](phase-6.3-plan.md)，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)，Q1–19决策闭合；S0真实基准 / 数据契约待启动
 - **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `codex/p63-plan`；原项目目录 `/Users/leonis/Documents/ai-physics-tracker` 已回到 `main`，两份源码同步
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 请用户最终确认[6.3计划草稿](phase-6.3-plan.md)，重点是通用信号重复间隔与物理周期的适用条件；访谈未确认前不实施。
-2. 确认后冻结计划 / 同步Issue，S0先完成P011候选的连续轨迹、角参考与独立人工≥5周期参考；不把裁剪完成当真实基准已冻结。
-3. 产品实现需要后续明确启动指令；已核对 [后续回移档案](main-backport-backlog.md)，ODE / 完整历史 / 参数区间 / 单位推导等Deferred项保持。
+1. P6.3规划已完成；等待后续开发启动指令，不再重复询问已确认的范围 / Matplotlib依赖 / 验收门槛。
+2. 开发从S0开始：完成P011候选的连续轨迹、标定 / 角参考、独立人工≥5周期参考及周期设置冻结；定义并审查additive数据契约，随后按S1–S5推进。
+3. 独立复审 / 双平台CI / 新HR仍是产品集成门；ODE / 完整历史 / 参数置信区间 / 单位推导等Deferred项保持，见[后续回移档案](main-backport-backlog.md)。
 
 ## Active Constraints
 
@@ -58,6 +58,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3计划冻结（2026-10-15）**：用户最终回复“认可”，通用周期适用条件及整份[6.3计划](phase-6.3-plan.md)已确认，Q1–19决策闭合。建立跟踪Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)并同步需求 / 总计划 / roadmap / README / AGENTS / 回移档案。仅规划文档变化，8项产品AC与S0–S5仍未完成；P011仅完成候选媒体准备，真实参考未冻结，未安装Matplotlib或实现公式 / 拟合 / 周期算法。
 
 - **P6.3规划 / P011候选（2026-10-15，草稿）**：用户通过grill-me确认显式公式编辑 / MathText、单标量拟合、测量默认 / 平滑可选、相对`t`与原始时间后台留存、普通最小二乘、独立周期及可选结果公式；ODE / 单位管理 / 置信区间等后续。用户指出周期工具不得绑定单摆，草稿补通用适用条件，待最终共同确认。P011源帧[300,900)裁成600帧 / 20.002111s候选，600帧完整解码 / source映射 / Near-CFR探针通过，源文件保留；manifest与逐帧CSV在原目录本地忽略`experiment/p63-reference/`。仍缺轨迹 / 角参考及独立人工周期参考，未冻结真实验收基准；无产品代码 / 依赖安装 / 算法实现。
 
