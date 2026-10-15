@@ -1,9 +1,9 @@
 # Subphase Plan — Phase 6.3 User-defined Function Fitting and Signal Recurrence
 
-- 日期 / 状态：2026-10-15 · **计划已冻结；用户最终回复“认可”，Q1–19全部共同确认；S0待启动，未开始实现**。
+- 日期 / 状态：2026-10-15 · **计划已冻结；用户最终回复“认可”，Q1–19全部共同确认；S0进行中：真实人工参考待用户记录，数据契约Proposed；未开始算法实现**。
 - Issue：[#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)（Open；计划已确认，产品AC尚未完成）。
 - 基线：`main @ 57462c9`，P6.1 / P6.2已完成；P6.2 [main CI38595699864](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38595699864) 双平台1008 passed / 2 skipped。
-- 计划分支：`codex/p63-plan`；实现分支在开发启动时从main建立；规划确认不等于产品实现或HR通过。
+- 计划分支：`codex/p63-plan`；实现分支：`feat/p6.3-function-fitting`（从main `feaa80f`建立）；规划确认不等于产品实现或HR通过。
 - 风险等级：High-risk（表达式执行边界、拟合与周期科学含义、结果依赖 / 后台事务 / 持久化）。
 
 ## Goal
@@ -21,6 +21,8 @@
 - [ADR-0008](../decisions/0008-numerical-differentiation-and-smoothing.md)：分段SG和短段；不把平滑信号当独立原始观测。
 - [后续回移档案](main-backport-backlog.md)、[论文/main差异](../notes/publication-main-feature-ui-differences.md)：借鉴来源披露、残差与失败诊断，不复制论文ODE/schema/UI。
 - `CODE_STANDARD.md`、[开源参考](../research/open-source-project-map.md) §3.3/3.11/3.12：实现前读取对应规范与参考。
+
+- [ADR-0021 Proposed](../decisions/0021-function-fit-and-recurrence-result-contract.md)：本期结果槽、输入样本快照、上游依赖与发布规则；S0独立检查中。
 
 ### Relevant Historical Findings
 
@@ -146,6 +148,8 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 - 项目FFprobeTimingProbe判定near-CFR：fps_reference=29.996833667557315；最大网格偏差约0.107222ms，最大间隔偏差约0.107593ms。导入后的nominal timeline必须经现有时序门核对 / 显式近似授权，不能直接用30fps冒充已授权。
 - **尚未完整冻结真实验收基准**：仍缺连续轨迹、标定 / 角度参考、独立人工≥5个完整周期的源帧 / 时间标记及最终周期设置；S0完成后才可评估周期算法。若参考准备失败，先处理基准，不自行降低门槛。
 
+2026-10-15 S0准备：已生成本地`reference-review.html`与600张逐帧查看图；用户独立标记至少6次左向右交叉，需回复后才能记录为人工参考。工具只显示原始帧，不检测事件或计算周期；尚未收到确认，不先发布基准通过。
+
 ## Grilling Decision Log
 
 - Q1/2：显式函数拟合；ODE另立后续；独立周期测量与模型代入值区分。
@@ -161,7 +165,7 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 
 - 产品完成日期 / 合并commit：未实现，无产品合并；规划于2026-10-15冻结。
 - 已完成：P6.2交付 / 可复用点核对、grilling范围选择、Matplotlib路径官方文档核查、P011候选裁剪与源帧映射 / 时序 / 解码验证。
-- 下一步：计划已冻结并同步Issue与总计划；待启动开发时先执行S0，完成真实基准与additive数据契约。本轮仅规划收尾，未实现或安装新依赖。
+- 下一步：计划已冻结并同步Issue与总计划；待启动开发时先执行S0，完成真实基准与additive数据契约。用户已授权推进P6.3；当前S0数据契约 / 人工参考准备进行中，算法与GUI尚未实现。
 
 ## Technical Sources
 

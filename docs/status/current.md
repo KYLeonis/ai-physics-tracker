@@ -1,23 +1,21 @@
 # Current Status
 
-> 2026-10-13：用户明确授权使用 codex-zcode 进入 P6.2；Codex 派工和验收，ZCode/GLM 实现。
-> main `8b8fa93` 干净基线，Issue [#27](https://github.com/KYLeonis/ai-physics-tracker/issues/27)，分支 `feat/p6.2-angular-charts`。
-> P6.2全部HR已通过，独立复审 / 双平台CI均通过，已以 `12b0911` 集成main；P6.2已收尾；2026-10-15用户完成P6.3 grilling并回复“认可”，计划已冻结，S0尚未启动。
+> 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-15（P6.3计划冻结 / 规划收尾）
+- 最后更新：2026-10-15（P6.3 S0启动）
 
 ## Current
 
-- **Phase**：Phase 6；6.1 / 6.2 完成并集成 main；6.3用户显式函数 / 通用周期工具计划已冻结，未实现
-- **Subphase / Slice**：P6.2已完成；用户已认可[6.3计划](phase-6.3-plan.md)，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)，Q1–19决策闭合；S0真实基准 / 数据契约待启动
-- **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `codex/p63-plan`；原项目目录 `/Users/leonis/Documents/ai-physics-tracker` 已回到 `main`，两份源码同步
+- **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
+- **Subphase / Slice**：P6.3 / S0进行中，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)。数据契约[ADR-0021 Proposed](../decisions/0021-function-fit-and-recurrence-result-contract.md)待独立检查；真实人工周期参考待用户逐帧记录，未开始拟合 / 周期算法。
+- **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3-function-fitting`；原目录仍main，论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. P6.3规划已完成；等待后续开发启动指令，不再重复询问已确认的范围 / Matplotlib依赖 / 验收门槛。
-2. 开发从S0开始：完成P011候选的连续轨迹、标定 / 角参考、独立人工≥5周期参考及周期设置冻结；定义并审查additive数据契约，随后按S1–S5推进。
-3. 独立复审 / 双平台CI / 新HR仍是产品集成门；ODE / 完整历史 / 参数置信区间 / 单位推导等Deferred项保持，见[后续回移档案](main-backport-backlog.md)。
+1. 用户使用原目录本地`experiment/p63-reference/reference-review.html`，逐帧记录木块中央圆点从左向右过参考线的连续至少6次事件（5周期）；已异步提出，尚无人工参考反馈。
+2. Codex继续S0数据契约 / 依赖生命周期设计与独立检查，准备连续轨迹和角参考。不得把自动轨迹或AI观察冒充独立人工参考；S0完整冻结前不提前评估周期算法。
+3. S0通过后按[6.3计划](phase-6.3-plan.md)S1–S5推进；用户已授权开发，无需再问启动或已确认的范围 / Matplotlib。最终必须独立复审 / 双平台CI / 新HR，停止在HR反馈关卡。
 
 ## Active Constraints
 
@@ -58,6 +56,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3 S0启动（2026-10-15）**：用户授权Codex主要实现，GLM小任务 / Luna-max按需协作。从main `feaa80f`建立`feat/p6.3-function-fitting`。Luna只读核对上游派生ID传播入口；Codex起草ADR-0021及高级分析术语，保留既有clear全部派生语义。原目录本地逐帧人工参考页已生成，600帧图片 / 原source映射齐全，不含自动周期检测；已请用户亲自标记至少6个交叉事件。S0尚未完整冻结，未修改数值算法 / 安装依赖。
 
 - **P6.3计划冻结（2026-10-15）**：用户最终回复“认可”，通用周期适用条件及整份[6.3计划](phase-6.3-plan.md)已确认，Q1–19决策闭合。建立跟踪Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)并同步需求 / 总计划 / roadmap / README / AGENTS / 回移档案。仅规划文档变化，8项产品AC与S0–S5仍未完成；P011仅完成候选媒体准备，真实参考未冻结，未安装Matplotlib或实现公式 / 拟合 / 周期算法。
 
