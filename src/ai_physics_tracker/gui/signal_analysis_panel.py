@@ -58,6 +58,7 @@ class SignalAnalysisPanel(QWidget):
         self._cache = None
         self._valueRange = None
         self._eventLines = []
+        self._eventSamplesMatch = False
         self.trackChoice, self.quantityChoice, self.sourceChoice = QComboBox(), QComboBox(), QComboBox()
         self.quantityChoice.addItems(QUANTITIES)
         self.sourceChoice.addItems(("Measured (default)", "Smoothed (optional)"))
@@ -361,12 +362,20 @@ class SignalAnalysisPanel(QWidget):
             try:
                 spec = metadata["spec"]
                 selection = metadata["selection"]
-                matches = (self.recurrenceSpec() == RecurrenceSpec(**spec)
+                matches = (self._eventSamplesMatch and self.recurrenceSpec() == RecurrenceSpec(**spec)
                            and self.selection().start_frame == selection["start_frame"]
                            and self.selection().end_frame == selection["end_frame"]
                            and self.selection().smoothed == selection["smoothed"])
-            except (KeyError, TypeError, ValueError):
-                pass
+                if matches and not self._eventLines:
+                    first = metadata["samples"][0]
+                    origin = first["video_time_s"] - first["relative_time_s"]
+                    for event in metadata["summary"]["events"]:
+                        line = pg.InfiniteLine(pos=event["time_s"]-origin, angle=90,
+                                               pen=pg.mkPen("#c07800", style=Qt.PenStyle.DashLine))
+                        self.signalPlot.addItem(line, ignoreBounds=True)
+                        self._eventLines.append(line)
+            except (KeyError, IndexError, TypeError, ValueError):
+                matches = False
         for line in self._eventLines:
             line.setVisible(matches)
 
@@ -432,7 +441,8 @@ class SignalAnalysisPanel(QWidget):
             self.jobLabel.clear()
             self.draftLabel.setText("Draft — no analysis applied")
         if timeline:
-            self.contextLabel.setText("Source charts required · t = 0 at interval start · angles in rad. "
+            self.contextLabel.setToolTip(session.measurement_timing_detail(video_id) or "Nominal video time is retained with every sample.")
+            self.contextLabel.setText("Source charts required · t = 0 at interval start · angles: rad · derivatives: recorded SG. "
                                       + ("Approximate timing (details retained)." if session.measurement_timing_detail(video_id) else "Verified nominal timing."))
         key = (context, self.trackChoice.currentData(), self.quantityChoice.currentText(), session.project.derived if session else ())
         if key != self._cache:
@@ -496,6 +506,15 @@ class SignalAnalysisPanel(QWidget):
         self.signalPlot.clear()
         self.residualPlot.clear()
         self._eventLines = []
+        self._eventSamplesMatch = False
+        record = self.savedRecord()
+        metadata = record.extra_fields.get("analysis") if record else None
+        if isinstance(metadata, dict) and metadata.get("version") == 1:
+            try:
+                expected = tuple(tuple(row[key] for key in ("frame_index", "video_time_s", "relative_time_s", "value", "segment_index")) for row in metadata["samples"])
+                self._eventSamplesMatch = tuple(samples) == expected
+            except (KeyError, TypeError, ValueError):
+                pass
         if not samples:
             return
         frames = [int(row[0]) for row in samples]
@@ -541,12 +560,6 @@ class SignalAnalysisPanel(QWidget):
             source = metadata["source_snapshot"]
             self.renderSamples(samples, record.unit, predicted, residual, wrapped=source["kind"] == "angular_position", title="Saved fit")
             summary = metadata["summary"]
-            if not fitting:
-                for event in summary["events"]:
-                    relative = event["time_s"] - (samples[0][1] - samples[0][2])
-                    line = pg.InfiniteLine(pos=relative, angle=90, pen=pg.mkPen("#c07800", style=Qt.PenStyle.DashLine))
-                    self.signalPlot.addItem(line, ignoreBounds=True)
-                    self._eventLines.append(line)
             if fitting:
                 self.resultLabel.setText(f"Saved fit ({record.status}) · RMSE {summary['rmse']:.6g} {record.unit} · {len(samples)} samples")
                 details = (f"{summary['status']}: {summary['message']}\n"

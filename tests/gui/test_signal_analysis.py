@@ -264,11 +264,15 @@ def test_reference_controls_keep_curve_and_hide_old_events_until_measure(qtbot, 
     panel.sourceChoice.setCurrentIndex(1)
     assert not panel._eventLines
     assert session.derived_data(track, 'signal_recurrence_x') == record
+    panel.sourceChoice.setCurrentIndex(0)
+    assert len(panel._eventLines) == 1 and panel._eventLines[0].isVisible()
     panel.renderSamples([(0, 0., 0., 0., 0), (1, .1, .1, 1e-20, 0)], 'px')
     assert panel.signalPlot.viewRange()[1][1] - panel.signalPlot.viewRange()[1][0] < 1e-19
     panel.level.setValue(250)
     assert panel.levelSlider.value() == 1000
     assert panel.level.value() == 250
+    panel.level.setValue(13)
+    assert not panel._eventLines  # 相同配方也不能把旧事件叠在不同样本上。
 
 
 def test_analysis_tools_fit_narrow_viewport_and_initial_curve_cannot_hide_signal(qtbot, synthetic_video_path):
@@ -281,6 +285,10 @@ def test_analysis_tools_fit_narrow_viewport_and_initial_curve_cannot_hide_signal
     qtbot.wait(30)
     scroll = window._analysisToolsScroll
     assert panel.width() <= scroll.viewport().width()
+    window.resize(700, 640)
+    qtbot.waitUntil(lambda: scroll.viewport().width() >= panel.minimumSizeHint().width())
+    assert panel.width() <= scroll.viewport().width()
+    assert scroll.horizontalScrollBar().maximum() == 0
     assert panel.signalPlot.width() <= panel.width()
     low, high = panel.signalPlot.viewRange()[1]
     assert low < 10 < 18 < high < 100

@@ -485,6 +485,7 @@ class ChartActions(QObject):
             job = self._prepareSignal(False)
             self.signalPanel.renderSamples(job.samples, job.source.unit,
                                            wrapped=job.source.kind == "angular_position")
+            self.signalPanel.refreshDraftDisplay()
             self.signalPanel.jobLabel.setText("Source preview — adjust reference, then Measure crossing intervals")
         except (ValueError, ProjectSessionError) as error:
             self.signalPanel.signalPlot.clear()

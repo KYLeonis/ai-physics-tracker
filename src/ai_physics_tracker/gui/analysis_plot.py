@@ -2,7 +2,7 @@
 
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QPalette, QWheelEvent
 from PySide6.QtWidgets import QScrollArea, QStyleFactory, QWidget
 
@@ -20,6 +20,14 @@ class AnalysisScrollArea(QScrollArea):
             self._scrollStyle.setParent(self)
             self.verticalScrollBar().setStyle(self._scrollStyle)
         self.verticalScrollBar().setMinimumWidth(16)
+
+    def event(self, event: QEvent) -> bool:
+        if event.type() in (QEvent.Type.LayoutRequest, QEvent.Type.Resize, QEvent.Type.Show) and self.widget() is not None:
+            # 跟随实际表单最小宽度约束分栏 / 窗口，不能只隐藏横向条后裁掉控件。
+            bar = self.verticalScrollBar()
+            self.setMinimumWidth(self.widget().minimumSizeHint().width()
+                                 + max(bar.minimumWidth(), bar.sizeHint().width()) + 2 * self.frameWidth())
+        return super().event(event)
 
     def scrollPage(self, delta: int) -> None:
         bar = self.verticalScrollBar()
