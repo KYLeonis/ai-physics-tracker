@@ -166,8 +166,6 @@ class ProjectSession:
         project: Project,
         project_root: Path | None = None,
     ) -> None:
-        from ai_physics_tracker.domain.analysis import stale_analysis_dependents
-        project = replace(project, derived=stale_analysis_dependents(project.derived))
         self._repository = repository
         self._project = project
         # Project 及其成员均为 frozen 数据类；保存基线共享引用即可，
@@ -499,7 +497,10 @@ class ProjectSession:
     def load(cls, repository: ProjectRepositoryPort, project_root: Path) -> "ProjectSession":
         """候选会话工厂；失败不触碰当前窗口持有的会话。"""
 
-        session = cls(repository, repository.load(project_root), project_root.resolve())
+        from ai_physics_tracker.domain.analysis import stale_analysis_dependents
+        project = repository.load(project_root)
+        project = replace(project, derived=stale_analysis_dependents(project.derived))
+        session = cls(repository, project, project_root.resolve())
         for run in session.tracking_runs():
             if run.status in {"pending", "running"}:
                 session.update_tracking_run(mark_run_failed(run, "Previous task was interrupted; start a new task"))

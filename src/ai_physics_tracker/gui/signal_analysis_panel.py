@@ -78,6 +78,9 @@ class SignalAnalysisPanel(QWidget):
         form.addRow(self.resultName, self.resultFormula)
         for widget in (self.budget, self.resultName, self.resultFormula):
             widget.setVisible(False)
+        budgetLabel = form.labelForField(self.budget)
+        budgetLabel.hide()
+        advanced.toggled.connect(budgetLabel.setVisible)
         advanced.toggled.connect(lambda checked: [widget.setVisible(checked) for widget in (self.budget, self.resultName, self.resultFormula)])
         fitLayout.addWidget(advanced)
         fitButtons = QHBoxLayout()

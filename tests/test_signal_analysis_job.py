@@ -140,14 +140,17 @@ def test_tampered_sample_snapshot_is_rejected_atomically(signal_session):
     assert session.project == before
 
 
-def test_reopen_checks_source_freshness_from_older_writers(signal_session):
+def test_reopen_checks_source_freshness_from_older_writers(signal_session, tmp_path):
     session, _, track = signal_session
     session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
     saved = session.project
     source = session.derived_data(track, 'world_position')
     from uuid import uuid4
     changed = replace(saved, derived=tuple(replace(item, derived_id=uuid4()) if item == source else item for item in saved.derived))
-    reopened = ProjectSession(ProjectRepository(), changed)
+    repository = ProjectRepository()
+    root = tmp_path / 'older-writer'
+    repository.create_from_project(root, changed)
+    reopened = ProjectSession.load(repository, root)
     assert reopened.derived_data(track, 'function_fit_x').status == 'stale'
 
 

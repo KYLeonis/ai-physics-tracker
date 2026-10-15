@@ -7,9 +7,11 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QGridLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -82,9 +84,9 @@ class FormulaEditor(QWidget):
         formulaRow.addWidget(self.formulaEdit, 1)
         layout.addLayout(formulaRow)
 
-        insertionRow = QHBoxLayout()
-        insertionRow.addWidget(QLabel("Insert:"))
-        for name, insertion in _INSERTIONS.items():
+        insertionRow = QGridLayout()
+        insertionRow.addWidget(QLabel("Insert:"), 0, 0, 2, 1)
+        for index, (name, insertion) in enumerate(_INSERTIONS.items()):
             button = QPushButton(name)
             object_name = name.replace("*", "multiply").replace("^", "power")
             object_name = object_name.replace("(", "paren").replace(")", "")
@@ -93,8 +95,7 @@ class FormulaEditor(QWidget):
             button.clicked.connect(
                 lambda _checked=False, token=insertion: self._insertText(token)
             )
-            insertionRow.addWidget(button)
-        insertionRow.addStretch(1)
+            insertionRow.addWidget(button, index // 5, index % 5 + 1)
         layout.addLayout(insertionRow)
 
         exampleRow = QHBoxLayout()
@@ -108,7 +109,12 @@ class FormulaEditor(QWidget):
         exampleRow.addStretch(1)
         layout.addLayout(exampleRow)
 
-        layout.addWidget(self.previewLabel)
+        previewScroll = QScrollArea()
+        previewScroll.setWidget(self.previewLabel)
+        previewScroll.setMaximumHeight(100)
+        previewScroll.setMinimumHeight(65)
+        previewScroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        layout.addWidget(previewScroll)
         layout.addWidget(self.errorLabel)
 
         self.formulaEdit.textChanged.connect(self._onTextChanged)
@@ -172,6 +178,7 @@ class FormulaEditor(QWidget):
                 QImage.Format.Format_RGBA8888,
             ).copy()
             self.previewLabel.setPixmap(QPixmap.fromImage(image))
+            self.previewLabel.adjustSize()
         except Exception as error:
             self.previewLabel.clear()
             self.previewLabel.setAccessibleDescription(
