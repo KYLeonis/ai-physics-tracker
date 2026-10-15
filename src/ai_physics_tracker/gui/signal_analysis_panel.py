@@ -29,6 +29,8 @@ class SignalAnalysisPanel(QWidget):
     previewRequested = Signal()
     cancelRequested = Signal()
     frameRequested = Signal(int)
+    undoRequested = Signal()
+    redoRequested = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -59,6 +61,9 @@ class SignalAnalysisPanel(QWidget):
         self.previewButton, self.fitButton = QPushButton("Preview initial curve"), QPushButton("Fit")
         self.cancelButton = QPushButton("Cancel calculation")
         self.restoreButton = QPushButton("Restore saved settings")
+        self.undoButton, self.redoButton = QPushButton("Undo result"), QPushButton("Redo result")
+        for button in (self.undoButton, self.redoButton):
+            button.setToolTip("Only the next fit / crossing-result transaction; source data and calibration remain read-only")
         self.level = self._number(0)
         self.hysteresis = self._number(0, nonnegative=True)
         self.separation = self._number(0, nonnegative=True)
@@ -128,6 +133,11 @@ class SignalAnalysisPanel(QWidget):
         actions.addWidget(self.cancelButton)
         actions.addWidget(self.draftLabel)
         layout.addLayout(actions)
+        history = QHBoxLayout()
+        history.addWidget(self.undoButton)
+        history.addWidget(self.redoButton)
+        history.addStretch()
+        layout.addLayout(history)
         layout.addWidget(self.jobLabel)
         layout.addWidget(self.signalPlot)
         layout.addWidget(self.residualPlot)
@@ -150,6 +160,8 @@ class SignalAnalysisPanel(QWidget):
         self.recurrenceButton.clicked.connect(self.recurrenceRequested)
         self.cancelButton.clicked.connect(self.cancelRequested)
         self.restoreButton.clicked.connect(self.restoreSaved)
+        self.undoButton.clicked.connect(self.undoRequested)
+        self.redoButton.clicked.connect(self.redoRequested)
         self._formulaChanged()
         self.editor.setQuantityLabel("x(t)")
 
@@ -251,6 +263,8 @@ class SignalAnalysisPanel(QWidget):
         for button in (self.previewButton, self.fitButton, self.recurrenceButton):
             button.setEnabled(enabled)
         self.cancelButton.setEnabled(pending)
+        self.undoButton.setEnabled(bool(session) and not pending and session.can_undo_analysis)
+        self.redoButton.setEnabled(bool(session) and not pending and session.can_redo_analysis)
         self._session = session
         self._video_id = video_id
         if changed_context:

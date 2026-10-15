@@ -1354,6 +1354,38 @@ class ProjectSession:
     def can_redo(self) -> bool:
         return bool(self._redo_stack)
 
+    def _is_analysis_only_history(self, stack: list[_SessionDataSnapshot]) -> bool:
+        from ai_physics_tracker.domain.analysis import ANALYSIS_KINDS
+        if not stack:
+            return False
+        target = stack[-1]
+        # 不跳过历史，也不放开Analysis的raw只读保护；只接收纯派生事务。
+        return (target[0] == self._project.tracks and target[1] == self._project.observations
+                and target[2] == self._project.calibrations
+                and target[3] == self._project.active_calibration_by_video
+                and target[5] is None and target[6] == self._project.tracking_runs
+                and tuple(item for item in target[4] if item.kind not in ANALYSIS_KINDS)
+                == tuple(item for item in self._project.derived if item.kind not in ANALYSIS_KINDS)
+                and target[4] != self._project.derived)
+
+    @property
+    def can_undo_analysis(self) -> bool:
+        """只撤销栈顶本期结果事务，不越过上游结果 / 原始数据 / 参考编辑。"""
+        return self._is_analysis_only_history(self._undo_stack)
+
+    @property
+    def can_redo_analysis(self) -> bool:
+        """只允许重做栈顶的纯派生事务。"""
+        return self._is_analysis_only_history(self._redo_stack)
+
+    def undo_analysis(self) -> bool:
+        """Analysis专用入口；不符合只读保护条件时不移动历史栈。"""
+        return self.undo() if self.can_undo_analysis else False
+
+    def redo_analysis(self) -> bool:
+        """Analysis专用重做入口，与撤销使用同一只读保护。"""
+        return self.redo() if self.can_redo_analysis else False
+
     def undo(self) -> bool:
         """撤销最近一次写操作；无可撤销时返回 False。
 

@@ -156,3 +156,20 @@ def test_restoring_old_interval_does_not_silently_clamp_settings(qtbot, syntheti
     panel.restoreButton.click()
     assert 'outside the working zone' in panel.jobLabel.text()
     assert 'Saved settings restored' not in panel.draftLabel.text()
+
+
+def test_analysis_history_buttons_restore_results_without_enabling_raw_edit(qtbot, synthetic_video_path):
+    window, session, track = _window(qtbot, synthetic_video_path)
+    panel = window.chartActions.signalPanel
+    before = session.project.observations
+    panel.fitButton.click()
+    qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
+    assert panel.undoButton.isEnabled()
+    assert not window.undoButton.isEnabled()
+    panel.undoButton.click()
+    assert session.derived_data(track, 'function_fit_x') is None
+    assert panel.redoButton.isEnabled()
+    panel.redoButton.click()
+    assert session.derived_data(track, 'function_fit_x') is not None
+    assert session.project.observations == before
+    assert not window.undoButton.isEnabled()

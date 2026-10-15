@@ -185,3 +185,26 @@ def test_rejects_inconsistent_source_recipe_even_if_marked_valid(signal_session,
     session._project = replace(session.project, derived=tuple(changed if item == source else item for item in session.project.derived))
     with pytest.raises(ProjectSessionError):
         prepare_signal_analysis(session, SignalSelection(track, quantity, 20, 70), FitSpec('c', (FitParameter('c'),)))
+
+
+def test_analysis_history_never_crosses_a_raw_edit(signal_session):
+    session, _, track = signal_session
+    session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
+    before = session.project.observations
+    assert session.can_undo_analysis and session.undo_analysis()
+    assert session.derived_data(track, 'function_fit_x') is None
+    assert session.can_redo_analysis and session.redo_analysis()
+    assert session.project.observations == before
+    session.mark_point(track, 22, pixel_x=99, pixel_y=20)
+    raw = session.project
+    assert not session.can_undo_analysis and not session.undo_analysis()
+    assert session.project == raw and not session.can_redo_analysis
+
+
+def test_result_history_does_not_undo_upstream_recomputation(signal_session):
+    session, _, track = signal_session
+    session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
+    session.compute_kinematics(track)
+    before = session.project
+    assert not session.can_undo_analysis and not session.undo_analysis()
+    assert session.project == before

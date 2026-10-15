@@ -97,6 +97,8 @@ class ChartActions(QObject):
         self.signalPanel.settingsChanged.connect(self._signalEdited)
         self.signalPanel.targetChanged.connect(self._signalTargetChanged)
         self.signalPanel.frameRequested.connect(self.seekFrame)
+        self.signalPanel.undoRequested.connect(lambda: self.analysisHistory(False))
+        self.signalPanel.redoRequested.connect(lambda: self.analysisHistory(True))
         self.refresh()
 
     @property
@@ -443,6 +445,22 @@ class ChartActions(QObject):
         if self._signal_job is not None:
             self.cancel()
         self.signalPanel.displaySaved()
+
+    def analysisHistory(self, redo: bool) -> None:
+        if self.pending or self.window.projectActions.busy or self._closed:
+            return
+        session = self.window.analysisSession
+        if session is None:
+            return
+        try:
+            changed = session.redo_analysis() if redo else session.undo_analysis()
+        except ProjectSessionError as error:
+            self.signalPanel.jobLabel.setText(str(error))
+            return
+        if changed:
+            self.window.refreshAnalysisHistory()
+            self.refresh()
+            self.signalPanel.jobLabel.setText("Analysis history restored — saved settings remain available")
 
     def _signalTargetChanged(self) -> None:
         self._signalEdited()
