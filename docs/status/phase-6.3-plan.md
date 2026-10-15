@@ -185,3 +185,6 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 S1–S4实现及定向验证完成；S5进行中，最终Gate仍待。GUI复用ChartActions单executor，新增Analysis中公式拟合 / 交叉工具标签，独立单量选择 / 相对t区间、公式MathText / 参数 / 初值曲线、叠图 / 残差 / 实际帧导航、保存结果与草稿披露、恢复设置。
 
 P011应用层完整prepare→run→apply→save→load对照通过（原冻结参数）：7事件 / 6间隔、均值1.041266844s、相对人工差0.21996%；保存到本地忽略analysis-result-project，不改冻结工程。用户公式阻尼余弦单初值示例可收敛，RMSE约0.0209024rad；只说明实际拟合行为，不证明大角摆动满足该模型。
+
+
+2026-10-15 HR入口补丁04495a4：顶栏常驻Fit formula / Measure intervals直达、分析页提示与短标签，绝对PYTHONPATH启动避免误用原main。31项GUI / 最新双平台1096 passed / 2 skipped；仅导航与提示变化，原科学 / 数据契约不变。等待入口补测和原A/B/C/D，未集成main。

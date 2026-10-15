@@ -2,7 +2,7 @@
 
 - Subphase / Issue：P6.3 / [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)
 - 当前轮次：R6，2026-10-15；R4核心修复闭环、R5结果Undo增量、R6测试缺口均已独立通过。
-- 最终产品代码：`e74608d`；测试补齐：`bec8d61`；文档交付不改产品树。
+- 核心产品：`e74608d`；测试补齐：`bec8d61`；最新HR入口修复：`04495a4`；其后文档交付不改产品树。
 - Context：[6.3计划](../status/phase-6.3-plan.md)、[ADR-0021 Accepted](../decisions/0021-function-fit-and-recurrence-result-contract.md)、ADR-0017/0019/0020、CODE_STANDARD。
 - Reviewer：R0 GLM-5.3请求600s超时 / 无有效模型核验或结论；R1–R6为分别隔离、只读的Luna-max任务。Codex负责实现与修复验收；Luna交付公式控件，Codex检查并返工其MathText模式问题。
 
@@ -101,3 +101,5 @@ R0无可用结论；F1–F9均经修复 / 独立复审Closed。R4补充的同ID�
 - F12 Normal-risk GUI：用户未找到Analysis工具；诊断现有Python GUI进程cwd为原main，6.3未集成main。原入口又位于第二层长标签，缺少常驻提示。
 - 修复：WorkflowHeader常驻蓝色直达按钮，MainWindow纯导航openAnalysisTools，分析页提示及短标签；绝对PYTHONPATH启动命令保证从任意cwd加载本轮源码。未更改科学算法 / 持久化 / 后台事务。
 - 验证：31项相关GUI / 工作区 / Analysis只读回归通过，真实鼠标点击可从Setup / Acquire / Analysis进入编辑器，observations和derived保持相同。入口易用性仍待用户补测；原A/B/C/D无通过反馈。
+
+F12自动验证回执：04495a4的[CI38732368831](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38732368831) macOS / Windows Python3.11均1096 passed / 2 skipped。入口易用性仍待本人补测，原main未合并。

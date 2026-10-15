@@ -7,7 +7,7 @@
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3 / S5等待Human Review，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)、草稿[PR #30](https://github.com/KYLeonis/ai-physics-tracker/pull/30)。S0–S4实现；R4 / R5 / R6独立复审Approve；本机产品全量1095及最终[双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38704158579)各1095 passed / 2 skipped。AC-1–7通过，AC-8待真人HR / 集成。
+- **Subphase / Slice**：P6.3 / S5等待Human Review，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)、草稿[PR #30](https://github.com/KYLeonis/ai-physics-tracker/pull/30)。S0–S4实现；R4 / R5 / R6独立复审Approve；本机产品全量1095及最终[双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38704158579)各1095 passed / 2 skipped；HR入口修复04495a4的[最新双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38732368831)各1096 passed / 2 skipped。AC-1–7通过，AC-8待真人HR / 集成。
 - **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3-function-fitting`；原目录仍main，论文worktree未改。
 - **Development Mode**：Build Mode
 
@@ -61,7 +61,7 @@
 
 ## Recently Completed
 
-- **P6.3 HR入口可发现性修复（2026-10-15）**：用户找不到新工具；只读进程检查显示现有GUI工作目录为原main，原main未包含6.3。新UI原来位于Analysis第二层标签，入口不足。新增顶栏常驻蓝色Fit formula / Measure intervals直达、分析页蓝色提示、标签缩短为Formula fitting & intervals；改为绝对PYTHONPATH单行启动，避免从main加载旧源码。31项GUI回归通过（含任意工作区点按钮直达 / 数据不变），不改算法 / 数据契约 / main；双平台新CI待回执，等待入口补测及原A/B/C/D。
+- **P6.3 HR入口可发现性修复（2026-10-15）**：用户找不到新工具；只读进程检查显示现有GUI工作目录为原main，原main未包含6.3。新UI原来位于Analysis第二层标签，入口不足。新增顶栏常驻蓝色Fit formula / Measure intervals直达、分析页蓝色提示、标签缩短为Formula fitting & intervals；改为绝对PYTHONPATH单行启动，避免从main加载旧源码。31项GUI回归通过（含任意工作区点按钮直达 / 数据不变），不改算法 / 数据契约 / main；最新双平台CI38732368831各1096 passed / 2 skipped，等待入口补测及原A/B/C/D。
 
 
 - **P6.3自动Gate完成 / HR交付（2026-10-15）**：产品e74608d，本机全量1095；bec8d61仅补同ID源内容变化 / pipeline反序两个回归，文件18通过；最终CI38704158579 macOS / Windows Python3.11各1095 passed / 2 skipped。R4核心修复114定向、R5结果专用Undo67、R6测试闭环6项，分别独立Approve，F1–F9 Closed。P011应用均值1.041266844s vs人工1.0389815s，差0.21996%，最终18源组合prepare通过。公式 / 参数 / 初值预览 / 拟合 / 残差、独立交叉工具、追溯 / stale / 保存恢复和不越过raw / 源的结果Undo/Redo已交付。真人HR待用户；main与论文worktree未改，不集成 / 不进入后续。
