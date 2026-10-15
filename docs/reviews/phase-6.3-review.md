@@ -1,10 +1,10 @@
 # Review Record — Phase 6.3 User-defined Function Fitting and Signal Recurrence
 
 - Subphase / Issue：P6.3 / [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)
-- 当前轮次：R6，2026-10-15；R4核心修复闭环、R5结果Undo增量、R6测试缺口均已独立通过。
-- 核心产品：`e74608d`；测试补齐：`bec8d61`；最新HR入口修复：`04495a4`；其后文档交付不改产品树。
+- 当前轮次：R8，2026-10-15；R4核心修复闭环、R5结果Undo增量、R6测试缺口均已独立通过；R7本轮HR交互复审发现两项，3cc546a已修复，R8独立复审Approve。
+- 核心产品：`e74608d`；测试补齐：`bec8d61`；最新HR入口修复：`04495a4`；本轮交互修复2eeee68 / 3cc546a，R8独立复审Approve。
 - Context：[6.3计划](../status/phase-6.3-plan.md)、[ADR-0021 Accepted](../decisions/0021-function-fit-and-recurrence-result-contract.md)、ADR-0017/0019/0020、CODE_STANDARD。
-- Reviewer：R0 GLM-5.3请求600s超时 / 无有效模型核验或结论；R1–R6为分别隔离、只读的Luna-max任务。Codex负责实现与修复验收；Luna交付公式控件，Codex检查并返工其MathText模式问题。
+- Reviewer：R0 GLM-5.3请求600s超时 / 无有效模型核验或结论；R1–R6为分别隔离、只读的Luna-max任务。R7 / R8为本轮交互增量的全新只读Luna-max任务。Codex负责实现与修复验收；Luna交付公式控件，Codex检查并返工其MathText模式问题。
 
 ## Checklist
 
@@ -13,11 +13,11 @@
 - [x] 区分交叉重复间隔与物理周期，不以单摆作为通用模型约束
 - [x] 科学算法有解析合成测试与真实基准证据（P011应用均值相对差0.21996%）
 - [x] 完整实现 / 全量 / 双平台CI通过（最终bec8d61双平台1095 passed / 2 skipped）
-- [ ] 新Human Review通过（已交付步骤，等待用户亲测）
+- [ ] 新Human Review通过（A / C用户通过；B交互修复待补测，D未反馈）
 
 ## Findings
 
-R0无可用结论；F1–F9均经修复 / 独立复审Closed。R4补充的同ID内容变化及步骤顺序两项P3测试缺口已由bec8d61补齐、R6独立验证Closed；没有未处置的运行时P1/P2/P3。
+R0无可用结论；F1–F9均经修复 / 独立复审Closed。R4补充的同ID内容变化及步骤顺序两项P3测试缺口已由bec8d61补齐、R6独立验证Closed；原核心review没有未处置的运行时P1/P2/P3；本轮R7两项交互finding已由3cc546a修复、R8确认Closed。
 
 ## Review Log
 
@@ -35,7 +35,7 @@ R0无可用结论；F1–F9均经修复 / 独立复审Closed。R4补充的同ID�
 
 ## Final Verdict
 
-**Independent Review Approve；Human Review Pending。** R2领域 / 应用、R3完整产品、R4修复、R5新增结果历史和R6测试闭环分别记录于下方；最终自动Gate通过后发起[本轮HR](../notes/phase-6.3-human-review.md)，用户反馈前不合并main。
+**Independent Review Approve（最终R8）；Human Review部分通过：A / C通过，B修复待补测、D待反馈。** R2领域 / 应用、R3完整产品、R4修复、R5新增结果历史和R6测试闭环分别记录于下方；本轮R7交互修复已由R8独立Approve。最终自动Gate通过后发起[本轮HR](../notes/phase-6.3-human-review.md)，用户反馈前不合并main。
 
 
 ### R2 — 全新Luna-max领域 / 应用独立检查（2026-10-15）
@@ -103,3 +103,19 @@ R0无可用结论；F1–F9均经修复 / 独立复审Closed。R4补充的同ID�
 - 验证：31项相关GUI / 工作区 / Analysis只读回归通过，真实鼠标点击可从Setup / Acquire / Analysis进入编辑器，observations和derived保持相同。入口易用性仍待用户补测；原A/B/C/D无通过反馈。
 
 F12自动验证回执：04495a4的[CI38732368831](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38732368831) macOS / Windows Python3.11均1096 passed / 2 skipped。入口易用性仍待本人补测，原main未合并。
+
+
+### R7 — HR交互修复（2026-10-15）
+
+- 用户A / C通过；B因滚动 / 调线 / 信息密度不通过，D未反馈。已完成本轮UX修复，领域数值、schema与P011冻结协议未变。
+- 主体2eeee68新增事件路由、视图范围恢复、实时参考线与旧事件隔离、微小信号滑块限幅、窄窗与草稿取消回归。相关GUI77项、本机全量1102项通过；最后定向14项通过。2eeee68双平台CI38759873770 success。
+- 全新只读Luna-max复审：14项定向通过，但不Approve；两项finding：R7-F1，700px窗口下viewport420 < 表单508，禁用横向条仍裁切；R7-F2，Measured→Smoothed→Measured清空事件后无法重现。
+- 修复3cc546a：滚动区根据实际表单最小宽度动态约束分栏与窗口；事件重建集中到配方刷新，实际样本须与缓存一致，避免将旧事件叠到新数据；源切回可自动恢复。补回可见SG导数说明及完整时序tooltip。补充700px缩窗尝试、源往返与不同样本隔离回归。
+- 本轮仍要求用户亲自补测B；main和论文worktree不改，不提前关闭HR或AC-8。
+
+
+### R8 — HR交互修复独立复审（2026-10-15）
+
+- 冻结3cc546a；全新只读Luna-max聚焦R7-F1/F2及其必要调用链，不重开数值 / schema范围。**Approve，无新增实质bug；R7-F1 / F2 Closed**。
+- 独立验证：14项GUI定向、额外1项窄窗回归通过；diff检查通过。核对700px缩窗尝试不裁切、源切回事件恢复、实际样本不匹配时不复用标记、SG说明恢复。
+- 主Agent末轮35项GUI / 工作区 / Analysis只读回归通过（11.06s）。[最终CI38760538586](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38760538586)：macOS1100 passed / 2 skipped（77.92s）、Windows1100 passed / 2 skipped（158.54s），安装 / FFprobe / 测试 / 清理均success。

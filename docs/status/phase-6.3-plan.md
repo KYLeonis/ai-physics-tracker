@@ -163,9 +163,9 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 
 ## Result
 
-- 产品实现：S0–S4完成，2026-10-15；最终产品代码e74608d，bec8d61仅补测试；未合并main，S5仍待本轮Human Review / 后续集成。
+- 产品实现：S0–S4完成，2026-10-15；核心产品代码e74608d，入口04495a4，本轮交互修复2eeee68 / 3cc546a，bec8d61仅补核心测试；未合并main，S5仍待本轮Human Review / 后续集成。
 - 验证：解析数值 / 生命周期 / GUI、本机全量1095及最终双平台1095 passed / 2 skipped；R4 / R5 / R6独立复审Approve。P011均值对照差0.21996%，门槛 / 协议未改。详见[review](../reviews/phase-6.3-review.md)。
-- 下一步：按[HR步骤](../notes/phase-6.3-human-review.md)等待A/B/C/D真人反馈；不自动合并或进入6.4 / 6.5。通过后核对未处置事项，--no-ff集成main、同步文档 / Issue / PR并push，仅收尾6.3。
+- 下一步：按[HR步骤](../notes/phase-6.3-human-review.md)等待B交互补测 / D真人反馈（A / C已通过）；不自动合并或进入6.4 / 6.5。通过后核对未处置事项，--no-ff集成main、同步文档 / Issue / PR并push，仅收尾6.3。
 
 ## Technical Sources
 
@@ -188,3 +188,6 @@ P011应用层完整prepare→run→apply→save→load对照通过（原冻结�
 
 
 2026-10-15 HR入口补丁04495a4：顶栏常驻Fit formula / Measure intervals直达、分析页提示与短标签，绝对PYTHONPATH启动避免误用原main。31项GUI / 最新双平台1096 passed / 2 skipped；仅导航与提示变化，原科学 / 数据契约不变。等待入口补测和原A/B/C/D，未集成main。
+
+
+2026-10-15 HR进展：用户A / C通过；B因滚轮 / 图表拖动 / 参考线及信息密度不通过，D未反馈。交互修复2eeee68及独立复审返工3cc546a已推送，补测见[HR文档](../notes/phase-6.3-human-review.md)。最终35项定向通过；R8新只读独立复审Approve、R7两项finding Closed；3cc546a[双平台CI38760538586](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38760538586)各1100 passed / 2 skipped。科学协议 / 数据契约未改，不提前关闭AC-8。
