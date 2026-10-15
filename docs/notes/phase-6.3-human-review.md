@@ -4,14 +4,13 @@
 
 ## 启动
 
-本轮代码在开发worktree；原目录main保持已验收6.2。
+本轮代码在开发worktree；原目录main保持已验收6.2。先关闭旧窗口，再执行下面一行；绝对PYTHONPATH确保从任何目录启动的都是本轮版本。
 
 ```bash
-cd /Users/leonis/.codex/worktrees/bd40/ai-physics-tracker
-PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m ai_physics_tracker
+PYTHONPATH=/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker/src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m ai_physics_tracker
 ```
 
-File → Open Project选择下列`project.json`，再进入Analysis → Function fit / crossing intervals。
+File → Open Project选择下列`project.json`，再点击顶栏蓝色 **Fit formula / Measure intervals** 按钮。该按钮在所有工作区常驻，一次进入工具页；也可在Analysis & charts中选择 **Formula fitting & intervals** 标签。分析页蓝色提示条会指出入口。
 
 - 合成水平往复运动：`/Users/leonis/Documents/ai-physics-tracker/experiment/p63-human-review/project/project.json`。明确标为合成数据，不是人工真值。可复现生成命令（输出目录必须尚不存在）：`PYTHONPATH=src <python> scripts/prepare_p63_human_review.py --output <new-directory>`。
 - P011真实结果：`/Users/leonis/Documents/ai-physics-tracker/experiment/p63-reference/analysis-result-project/project.json`。沿用用户提供的TOML / 旧DLC与本轮授权的近似时序；原冻结基准工程保持原样。打开后如现有时序门提示Near-CFR，选择已授权的近似模式；不能以未确认时序启动新测量。
@@ -49,3 +48,8 @@ File → Open Project选择下列`project.json`，再进入Analysis → Function
 封闭问题D：真实工程的来源 / 近似时序、公式和结果展示是否清楚？通过 / 不通过。
 
 请回复A / B / C / D分别通过与否；不通过时描述具体操作和实际结果即可。只有用户本人反馈可以关闭本轮HR；自动化测试不替代体验验收。
+
+
+### 入口可发现性补测（2026-10-15）
+
+用户未找到入口；诊断时现有GUI进程工作目录为原main，P6.3仍在开发worktree。已提供绝对PYTHONPATH启动命令，并增加顶栏常驻直达按钮 / 分析页提示 / 缩短标签名称。请关闭旧窗口后按新命令启动，确认无需寻找第二层标签即可看见公式编辑器。封闭问题：入口现在是否明显、一次点击能进入？通过 / 不通过。原A/B/C/D尚未收到通过反馈。

@@ -2,7 +2,7 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-15（P6.3自动Gate通过，等待本轮HR）
+- 最后更新：2026-10-15（P6.3 HR入口可发现性修复）
 
 ## Current
 
@@ -13,7 +13,7 @@
 
 ## Next Recommended Action
 
-1. **停止开发，等待用户本轮A/B/C/D真人HR反馈**；[详细步骤](../notes/phase-6.3-human-review.md)。从本managed worktree启动；原目录main仍feaa80f，不含6.3产品。不得用自动化、截图或之前P6.2 HR代替本轮反馈。
+1. **入口HR修复后等待用户补测及本轮A/B/C/D反馈**；[详细步骤](../notes/phase-6.3-human-review.md)。使用HR文档中绝对PYTHONPATH单行命令启动；原目录main仍feaa80f，不含6.3产品。顶栏蓝色Fit formula / Measure intervals可一键直达。不得用自动化、截图或之前P6.2 HR代替本轮反馈。
 2. 合成体验工程：原目录本地`experiment/p63-human-review/project/project.json`；真实工程：`experiment/p63-reference/analysis-result-project/project.json`。均实际open / 首帧 / 探针通过。真实工程沿用本轮明确授权的Near-CFR，原冻结基准未改。
 3. 若HR不通过，按具体反馈修复 / 相称验证 / 补测；若全部通过，检查分支 / main干净、核对无新增差异后--no-ff集成main、文档收尾 / Issue #29 / PR #30同步并push。仅收尾6.3，不进入6.4 / 6.5。
 4. GLM本轮600s调用超时无有效输出 / 模型核验，非额度耗尽证据；Codex完成主体与修复，Luna-max交付公式控件及各轮独立review。子任务worktree已归档，当前用户worktree保留。
@@ -60,6 +60,9 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3 HR入口可发现性修复（2026-10-15）**：用户找不到新工具；只读进程检查显示现有GUI工作目录为原main，原main未包含6.3。新UI原来位于Analysis第二层标签，入口不足。新增顶栏常驻蓝色Fit formula / Measure intervals直达、分析页蓝色提示、标签缩短为Formula fitting & intervals；改为绝对PYTHONPATH单行启动，避免从main加载旧源码。31项GUI回归通过（含任意工作区点按钮直达 / 数据不变），不改算法 / 数据契约 / main；双平台新CI待回执，等待入口补测及原A/B/C/D。
+
 
 - **P6.3自动Gate完成 / HR交付（2026-10-15）**：产品e74608d，本机全量1095；bec8d61仅补同ID源内容变化 / pipeline反序两个回归，文件18通过；最终CI38704158579 macOS / Windows Python3.11各1095 passed / 2 skipped。R4核心修复114定向、R5结果专用Undo67、R6测试闭环6项，分别独立Approve，F1–F9 Closed。P011应用均值1.041266844s vs人工1.0389815s，差0.21996%，最终18源组合prepare通过。公式 / 参数 / 初值预览 / 拟合 / 残差、独立交叉工具、追溯 / stale / 保存恢复和不越过raw / 源的结果Undo/Redo已交付。真人HR待用户；main与论文worktree未改，不集成 / 不进入后续。
 

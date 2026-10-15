@@ -3,6 +3,7 @@
 from concurrent.futures import Future
 from dataclasses import replace
 from threading import Event
+from PySide6.QtCore import Qt
 
 from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.application.video_timing import TimingReport
@@ -173,3 +174,20 @@ def test_analysis_history_buttons_restore_results_without_enabling_raw_edit(qtbo
     assert session.derived_data(track, 'function_fit_x') is not None
     assert session.project.observations == before
     assert not window.undoButton.isEnabled()
+
+
+def test_prominent_tools_entry_opens_editor_from_any_workspace_without_changing_data(qtbot, synthetic_video_path):
+    window, session, _ = _window(qtbot, synthetic_video_path)
+    observations, derived = session.project.observations, session.project.derived
+    for workspace in ('setup', 'acquire', 'analysis'):
+        window.analysisTabs.setCurrentIndex(0)
+        window.setWorkspace(workspace)
+        button = window.workflowHeader.analysisToolsButton
+        assert button.isVisible() and button.isEnabled()
+        qtbot.mouseClick(button, Qt.MouseButton.LeftButton)
+        assert window.currentWorkspace == 'analysis'
+        assert window.analysisTabs.currentIndex() == 1
+        assert window.chartActions.signalPanel.editor.isVisible()
+        assert window.analysisToolsHint.isVisible()
+        assert session.project.observations == observations
+        assert session.project.derived == derived

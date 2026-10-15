@@ -94,3 +94,10 @@ R0无可用结论；F1–F9均经修复 / 独立复审Closed。R4补充的同ID�
 - P011冻结协议未改；最终18种量 / 测量平滑组合prepare通过，实际角量重复间隔仍1.041266844s，与独立人工1.0389815s差0.21996%；7事件夹点吻合。旧DLC为自动预测，不冒充人工真值；参考使用同视频原PTS，不宣称独立校时。
 - 真实与合成HR工程实际open_project / 首帧解码 / 探针通过，均在本地忽略experiment，不入库；主main feaa80f及论文worktree保持干净未改。公式子任务worktree已归档，用户主worktree保留。
 - 本轮HR尚待用户；Windows/CUDA真机沿既有批准延期Phase9前，未扩大声称已验证。
+
+
+### HR反馈 — 入口不明显（2026-10-15）
+
+- F12 Normal-risk GUI：用户未找到Analysis工具；诊断现有Python GUI进程cwd为原main，6.3未集成main。原入口又位于第二层长标签，缺少常驻提示。
+- 修复：WorkflowHeader常驻蓝色直达按钮，MainWindow纯导航openAnalysisTools，分析页提示及短标签；绝对PYTHONPATH启动命令保证从任意cwd加载本轮源码。未更改科学算法 / 持久化 / 后台事务。
+- 验证：31项相关GUI / 工作区 / Analysis只读回归通过，真实鼠标点击可从Setup / Acquire / Analysis进入编辑器，observations和derived保持相同。入口易用性仍待用户补测；原A/B/C/D无通过反馈。

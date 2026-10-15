@@ -657,14 +657,30 @@ class MainWindow(QMainWindow):
         """ChartPanel 由 dock 转为分析页主体（Phase 5.7）。"""
         host_layout = self._analysisChartHost.layout()
         host_layout.setContentsMargins(0, 0, 0, 0)
+        self.analysisToolsHint = QLabel(
+            "Want to fit your formula or measure repeat intervals? "
+            "Use the highlighted 'Fit formula / Measure intervals' button above "
+            "or the 'Formula fitting & intervals' tab below.")
+        self.analysisToolsHint.setWordWrap(True)
+        self.analysisToolsHint.setStyleSheet(
+            "background: #eaf3ff; color: #172b4d; padding: 6px; border-radius: 4px;")
+        host_layout.addWidget(self.analysisToolsHint)
         self.analysisTabs = QTabWidget()
-        self.analysisTabs.addTab(panel, "Charts / source calculation")
+        self.analysisTabs.addTab(panel, "Charts & source data")
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(self.chartActions.signalPanel)
-        self.analysisTabs.addTab(scroll, "Function fit / crossing intervals")
+        self.analysisTabs.addTab(scroll, "Formula fitting & intervals")
+        self._analysisToolsScroll = scroll
+        self.workflowHeader.analysisToolsRequested.connect(self.openAnalysisTools)
         self.analysisTabs.currentChanged.connect(lambda _index: self.chartActions.cancel() if self.chartActions.pending else None)
         host_layout.addWidget(self.analysisTabs)
+
+    def openAnalysisTools(self) -> None:
+        """常驻直达入口：只导航到公式 / 间隔工具，不执行计算或修改数据。"""
+        self.setWorkspace(WORKSPACE_ANALYSIS)
+        self.analysisTabs.setCurrentIndex(1)
+        self._analysisToolsScroll.verticalScrollBar().setValue(0)
 
     def setPlaybackRate(self, rate: float) -> None:
         """设置播放倍速并即时生效；非正值忽略。"""
