@@ -171,3 +171,10 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 
 - [Matplotlib MathText](https://matplotlib.org/stable/users/explain/text/mathtext.html)、[MathTextParser API](https://matplotlib.org/stable/api/mathtext_api.html)：无需TeX的排版 / Agg预览；仅显示，不作计算器。
 - [Matplotlib许可](https://matplotlib.org/stable/project/license.html)：实施依赖时核对版本及随附许可通知。
+
+
+## S1 Frozen Numerical Fixtures（2026-10-15）
+
+- 无噪声时间区间0–4s / 161点；线性a=2.3,b=-4与二次a=.4,b=-2,c=1，良好初值；参数绝对容差1e-7（阻尼余弦1e-6），预测RMSE<1e-8。阻尼余弦c=.2,A=1.3,beta=.12,Omega=4.2,phi=.3；初值分别.1,1,.1,4,.2。单初值等权，不承诺任意初值收敛。
+- 非单摆正弦偏置7 / 振幅2 / 周期1.3s，3–15s / 1201点，两方向均要求周期相对误差≤1%；常量 / 单调 / 多峰漂移单独测试，不推断唯一基本周期。
+- 初次P011领域算法对照：协议未修改；均值1.041266844s，人工1.0389815s，相对差0.21996%，7事件夹点均匹配人工。应用层完整路径与最终验收仍待完成。

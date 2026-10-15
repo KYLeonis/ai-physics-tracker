@@ -2,20 +2,20 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-15（P6.3 S0启动）
+- 最后更新：2026-10-15（P6.3 S0完成，S1 / S2实现中）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3 / S0进行中，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)。数据契约[ADR-0021 Proposed](../decisions/0021-function-fit-and-recurrence-result-contract.md)待独立检查；真实人工周期参考待用户逐帧记录，未开始拟合 / 周期算法。
+- **Subphase / Slice**：P6.3 / S1–S2实现中，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)。S0已冻结：人工7事件 / 6间隔、用户提供P011标定与旧DLC、近似时序明确授权；[ADR-0021 Accepted](../decisions/0021-function-fit-and-recurrence-result-contract.md)，定向独立检查Approve。表达式 / 拟合 / 重复间隔首轮共50项测试通过；真实周期首次对照差0.220%，尚未完成应用 / GUI / 全量Gate。
 - **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3-function-fitting`；原目录仍main，论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 用户使用原目录本地`experiment/p63-reference/reference-review.html`，逐帧记录木块中央圆点从左向右过参考线的连续至少6次事件（5周期）；已异步提出，尚无人工参考反馈。
-2. Codex继续S0数据契约 / 依赖生命周期设计与独立检查，准备连续轨迹和角参考。不得把自动轨迹或AI观察冒充独立人工参考；S0完整冻结前不提前评估周期算法。
-3. S0通过后按[6.3计划](phase-6.3-plan.md)S1–S5推进；用户已授权开发，无需再问启动或已确认的范围 / Matplotlib。最终必须独立复审 / 双平台CI / 新HR，停止在HR反馈关卡。
+1. 继续S1 / S2边界自查与S3应用 / 持久化：精确上游版本、源样本 / 时间快照、失效与原子提交；保留冻结基准参数，不按算法效果改门槛。
+2. Codex负责数值与生命周期；隔离managed worktree的Luna-max负责公式编辑控件。GLM本轮只读review调用超时且无有效输出（非额度耗尽证据），已由全新Luna完成数据契约定向检查；完整产品独立review另做。
+3. S4 / S5完成后运行定向 / 全量、macOS+Windows CI、新Independent Review / 修复复审；给出启动和体验步骤，停止等待本轮真人HR。未通过HR前不集成main，不进入6.4 / 6.5。
 
 ## Active Constraints
 
@@ -56,6 +56,9 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3 S0完成 / S1–S2初版（2026-10-15）**：用户提供P011原TOML，标定 / 支点 / 竖直方向及旧DLC哈希核对通过，600点连续轨迹与现有角量管线生成可重开的基准工程；无需改变角参考验收条件。冻结协议SHA `64ccd90b…53e63e`。首次新重复间隔算法获得7事件 / 6间隔，均值1.041266844s，人工1.0389815s，相对差0.21996%，全部交叉帧夹点与人工一致；此为领域算法对照，不代替后续应用 / GUI Gate。表达式28、拟合9、重复间隔13测试通过。公式控件已派给隔离Luna-max，复杂算法由Codex实现。
+
 
 - **P6.3 S0启动（2026-10-15）**：用户授权Codex主要实现，GLM小任务 / Luna-max按需协作。从main `feaa80f`建立`feat/p6.3-function-fitting`。Luna只读核对上游派生ID传播入口；Codex起草ADR-0021及高级分析术语，保留既有clear全部派生语义。原目录本地逐帧人工参考页已生成，600帧图片 / 原source映射齐全，不含自动周期检测；已请用户亲自标记至少6个交叉事件。S0尚未完整冻结，未修改数值算法 / 安装依赖。
 
