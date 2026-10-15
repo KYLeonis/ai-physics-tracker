@@ -1313,6 +1313,11 @@ class ProjectSession:
         from ai_physics_tracker.application.angular_job import validated_angular
         self._commit_store(self._store, validated_angular(self, result))
 
+    def apply_analysis_result(self, result: "SignalAnalysisResult") -> None:
+        """主线程提交单量拟合 / 重复间隔，共用完整历史快照事务。"""
+        from ai_physics_tracker.application.signal_analysis_job import validated_analysis
+        self._commit_store(self._store, validated_analysis(self, result))
+
     @staticmethod
     def _with_import_summary(
         registered_run: TrackingRun,
@@ -1529,6 +1534,8 @@ class ProjectSession:
         store: TrackStore | None = None,
         scoped_reviews: dict[UUID, dict[str, Any] | None] | None = None,
     ) -> None:
+        from ai_physics_tracker.domain.analysis import stale_analysis_dependents
+        project = replace(project, derived=stale_analysis_dependents(project.derived))
         self._check_validation_series_removal(project)
         self._push_undo_snapshot(scoped_reviews)
         if store is not None:
