@@ -145,5 +145,5 @@ def fit_function(
                           tuple(map(float, predicted)), tuple(map(float, -errors)), rmse, evaluations, status)
     except _FitStopped as exc:
         return FitOutcome(exc.status, exc.message, evaluations=evaluations)
-    except (ExpressionError, FloatingPointError, np.linalg.LinAlgError) as exc:
+    except (ValueError, FloatingPointError, np.linalg.LinAlgError) as exc:
         return FitOutcome("domain_error", str(exc), evaluations=evaluations)

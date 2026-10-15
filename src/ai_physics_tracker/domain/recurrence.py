@@ -1,7 +1,9 @@
 """领域层：同方向参考线交叉的事件与重复间隔，不推断基本周期。"""
 
 import math
+from concurrent.futures import CancelledError
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 
@@ -51,6 +53,7 @@ class RecurrenceOutcome:
 
 def measure_recurrence(
     frame_indices: np.ndarray, time_s: np.ndarray, values: np.ndarray, spec: RecurrenceSpec,
+    is_cancelled: Callable[[], bool] = lambda: False,
 ) -> RecurrenceOutcome:
     """仅在连续有效段配对；NaN、帧缺口、角分支跳变、在线平台均断段。
 
@@ -64,13 +67,19 @@ def measure_recurrence(
             or not np.all(np.isfinite(time)) or np.any(np.diff(time) <= 0)
             or np.any(np.diff(frames) <= 0) or np.any(np.isinf(signal))):
         raise ValueError("Recurrence samples require increasing source frames and finite paired times")
-    oriented = (signal - spec.level) * (1 if spec.direction == "rising" else -1)
+    try:
+        with np.errstate(over="raise", invalid="raise"):
+            oriented = (signal - spec.level) * (1 if spec.direction == "rising" else -1)
+    except FloatingPointError as error:
+        raise ValueError("Signal and reference exceed the supported numeric range") from error
     events: list[CrossingEvent] = []
     segment = 0
     armed = False
     candidate: CrossingEvent | None = None
     previous: int | None = None
     for index, value in enumerate(oriented):
+        if index % 256 == 0 and is_cancelled():
+            raise CancelledError()
         if np.isnan(value):
             segment += 1
             armed, candidate, previous = False, None, None
@@ -88,7 +97,9 @@ def measure_recurrence(
             candidate = None
         if armed and previous is not None and oriented[previous] < 0 <= value:
             # 以有限夹点计算零线事件；确认带只负责抑制重复计数。
-            fraction = float(-oriented[previous] / (value - oriented[previous]))
+            magnitude = max(abs(oriented[previous]), abs(value))
+            below, above = -oriented[previous] / magnitude, value / magnitude
+            fraction = float(below / (below + above))
             crossing_time = float(time[previous] + fraction * (time[index] - time[previous]))
             candidate = CrossingEvent(int(frames[previous]), int(frames[index]),
                                       float(time[previous]), float(time[index]), crossing_time, segment)
@@ -98,6 +109,8 @@ def measure_recurrence(
                 events.append(candidate)
             armed, candidate = False, None
         previous = index
+    if is_cancelled():
+        raise CancelledError()
     intervals = tuple(right.time_s - left.time_s for left, right in zip(events, events[1:])
                       if left.segment_index == right.segment_index)
     mean = float(np.mean(intervals)) if intervals else None

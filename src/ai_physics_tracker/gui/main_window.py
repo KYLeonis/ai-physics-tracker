@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QSplitter,
     QStackedWidget,
+    QTabWidget,
 )
 
 from ai_physics_tracker.application.playback import AsyncVideoSession, DecodeDelivery
@@ -656,7 +657,14 @@ class MainWindow(QMainWindow):
         """ChartPanel 由 dock 转为分析页主体（Phase 5.7）。"""
         host_layout = self._analysisChartHost.layout()
         host_layout.setContentsMargins(0, 0, 0, 0)
-        host_layout.addWidget(panel)
+        self.analysisTabs = QTabWidget()
+        self.analysisTabs.addTab(panel, "Charts / source calculation")
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(self.chartActions.signalPanel)
+        self.analysisTabs.addTab(scroll, "Function fit / crossing intervals")
+        self.analysisTabs.currentChanged.connect(lambda _index: self.chartActions.cancel() if self.chartActions.pending else None)
+        host_layout.addWidget(self.analysisTabs)
 
     def setPlaybackRate(self, rate: float) -> None:
         """设置播放倍速并即时生效；非正值忽略。"""

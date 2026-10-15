@@ -138,3 +138,30 @@ def test_tampered_sample_snapshot_is_rejected_atomically(signal_session):
     with pytest.raises(ProjectSessionError, match='sample snapshot'):
         session.apply_analysis_result(tampered)
     assert session.project == before
+
+
+def test_reopen_checks_source_freshness_from_older_writers(signal_session):
+    session, _, track = signal_session
+    session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
+    saved = session.project
+    source = session.derived_data(track, 'world_position')
+    from uuid import uuid4
+    changed = replace(saved, derived=tuple(replace(item, derived_id=uuid4()) if item == source else item for item in saved.derived))
+    reopened = ProjectSession(ProjectRepository(), changed)
+    assert reopened.derived_data(track, 'function_fit_x').status == 'stale'
+
+
+def test_nested_summary_and_input_extensions_survive_replacement(signal_session):
+    session, _, track = signal_session
+    result = run_signal_analysis(_job(session, track), Event())
+    metadata = result.record.extra_fields['analysis']
+    metadata = metadata | {'summary': metadata['summary'] | {'future_metric': {'score': 8}}}
+    record = replace(result.record, extra_fields={'analysis': metadata})
+    session.apply_analysis_result(replace(result, record=record))
+    old = session.derived_data(track, 'function_fit_x')
+    old = replace(old, input=replace(old.input, extra_fields={'future_selector': 3}))
+    session._project = replace(session.project, derived=tuple(old if item.kind == old.kind else item for item in session.project.derived))
+    session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
+    current = session.derived_data(track, 'function_fit_x')
+    assert current.extra_fields['analysis']['summary']['future_metric'] == {'score': 8}
+    assert current.input.extra_fields['future_selector'] == 3

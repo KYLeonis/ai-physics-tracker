@@ -144,7 +144,11 @@ def _evaluate(node: ast.expr, time: np.ndarray, parameters: Mapping[str, float])
 
 def _latex(node: ast.expr) -> str:
     if isinstance(node, ast.Constant):
-        return str(node.value)
+        text = str(node.value)
+        if "e" in text.lower():
+            base, exponent = text.lower().split("e")
+            return base + r"\times 10^{" + str(int(exponent)) + "}"
+        return text
     if isinstance(node, ast.Name):
         if node.id == "pi":
             return r"\pi"

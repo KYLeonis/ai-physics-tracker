@@ -38,8 +38,12 @@ def stale_analysis_dependents(records: tuple[DerivedData, ...]) -> tuple[Derived
         metadata = item.extra_fields.get("analysis")
         if item.kind in ANALYSIS_KINDS and item.status == "valid" and isinstance(metadata, dict) and metadata.get("version") == 1:
             source = sources.get(metadata.get("source_id"))
-            if (source is None or source.status != "valid"
-                    or source_fingerprint(source) != metadata.get("source_fingerprint")):
+            try:
+                matches = (source is not None and source.status == "valid"
+                           and source_fingerprint(source) == metadata.get("source_fingerprint"))
+            except (TypeError, ValueError, OverflowError):
+                matches = False  # 不可读旧源不能使已保存分析伪装新鲜，也不阻止编辑修复。
+            if not matches:
                 item = replace(item, status="stale")
         updated.append(item)
     return tuple(updated)

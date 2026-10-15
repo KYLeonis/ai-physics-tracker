@@ -60,3 +60,10 @@ def test_result_formula_does_not_infer_period_or_accept_time():
 def test_all_supported_functions_share_finite_numeric_path():
     expression = parse_expression("sin(pi/2)+cos(0)+exp(0)+log(exp(2))+sqrt(4)+abs(-3)")
     np.testing.assert_allclose(expression.evaluate([0, 2], {}), [10, 10], atol=1e-12)
+
+
+def test_scientific_constants_display_as_powers_of_ten():
+    expression = parse_expression("1e-6*t")
+    assert r"1e-06" not in expression.latex
+    assert r"\times 10^{-6}" in expression.latex
+    np.testing.assert_allclose(expression.evaluate([2], {}), [2e-6], atol=1e-15)

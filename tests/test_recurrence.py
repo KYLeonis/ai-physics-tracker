@@ -73,3 +73,24 @@ def test_multipeak_and_drifting_signal_reports_intervals_not_a_unique_period():
     result = measure_recurrence(np.arange(len(time_s)), time_s, signal, RecurrenceSpec())
     assert len(result.intervals_s) > 5 and result.sample_std_s > .1
     assert "fundamental period is not inferred" in result.message
+
+
+def test_long_scan_responds_to_cancellation_before_finishing():
+    from concurrent.futures import CancelledError
+    checks = 0
+    def cancelled():
+        nonlocal checks
+        checks += 1
+        return checks == 3
+    time_s = np.arange(10000.)
+    with pytest.raises(CancelledError):
+        measure_recurrence(np.arange(10000), time_s, np.sin(time_s), RecurrenceSpec(), cancelled)
+    assert checks == 3
+
+
+def test_minimum_separation_filters_repeated_events_explicitly():
+    signal = np.array([-1., 1, -1, 1, -1, 1])
+    result = measure_recurrence(np.arange(6), np.arange(6.), signal,
+                                RecurrenceSpec(min_separation_s=3))
+    assert len(result.events) == 2
+    assert result.intervals_s == pytest.approx((4.,), abs=1e-12)

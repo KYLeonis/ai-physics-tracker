@@ -166,6 +166,8 @@ class ProjectSession:
         project: Project,
         project_root: Path | None = None,
     ) -> None:
+        from ai_physics_tracker.domain.analysis import stale_analysis_dependents
+        project = replace(project, derived=stale_analysis_dependents(project.derived))
         self._repository = repository
         self._project = project
         # Project 及其成员均为 frozen 数据类；保存基线共享引用即可，

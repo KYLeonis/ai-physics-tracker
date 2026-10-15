@@ -19,7 +19,7 @@ from ai_physics_tracker.application.kinematics_job import AnalysisInputs, analys
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.analysis import QUANTITIES, source_fingerprint, source_snapshot
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, DerivedData, DerivedInput
-from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula
+from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula, parse_expression
 from ai_physics_tracker.domain.function_fit import FitOutcome, FitSpec, fit_function
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec, measure_recurrence
 from ai_physics_tracker.domain.timeline import frame_to_time
@@ -177,7 +177,7 @@ def run_signal_analysis(job: SignalAnalysisJob, cancel: Event) -> SignalAnalysis
                 conversions.append({"name": name, "formula": formula, "value": None, "error": str(exc)})
         summary["result_formulas"] = conversions
     else:
-        recurrence = measure_recurrence(samples[:, 0].astype(int), samples[:, 1], samples[:, 3], job.spec)
+        recurrence = measure_recurrence(samples[:, 0].astype(int), samples[:, 1], samples[:, 3], job.spec, cancel.is_set)
         summary = asdict(recurrence)
         values = tuple((float(value),) for value in samples[:, 3])
     if cancel.is_set():
@@ -219,6 +219,8 @@ def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) ->
             or record.input != DerivedInput(job.selection.track_id) or record.calibration_ref != job.source.calibration_ref
             or record.unit != job.source.unit or metadata is None
             or metadata.get("source_snapshot") != source_snapshot(job.source)
+            or metadata.get("source_id") != str(job.source.derived_id)
+            or metadata.get("quantity") != job.selection.quantity
             or metadata.get("source_fingerprint") != source_fingerprint(job.source)
             or metadata.get("spec") != json.loads(json.dumps(asdict(job.spec)))
             or metadata.get("interval") != [job.selection.start_frame, job.selection.end_frame]
@@ -235,6 +237,32 @@ def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) ->
         if (outcome is None or record.values != tuple(zip(outcome.prediction, outcome.residual))
                 or len(outcome.prediction) != len(job.samples)):
             raise ProjectSessionError("Fit values differ from the solver outcome")
+        parameters = dict(outcome.parameter_values)
+        try:
+            for parameter in job.spec.parameters:
+                value = parameters[parameter.name]
+                if ((parameter.fixed and value != parameter.initial)
+                        or (parameter.lower is not None and value < parameter.lower)
+                        or (parameter.upper is not None and value > parameter.upper)):
+                    raise ValueError("Parameter solution violates its constraints")
+            predicted = parse_expression(job.spec.expression).evaluate(
+                [row[2] for row in job.samples], parameters)
+            measured = np.array([row[3] for row in job.samples])
+            if (not np.allclose(predicted, outcome.prediction, rtol=1e-10, atol=1e-12)
+                    or not np.allclose(measured-predicted, outcome.residual, rtol=1e-10, atol=1e-12)):
+                raise ValueError("Prediction or residual does not match the declared model")
+            summary = metadata.get("summary")
+            expected = json.loads(json.dumps(asdict(outcome)))
+            if not isinstance(summary, dict) or any(summary.get(key) != value for key, value in expected.items()):
+                raise ValueError("Fit summary does not match the solver outcome")
+        except (KeyError, ValueError) as error:
+            raise ProjectSessionError(str(error)) from error
+    else:
+        samples = np.asarray(job.samples)
+        expected = measure_recurrence(samples[:, 0].astype(int), samples[:, 1], samples[:, 3], job.spec)
+        if (record.values != tuple((row[3],) for row in job.samples)
+                or metadata.get("summary") != json.loads(json.dumps(asdict(expected)))):
+            raise ProjectSessionError("Crossing events do not match the selected signal and settings")
     kept = tuple(item for item in session.project.derived if (item.track_id, item.kind) != (record.track_id, record.kind))
     previous = session.derived_data(record.track_id, record.kind)
     extras = deepcopy(previous.extra_fields) if previous else {}
@@ -242,7 +270,14 @@ def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) ->
     if old_metadata:
         owned = {"version", "quantity", "source_id", "source_fingerprint", "source_snapshot", "selection", "interval", "samples", "spec", "syntax_version", "scipy_version", "summary"}
         metadata = {key: deepcopy(value) for key, value in old_metadata.items() if key not in owned} | metadata
+        summary_owned = {"status", "message", "parameter_values", "prediction", "residual", "rmse", "evaluations", "solver_status", "result_formulas"} if isinstance(job.spec, FitSpec) else {
+            "events", "intervals_s", "mean_interval_s", "sample_std_s", "measurement_status", "message"}
+        old_summary = old_metadata.get("summary")
+        if isinstance(old_summary, dict):
+            metadata["summary"] = {key: deepcopy(value) for key, value in old_summary.items() if key not in summary_owned} | metadata["summary"]
     from dataclasses import replace
     extras.update(record.extra_fields)
     extras["analysis"] = metadata
-    return kept + (replace(record, extra_fields=extras),)
+    input_extras = deepcopy(previous.input.extra_fields) if previous else {}
+    input_extras.update(record.input.extra_fields)
+    return kept + (replace(record, extra_fields=extras, input=replace(record.input, extra_fields=input_extras)),)
