@@ -1,23 +1,23 @@
 # Review Record — Phase 6.3 User-defined Function Fitting and Signal Recurrence
 
 - Subphase / Issue：P6.3 / [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)
-- 当前轮次：R0，2026-10-15，S0数据契约的定向独立检查；R1已Approve，实现与最终Independent Review尚未开始。
-- 冻结范围：`9bf9acd` 中ADR-0021 / GLOSSARY及必要连接代码；不将文档检查当作未实现算法的验收。
+- 当前轮次：R6，2026-10-15；R4核心修复闭环、R5结果Undo增量、R6测试缺口均已独立通过。
+- 最终产品代码：`e74608d`；测试补齐：`bec8d61`；文档交付不改产品树。
 - Context：[6.3计划](../status/phase-6.3-plan.md)、[ADR-0021 Accepted](../decisions/0021-function-fit-and-recurrence-result-contract.md)、ADR-0017/0019/0020、CODE_STANDARD。
-- Reviewer：R0请求全新ZCode GLM-5.3 / plan；600s超时，无实际模型核验 / 审查结论。R1改由全新Luna-max只读会话审同一冻结契约。
+- Reviewer：R0 GLM-5.3请求600s超时 / 无有效模型核验或结论；R1–R6为分别隔离、只读的Luna-max任务。Codex负责实现与修复验收；Luna交付公式控件，Codex检查并返工其MathText模式问题。
 
 ## Checklist
 
 - [x] 源与目标结果身份、样本快照、时间语义、依赖失效 / 删除 / Undo规则自洽
 - [x] 不破坏既有schema / clear语义，旧项目和未知扩展有明确保留策略
 - [x] 区分交叉重复间隔与物理周期，不以单摆作为通用模型约束
-- [ ] 科学算法有解析合成测试与真实基准证据（未实现）
-- [ ] 完整实现 / 全量 / 双平台CI通过（未实现）
-- [ ] 新Human Review通过（未实现）
+- [x] 科学算法有解析合成测试与真实基准证据（P011应用均值相对差0.21996%）
+- [x] 完整实现 / 全量 / 双平台CI通过（最终bec8d61双平台1095 passed / 2 skipped）
+- [ ] 新Human Review通过（已交付步骤，等待用户亲测）
 
 ## Findings
 
-R0没有可用结论；R1 Approve，无实质finding。
+R0无可用结论；F1–F9均经修复 / 独立复审Closed。R4补充的同ID内容变化及步骤顺序两项P3测试缺口已由bec8d61补齐、R6独立验证Closed；没有未处置的运行时P1/P2/P3。
 
 ## Review Log
 
@@ -35,7 +35,7 @@ R0没有可用结论；R1 Approve，无实质finding。
 
 ## Final Verdict
 
-**S0契约Approve；P6.3最终Verdict Pending**。S0定向契约检查不代替完整实现的最终独立审查；数值 / GUI / 持久化实现、真实算法验收与HR仍未完成。
+**Independent Review Approve；Human Review Pending。** R2领域 / 应用、R3完整产品、R4修复、R5新增结果历史和R6测试闭环分别记录于下方；最终自动Gate通过后发起[本轮HR](../notes/phase-6.3-human-review.md)，用户反馈前不合并main。
 
 
 ### R2 — 全新Luna-max领域 / 应用独立检查（2026-10-15）
@@ -70,3 +70,27 @@ R0没有可用结论；R1 Approve，无实质finding。
 - F8 P3：多项式fixture实际参数断言1e-6，宽于计划1e-7。已按模型分别断言绝对容差、rel=0，定向通过；不改变冻结门槛。
 - 实现方另补F9：旧分析区间超出当前working zone时，恢复控件会静默钳位并声称恢复成功。现明确拒绝 / 提示先扩展zone，保存结果仍可只读查看；新增GUI回归。
 - 修复后63项相关回归通过；待新R4独立复审。
+
+
+### R4 — 全新Luna-max修复复审（2026-10-15）
+
+- 冻结1b8d173；从Git对象库导出副本避免共享HEAD前移混入e74608d。114项相关定向通过，F1–F9实现逻辑全部Closed；没有新P1/P2运行时缺陷。
+- 追加两项P3测试缺口：源ID不变只改values应命中指纹分支；pipeline成员相同只改顺序应命中有序步骤校验。当前行为均由独立合成探针确认正确，要求补长期回归；bec8d61已补，R6验证。
+- 性能表述边界：detached保留Project对象共享；TrackStore初始化既有O(N)成本未在本轮优化，不宣称整个detached调用严格O(1)。
+
+### R5 — 全新Luna-max结果历史定向复审（2026-10-15）
+
+- 冻结e74608d，对新增Undo result / Redo result及完整历史调用链检查；**Approve，无finding**。67项相关回归通过，diff检查通过。
+- 专用入口只允许栈顶差异属于本期ANALYSIS_KINDS；raw / track / calibration / refinement / runs / 上游结果变化均拒绝、不跳过历史。原Analysis全局Undo仍禁用；save清栈不变，pending / busy / closing守卫成立。
+
+### R6 — 全新Luna-max测试闭环（2026-10-15）
+
+- 冻结bec8d61；仅测试变更，产品树与e74608d一致。**Approve，无当前行为finding**。6项相关参数化测试通过；独立探针确认同ID源值变化命中fingerprint比较、calibrated velocity反序精确触发步骤顺序错误。
+- 备注：step_order用例目前匹配ProjectSessionError类型；独立探针核实具体分支，本轮非阻断。后续若修改校验顺序，可把消息匹配收紧；不因此重复修改已验证产品。
+
+### 最终验证 / 交付（2026-10-15）
+
+- 产品e74608d本机全量1095 passed（86.17s，Python3.12）；bec8d61仅补2个测试参数化情形，该文件18 passed。最终[PR CI38704158579](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38704158579)：Windows / macOS Python3.11均1095 passed / 2 skipped，所有安装 / FFprobe / 测试步骤success。Matplotlib3.8.4 / pyparsing3.3.2有弃用警告，不影响通过。
+- P011冻结协议未改；最终18种量 / 测量平滑组合prepare通过，实际角量重复间隔仍1.041266844s，与独立人工1.0389815s差0.21996%；7事件夹点吻合。旧DLC为自动预测，不冒充人工真值；参考使用同视频原PTS，不宣称独立校时。
+- 真实与合成HR工程实际open_project / 首帧解码 / 探针通过，均在本地忽略experiment，不入库；主main feaa80f及论文worktree保持干净未改。公式子任务worktree已归档，用户主worktree保留。
+- 本轮HR尚待用户；Windows/CUDA真机沿既有批准延期Phase9前，未扩大声称已验证。

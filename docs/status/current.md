@@ -2,26 +2,30 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-15（P6.3 S0–S4实现，S5验收中）
+- 最后更新：2026-10-15（P6.3自动Gate通过，等待本轮HR）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3 / S5验收中，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)、草稿[PR #30](https://github.com/KYLeonis/ai-physics-tracker/pull/30)。S0–S4实现 / 定向通过；真实应用管线对照差0.21996%，独立R2四项finding修复，完整R3 / e0431eb全量1086通过 / 双平台CI success，R3完整复审进行中，HR未发起。
+- **Subphase / Slice**：P6.3 / S5等待Human Review，Issue [#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)、草稿[PR #30](https://github.com/KYLeonis/ai-physics-tracker/pull/30)。S0–S4实现；R4 / R5 / R6独立复审Approve；本机产品全量1095及最终[双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38704158579)各1095 passed / 2 skipped。AC-1–7通过，AC-8待真人HR / 集成。
 - **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3-function-fitting`；原目录仍main，论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 完成冻结核心 / GUI完整独立R3审查；如有finding由Codex修复并发起新独立复审。当前修复e0431eb：加载复核源指纹，保留detached的O(1)共享契约；公式控件紧凑布局 / 可滚动数学预览。55项相关回归通过；e0431eb全量1086通过 / 双平台CI success，新增源配方一致性定向14通过；R3完整review进行中。
-2. 全部自动Gate通过后发起本轮Human Review：从当前managed worktree启动，打开原目录本地`experiment/p63-reference/analysis-result-project`；该工程含真实媒体路径、2个已保存结果和原始 / 角源。实际应用open_project / 首帧解码 / Near-CFR探针通过，冻结基准工程未改。
-3. 停止等待用户亲测反馈；未通过HR前不集成main，不进入6.4 / 6.5。原目录main / 论文worktree保持原样。GLM本轮600s调用超时、无有效输出；Codex完成主体，Luna-max交付公式控件与独立检查。
+1. **停止开发，等待用户本轮A/B/C/D真人HR反馈**；[详细步骤](../notes/phase-6.3-human-review.md)。从本managed worktree启动；原目录main仍feaa80f，不含6.3产品。不得用自动化、截图或之前P6.2 HR代替本轮反馈。
+2. 合成体验工程：原目录本地`experiment/p63-human-review/project/project.json`；真实工程：`experiment/p63-reference/analysis-result-project/project.json`。均实际open / 首帧 / 探针通过。真实工程沿用本轮明确授权的Near-CFR，原冻结基准未改。
+3. 若HR不通过，按具体反馈修复 / 相称验证 / 补测；若全部通过，检查分支 / main干净、核对无新增差异后--no-ff集成main、文档收尾 / Issue #29 / PR #30同步并push。仅收尾6.3，不进入6.4 / 6.5。
+4. GLM本轮600s调用超时无有效输出 / 模型核验，非额度耗尽证据；Codex完成主体与修复，Luna-max交付公式控件及各轮独立review。子任务worktree已归档，当前用户worktree保留。
 
 ## Active Constraints
 
 当前仍然影响下一步的规则（只列规则本身，细节以引用为准；新任务不得破坏）：
 
 **数据与科学契约**
+
+- P6.3两族`function_fit_<quantity>` / `signal_recurrence_<quantity>`各track / quantity最新一个槽，源只接既有线性 / 角量；完整source ID / 内容指纹和目标槽版本分别核对，原始 / 相对时间与实际样本保存，源删除 / 替换 / stale传播，schema v1 additive / 未来版本只读（ADR-0021）。
+- `Undo result / Redo result`只移动栈顶本期结果事务，不越过raw / track / calibration / runs / 上游源；原Analysis全局Undo仍禁用。
 
 - main 用户提供方程 / 公式，由通用平台计算与分析；论文硬编码 ODE 仅作复现参考（ADR-0017）
 - 同步 / 后台计算均需本次时序授权；修改区间置相关派生 stale，不改 raw 时间；提交还核对目标结果版本 / 配方 / 标定（ADR-0020）。
@@ -56,6 +60,9 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3自动Gate完成 / HR交付（2026-10-15）**：产品e74608d，本机全量1095；bec8d61仅补同ID源内容变化 / pipeline反序两个回归，文件18通过；最终CI38704158579 macOS / Windows Python3.11各1095 passed / 2 skipped。R4核心修复114定向、R5结果专用Undo67、R6测试闭环6项，分别独立Approve，F1–F9 Closed。P011应用均值1.041266844s vs人工1.0389815s，差0.21996%，最终18源组合prepare通过。公式 / 参数 / 初值预览 / 拟合 / 残差、独立交叉工具、追溯 / stale / 保存恢复和不越过raw / 源的结果Undo/Redo已交付。真人HR待用户；main与论文worktree未改，不集成 / 不进入后续。
+
 
 - **P6.3 S1–S4增量 / R2修复（2026-10-15）**：实现安全表达式、单初值有界等权最小二乘、可辨识 / 失败 / 取消状态、通用交叉事件 / 段内重复间隔、结果换算。源 / 目标双版本、样本 / 时间快照、独立槽 / Undo / stale、删除参考轨迹历史保留与保存重开；Analysis中公式 / 参数 / 初值预览、叠图 / 残差、真实帧导航和保存设置恢复。复用一个执行器。R2发现2P2 / 2P3已修复待完整复审；全量基线1081通过，后续1085通过 / 1失败定位为detached共享契约，已e0431eb修复并定向55通过。最终全量 / CI / R3 / HR仍待，不宣称收尾。
 

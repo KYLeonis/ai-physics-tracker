@@ -237,6 +237,6 @@ Open video（新会话）替代重连。Unknown/VFR 的浏览与“已验证可�
 
 ### P6.3公式预览依赖（2026-10-15）
 
-用户已批准Matplotlib，只使用MathText Agg，无外部TeX。显式约束`matplotlib>=3.8,<3.9`匹配DeepLabCut现有上界；锁定3.8.4。此版本二进制与NumPy 1.x配套，CI轻环境原NumPy 2.4.6 / OpenCV 4.14锁改为现有DLC开发环境已使用的NumPy 1.26.4 / OpenCV-headless 4.11.0.86，SciPy 1.17.1兼容。锁文件包含MathText所需传递依赖；双平台CI仍须验证。
+用户已批准Matplotlib，只使用MathText Agg，无外部TeX。显式约束`matplotlib>=3.8,<3.9`匹配DeepLabCut现有上界；锁定3.8.4。此版本二进制与NumPy 1.x配套，CI轻环境原NumPy 2.4.6 / OpenCV 4.14锁改为现有DLC开发环境已使用的NumPy 1.26.4 / OpenCV-headless 4.11.0.86，SciPy 1.17.1兼容。锁文件包含MathText所需传递依赖；已由P6.3最终macOS / Windows Python3.11 CI验证。
 
 Matplotlib及随附字体 / 第三方许可原文保存在`resources/licenses/matplotlib-3.8.4/`；Phase 9打包时连同发行包保留。项目自身License未变。当前pyparsing 3.3.2可运行，但Matplotlib 3.8.4会报告弃用提示；不因此单独升级到与DLC冲突的Matplotlib。
