@@ -65,6 +65,7 @@ class FitOutcome:
     rmse: float | None = None
     evaluations: int = 0
     solver_status: int | None = None
+    residual_scale: float = 1.0
 
     @property
     def is_publishable(self) -> bool:
@@ -92,6 +93,8 @@ def fit_function(
         return FitOutcome("insufficient_samples", "More samples than free parameters are required")
     fixed = {parameter.name: parameter.initial for parameter in spec.parameters if parameter.fixed}
     evaluations = 0
+    # 同一常数缩放保留等权最小二乘目标，避免小单位信号过早满足绝对gtol。
+    residual_scale = float(np.max(np.abs(values))) or 1.0
 
     def parameter_values(vector: np.ndarray) -> dict[str, float]:
         return fixed | {parameter.name: float(value) for parameter, value in zip(free, vector)}
@@ -105,7 +108,7 @@ def fit_function(
         evaluations += 1
         predicted = expression.evaluate(time, parameter_values(vector))
         with np.errstate(over="raise", invalid="raise"):
-            return predicted - values
+            return (predicted - values) / residual_scale
 
     initial = np.array([parameter.initial for parameter in free], dtype=float)
     try:
@@ -133,6 +136,7 @@ def fit_function(
             status, message = int(result.status), str(result.message)
         if is_cancelled():
             return FitOutcome("cancelled", "Fit was cancelled", evaluations=evaluations)
+        errors = errors * residual_scale
         # 缩放后求平方均值，避免有限大残差在平方步骤溢出。
         scale = float(np.max(np.abs(errors)))
         rmse = scale * math.sqrt(float(np.mean((errors / scale) ** 2))) if scale else 0.0
@@ -142,7 +146,7 @@ def fit_function(
         ordered = parameter_values(solution)
         return FitOutcome("success" if free else "given_parameters", message,
                           tuple((parameter.name, ordered[parameter.name]) for parameter in spec.parameters),
-                          tuple(map(float, predicted)), tuple(map(float, -errors)), rmse, evaluations, status)
+                          tuple(map(float, predicted)), tuple(map(float, -errors)), rmse, evaluations, status, residual_scale)
     except _FitStopped as exc:
         return FitOutcome(exc.status, exc.message, evaluations=evaluations)
     except (ValueError, FloatingPointError, np.linalg.LinAlgError) as exc:
