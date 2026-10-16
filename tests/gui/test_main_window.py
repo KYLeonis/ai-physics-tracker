@@ -54,9 +54,6 @@ def test_main_chart_and_ai_panels_allow_window_resizing(qtbot: QtBot) -> None:
     assert chart_panel.isVisible()
     window.setWorkspace("acquire")
     assert window.currentWorkspace == "acquire"
-    # 工作区往返后让布局失效事件送达（真实交互中每次点击都会跑事件循环），
-    # 已隐藏的头部按钮不再以过期缓存的最小宽度约束窗口。
-    qtbot.wait(10)
 
     expanded_width = compact_width + 200
     window.resize(expanded_width, 760)
