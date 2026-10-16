@@ -129,9 +129,7 @@ class FitAttemptJournal:
 
         path = _journal_path(destination)
         try:
-            existing = path.read_bytes()
-        except FileNotFoundError:
-            existing = None
+            existing = _read_existing(path)
         except OSError as error:
             self._transfer_expected = self._disk_bytes
             self._transfer_pending = True
@@ -193,15 +191,16 @@ class FitAttemptJournal:
         destination = root.resolve()
         path = _journal_path(destination)
         try:
-            raw = path.read_bytes()
-        except FileNotFoundError:
-            self._root = destination
-            return
+            raw = _read_existing(path)
         except OSError as error:
             self._root = destination
             self._load_pending = True
             self._read_only = False
             self._warning = _read_warning(path, error)
+            return
+
+        if raw is None:
+            self._root = destination
             return
 
         self._root = destination
@@ -234,9 +233,7 @@ class FitAttemptJournal:
         """读故障恢复后先接纳磁盘基线，再追加故障期间的新尝试。"""
         path = _journal_path(self._root)
         try:
-            raw = path.read_bytes()
-        except FileNotFoundError:
-            raw = None
+            raw = _read_existing(path)
         except OSError as error:
             self._warning = _read_warning(path, error)
             return False
@@ -285,9 +282,7 @@ class FitAttemptJournal:
             return
 
         try:
-            current = path.read_bytes()
-        except FileNotFoundError:
-            current = None
+            current = _read_existing(path)
         except OSError as error:
             self._warning = _write_warning(path, error)
             return
@@ -336,6 +331,23 @@ class FitAttemptJournal:
 
 def _journal_path(root: Path) -> Path:
     return root / "analysis" / _JOURNAL_FILE_NAME
+
+
+def _read_existing(path: Path) -> bytes | None:
+    """读取日志字节；仅当日志确实不存在时返回 None。
+
+    路径组件被普通文件占用时，POSIX 报 NotADirectoryError，而 Windows 也报
+    FileNotFoundError（WinError 2/3），不能一律当作“日志不存在”，否则读故障
+    会被错误归类为新日志并在恢复时误判外部冲突。此处显式重新抛出，交由调用
+    方按读故障处理。
+    """
+
+    try:
+        return path.read_bytes()
+    except FileNotFoundError:
+        if path.parent.exists() and not path.parent.is_dir():
+            raise
+        return None
 
 
 def _normalise_mapping(value: Mapping[str, object], label: str) -> dict[str, object]:

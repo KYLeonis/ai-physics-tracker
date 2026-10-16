@@ -257,6 +257,23 @@ def test_read_retry_preserves_recovered_extensions_and_appends_memory(tmp_path):
     assert loaded['attempts'][0]['future'] is True
 
 
+def test_read_existing_treats_blocked_path_as_fault_but_absent_as_new(tmp_path):
+    missing=tmp_path/'analysis'/'fit-attempts.json'
+    assert fit_attempt_journal._read_existing(missing) is None
+    (tmp_path/'analysis').write_text('blocked')
+    with pytest.raises(OSError):
+        fit_attempt_journal._read_existing(missing)
+
+
+def test_windows_notfound_through_blocked_component_is_a_read_fault(tmp_path,monkeypatch):
+    root=tmp_path/'p';root.mkdir();(root/'analysis').write_text('blocked')
+    def windows_not_found(self):
+        raise FileNotFoundError(3,'The system cannot find the path specified')
+    monkeypatch.setattr(Path,'read_bytes',windows_not_found)
+    journal=FitAttemptJournal('p',root)
+    assert journal.warning and not journal.read_only
+
+
 def test_bind_never_overwrites_diverged_same_project_history(tmp_path):
     a,b=tmp_path/'a',tmp_path/'b'
     first,second=FitAttemptJournal('p',a),FitAttemptJournal('p',b)
