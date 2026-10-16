@@ -1,7 +1,7 @@
 # Subphase Plan — Phase 6.3 User-defined Function Fitting and Signal Recurrence
 
-- 日期 / 状态：2026-10-15 · **计划已冻结；用户最终回复“认可”，Q1–19全部共同确认；S0已完成；S0–S4实现；独立复审 / 全量 / 双平台CI通过，S5等待真人HR**。
-- Issue：[#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)（Open；AC-1–7自动验证通过，AC-8待真人HR / 集成）。
+- 日期 / 状态：2026-10-15 · **计划已冻结；用户最终回复“认可”，Q1–19全部共同确认；S0已完成；S0–S4实现；独立复审 / 全量 / 双平台CI通过，S5用户HR通过、准备集成main**。
+- Issue：[#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)（Open；AC-1–7自动验证通过，AC-8仅待集成收尾）。
 - 基线：`main @ 57462c9`，P6.1 / P6.2已完成；P6.2 [main CI38595699864](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38595699864) 双平台1008 passed / 2 skipped。
 - 计划分支：`codex/p63-plan`；实现分支：`feat/p6.3-function-fitting`（从main `feaa80f`建立）；规划确认不等于产品实现或HR通过。
 - 风险等级：High-risk（表达式执行边界、拟合与周期科学含义、结果依赖 / 后台事务 / 持久化）。
@@ -196,3 +196,6 @@ P011应用层完整prepare→run→apply→save→load对照通过（原冻结�
 2026-10-16 Fit禁用追踪：e4f04a0修复Analysis缺少当前会话时序确认入口和无授权误报CFR；按钮附近显示禁用原因，沿用既有授权 / 源配方门，不增加标注或训练条件。15项定向通过；真实P011只读复现与确认后的x / theta prepare通过。最终验证见[current](current.md)与[review](../reviews/phase-6.3-review.md)，此入口与原B / D仍待真人HR。
 
 最终验证回执（e4f04a0）：本机全量1103 passed，定向15 passed；[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，全部步骤success。其后仅文档同步，不改变已验证产品 / 测试树，等待真人HR，不集成main。
+
+
+2026-10-16最终HR：用户明确确认“现在看来没有什么问题了，HR通过”。本期Human Review全部收口，准备--no-ff集成main / push并完成AC-8 / S5。新手用途引导、图表旁解释、自动初值预览 / 估算和尝试日志属于新一轮待确认计划，不倒填为旧6.3交付物。

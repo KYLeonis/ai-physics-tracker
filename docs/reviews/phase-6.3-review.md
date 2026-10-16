@@ -13,7 +13,7 @@
 - [x] 区分交叉重复间隔与物理周期，不以单摆作为通用模型约束
 - [x] 科学算法有解析合成测试与真实基准证据（P011应用均值相对差0.21996%）
 - [x] 完整实现 / 全量 / 双平台CI通过（最终bec8d61双平台1095 passed / 2 skipped）
-- [ ] 新Human Review通过（A / C用户通过；B交互修复待补测，D未反馈）
+- [x] 新Human Review通过（2026-10-16用户明确确认整体HR通过，含B / D及时序入口补测）
 
 ## Findings
 
@@ -35,7 +35,7 @@ R0无可用结论；F1–F9均经修复 / 独立复审Closed。R4补充的同ID�
 
 ## Final Verdict
 
-**Independent Review Approve（最终R8）；Human Review部分通过：A / C通过，B修复待补测、D待反馈。** R2领域 / 应用、R3完整产品、R4修复、R5新增结果历史和R6测试闭环分别记录于下方；本轮R7交互修复已由R8独立Approve。最终自动Gate通过后发起[本轮HR](../notes/phase-6.3-human-review.md)，用户反馈前不合并main。
+**Independent Review Approve（最终R8）；Human Review通过（用户2026-10-16整体确认）。** R2领域 / 应用、R3完整产品、R4修复、R5新增结果历史和R6测试闭环分别记录于下方；本轮R7交互修复已由R8独立Approve。[本轮HR](../notes/phase-6.3-human-review.md)已由用户整体确认，准备按既有流程集成main；新的新手体验需求另行规划。
 
 
 ### R2 — 全新Luna-max领域 / 应用独立检查（2026-10-15）
@@ -129,3 +129,8 @@ F12自动验证回执：04495a4的[CI38732368831](https://github.com/KYLeonis/ai
 - 自审：保留原TimingActions确认对话框、No分支、重开再确认、后台验证 / 重试与prepare源配方校验；未将历史授权偷偷恢复为当前权限，未添加训练帧门槛。15项定向通过，含5帧工程重开后的完整确认流程、CFR→Near-CFR时仍要求重算不兼容源、任意合法阻尼余弦预览，以及来回切页的原布局索引 / 隐藏按钮状态。
 - 真实只读检查：P011结果工程near_cfr / Fit禁用 / 确认入口不可见已复现；修复后入口可见、禁用原因 / 来源正确，project.json SHA256仍037e243d16a26b85093f9f8c9d3d5b6ac39485b96b9b816a6aade2217d95fdde。在独立内存会话按既有用户授权确认后，x / theta各215样本prepare通过，未apply或save。此非真人HR替代。
 - e4f04a0本机全量1103 passed（123.20s），diff检查通过；e4f04a0的[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892) macOS1101 passed / 2 skipped（103.07s）、Windows1101 passed / 2 skipped（153.89s），全部步骤success。界面体验待用户按[HR补测](../notes/phase-6.3-human-review.md)亲自确认。
+
+
+### HR收口（2026-10-16）
+
+用户明确表示“现在看来没有什么问题了，HR通过”。本轮所有Human Review关卡收口；自动Gate证据仍为e4f04a0本机1103 / 双平台1101 passed + 2 skipped，R8与后续Normal-risk自审范围不变。同期新手体验反馈单独grilling，不冒充新方案已验收或已实施。
