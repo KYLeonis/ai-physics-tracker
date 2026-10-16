@@ -2,19 +2,19 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-16（P6.3已集成main；P6.3.1已授权实施，S0–S4实现，独立复审通过；macOS / Windows CI通过，本轮HR待用户）
+- 最后更新：2026-10-16（P6.3.1第二轮HR反馈已返工；本机1206项/复审通过，最新macOS / Windows CI通过，HR待复测）
 
 ## Current
 
-- **Phase**：Phase 6；6.1 / 6.2 / 6.3已集成main；6.3.1自动Gate通过，HR待用户。
-- **Subphase / Slice**：P6.3已完成并集成main（92d00a2）。P6.3.1实施已授权，S0–S4实现，S5全新核心 / GUI独立复审及收尾复审通过；本机全量1199 passed（146.65s），macOS / Windows CI通过。Issue #31 / PR #32；本轮HR已发起，待用户反馈，不复用原6.3 HR，不开始6.4 / 6.5。
+- **Phase**：Phase 6；6.1 / 6.2 / 6.3已集成main；6.3.1第二轮HR反馈返工，最终自动Gate通过，HR待用户复测。
+- **Subphase / Slice**：P6.3已以92d00a2集成main。P6.3.1 S0–S4实现，第二轮HR未通过后完成公式身份/即时反馈/复选框与失败状态返工；最终产品d90bd85，本机全量1206 passed（166.80s），独立GUI复审通过，[d90bd85双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38895710081)通过。Issue #31 / PR #32仍open/draft；等待本轮用户复测，不进入6.4 / 6.5。
 - **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；实现会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3.1-guided-analysis`；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 等待用户按[本轮HR](../notes/phase-6.3.1-human-review.md)亲测A–E；PR #32仍为草稿完整diff容器，未集成main。
-2. 本轮已给启动命令和A–E操作，停止等待用户亲测。通过后才`--no-ff`集成main / 文档收尾 / push，不自动启动6.4 / 6.5。
+1. 本轮HR未通过；最新自动Gate已通过，等待用户按[第二轮复测](../notes/phase-6.3.1-human-review.md#第二轮反馈与复测2026-10-16)亲测三项；PR #32仍为草稿完整diff容器，未集成main。
+2. 本轮已给启动命令，原A–E保留并补三项重点复测，停止等待用户亲测。通过后才`--no-ff`集成main / 文档收尾 / push，不自动启动6.4 / 6.5。
 3. 后续GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)：先验证worker工具权限；科学输出逐项核对实际代码和独立测试。原始证据只留本地忽略目录。
 
 ## Active Constraints
@@ -59,6 +59,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3.1第二轮HR返工（2026-10-16）**：只读确认4次Fit已执行，theta/cos(theta)为常数，二次式误差仅改善0.07945%；Last saved result是最近Save快照。b9a5311/7a0c8f3/d90bd85直接展示实际公式/参数、外显含义/估值/错误，标准复选框支持方框/文字/space；提交拒绝不会冒称完成，恢复crossing提示正确Measure动作。定向47、最终guided20、状态3及恢复1项通过；本机最终全量1206通过，GUI复审Approve with limits，F26–F30闭环；最新macOS / Windows CI通过，HR待复测。原工程/日志只读未改。
 
 - **P6.3.1收尾接管（2026-10-16）**：核对GLM交接与86de567失败CI，保留日志跨平台读取修复3275ca0；a6da1a3修复用途卡/dock刷新顺序及central widget缓存，删除无效布局补丁和临时probe，补大字体/会话过渡回归。定向58项、本机全量1199项通过，核心日志复审24项、GUI收尾6项及用途/工作流22项通过。原main/论文线保持原HEAD，P011冻结哈希未变；[a6da1a3双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38890193235)通过。本轮新HR待用户，未开始6.4/6.5。
 

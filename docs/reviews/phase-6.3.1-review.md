@@ -69,3 +69,17 @@ GLM在3275ca0修复日志异常分类，但86de567的Windows CI仍失败（[3887
 | F21 | P3 / Should fix | 日志尚绑定但session已清空时showAttempts空引用 | 局部session快照及None保护；会话过渡回归 | Closed（GUI复审） |
 
 本次两个只读Reviewer复用此前会话，仅复查新增收尾diff：核心 **Approve**；GUI几何/空session定向6项通过、用途/工作流22项通过，最终 **Approve**。Reviewer在首次回信带入的两条旧测试finding已按当前a6da1a3核对并明确撤回。完整自动Gate回执及HR状态见[验证记录](../notes/phase-6.3.1-verification.md)。本轮Human Review仍须用户亲测，未集成main。
+
+## R5 — Human Review反馈返工（独立复审通过，HR待复测）
+
+用户明确反馈体验不满足；后台四次Fit有不同公式与参数，不代表用户已看懂结果。本次不放宽科学验收，不改变原始数据或强行让任意公式解释振荡。
+
+| ID | 等级 / Decision | 问题 | 修复 / 回归 | 状态 |
+| --- | --- | --- | --- | --- |
+| F26 | P2 / Must fix | 当前/历史公式和拟合参数只在折叠详情，常数模型说明在滚动表单 | 图上方独立modelLabel用记录的表达式/参数；meaningLabel移出controlsScroll。历史回看不改编辑器；初值/历史身份回归 | Closed（GUI复审） |
+| F27 | P2 / Must fix | 操作完成/拒绝/取消、估值回退和超范围提示需要用户翻找 | 显式showFeedback定位外层分析页；自动预览不滚动，图旁保留保护/估值/视野说明及带单位的基线对照 | Closed（GUI复审） |
+| F28 | P2 / Must fix | checkable QGroupBox标题方框命中不符合用户直觉 | 五个折叠入口改标准QCheckBox及独立内容；实际indicator/文字/space输入回归 | Closed（GUI复审） |
+| F29 | P2 / Must fix | _poll提交结果被guard拒绝后，尾部仍会覆盖为Current calculation completed | 仅apply成功后标完成；旧结果不变、日志rejected及错误文字保留回归 | Closed（GUI复审） |
+| F30 | P3 / Should fix | 从crossing恢复设置仍提示click Fit，指向隐藏动作 | 按工具区分恢复标题/提示；实际保存/恢复crossing回归通过，Reviewer核对1项通过 | Closed（GUI复审） |
+
+只读Luna复审当前GUI增量：**Approve with limits，无P1/P2阻断项**；指出的F30也已修复并复审。Reviewer定向68项、后续35项、最终guided20项及crossing恢复1项均通过。主Agent定向47项、状态3项通过，本机最终全量 **1206 passed（166.80s）**；最新macOS / Windows CI通过。Limits是Windows原生体验与HR由主Agent/用户另行验收，不替代科学模型正确性。

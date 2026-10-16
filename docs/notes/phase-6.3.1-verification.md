@@ -49,3 +49,17 @@ R1/R2共18项finding及R3数值/来源返工经核心与GUI独立复审通过；
 - 文档收尾提交只修改文档，产品与测试树须和a6da1a3相同；不把文档HEAD冒称已运行CI。
 - AGENTS、README、roadmap、phase master/mini-plan、current、review索引和协作经验同步；PR #32保留draft、Issue #31保持open。
 - [本轮HR](phase-6.3.1-human-review.md) A–E待用户，体验和集成AC不勾选；用户通过后才合并main并关闭Issue，不进入6.4/6.5。Windows/CUDA真机验收未由offscreen CI替代。
+
+## 第二轮HR返工：公式身份与反馈可见性
+
+用户的四次Fit均已实际完成；theta和cos(theta)无t，属于常数模型；二次式相比同样本常数均值误差仅改善0.07945%。日志留痕/求解不是“换公式未生效”，但原UI把含义和记录公式藏在滚动/折叠区域，体验**未通过**。详情与复测见[HR第二轮](phase-6.3.1-human-review.md#第二轮反馈与复测2026-10-16)。
+
+b9a5311：显示曲线实际公式/参数直接位于图上方；Previous saved result更名Last saved result，明确最近Save快照而非上一尝试；图旁展示无t解释、初值保护/估算回退/超范围提示及常数线误差对照；显式操作定位反馈区域，自动预览不滚动。标准QCheckBox替代五个checkable QGroupBox，方框/文字/space实测；提交被拒绝不会再标完成。无数值求解/项目格式/依赖变化。
+
+- 定向47项通过；全量1205 passed（149.38s）。之后仅补初值超范围提示，最终guided定向20项通过（40.54s）。
+- 用户项目/日志只读，检查末尾project.json SHA256仍67e727a2e430c9ab5fe4202269422849fe4a508bd9d85d0d0a16e7ca9fb0ae57，日志SHA256仍b4a825c4d801902c16b1be7d890197d333eeed7fca67c5aad91a0b674652b945。
+- 最终产品d90bd85，本机全量 **1206 passed（166.80s）**；新增GUI复审Approve with limits，F26–F30闭环；最终guided20、状态3、crossing恢复1项通过。最新macOS / Windows CI通过；Human Review重点复测三项，未合并main。
+- 对用户最近保存的600点二次式结果，按记录的参数与相对时间重新纯计算核对：预测逐点与已存values一致（rtol/atol=1e-12）；RMSE=0.11956111771472985 m，常数基线=0.11965618951161017 m，改善=0.07945414045722465%。模型峰峰值约0.01605 m，实测约0.39733 m，解释了视觉上几乎不变；不重新Fit、不apply、不保存用户工程。
+- 相同600个已存样本的只读数学对照：内置Cosine经初值估算后单次Fit，RMSE=0.02467825026546338 m、相对常数误差减少79.375701%；Damped cosine RMSE=0.019109132415307636 m、减少84.029967%。只用于确认含t公式可产生不同模型/误差；不是用户点击记录，不写attempt日志、不保存/激活，不将数学效果当作物理模型正确。
+
+最终产品d90bd85的[CI38895710081](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38895710081)与PR CI38895717058均success：macOS / Windows Python3.11各 **1204 passed / 2 skipped**（可选pandas）；本机含pandas全量1206项通过。后续仅文档同步，产品/测试树与此SHA保持一致；R5自动Gate通过，等待用户重点复测，不宣称HR通过。

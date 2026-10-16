@@ -25,7 +25,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 | 5.7 | [phase-5.7-review.md](phase-5.7-review.md) | R1/R2 findings 全闭环；HR1 与两轮补充实测修复完成；804 测试 + 最终 Human Review 通过 | 2026-09-18 |
 | 6.2 | [phase-6.2-review.md](phase-6.2-review.md) | 科学 / 事务R3 Approve；F1–F9 Closed，51项GUI / 双平台CI / 全部HR通过，已集成main | 2026-10-15 |
 | 6.3 | [phase-6.3-review.md](phase-6.3-review.md) | R8核心/GUI独立复审Approve；双平台CI/整体HR通过，已集成main | 2026-10-16 |
-| 6.3.1 | [phase-6.3.1-review.md](phase-6.3.1-review.md) | R1–R3核心/GUI独立复审通过；Windows收尾修复复审通过，macOS / Windows CI通过，HR待用户 | 2026-10-16 |
+| 6.3.1 | [phase-6.3.1-review.md](phase-6.3.1-review.md) | R1–R3核心/GUI独立复审通过；Windows收尾修复复审通过；R5返工复审Approve with limits，F26–F30闭环，最新macOS / Windows CI通过，HR待复测 | 2026-10-16 |
 | 6.1 | [phase-6.1-review.md](phase-6.1-review.md) | 完整复审 Approve；原 R2 及新增 R8–R13 Closed，929 全量 / 双平台 CI 通过；已集成 main | 2026-10-13 |
 
 > 4.3 / 4.4 的独立 review 发生于本机制建立之前，不回溯补建独立文件；自下一个触发的 subphase 起使用本目录。

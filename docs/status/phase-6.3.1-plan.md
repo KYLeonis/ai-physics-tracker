@@ -1,6 +1,6 @@
 # Subphase Plan — Phase 6.3.1 Guided Analysis & Immediate Feedback
 
-- 日期 / 状态：2026-10-16 · **用户完成Q1–16访谈并回复“认可，按此冻结计划”；计划冻结；用户已授权开始实施，S0契约已冻结，S1–S4实现；S5独立复审通过，本机1199项通过，macOS / Windows CI通过，本轮HR待用户。**
+- 日期 / 状态：2026-10-16 · **用户完成Q1–16访谈并回复“认可，按此冻结计划”；计划冻结；用户已授权开始实施，S0契约已冻结，S1–S4实现；S5独立复审通过，本机1206项通过，第二轮HR反馈的公式身份/反馈可见性/复选框已返工并复审，最新macOS / Windows CI通过，HR待复测。**
 - 基线：P6.3以`92d00a2`集成main；规划从`main @ f94f1ca`开始。产品 / 测试树与已验证的e4f04a0相同。
 - 跟踪Issue：[#31](https://github.com/KYLeonis/ai-physics-tracker/issues/31)；实现分支`feat/p6.3.1-guided-analysis`。
 - 规划分支：`codex/analysis-onboarding-plan`；已建立实现分支和Issue #31 / PR #32。
@@ -127,5 +127,5 @@ S0契约与实现前冻结样本见[ADR-0022](../decisions/0022-guided-fit-prepa
 ## Result
 
 - 已完成：只读试用诊断、Q1–16共同理解、用户整体确认及计划冻结（2026-10-16）。
-- 产品实现：S0–S4实现，S5核心 / GUI独立复审及返工复审通过；本机全量1199 passed（146.65s）。macOS / Windows CI通过，本轮HR待用户；AC中体验及集成部分保持未勾选。未引入依赖或修改用户工程。
+- 产品实现：S0–S4实现，S5核心 / GUI独立复审及返工复审通过；本机全量1206 passed（166.80s）；第二轮HR反馈已返工并复审，最新macOS / Windows CI通过，HR待复测；AC中体验及集成部分保持未勾选。未引入依赖或修改用户工程。
 - 下一步：按本轮HR的A–E步骤等待用户亲测；通过后才集成main，不直接跳到6.4 / 6.5。
