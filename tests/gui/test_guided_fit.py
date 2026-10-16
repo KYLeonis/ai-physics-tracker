@@ -314,3 +314,21 @@ def test_constant_fit_explanation_compares_same_sample_baseline_in_plain_units()
                       'summary':{'prediction':[0,0]}},'m')
     assert 'A constant line gives 1 m error; this formula gives 1 m' in text
     assert 'explains no more' in text
+
+
+def test_restored_crossing_settings_point_to_measure_instead_of_hidden_fit(qtbot,synthetic_video_path,tmp_path):
+    window,session,track=_window(qtbot,synthetic_video_path)
+    actions,panel=window.chartActions,window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(1);panel.level.setValue(13)
+    panel.recurrenceButton.click();qtbot.waitUntil(lambda:not actions.pending)
+    record=session.derived_data(track,'signal_recurrence_x')
+    session.save_as(tmp_path/'saved');actions.syncJournal(saved=True)
+    panel.level.setValue(14);panel.previousButton.click()
+
+    panel.restoreButton.click()
+
+    assert panel.level.value()==13
+    assert 'Measure crossing intervals' in panel.jobLabel.text()
+    assert 'click Fit' not in panel.jobLabel.text()
+    assert 'not recalculated' in panel.draftLabel.text()
+    assert session.derived_data(track,'signal_recurrence_x')==record

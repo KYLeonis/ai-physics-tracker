@@ -677,8 +677,12 @@ class SignalAnalysisPanel(QWidget):
         finally:
             self._loading = False
         self.settingsChanged.emit()
-        self.draftLabel.setText("Recorded settings restored to current draft — initial preview pending")
-        self.showFeedback("Recorded settings restored to the editor. Initial preview is being prepared; click Fit to calculate a new result.")
+        if self.methods.currentIndex() == 0:
+            self.draftLabel.setText("Recorded settings restored to current draft — initial preview pending")
+            self.showFeedback("Recorded settings restored to the editor. Initial preview is being prepared; click Fit to calculate a new result.")
+        else:
+            self.draftLabel.setText("Recorded crossing settings restored to current draft — not recalculated")
+            self.showFeedback("Crossing settings restored. Review the reference, then click Measure crossing intervals to calculate a new result.")
 
     def renderSamples(self, samples, unit, predicted=None, residual=None, *, wrapped=False, title="Initial preview") -> None:
         self.signalPlot.clear()
