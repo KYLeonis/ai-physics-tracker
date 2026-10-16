@@ -46,6 +46,9 @@ class FitAttemptJournal:
         self._dirty = False
         self._read_only = False
         self._warning = ""
+        self._load_pending = False
+        self._transfer_pending = False
+        self._transfer_expected = None
 
         if root is not None:
             self._load_root(Path(root))
@@ -85,6 +88,7 @@ class FitAttemptJournal:
                 alternate if isinstance(alternate, str) and alternate else str(uuid4())
             )
 
+        _validate_attempts(self._attempts + [record])
         self._attempts.append(record)
         self._dirty = True
         self._persist()
@@ -95,6 +99,10 @@ class FitAttemptJournal:
         merged = _normalise_mapping(updates, "finish updates")
         for attempt in self._attempts:
             if attempt.get("id") == attempt_id or attempt.get("attempt_id") == attempt_id:
+                if "id" in merged and merged["id"] != attempt.get("id"):
+                    raise ValueError("A fit attempt identity cannot be changed")
+                candidate = [dict(item) if item is not attempt else item | merged for item in self._attempts]
+                _validate_attempts(candidate)
                 attempt.update(merged)
                 self._dirty = True
                 self._persist()
@@ -121,9 +129,13 @@ class FitAttemptJournal:
         except FileNotFoundError:
             existing = None
         except OSError as error:
+            self._transfer_expected = self._disk_bytes
+            self._transfer_pending = True
             self._root = destination
             self._disk_bytes = None
-            self._read_only = True
+            self._read_only = False
+            self._load_pending = True
+            self._dirty = True
             self._warning = _read_warning(path, error)
             return
 
@@ -137,6 +149,13 @@ class FitAttemptJournal:
                 self._warning = _decode_warning(error)
                 return
 
+        if existing is not None and existing != self._disk_bytes:
+            self._root = destination
+            self._disk_bytes = existing
+            self._read_only = True
+            self._warning = "Destination attempt log differs from the saved source; kept unchanged (read-only)."
+            return
+        self._load_pending = False
         self._root = destination
         self._disk_bytes = existing
         self._read_only = False
@@ -176,7 +195,8 @@ class FitAttemptJournal:
             return
         except OSError as error:
             self._root = destination
-            self._read_only = True
+            self._load_pending = True
+            self._read_only = False
             self._warning = _read_warning(path, error)
             return
 
@@ -206,8 +226,46 @@ class FitAttemptJournal:
             changed = True
         return changed
 
+    def _recover_read(self) -> bool:
+        """读故障恢复后先接纳磁盘基线，再追加故障期间的新尝试。"""
+        path = _journal_path(self._root)
+        try:
+            raw = path.read_bytes()
+        except FileNotFoundError:
+            raw = None
+        except OSError as error:
+            self._warning = _read_warning(path, error)
+            return False
+        try:
+            loaded, extras = _parse_payload(raw, self._project_id) if raw is not None else ([], {})
+            if self._transfer_pending:
+                if raw is not None and raw != self._transfer_expected:
+                    raise _JournalDecodeError("destination differs from the saved source")
+            else:
+                if {item["id"] for item in loaded} & {item["id"] for item in self._attempts}:
+                    raise _JournalDecodeError("recovered log conflicts with in-memory attempt identities")
+                for item in loaded:
+                    if item.get("status") == "running":
+                        item.update(status="interrupted", finished_at=datetime.now(UTC).isoformat(),
+                                    reason="Interrupted before the journal could be read.")
+                self._attempts = loaded + self._attempts
+                self._top_level_extra = extras
+        except _JournalDecodeError as error:
+            self._read_only = True
+            self._warning = _decode_warning(error)
+            return False
+        self._disk_bytes = raw
+        self._load_pending = False
+        self._transfer_pending = False
+        self._dirty = True
+        return True
+
     def _persist(self) -> None:
-        if self._root is None or self._read_only or not self._dirty:
+        if self._root is None or self._read_only:
+            return
+        if self._load_pending and not self._recover_read():
+            return
+        if not self._dirty:
             return
 
         path = _journal_path(self._root)
@@ -334,18 +392,7 @@ def _parse_payload(
     if not isinstance(attempts, list) or any(not isinstance(item, dict) for item in attempts):
         raise _JournalDecodeError("the attempts field is corrupt")
 
-    identifiers = set()
-    for attempt in attempts:
-        identity = attempt.get("id")
-        if not isinstance(identity, str) or not identity or identity in identifiers:
-            raise _JournalDecodeError("attempt identities are missing or duplicated")
-        identifiers.add(identity)
-        for key in ("status", "formula", "reason", "started_at", "finished_at", "quantity"):
-            if key in attempt and not isinstance(attempt[key], str):
-                raise _JournalDecodeError(f"attempt {key} is not text")
-        elapsed = attempt.get("elapsed_s")
-        if elapsed is not None and (type(elapsed) not in (int, float) or not math.isfinite(elapsed) or elapsed < 0):
-            raise _JournalDecodeError("attempt elapsed time is not a finite nonnegative number")
+    _validate_attempts(attempts)
     known = {"version", "project_id", "attempts"}
     top_level_extra = {
         key: value for key, value in payload.items() if key not in known
@@ -376,3 +423,26 @@ def _write_warning(path: Path, error: OSError) -> str:
         f"Could not save fit attempt journal {path}: {error}. "
         "Changes remain in memory; retry is available."
     )
+
+
+def _validate_attempts(attempts: list[dict[str, object]]) -> None:
+    """读写边界共享已拥有字段的合法性校验，未知字段保留。"""
+    identifiers = set()
+    for attempt in attempts:
+        identity = attempt.get("id")
+        if not isinstance(identity, str) or not identity or identity in identifiers:
+            raise _JournalDecodeError("attempt identities are missing or duplicated")
+        identifiers.add(identity)
+        if not isinstance(attempt.get("status"), str) or not attempt["status"]:
+            raise _JournalDecodeError("attempt status is missing or invalid")
+        for key in ("status", "formula", "reason", "started_at", "finished_at", "quantity"):
+            if key in attempt and not isinstance(attempt[key], str):
+                raise _JournalDecodeError(f"attempt {key} is not text")
+        elapsed = attempt.get("elapsed_s")
+        if elapsed is not None:
+            try:
+                valid_elapsed = type(elapsed) in (int, float) and math.isfinite(elapsed) and elapsed >= 0
+            except OverflowError:
+                valid_elapsed = False
+            if not valid_elapsed:
+                raise _JournalDecodeError("attempt elapsed time is not a finite nonnegative number")

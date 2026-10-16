@@ -1,5 +1,6 @@
 """P6.3.1完整草稿、初值保护、结果解释及尝试留痕回归。"""
 from concurrent.futures import Future
+import pytest
 from PySide6.QtCore import Qt
 from tests.gui.test_signal_analysis import _window
 
@@ -47,7 +48,7 @@ def test_constant_formula_and_partial_conversion_explain_actual_result(qtbot,syn
     assert attempt['status']=='completed'
     assert attempt['summary']['result_formulas'][0]['error']
     assert 'prediction' not in attempt['summary']
-    session.save_as(tmp_path/'saved'); actions.syncJournal()
+    session.save_as(tmp_path/'saved'); actions.syncJournal(saved=True)
     assert (session.project_root/'analysis/fit-attempts.json').is_file()
     panel.restoreButton.click()
     _preview(qtbot,panel)
@@ -82,7 +83,7 @@ def test_late_preview_cannot_overwrite_newer_draft_or_fit(qtbot,synthetic_video_
     submitted=[]
     def submit(run,job,*args):
         future=Future(); future.set_running_or_notify_cancel(); submitted.append((future,run,job));return future
-    monkeypatch.setattr(actions._executor,'submit',submit)
+    monkeypatch.setattr(actions.preview._executor,'submit',submit)
     panel.editor.setText('a*t+b');actions.preview.launch()
     future,run,job=submitted[-1]
     panel.editor.setText('c')
@@ -130,3 +131,65 @@ def test_full_model_view_is_explicit_and_reset_restores_source(qtbot,synthetic_v
     assert panel.signalPlot.viewRange()[1][1]>1e24
     panel.resetViewButton.click()
     np.testing.assert_allclose(panel.signalPlot.viewRange(),source)
+
+
+def test_explicit_fit_does_not_wait_for_running_preview(qtbot,synthetic_video_path,monkeypatch):
+    from threading import Event
+    import ai_physics_tracker.gui.signal_preview as preview_module
+    window,session,track=_window(qtbot,synthetic_video_path)
+    actions,panel=window.chartActions,window.chartActions.signalPanel
+    started,release=Event(),Event()
+    def blocked(job,estimate,cancel):
+        started.set();release.wait(5)
+        return job.spec,None,[0]*len(job.samples)
+    monkeypatch.setattr(preview_module,'_preview',blocked)
+    actions.preview.request(immediate=True)
+    qtbot.waitUntil(started.is_set)
+    try:
+        panel.fitButton.click()
+        qtbot.waitUntil(lambda:not actions.pending,timeout=3000)
+        assert session.derived_data(track,'function_fit_x') is not None
+        assert not release.is_set()
+    finally:release.set()
+
+
+def test_saved_snapshot_is_distinct_from_new_unsaved_fit(qtbot,synthetic_video_path,tmp_path):
+    window,session,track=_window(qtbot,synthetic_video_path)
+    actions,panel=window.chartActions,window.chartActions.signalPanel
+    panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
+    session.save_as(tmp_path/'saved');actions.syncJournal(saved=True);actions.refresh()
+    assert panel.previousButton.isEnabled()
+    panel.editor.setText('c');panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
+    panel.previousButton.click()
+    assert panel.savedRecord().extra_fields['analysis']['spec']['expression']=='a*t + b'
+    assert 'historical' in panel.draftLabel.text()
+    panel.latestButton.click()
+    assert panel.savedRecord().extra_fields['analysis']['spec']['expression']=='c'
+    assert 'Latest applied' in panel.draftLabel.text()
+    assert session.derived_data(track,'function_fit_x').extra_fields['analysis']['spec']['expression']=='c'
+
+
+@pytest.mark.parametrize('preview',[False,True])
+def test_submit_failure_is_visible_and_formal_attempt_is_finished(qtbot,synthetic_video_path,monkeypatch,preview):
+    window,_,_=_window(qtbot,synthetic_video_path)
+    actions=window.chartActions
+    def broken(*args):raise RuntimeError('worker unavailable')
+    monkeypatch.setattr(actions.preview._executor if preview else actions._executor,'submit',broken)
+    if preview:actions.preview.request(immediate=True);qtbot.waitUntil(lambda:'could not start' in actions.signalPanel.jobLabel.text())
+    else:
+        actions.analyzeSignal(True)
+        assert actions.attempts.journal.attempts[-1]['status']=='failed'
+    assert not actions.pending and not actions.attempts.active
+    assert 'worker unavailable' in actions.signalPanel.jobLabel.text()
+
+
+def test_source_bar_tracks_signal_panel_target(qtbot,synthetic_video_path):
+    window,session,first=_window(qtbot,synthetic_video_path)
+    second=session.add_track(window.activeVideoId,'Second signal')
+    for frame in range(5):session.mark_point(second.track_id,frame,pixel_x=frame,pixel_y=2)
+    session.compute_kinematics(second.track_id)
+    window.chartActions.refresh()
+    panel=window.chartActions.signalPanel
+    panel.trackChoice.setCurrentIndex(panel.trackChoice.findData(str(second.track_id)))
+    assert 'Second signal' in window._analysisSourceLabel.text()
+    assert '(5)' in window._analysisSourceLabel.text()

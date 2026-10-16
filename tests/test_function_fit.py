@@ -79,3 +79,18 @@ def test_identifiable_constant_does_not_depend_on_signal_units(scale):
     outcome = fit_function(np.arange(20.),np.full(20,scale),FitSpec('c',(FitParameter('c',scale),)))
     assert outcome.is_publishable,outcome
     assert dict(outcome.parameter_values)['c'] == pytest.approx(scale,rel=1e-10,abs=0)
+
+
+@pytest.mark.parametrize('scale',[1e12,1e-200])
+@pytest.mark.parametrize('quadratic',[False,True])
+def test_parameter_units_do_not_cause_false_convergence(scale,quadratic):
+    time=np.linspace(0,8,241)
+    formula='a*t^2+b*t+c' if quadratic else 'a*t+b'
+    true={'a':.7*scale,'b':-2*scale,'c':5*scale} if quadratic else {'a':3*scale,'b':-2*scale}
+    spec=FitSpec(formula,tuple(FitParameter(name,value*.9) for name,value in true.items()))
+    from ai_physics_tracker.domain.expression import parse_expression
+    measured=parse_expression(formula).evaluate(time,true)
+    outcome=fit_function(time,measured,spec)
+    assert outcome.is_publishable,outcome
+    assert outcome.rmse/scale<1e-8
+    assert dict(outcome.parameter_values)==pytest.approx(true,rel=1e-7,abs=0)

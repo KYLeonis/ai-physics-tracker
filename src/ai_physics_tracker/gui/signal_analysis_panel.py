@@ -60,6 +60,7 @@ class SignalAnalysisPanel(QWidget):
         super().__init__(parent)
         self._loading = False
         self.initialProtected = False
+        self._viewingDiskSaved = False
         self._previewRange = None
         self._context = None
         self._cache = None
@@ -93,7 +94,7 @@ class SignalAnalysisPanel(QWidget):
         self.resultFormula.setPlaceholderText("Parameters only, e.g. 2*pi/Omega")
         self.previewButton, self.fitButton = QPushButton("Preview initial curve"), QPushButton("Fit")
         self.cancelButton = QPushButton("Cancel calculation")
-        self.restoreButton = QPushButton("Restore saved settings")
+        self.restoreButton = QPushButton("Use displayed result settings")
         self.undoButton, self.redoButton = QPushButton("Undo result"), QPushButton("Redo result")
         for button in (self.undoButton, self.redoButton):
             button.setToolTip("Only the next fit / crossing-result transaction; source data and calibration remain read-only")
@@ -236,7 +237,6 @@ class SignalAnalysisPanel(QWidget):
         sideLayout.setContentsMargins(0, 0, 0, 0)
         self.meaningLabel = QLabel("Choose data and an editable example, then inspect the initial curve and Fit.")
         self.meaningLabel.setWordWrap(True)
-        sideLayout.addWidget(self.meaningLabel)
         sideLayout.addWidget(self.jobLabel)
         self.resultLabel = QLabel("No saved result yet.")
         self.resultLabel.setWordWrap(True)
@@ -262,8 +262,6 @@ class SignalAnalysisPanel(QWidget):
         self.estimateButton.clicked.connect(self.estimateRequested)
         self.estimateLabel = QLabel("Initial values are editable. Estimation supports the examples below.")
         self.estimateLabel.setWordWrap(True)
-        sideLayout.addWidget(self.estimateLabel)
-        sideLayout.addWidget(self.estimateButton)
         preparation = QHBoxLayout()
         for text, signal in (("Prepare source charts", self.prepareRequested),
                              ("Timing", self.timingRequested), ("Calibration / reference", self.setupRequested)):
@@ -277,14 +275,20 @@ class SignalAnalysisPanel(QWidget):
             preparationLayout.addWidget(preparation.takeAt(0).widget())
         controls = QWidget()
         controlsLayout = QVBoxLayout(controls)
+        controlsLayout.addWidget(self.meaningLabel)
         controlsLayout.addWidget(dataGroup)
+        controlsLayout.addWidget(self.estimateLabel)
+        controlsLayout.addWidget(self.estimateButton)
         controlsLayout.addWidget(self.methods)
         controlsLayout.addWidget(preparationHost)
         history = QHBoxLayout()
         self.previousButton = QPushButton("Previous saved result")
-        self.previousButton.clicked.connect(self.displaySaved)
+        self.previousButton.clicked.connect(lambda: self.displaySaved(previous=True))
+        self.latestButton = QPushButton("Latest applied result")
+        self.latestButton.clicked.connect(lambda: self.displaySaved())
+        history.addWidget(self.latestButton)
         history.addWidget(self.previousButton)
-        history.addWidget(self.restoreButton)
+        controlsLayout.addWidget(self.restoreButton)
         controlsLayout.addLayout(history)
         resultHistory = QHBoxLayout()
         resultHistory.addWidget(self.undoButton)
@@ -575,6 +579,8 @@ class SignalAnalysisPanel(QWidget):
         self.redoButton.setEnabled(bool(session) and not pending and session.can_redo_analysis)
         self._session = session
         self._video_id = video_id
+        self.previousButton.setEnabled(self.savedRecord(disk=True) is not None)
+        self.latestButton.setEnabled(self.savedRecord(disk=False) is not None)
         if changed_context:
             self._cache = None
             self.initialProtected = False
@@ -585,17 +591,18 @@ class SignalAnalysisPanel(QWidget):
             self.contextLabel.setText("Source charts required · t = 0 at interval start · angles: rad · derivatives: recorded SG. "
                                       + ("Timing not authorized; cached results only." if not session.can_measure(video_id)
                                          else "Approximate timing (details retained)." if session.measurement_timing_detail(video_id) else "Verified nominal timing."))
-        key = (context, self.trackChoice.currentData(), self.quantityChoice.currentText(), session.project.derived if session else ())
+        key = (context, self.trackChoice.currentData(), self.quantityChoice.currentText(), session.project.derived if session else (), self.savedRecord(disk=True))
         if key != self._cache:
             self._cache = key
             self.displaySaved()
 
-    def savedRecord(self) -> DerivedData | None:
+    def savedRecord(self, *, disk: bool | None = None) -> DerivedData | None:
         session = getattr(self, "_session", None)
         if session is None or self.trackChoice.currentData() is None:
             return None
         family = "function_fit" if self.methods.currentIndex() == 0 else "signal_recurrence"
-        return session.derived_data(UUID(self.trackChoice.currentData()), f"{family}_{self.quantityChoice.currentText()}")
+        reader = session.saved_derived_data if (self._viewingDiskSaved if disk is None else disk) else session.derived_data
+        return reader(UUID(self.trackChoice.currentData()), f"{family}_{self.quantityChoice.currentText()}")
 
     def restoreSaved(self) -> None:
         record = self.savedRecord()
@@ -686,11 +693,14 @@ class SignalAnalysisPanel(QWidget):
             self.signalPlot.addItem(self.referenceLine, ignoreBounds=True)
             self.referenceLine.setValue(self.level.value())
 
-    def displaySaved(self) -> None:
+    def displaySaved(self, *, previous: bool = False) -> None:
+        self._viewingDiskSaved = previous
         record = self.savedRecord()
+        self.previousButton.setEnabled(self.savedRecord(disk=True) is not None)
+        self.latestButton.setEnabled(self.savedRecord(disk=False) is not None)
         self.conversionActions.hide()
         self.restoreButton.setEnabled(record is not None)
-        self.draftLabel.setText("Previous saved result — recorded settings; edits require a new Fit")
+        self.draftLabel.setText("Previous disk-saved result — historical snapshot" if previous else "Latest applied result — recorded settings; edits require a new Fit")
         metadata = record.extra_fields.get("analysis") if record else None
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
             self.signalPlot.clear()
@@ -710,11 +720,12 @@ class SignalAnalysisPanel(QWidget):
             summary = metadata["summary"]
             if fitting:
                 self.conversionActions.setVisible(any(item.get("error") for item in summary.get("result_formulas", [])))
-                self.resultLabel.setText(f"Previous saved fit ({record.status}) · {len(samples)} samples\n" + explain_fit(metadata, record.unit))
+                self.resultLabel.setText(f"{'Previous disk-saved fit (historical)' if previous else 'Latest applied fit'} · {record.status} · {len(samples)} samples\n" + explain_fit(metadata, record.unit))
                 details = (f"{summary['status']}: {summary['message']}\n"
                            + f"RMSE: {summary['rmse']:.8g} {record.unit}; evaluations: {summary['evaluations']}\n"
                            + "Parameters: " + ", ".join(f"{name}={value:.8g}" for name, value in summary["parameter_values"])
-                           + "\nSaved formula: " + metadata["spec"]["expression"])
+                           + "\nSaved formula: " + metadata["spec"]["expression"]
+                           + "\nConvergence does not validate the physical model; residuals are not measurement uncertainty.")
                 for item in summary.get("result_formulas", []):
                     details += f"\nUser result {item['name']} = {item['formula']}: " + (str(item["value"]) if item["error"] is None else item["error"])
             else:

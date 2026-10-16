@@ -1,6 +1,8 @@
 """GUI层：合并草稿预览请求，后台纯计算，主线程核对身份后显示。"""
 
 from dataclasses import replace
+from concurrent.futures import ThreadPoolExecutor, CancelledError
+from threading import Event
 
 import numpy as np
 from PySide6.QtCore import QObject, QTimer
@@ -9,8 +11,10 @@ from ai_physics_tracker.domain.expression import parse_expression
 from ai_physics_tracker.domain.fit_initial import estimate_initial, adopt_estimate
 
 
-def _preview(job, estimate):
+def _preview(job, estimate, cancel=None):
     """worker只持有不可变输入，不访问Qt或活动工程。"""
+    if cancel is not None and cancel.is_set():
+        raise CancelledError()
     samples = np.asarray(job.samples)
     spec, suggestion = job.spec, None
     if estimate:
@@ -18,13 +22,15 @@ def _preview(job, estimate):
                                       segment_indices=samples[:, 4], wrapped=job.source.kind == "angular_position")
         if suggestion.values:
             spec = adopt_estimate(spec, suggestion)
+    if cancel is not None and cancel.is_set():
+        raise CancelledError()
     prediction = parse_expression(spec.expression).evaluate(
         samples[:, 2], {parameter.name: parameter.initial for parameter in spec.parameters})
     return spec, suggestion, prediction
 
 
 class SignalPreview(QObject):
-    """同一executor上的预览不发布结果、不记尝试；任何草稿变化使旧预览失效。"""
+    """独立预览不阻塞正式任务、不发布结果；草稿变化使旧预览失效。"""
 
     def __init__(self, actions):
         super().__init__(actions)
@@ -32,6 +38,8 @@ class SignalPreview(QObject):
         self.panel = actions.signalPanel
         self._revision = 0
         self._future = None
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="signal-preview")
+        self._cancel = Event()
         self._estimate = False
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)
@@ -43,6 +51,7 @@ class SignalPreview(QObject):
 
     def invalidate(self):
         self._revision += 1
+        self._cancel.set()
         self._debounce.stop()
         if self._future is not None:
             self._future.cancel()
@@ -61,8 +70,9 @@ class SignalPreview(QObject):
         self.panel.residualPlot.clear()
         self.panel._previewRange = None
         self.panel.draftLabel.setText("Current draft — initial preview; no fitted result published")
+        self.panel._viewingDiskSaved = False
         self.panel.conversionActions.hide()
-        self.panel.resultLabel.setText("Previous results are available through Previous saved result.")
+        self.panel.resultLabel.setText("Recorded results: Latest applied result or Previous saved result.")
         self.panel.jobLabel.setText("Preparing initial preview…")
         self.describe()
         self._debounce.start(0 if immediate else 250)
@@ -96,8 +106,13 @@ class SignalPreview(QObject):
         self._job = job
         self._generation = self.actions.window.deliveryGeneration
         self._request_revision = self._revision
-        self._future = self.actions._executor.submit(_preview, job, self._estimate)
-        self._pollTimer.start(30)
+        try:
+            self._cancel = Event()
+            self._future = self._executor.submit(_preview, job, self._estimate, self._cancel)
+            self._pollTimer.start(30)
+        except Exception as error:
+            self._future = None
+            self.panel.jobLabel.setText(f"Preview could not start: {error}. Edit values or retry Preview.")
 
     def poll(self):
         if self._future is None or not self._future.done() or self.actions.window.projectActions.busy:
@@ -130,3 +145,8 @@ class SignalPreview(QObject):
             self.panel.signalPlot.clear()
             self.panel.residualPlot.clear()
             self.panel.jobLabel.setText(f"Initial preview failed: {error}. Check the formula domain and initial values.")
+
+    def shutdown(self):
+        """失效所有交付并取消排队工作；原生计算仅协作停止。"""
+        self.invalidate()
+        self._executor.shutdown(wait=False, cancel_futures=True)

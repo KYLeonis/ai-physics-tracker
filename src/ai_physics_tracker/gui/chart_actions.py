@@ -76,6 +76,7 @@ class ChartActions(QObject):
         self.attempts = FitAttempts()
         self.preview = SignalPreview(self)
         self.signalPanel.previousButton.clicked.connect(self.preview.invalidate)
+        self.signalPanel.latestButton.clicked.connect(self.preview.invalidate)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._poll)
         self._refresh_timer = QTimer(self)
@@ -465,11 +466,13 @@ class ChartActions(QObject):
             self.window.refreshAnalysisHistory()
         self.refresh()
         if signal_job and not self._cancel.is_set() and isinstance(result, SignalAnalysisResult) and result.record is not None:
-            self.signalPanel.resultLabel.setText(self.signalPanel.resultLabel.text().replace("Previous saved fit", "Current fit result").replace("Saved crossings", "Current crossings"))
+            self.signalPanel.resultLabel.setText(self.signalPanel.resultLabel.text().replace("Latest applied fit", "Current fit result").replace("Saved crossings", "Current crossings"))
             self.signalPanel.draftLabel.setText("Current calculation result — save project to retain the scientific result")
-            self.signalPanel.jobLabel.setText("Calculation completed. Inspect the overlay and explanation; the attempt summary is retained separately.")
+            self.signalPanel.jobLabel.setText("Calculation completed. Inspect the overlay and error comparison; Save keeps the scientific result.")
 
     def _signalEdited(self) -> None:
+        if hasattr(self.window, "trackingActions"):
+            self.window.refreshAnalysisSourceBar()
         if self._signal_job is not None:
             self.cancel()
         self.signalPanel.refreshDraftDisplay()
@@ -545,15 +548,24 @@ class ChartActions(QObject):
             self.signalPanel.jobLabel.setText(f"Fit preparation failed: {error}. Check inputs and retry.")
             self._finishAttempt("failed", str(error))
             return
-        if fitting and self.attempts.active:
-            self.attempts.annotate(source_id=str(job.source.derived_id), source_fingerprint=source_fingerprint(job.source),
-                                 sample_count=len(job.samples), unit=job.source.unit, spec=asdict(job.spec))
-        self._cancel = Event()
-        self._job_generation = self.window.deliveryGeneration
-        self._job_inputs = job.inputs
-        self._signal_job = job
-        self._job_workspace = self.window.currentWorkspace
-        self._future = self._executor.submit(_run_chart_job, job, self._cancel)
+        try:
+            if fitting and self.attempts.active:
+                self.attempts.annotate(source_id=str(job.source.derived_id), source_fingerprint=source_fingerprint(job.source),
+                                     sample_count=len(job.samples), unit=job.source.unit, spec=asdict(job.spec))
+            self._cancel = Event()
+            self._job_generation = self.window.deliveryGeneration
+            self._job_inputs = job.inputs
+            self._signal_job = job
+            self._job_workspace = self.window.currentWorkspace
+            self._future = self._executor.submit(_run_chart_job, job, self._cancel)
+        except Exception as error:
+            self._future = None
+            self._signal_job = None
+            self._job_inputs = None
+            self._finishAttempt("failed", str(error))
+            self.signalPanel.jobLabel.setText(f"Calculation could not start: {error}. Retry when the worker is available.")
+            self.refresh()
+            return
         self.signalPanel.jobLabel.setText("Computing…")
         self._timer.start(30)
         self.refresh()
@@ -582,9 +594,9 @@ class ChartActions(QObject):
         else:
             self.window.setWorkspace("setup")
 
-    def syncJournal(self) -> None:
+    def syncJournal(self, *, saved: bool = False) -> None:
         if not self.window.projectActions.busy:
-            self.attempts.sync(self.window.analysisSession)
+            self.attempts.sync(self.window.analysisSession, saved=saved)
         self.showAttempts()
 
     def _startAttempt(self) -> None:
@@ -615,7 +627,9 @@ class ChartActions(QObject):
                 panel.attemptChoice.addItem(f"{attempt.get('quantity', '?')} · {attempt.get('status', '?')} · {attempt.get('formula', '')[:45]}", attempt.get("id"))
             index = panel.attemptChoice.findData(previous)
             panel.attemptChoice.setCurrentIndex(max(0, index))
-        panel.journalLabel.setText(self.attempts.journal.warning if self.attempts.journal else "No project attempt log")
+        panel.journalLabel.setText(
+            (self.attempts.journal.warning or ("Attempts are in memory until the first Save." if self.window.analysisSession.project_root is None else "Attempts are stored in analysis/fit-attempts.json."))
+            if self.attempts.journal else "No project attempt log")
         panel.retryJournalButton.setVisible(bool(self.attempts.journal and self.attempts.journal.warning and not self.attempts.journal.read_only))
         self.showAttempt()
 
@@ -635,7 +649,7 @@ class ChartActions(QObject):
             self.showAttempts()
 
     def shutdown(self) -> None:
-        self.preview.invalidate()
+        self.preview.shutdown()
         self._finishAttempt("interrupted", "Window closed; pending result discarded")
         self._closed = True
         self._cancel.set()

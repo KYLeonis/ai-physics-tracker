@@ -15,6 +15,7 @@ class FitAttempts:
         self.journal: FitAttemptJournal | None = None
         self._active_id: str | None = None
         self._started: float | None = None
+        self._root = None
 
     @property
     def active(self) -> bool:
@@ -24,10 +25,11 @@ class FitAttempts:
     def elapsed_s(self) -> float:
         return monotonic()-self._started if self._started is not None else 0.0
 
-    def sync(self, session: ProjectSession | None) -> None:
+    def sync(self, session: ProjectSession | None, *, saved: bool = False) -> None:
         """在保存完成后绑定新路径；切工程前结束原工程的尝试。"""
         identity = str(session.project.project_id) if session else None
-        if self.journal is not None and self.journal.project_id != identity:
+        root = session.project_root.resolve() if session and session.project_root else None
+        if self.journal is not None and (self.journal.project_id != identity or (root != self._root and not saved)):
             self.interrupt()
             self.journal = None
         if session is not None:
@@ -35,6 +37,7 @@ class FitAttempts:
                 self.journal = FitAttemptJournal(identity, session.project_root)
             else:
                 self.journal.bind(session.project_root)
+        self._root = root
 
     def start(self, recipe: dict) -> None:
         """保留输入原文，哪怕后续同步校验拒绝，也能解释本次请求。"""

@@ -221,3 +221,48 @@ def test_malformed_known_attempt_fields_preserve_original_read_only(tmp_path,att
     assert journal.read_only
     journal.add({'formula':'x','status':'rejected'})
     assert path.read_bytes()==original
+
+
+def test_initial_read_failure_can_be_retried_without_losing_memory(tmp_path):
+    root=tmp_path/'p';root.mkdir();(root/'analysis').write_text('blocked')
+    journal=FitAttemptJournal('p',root)
+    journal.add({'id':'new','status':'failed'})
+    assert journal.warning and not journal.read_only
+    (root/'analysis').unlink();(root/'analysis').mkdir()
+    journal.retry()
+    assert not journal.warning
+    assert _payload(root)['attempts'][0]['id']=='new'
+
+
+def test_duplicate_or_missing_status_rejected_before_disk_change(tmp_path):
+    journal=FitAttemptJournal('p',tmp_path)
+    journal.add({'id':'a','status':'failed'})
+    before=(tmp_path/'analysis/fit-attempts.json').read_bytes()
+    for attempt in ({'id':'a','status':'failed'},{'id':'b'}):
+        with pytest.raises(ValueError):journal.add(attempt)
+    assert (tmp_path/'analysis/fit-attempts.json').read_bytes()==before
+
+
+def test_read_retry_preserves_recovered_extensions_and_appends_memory(tmp_path):
+    root=tmp_path/'p';root.mkdir();(root/'analysis').write_text('blocked')
+    journal=FitAttemptJournal('p',root)
+    journal.add({'id':'new','status':'failed'})
+    (root/'analysis').unlink();(root/'analysis').mkdir()
+    payload={'version':1,'project_id':'p','future':{'keep':3},'attempts':[{'id':'old','status':'completed','future':True}]}
+    (root/'analysis/fit-attempts.json').write_text(json.dumps(payload))
+    journal.retry()
+    loaded=_payload(root)
+    assert loaded['future']=={'keep':3}
+    assert [item['id'] for item in loaded['attempts']]==['old','new']
+    assert loaded['attempts'][0]['future'] is True
+
+
+def test_bind_never_overwrites_diverged_same_project_history(tmp_path):
+    a,b=tmp_path/'a',tmp_path/'b'
+    first,second=FitAttemptJournal('p',a),FitAttemptJournal('p',b)
+    first.add({'id':'a','status':'failed'})
+    second.add({'id':'b','status':'failed','future':'keep'})
+    before=(b/'analysis/fit-attempts.json').read_bytes()
+    first.bind(b)
+    assert first.read_only
+    assert (b/'analysis/fit-attempts.json').read_bytes()==before

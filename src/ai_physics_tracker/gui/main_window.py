@@ -639,11 +639,15 @@ class MainWindow(QMainWindow):
         """分析页顶部：当前输入来源 + 标定 + 时间依据（§11.2）。"""
         session = self.analysisSession
         track_id = self.selectedTrackId
+        tools = hasattr(self, "analysisTabs") and self.analysisTabs.currentIndex() == 1
+        if tools:
+            identity = self.chartActions.signalPanel.trackChoice.currentData()
+            track_id = UUID(identity) if identity else None
         if session is None or track_id is None:
             self._analysisSourceLabel.setText("No analysis source selected")
             return
         state = getattr(self.trackingActions, "_current_workflow_state", None)
-        traj = state.trajectory if state is not None else None
+        traj = state.trajectory if state is not None and not tools else None
         manual_count = traj.manual_count if traj is not None else len(
             session.manual_points(track_id))
         if traj is not None and traj.active_label:
@@ -665,6 +669,8 @@ class MainWindow(QMainWindow):
             timing_note = ("not authorized — cached results only" if not session.can_measure(track.video_id)
                            else "approximate timing" if timing else "verified CFR timing")
             source += f" · Units: {unit} · Timing: {timing_note}"
+        if tools and track is not None:
+            source = f"{track.name} · {self.chartActions.signalPanel.quantityChoice.currentText()} · " + source
         self._analysisSourceLabel.setText(source)
 
     def _enterAnalysis(self) -> None:

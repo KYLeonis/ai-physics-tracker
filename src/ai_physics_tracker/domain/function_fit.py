@@ -66,6 +66,7 @@ class FitOutcome:
     evaluations: int = 0
     solver_status: int | None = None
     residual_scale: float = 1.0
+    parameter_scales: tuple[tuple[str, float], ...] = ()
 
     @property
     def is_publishable(self) -> bool:
@@ -92,12 +93,14 @@ def fit_function(
     if free and len(time) <= len(free):
         return FitOutcome("insufficient_samples", "More samples than free parameters are required")
     fixed = {parameter.name: parameter.initial for parameter in spec.parameters if parameter.fixed}
+    # 在无量纲参数坐标求解，避免巨大初值触发xtol假收敛或微小参数差分下溢。
+    parameter_scales = np.array([abs(parameter.initial) or 1.0 for parameter in free])
     evaluations = 0
     # 同一常数缩放保留等权最小二乘目标，避免小单位信号过早满足绝对gtol。
     residual_scale = float(np.max(np.abs(values))) or 1.0
 
     def parameter_values(vector: np.ndarray) -> dict[str, float]:
-        return fixed | {parameter.name: float(value) for parameter, value in zip(free, vector)}
+        return fixed | {parameter.name: float(value) for parameter, value in zip(free, vector * parameter_scales)}
 
     def residual(vector: np.ndarray) -> np.ndarray:
         nonlocal evaluations
@@ -110,7 +113,7 @@ def fit_function(
         with np.errstate(over="raise", invalid="raise"):
             return (predicted - values) / residual_scale
 
-    initial = np.array([parameter.initial for parameter in free], dtype=float)
+    initial = np.array([parameter.initial for parameter in free], dtype=float) / parameter_scales
     try:
         if not free:
             errors = residual(initial)
@@ -118,6 +121,9 @@ def fit_function(
         else:
             lower = [parameter.lower if parameter.lower is not None else -np.inf for parameter in free]
             upper = [parameter.upper if parameter.upper is not None else np.inf for parameter in free]
+            with np.errstate(over="ignore"):
+                lower = np.asarray(lower) / parameter_scales
+                upper = np.asarray(upper) / parameter_scales
             result = least_squares(residual, initial, bounds=(lower, upper), max_nfev=spec.max_evaluations,
                                    x_scale="jac", ftol=1e-10, xtol=1e-10, gtol=1e-10)
             if not result.success:
@@ -148,7 +154,8 @@ def fit_function(
         ordered = parameter_values(solution)
         return FitOutcome("success" if free else "given_parameters", message,
                           tuple((parameter.name, ordered[parameter.name]) for parameter in spec.parameters),
-                          tuple(map(float, predicted)), tuple(map(float, -errors)), rmse, evaluations, status, residual_scale)
+                          tuple(map(float, predicted)), tuple(map(float, -errors)), rmse, evaluations, status, residual_scale,
+                          tuple((parameter.name, float(scale)) for parameter, scale in zip(free, parameter_scales)))
     except _FitStopped as exc:
         return FitOutcome(exc.status, exc.message, evaluations=evaluations)
     except (ValueError, FloatingPointError, np.linalg.LinAlgError) as exc:

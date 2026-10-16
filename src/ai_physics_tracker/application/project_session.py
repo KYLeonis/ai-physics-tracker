@@ -1285,6 +1285,10 @@ class ProjectSession:
         )
         self._commit_store(self._store, updated_derived)
 
+    def saved_derived_data(self, track_id: UUID, kind: str) -> DerivedData | None:
+        """返回最近成功保存基线中的历史结果，不代表当前输入仍有效。"""
+        return next((item for item in self._saved_project.derived if item.track_id == track_id and item.kind == kind), None)
+
     def derived_data(self, track_id: UUID, kind: str) -> DerivedData | None:
         """查询指定 Track 的指定类型派生数据。"""
         matches = [

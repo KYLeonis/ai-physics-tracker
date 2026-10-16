@@ -15,12 +15,12 @@ def explain_fit(metadata: dict, unit: str) -> str:
         if metrics.improvement_percent is None:
             lines.append('Improvement vs constant mean: unavailable — '+metrics.reason)
         else:
-            lines.append(f'Error reduction vs constant mean: {metrics.improvement_percent:.3g}%')
+            lines.append(f'Error reduction vs constant mean: {metrics.improvement_percent:.1f}%')
     except ValueError as error:
         lines.append(f'Error comparison unavailable: {error}')
     expression = parse_expression(metadata['spec']['expression'])
     if not expression.uses_time:
-        lines.append('Constant level only: no time variation is modeled. Try a time-dependent example to explain changes.')
+        lines.append('Constant level only: no time variation is modeled.')
     conversions = summary.get('result_formulas', [])
     for conversion in conversions:
         if conversion.get('error'):
@@ -31,8 +31,6 @@ def explain_fit(metadata: dict, unit: str) -> str:
                 missing = set()
             detail = 'Missing fitted parameter(s): '+', '.join(sorted(missing)) if missing else conversion['error']
             lines.append(f"Fit completed; {conversion['name']} was not calculated. {detail}.")
-            lines.append('Next: edit / clear the optional result formula, or Measure repeat intervals.')
         else:
             lines.append(f"{conversion['name']} = {conversion['value']:.6g} (user result formula)")
-    lines.append('Convergence does not validate the physical model. Residuals are not measurement uncertainty.')
     return '\n'.join(lines)

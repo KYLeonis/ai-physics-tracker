@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for implementation，2026-10-16；P6.3.1用户已确认范围并授权实施，Issue #31。实现正确性仍须独立复审和本轮HR。
+Accepted for implementation；预览executor调度条款由[ADR-0023](0023-preview-task-isolation.md)替代，其余保持。2026-10-16；P6.3.1用户已确认范围并授权实施，Issue #31。实现正确性仍须独立复审和本轮HR。
 
 ## Context
 
