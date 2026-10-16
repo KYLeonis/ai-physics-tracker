@@ -631,12 +631,13 @@ class MainWindow(QMainWindow):
         self.workflowHeader.setWorkspace(workspace)
         self._refreshDeletePointButton()
         self._refreshHistoryButtons()
-        # 显式失效布局缓存：隐藏的dock / 头部按钮 / 非当前工作区页不再按
+        # 显式失效并重算布局：隐藏的dock / 头部按钮 / 非当前工作区页不再按
         # 隐藏前的宽度参与窗口最小宽度，程序化连续切换时可立即收缩；
         # 含主窗口自身的QMainWindowLayout（dock区域宽度参与窗口最小值）。
         for layout_owner in (self, self.centralWidget(), self._workspaceStack):
             if layout_owner.layout() is not None:
                 layout_owner.layout().invalidate()
+                layout_owner.layout().activate()
         self.analysisChanged.emit()
         if workspace == WORKSPACE_ANALYSIS:
             self.refreshAnalysisSourceBar()

@@ -206,3 +206,13 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 - 应用层`signal_analysis_job`捕获AnalysisInputs、确切源记录、实际样本 / 时间、目标旧ID和规格；后台计算后主线程核对两类版本并在现有Session历史边界发布。加载核对源指纹，保持detached的不可变Project共享。
 - GUI `FormulaEditor` / `SignalAnalysisPanel`复用ChartActions单执行器；MathText仅显示、不执行公式、不调用外部TeX。结果专用Undo只允许栈顶本期结果事务，不放开原始视频标注 / 标定编辑。
 - schema v1追加kind与`analysis.version=1`扩展，来源 / 配方 / 测量值 / 预测 / 残差 / 事件留存；每track / quantity两族各一个最新槽。见[ADR-0021](decisions/0021-function-fit-and-recurrence-result-contract.md)。
+
+### Phase 6.3.1引导分析与诊断日志（实现分支）
+
+`domain.fit_initial`只识别有限示例结构，初值与正式求解分开；`fit_interpretation`比较同样本常数均值基线。求解使用等权残差及参数坐标缩放，摘要记录缩放因子，预测/残差仍是源单位。
+
+`SignalPreview`拥有独立单线程executor，Qt主线程轮询并核对代际/配方；线性、角量、Fit和交叉正式任务继续共享ChartActions原执行器。预览不发布结果，不能挡住显式Fit；见[ADR-0023](decisions/0023-preview-task-isolation.md)。
+
+`application.fit_attempts`负责工程ID+根路径归属及尝试生命周期，`infrastructure.fit_attempt_journal`负责独立`analysis/fit-attempts.json`原子读写；日志不进入Project/dirty/Undo，未知/损坏文件保留，IO失败内存缓冲并可重试。普通打开同ID副本重新读该根日志，只有Save/SaveAs成功路径显式转移当前日志。见[ADR-0022](decisions/0022-guided-fit-preparation-and-attempt-journal.md)。
+
+当前应用结果来自`Project.derived`；Previous saved result读取`ProjectSession`保存基线中的历史记录，Latest applied result读取当前槽。阅读历史不改变当前公式、原始观测或激活结果，使用显示的设置需显式操作；保存成功才更新基线。

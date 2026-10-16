@@ -168,9 +168,10 @@ class WorkflowHeader(QWidget):
             button.setEnabled(spec.enabled)
             button.setToolTip(spec.reason or "")
             button.show()
-        # 同步失效布局缓存：按钮显示/隐藏后立即按当前可见内容报告最小尺寸，
+        # 同步失效并重算布局：按钮显示/隐藏后立即按当前可见内容报告最小尺寸，
         # 不等事件循环投递LayoutRequest（程序化连续刷新时旧缓存会虚高最小宽度）。
         self.layout().invalidate()
+        self.layout().activate()
 
     def setAnalysisChip(self, state: str | None) -> None:
         self.analysisChipLabel.setText(

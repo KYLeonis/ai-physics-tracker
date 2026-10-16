@@ -23,7 +23,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表（✅ 已完成，2026-08-31） |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪（✅ 已完成，2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | 代表帧、困难帧、人工修正、迭代比较、交互重构（✅ 已完成，2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 / 6.2 完成并集成 main；独立复审 / 双平台 CI / 全部 Human Review 通过，2026-10-15；6.3已按 ADR-0017 完成计划冻结，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1英文新手分析体验计划已冻结、未实施；其余子阶段另行规划） |
+| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 / 6.2 完成并集成 main；独立复审 / 双平台 CI / 全部 Human Review 通过，2026-10-15；6.3已按 ADR-0017 完成计划冻结，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1英文新手分析体验已在实现分支交付，独立复审 / CI / 新HR未收口；其余子阶段另行规划） |
 | Phase 7 | Model Library | 模型保存、版本管理、应用到新视频 |
 | Phase 8 | Export & Scientific Workflow | CSV/Excel/图表/视频导出、项目归档 |
 | Phase 9 | Optimization & Packaging | 性能优化、GPU、Windows 打包发布 |
@@ -86,8 +86,9 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - Phase 2 视频/GUI 规范：`docs/spec/phase2-requirements.md`；技术栈与分层决策见 ADR-0005
 - Phase 5 规划入口：`docs/spec/phase5-requirements.md`（需求与边界）、`docs/status/phase-5-plan.md`（Subphase 顺序与验收）
 - Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`、`docs/status/phase-6.2-plan.md`、`docs/status/phase-6.3-plan.md`（6.1 / 6.2已集成main；6.3计划已获用户认可，显式函数拟合 / 通用重复间隔工具，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main。ADR-0019/0020为既有数据契约；ODE / 单位管理 / 参数置信区间后续）
-- Phase 6.3.1 新手分析计划：`docs/status/phase-6.3.1-plan.md`（Q1–16已认可，英文 / 图表优先；自动预览 / 初值建议 / 解释 / 尝试日志及就地准备，尚未实施；不设固定响应或新手完成时限）。访谈事实见`docs/notes/analysis-onboarding-interview.md`。
+- Phase 6.3.1 新手分析计划：`docs/status/phase-6.3.1-plan.md`（Q1–16已认可，英文 / 图表优先；自动预览 / 初值建议 / 解释 / 尝试日志及就地准备，S0–S4实现、S5复审 / CI / 新HR未收口；不设固定响应或新手完成时限）。访谈事实见`docs/notes/analysis-onboarding-interview.md`。
 - 后续回移档案：`docs/status/main-backport-backlog.md`（含执行触发点，后续会话必须随相关阶段核对）
+- GLM派工前读`docs/notes/glm-collaboration-playbook.md`：项目内协作约束、可复现问题与接管证据；原始运行日志不入库。
 - 模板：`docs/templates/`（subphase 计划、review）
 - 独立 review 记录（Review Record）：`docs/reviews/`（索引见其 README；生命周期规则以 `docs/workflow.md` §6 为准）
 - 实现参考与前期调研（开源生态地图）：`docs/research/open-source-project-map.md` —— 实现任何模块前先读其对应小节；各项目源码级细节见 `docs/research/raw/`，仓库快照与校验规则见 `docs/research/README.md`

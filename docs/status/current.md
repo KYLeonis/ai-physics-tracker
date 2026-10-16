@@ -7,15 +7,15 @@
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3已完成，2026-10-16用户整体HR通过，以`92d00a2` `--no-ff`集成 / push main。产品 / 测试树与e4f04a0已通过CI完全相同（本机1103 / 定向15，[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，R8核心 / 交互独立复审Approve）。[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped。AC-1–8 / S0–S5收口；[P6.3.1新手分析计划](phase-6.3.1-plan.md)已完成Q1–16确认并冻结，现已授权实施；独立于已完成的6.3，不提前开始6.4 / 6.5。
+- **Subphase / Slice**：P6.3已完成并集成main（92d00a2）。P6.3.1实施已授权，S0–S4实现，S5全新独立复审 / 双平台CI进行中；本机全量1174 passed（100.23s）。Issue #31 / PR #32；本轮HR待自动Gate完成后发起，不复用原6.3 HR，不开始6.4 / 6.5。
 - **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；实现会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3.1-guided-analysis`；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. P6.3已完成并集成 / push main（92d00a2）；[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped，全部步骤success。Issue #29 / PR #30收口，新工作以6.3.1已冻结计划为准。已验证产品 / 测试树与e4f04a0一致。
-2. **P6.3.1开工已授权（2026-10-16）**。[已冻结计划](phase-6.3.1-plan.md)、[Q1–16访谈及只读诊断](../notes/analysis-onboarding-interview.md)。英文、图表优先、三个用途入口、自动初值预览 / 有限结构初值估算、手改保护、结果解释 / 下一步、尝试留痕和就地准备；不设固定响应 / 新手时长。S0见ADR-0022；产品AC仍待实现验证。
-3. 已从main建立`feat/p6.3.1-guided-analysis`及Issue #31，S0数值 / 日志 / 生命周期契约与样本冻结；接续S1–S5；High-risk，Independent Review / 双平台CI / 本轮HR必须。原P6.3 HR不能替代新交互HR；不自动开6.4 / 6.5。
+1. 完成P6.3.1全新核心 / GUI独立复审，修复后复审；检查最终代码的macOS/Windows CI。PR #32是完整diff容器，不代表已集成。
+2. 自动Gate通过后按[本轮HR](../notes/phase-6.3.1-human-review.md)给启动命令和A–E操作，停止等待用户亲测。通过后才`--no-ff`集成main / 文档收尾 / push，不自动启动6.4 / 6.5。
+3. 后续GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)：先验证worker工具权限；科学输出逐项核对实际代码和独立测试。原始证据只留本地忽略目录。
 
 ## Active Constraints
 
@@ -59,6 +59,9 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3.1实现（2026-10-16）**：已授权开工，ADR-0022先冻结数值样本/日志契约；用途入口、图旁状态、自动草稿预览、受支持初值估算与手改保护、偏差/常数基线解释、部分换算失败动作、独立尝试日志和回看已实现。P011原冻结项目只读估算后一次拟合，θ T≈1.042407212s，原5%门不变，工程哈希不变。GLM Flash首轮tests_failed（漏eps），Codex接管修正，16项通过；worker工具权限限制和教训已存档。全量1174通过，S5复审/CI中；用户实验/main/论文线未改。
+
 
 - **P6.3.1规划冻结（2026-10-16）**：用户完成grilling Q1–16并明确认可冻结；偏好为英文版、图表主位 / 解释旁置，不接受固定毫秒或5分钟验收门槛。只读核查已保存试用：y源 / RHS theta实际是常数拟合，T换算缺Omega；旧结果仍显示、失败缺日志等机制解释“看起来没效果”。新计划单列High-risk估初值 / 解释指标 / 自动预览生命周期 / 日志契约，不倒填旧6.3交付或实施新代码，待开工。
 
