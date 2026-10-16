@@ -24,3 +24,11 @@
 - worker报告Python/Bash调用被“No permission client configured for Bash”阻止；这是该次worker执行环境证据，未验证为账号/额度问题。Codex runner外部检查可执行，因此直接接管小修，没有追加模型调用或更换计费入口。
 - 此任务约12分钟才返回（原始时间戳在本地日志）；不据一次样本概括模型速度。以后有执行环境阻碍先短报具体命令/错误，禁止反复更换解释器或请求提权，把检查交回Codex。受限worker应更小切片，避免无效探测消耗。
 - 根因不只属于worker：Codex派工前doctor只证实CLI/runtime，没有预先证明worker内的Python工具权限。下次首次派工增加最短可执行探针；检查失败后先修环境或改只读任务，再委派实现。
+
+## P6.3.1收尾接管
+
+- 保留有效修复：GLM对Windows FileNotFoundError/NotADirectoryError的日志分类修复有直接失败证据和测试，Codex保留，Luna独立复审24项通过。
+- 布局返工连续修改sizePolicy、invalidate/activate、wait后CI仍失败。下一次先建立可本机复现的失败（本轮24pt字体重现），每次变更须说明新证据支持哪个假设；不能因为某个probe偶然通过就扩大成产品已修复。
+- 诊断探针是临时文件，取证后由实际行为回归替换；提交前检查所有新文件。不得为了绿色而放宽resize断言、跳过平台或加无依据延时。
+- 文档和状态必须以最后代码/CI为准：未取得最终成功回执不写Fixed；自己修改后的检查称self-review，不能冒称独立review。Reviewer若带入旧finding也须核对当前文件并实际重跑。
+- Codex接管后修复更新顺序与父布局缓存，删掉无效补丁，保留Git历史；协作记录只存可复现事实与后续约束，不评价模型整体能力。

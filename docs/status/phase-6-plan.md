@@ -4,7 +4,7 @@
 > [6.2 子计划](phase-6.2-plan.md)已形成；6.3 已按 [ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)
 > 的用户方程口径完成规划并由用户确认；旧固定拟合列表只作历史草案。
 
-- 状态：Phase 6进行中；6.1 / 6.2 / 6.3完成并集成main（6.3为92d00a2，2026-10-16）；6.3.1 S0–S4实现，S5复审 / CI / 本轮HR待收口，6.4 / 6.5未开始。
+- 状态：Phase 6进行中；6.1 / 6.2 / 6.3完成并集成main（6.3为92d00a2，2026-10-16）；6.3.1 S0–S4实现，S5独立复审通过，macOS / Windows CI通过 / 本轮HR待用户，6.4 / 6.5未开始。
 - 基线 / 最新证据：[current.md](current.md)、[6.1 review](../reviews/phase-6.1-review.md)。
 - 需求入口：[phase6-requirements.md](../spec/phase6-requirements.md)。
 

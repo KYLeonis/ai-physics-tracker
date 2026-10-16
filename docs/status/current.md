@@ -2,19 +2,19 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-16（P6.3已集成main；P6.3.1已授权实施，S0契约冻结，S1–S5推进中）
+- 最后更新：2026-10-16（P6.3已集成main；P6.3.1已授权实施，S0–S4实现，独立复审通过；macOS / Windows CI通过，本轮HR待用户）
 
 ## Current
 
-- **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3已完成并集成main（92d00a2）。P6.3.1实施已授权，S0–S4实现，S5全新独立复审 / 双平台CI进行中；本机全量1174 passed（100.23s）。Issue #31 / PR #32；本轮HR待自动Gate完成后发起，不复用原6.3 HR，不开始6.4 / 6.5。
+- **Phase**：Phase 6；6.1 / 6.2 / 6.3已集成main；6.3.1自动Gate通过，HR待用户。
+- **Subphase / Slice**：P6.3已完成并集成main（92d00a2）。P6.3.1实施已授权，S0–S4实现，S5全新核心 / GUI独立复审及收尾复审通过；本机全量1199 passed（146.65s），macOS / Windows CI通过。Issue #31 / PR #32；本轮HR已发起，待用户反馈，不复用原6.3 HR，不开始6.4 / 6.5。
 - **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；实现会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3.1-guided-analysis`；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 完成P6.3.1全新核心 / GUI独立复审，修复后复审；检查最终代码的macOS/Windows CI。PR #32是完整diff容器，不代表已集成。
-2. 自动Gate通过后按[本轮HR](../notes/phase-6.3.1-human-review.md)给启动命令和A–E操作，停止等待用户亲测。通过后才`--no-ff`集成main / 文档收尾 / push，不自动启动6.4 / 6.5。
+1. 等待用户按[本轮HR](../notes/phase-6.3.1-human-review.md)亲测A–E；PR #32仍为草稿完整diff容器，未集成main。
+2. 本轮已给启动命令和A–E操作，停止等待用户亲测。通过后才`--no-ff`集成main / 文档收尾 / push，不自动启动6.4 / 6.5。
 3. 后续GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)：先验证worker工具权限；科学输出逐项核对实际代码和独立测试。原始证据只留本地忽略目录。
 
 ## Active Constraints
@@ -60,7 +60,9 @@
 
 ## Recently Completed
 
-- **P6.3.1实现（2026-10-16）**：已授权开工，ADR-0022先冻结数值样本/日志契约；用途入口、图旁状态、自动草稿预览、受支持初值估算与手改保护、偏差/常数基线解释、部分换算失败动作、独立尝试日志和回看已实现。P011原冻结项目只读估算后一次拟合，θ T≈1.042407212s，原5%门不变，工程哈希不变。GLM Flash首轮tests_failed（漏eps），Codex接管修正，16项通过；worker工具权限限制和教训已存档。全量1174通过，S5复审/CI中；用户实验/main/论文线未改。
+- **P6.3.1收尾接管（2026-10-16）**：核对GLM交接与86de567失败CI，保留日志跨平台读取修复3275ca0；a6da1a3修复用途卡/dock刷新顺序及central widget缓存，删除无效布局补丁和临时probe，补大字体/会话过渡回归。定向58项、本机全量1199项通过，核心日志复审24项、GUI收尾6项及用途/工作流22项通过。原main/论文线保持原HEAD，P011冻结哈希未变；[a6da1a3双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38890193235)通过。本轮新HR待用户，未开始6.4/6.5。
+
+- **P6.3.1实现（2026-10-16）**：已授权开工，ADR-0022先冻结数值样本/日志契约；用途入口、图旁状态、自动草稿预览、受支持初值估算与手改保护、偏差/常数基线解释、部分换算失败动作、独立尝试日志和回看已实现。P011原冻结项目只读估算后一次拟合，θ T≈1.042407212s，原5%门不变，工程哈希不变。GLM Flash首轮tests_failed（漏eps），Codex接管修正，16项通过；worker工具权限限制和教训已存档。完整独立复审及返工复审通过；最终全量1199通过，macOS / Windows CI通过；用户实验/main/论文线未改。
 
 
 - **P6.3.1规划冻结（2026-10-16）**：用户完成grilling Q1–16并明确认可冻结；偏好为英文版、图表主位 / 解释旁置，不接受固定毫秒或5分钟验收门槛。只读核查已保存试用：y源 / RHS theta实际是常数拟合，T换算缺Omega；旧结果仍显示、失败缺日志等机制解释“看起来没效果”。新计划单列High-risk估初值 / 解释指标 / 自动预览生命周期 / 日志契约，不倒填旧6.3交付或实施新代码，待开工。
