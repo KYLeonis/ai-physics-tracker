@@ -712,6 +712,12 @@ class TrackingActions(QObject):
             window.setWorkspace("analysis")
             window.chartActions.recompute()
             return
+        if action_id == "analysis_return_draft":
+            window.chartActions.signalPanel.history.leave()
+            return
+        if action_id == "analysis_use_history_setup":
+            window.chartActions.signalPanel.restoreSaved()
+            return
         if action_id in {"analysis_explore_motion", "analysis_measure_intervals", "analysis_fit_formula"}:
             purpose = {
                 "analysis_explore_motion": "explore",

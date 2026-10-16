@@ -64,7 +64,7 @@ class SignalPreview(QObject):
     def request(self, *, estimate=False, immediate=False):
         self.invalidate()
         self._estimate = estimate
-        if self.actions._closed or self.panel.methods.currentIndex() != 0:
+        if self.actions._closed or self.panel.history.active or self.panel.methods.currentIndex() != 0:
             return
         self.panel.signalPlot.clear()
         self.panel.residualPlot.clear()

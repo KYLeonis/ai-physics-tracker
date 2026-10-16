@@ -607,6 +607,9 @@ class MainWindow(QMainWindow):
             self.refreshAnalysisSourceBar()
         else:
             if self._workspace == WORKSPACE_ANALYSIS:
+                if self.chartActions.signalPanel.history.active:
+                    self.chartActions.signalPanel.history.leave()
+                    self.chartActions.preview.invalidate()
                 self._leaveAnalysis()
         self._workspace = workspace
         if workspace == WORKSPACE_ACQUIRE:
@@ -645,6 +648,9 @@ class MainWindow(QMainWindow):
         track_id = self.selectedTrackId
         tools = hasattr(self, "analysisTabs") and self.analysisTabs.currentIndex() == 1
         if tools:
+            if self.chartActions.signalPanel.history.active:
+                self._analysisSourceLabel.setText(self.chartActions.signalPanel.history.source_text + " · read-only")
+                return
             identity = self.chartActions.signalPanel.trackChoice.currentData()
             track_id = UUID(identity) if identity else None
         if session is None or track_id is None:
@@ -790,7 +796,10 @@ class MainWindow(QMainWindow):
             "measure": "Measure repeat intervals: show the source, set the orange reference, then measure. Input: one signal. Output: crossing times and repeat intervals.",
             "fit": "Fit a formula: choose a signal and equation, preview the initial curve, then fit explicitly. Input: signal + formula. Output: parameters, curve, and residuals.",
         }
-        self.analysisPurposeLabel.setText(explanations[selected])
+        panel = self.chartActions.signalPanel
+        self.analysisPurposeLabel.setText(
+            "Viewing recorded analysis — the form and chart follow your selection. Return to my draft, or Use recorded setup to edit and calculate."
+            if self.analysisTabs.currentIndex() == 1 and panel.history.active else explanations[selected])
         self.analysisToolsHint.setVisible(self.analysisTabs.currentIndex() == 0)
 
     def openAnalysisPurpose(self, purpose: str) -> None:
@@ -812,6 +821,7 @@ class MainWindow(QMainWindow):
 
     def openAnalysisTools(self, method_index: int | None = 0) -> None:
         """常驻直达入口：只导航到公式 / 间隔工具，不执行计算或修改数据。"""
+        self.chartActions.signalPanel.history.leave()
         self.setWorkspace(WORKSPACE_ANALYSIS)
         self.analysisTabs.setCurrentIndex(1)
         if method_index is None:
@@ -845,6 +855,14 @@ class MainWindow(QMainWindow):
                            ActionSpec("update_charts", "Update source charts", enabled=self.chartActions.panel.recomputeButton.isEnabled())),
             )
         panel = self.chartActions.signalPanel
+        if panel.history.active:
+            return TaskCard(
+                mode="analyze", title="Current: Viewing recorded analysis",
+                explanation=("The form and chart show the selected record. Your editable draft is kept.",
+                             "Return to your draft, or use the recorded setup before calculating again."),
+                primary=ActionSpec("analysis_return_draft", "Return to my draft"),
+                secondary=(ActionSpec("analysis_use_history_setup", "Use recorded setup", enabled=panel.restoreButton.isEnabled()),),
+            )
         purpose = "measure" if panel.methods.currentIndex() == 1 else "fit"
         label = "Measure repeat intervals" if purpose == "measure" else "Fit a formula"
         purpose_action = "analysis_measure_intervals" if purpose == "measure" else "analysis_fit_formula"

@@ -151,14 +151,14 @@ def test_unreadable_cached_timing_metadata_remains_read_only(qtbot, synthetic_vi
 
 
 def test_restoring_old_interval_does_not_silently_clamp_settings(qtbot, synthetic_video_path):
-    window, _, _ = _window(qtbot, synthetic_video_path)
+    window, session, _ = _window(qtbot, synthetic_video_path)
     panel = window.chartActions.signalPanel
     panel.fitButton.click()
     qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
-    panel.startFrame.setRange(2, 4)
-    panel.endFrame.setRange(2, 4)
+    session._project = replace(session.project, timelines=tuple(replace(item, working_zone=(2, 4)) for item in session.project.timelines))
+    window.chartActions.refresh()
     panel.restoreButton.click()
-    assert 'outside the working zone' in panel.jobLabel.text()
+    assert 'outside this video or working zone' in panel.jobLabel.text()
     assert 'Saved settings restored' not in panel.draftLabel.text()
 
 

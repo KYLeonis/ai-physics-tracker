@@ -20,6 +20,7 @@ from ai_physics_tracker.domain.recurrence import RecurrenceSpec
 from ai_physics_tracker.gui.formula_editor import FormulaEditor
 from ai_physics_tracker.gui.fit_explanation import explain_fit
 from ai_physics_tracker.gui.analysis_plot import AnalysisPlot, AnalysisScrollArea
+from ai_physics_tracker.gui.signal_history import SignalHistory
 
 
 class _ToolTabs(QTabWidget):
@@ -57,6 +58,7 @@ class SignalAnalysisPanel(QWidget):
     undoRequested = Signal()
     redoRequested = Signal()
     feedbackRequested = Signal()
+    historyChanged = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -69,6 +71,7 @@ class SignalAnalysisPanel(QWidget):
         self._valueRange = None
         self._eventLines = []
         self._eventSamplesMatch = False
+        self._allowCachedEvents = True
         self.trackChoice, self.quantityChoice, self.sourceChoice = QComboBox(), QComboBox(), QComboBox()
         self.quantityChoice.addItems(QUANTITIES)
         self.sourceChoice.addItems(("Measured (default)", "Smoothed (optional)"))
@@ -100,7 +103,10 @@ class SignalAnalysisPanel(QWidget):
         self.resultFormula.setPlaceholderText("Parameters only, e.g. 2*pi/Omega")
         self.previewButton, self.fitButton = QPushButton("Preview initial curve"), QPushButton("Fit")
         self.cancelButton = QPushButton("Cancel calculation")
-        self.restoreButton = QPushButton("Use displayed result settings")
+        self.restoreButton = QPushButton("Use recorded setup")
+        self.returnDraftButton = QPushButton("Return to my draft")
+        self.returnDraftButton.hide()
+        self.returnDraftButton.clicked.connect(lambda: self.history.leave())
         self.undoButton, self.redoButton = QPushButton("Undo result"), QPushButton("Redo result")
         for button in (self.undoButton, self.redoButton):
             button.setToolTip("Only the next fit / crossing-result transaction; source data and calibration remain read-only")
@@ -117,6 +123,7 @@ class SignalAnalysisPanel(QWidget):
         fitLayout.addWidget(self.editor)
         fitLayout.addWidget(self.parameterTable)
         parameterOptions = QCheckBox("Parameter bounds / fixed values")
+        self.parameterOptions = parameterOptions
         parameterOptions.setChecked(False)
         parameterOptions.toggled.connect(lambda checked: [self.parameterTable.setColumnHidden(col, not checked) for col in (2, 3, 4)])
         for col in (2, 3, 4):
@@ -162,6 +169,7 @@ class SignalAnalysisPanel(QWidget):
         recurrenceLayout.addRow(self.referenceStatus)
         recurrenceLayout.addRow("Crossing direction", self.direction)
         noiseOptions = QCheckBox("Noise / separation options")
+        self.noiseOptions = noiseOptions
         noiseOptions.setChecked(False)
         noiseFields = QWidget()
         noiseForm = QFormLayout(noiseFields)
@@ -244,6 +252,8 @@ class SignalAnalysisPanel(QWidget):
         self.resultLabel = QLabel("No saved result yet.")
         self.resultLabel.setWordWrap(True)
         sideLayout.addWidget(self.resultLabel)
+        sideLayout.addWidget(self.returnDraftButton)
+        sideLayout.addWidget(self.restoreButton)
         self.conversionActions = QWidget()
         conversionLayout = QVBoxLayout(self.conversionActions)
         self.editConversionButton = QPushButton("Edit optional result formula")
@@ -273,6 +283,7 @@ class SignalAnalysisPanel(QWidget):
             preparation.addWidget(button)
         # 准备入口分行，窄窗不靠隐藏横向条裁掉按钮。
         preparationHost = QWidget()
+        self.preparationHost = preparationHost
         preparationLayout = QVBoxLayout(preparationHost)
         while preparation.count():
             preparationLayout.addWidget(preparation.takeAt(0).widget())
@@ -290,7 +301,6 @@ class SignalAnalysisPanel(QWidget):
         self.latestButton.clicked.connect(lambda: self.displaySaved(notify=True))
         history.addWidget(self.latestButton)
         history.addWidget(self.previousButton)
-        controlsLayout.addWidget(self.restoreButton)
         controlsLayout.addLayout(history)
         resultHistory = QHBoxLayout()
         resultHistory.addWidget(self.undoButton)
@@ -310,7 +320,7 @@ class SignalAnalysisPanel(QWidget):
         self.attemptDetails.setMaximumHeight(130)
         self.journalLabel = QLabel()
         self.journalLabel.setWordWrap(True)
-        controlsLayout.addWidget(QLabel("Recent fit attempts (summaries only)"))
+        controlsLayout.addWidget(QLabel("Fit history — select an attempt"))
         controlsLayout.addWidget(self.attemptChoice)
         controlsLayout.addWidget(self.attemptDetails)
         controlsLayout.addWidget(self.journalLabel)
@@ -348,6 +358,7 @@ class SignalAnalysisPanel(QWidget):
                        self.startFrame, self.endFrame, self.level, self.levelSlider,
                        self.hysteresis, self.separation, self.budget):
             widget.installEventFilter(self)
+        self.history = SignalHistory(self)
         self._formulaChanged()
         self._methodVisibility()
         self.editor.setQuantityLabel("x(t)")
@@ -384,7 +395,7 @@ class SignalAnalysisPanel(QWidget):
         else:
             self.meaningLabel.setText(
                 "t is seconds from interval start. "
-                + ("This curve uses the recorded fitted values; the editor remains your draft."
+                + ("This curve uses the recorded fitted values. The parameter table shows the recorded initial values."
                    if fitted else "This is an initial curve. Click Fit to adjust the free parameters."))
 
     @staticmethod
@@ -476,6 +487,8 @@ class SignalAnalysisPanel(QWidget):
         self.targetChanged.emit()
 
     def _methodChanged(self, *_args) -> None:
+        if self._loading:
+            return
         self._edited()
         self.methods.updateGeometry()
         self._methodVisibility()
@@ -567,6 +580,12 @@ class SignalAnalysisPanel(QWidget):
         tracks = tuple(track for track in session.tracks if track.video_id == video_id) if session else ()
         timeline = next((item for item in session.project.timelines if item.video_id == video_id), None) if session else None
         context = (session.project.project_id, video_id) if session else None
+        if self.history.active:
+            if context == self._context:
+                self._session, self._video_id = session, video_id
+                self.history.lock()
+                return
+            self.history.leave(discard=True)
         self._loading = True
         selected = self.trackChoice.currentData()
         choices = [(self.trackChoice.itemData(i), self.trackChoice.itemText(i)) for i in range(self.trackChoice.count())]
@@ -607,8 +626,8 @@ class SignalAnalysisPanel(QWidget):
         self.redoButton.setEnabled(bool(session) and not pending and session.can_redo_analysis)
         self._session = session
         self._video_id = video_id
-        self.previousButton.setEnabled(self.savedRecord(disk=True) is not None)
-        self.latestButton.setEnabled(self.savedRecord(disk=False) is not None)
+        self.previousButton.setEnabled(not pending and self.savedRecord(disk=True) is not None)
+        self.latestButton.setEnabled(not pending and self.savedRecord(disk=False) is not None)
         if changed_context:
             self._cache = None
             self.initialProtected = False
@@ -625,6 +644,8 @@ class SignalAnalysisPanel(QWidget):
             self.displaySaved()
 
     def savedRecord(self, *, disk: bool | None = None) -> DerivedData | None:
+        if disk is None and self.history.active:
+            return self.history.record
         session = getattr(self, "_session", None)
         if session is None or self.trackChoice.currentData() is None:
             return None
@@ -633,56 +654,19 @@ class SignalAnalysisPanel(QWidget):
         return reader(UUID(self.trackChoice.currentData()), f"{family}_{self.quantityChoice.currentText()}")
 
     def restoreSaved(self) -> None:
-        record = self.savedRecord()
-        metadata = record.extra_fields.get("analysis") if record else None
-        if not isinstance(metadata, dict) or metadata.get("version") != 1:
-            self.showFeedback("No readable saved settings for this track / quantity / tool")
-            return
-        interval = metadata.get("interval")
-        if (not isinstance(interval, list) or len(interval) != 2
-                or not all(type(value) is int for value in interval)
-                or not self.startFrame.minimum() <= interval[0] <= interval[1] <= self.endFrame.maximum()):
-            self.showFeedback("Saved interval is outside the working zone or unreadable; expand the working zone before restoring")
-            return
-        self.initialProtected = True
-        self.estimateLabel.setText("Restored settings protected. Estimate only when you explicitly choose it.")
-        self._loading = True
-        try:
-            selection = metadata["selection"]
-            self.sourceChoice.setCurrentIndex(1 if selection["smoothed"] else 0)
-            self.startFrame.setValue(selection["start_frame"])
-            self.endFrame.setValue(selection["end_frame"])
-            spec = metadata["spec"]
-            if record.kind.startswith("function_fit_"):
-                self.editor.setText(spec["expression"])
-                parameters = {parameter["name"]: parameter for parameter in spec["parameters"]}
-                for row in range(self.parameterTable.rowCount()):
-                    parameter = parameters[self.parameterTable.item(row, 0).text()]
-                    for col, key in enumerate(("initial", "lower", "upper"), 1):
-                        self.parameterTable.item(row, col).setText("" if parameter[key] is None else str(parameter[key]))
-                    self.parameterTable.item(row, 4).setCheckState(Qt.CheckState.Checked if parameter["fixed"] else Qt.CheckState.Unchecked)
-                self.budget.setValue(spec["max_evaluations"])
-                formulas = metadata["summary"].get("result_formulas", [])
-                self.resultName.setText(formulas[0]["name"] if formulas else "")
-                self.resultFormula.setText(formulas[0]["formula"] if formulas else "")
-            else:
-                self.level.setValue(spec["level"])
-                self.hysteresis.setValue(spec["hysteresis"])
-                self.separation.setValue(spec["min_separation_s"])
-                self.direction.setCurrentIndex(0 if spec["direction"] == "rising" else 1)
-        except (KeyError, TypeError, ValueError) as error:
-            self.showFeedback(f"Saved settings are unreadable: {error}")
-            self.draftLabel.setText("Saved settings could not be fully restored")
-            return
-        finally:
-            self._loading = False
-        self.settingsChanged.emit()
-        if self.methods.currentIndex() == 0:
-            self.draftLabel.setText("Recorded settings restored to current draft — initial preview pending")
-            self.showFeedback("Recorded settings restored to the editor. Initial preview is being prepared; click Fit to calculate a new result.")
-        else:
-            self.draftLabel.setText("Recorded crossing settings restored to current draft — not recalculated")
-            self.showFeedback("Crossing settings restored. Review the reference, then click Measure crossing intervals to calculate a new result.")
+        if not self.history.active:
+            record = self.savedRecord()
+            metadata = record.extra_fields.get("analysis") if record else None
+            if not isinstance(metadata, dict) or metadata.get('version') != 1:
+                self.showFeedback('No readable recorded setup for this target.')
+                return
+            try:
+                self.history.view(metadata, record=record)
+            except (KeyError, TypeError, ValueError) as error:
+                self.history.lock()
+                self.showFeedback(f'History is unreadable: {error}. Return to my draft to continue.')
+                return
+        self.history.leave(adopt=True)
 
     def renderSamples(self, samples, unit, predicted=None, residual=None, *, wrapped=False, title="Initial preview") -> None:
         self.signalPlot.clear()
@@ -691,7 +675,7 @@ class SignalAnalysisPanel(QWidget):
         self._eventSamplesMatch = False
         record = self.savedRecord()
         metadata = record.extra_fields.get("analysis") if record else None
-        if isinstance(metadata, dict) and metadata.get("version") == 1:
+        if self._allowCachedEvents and isinstance(metadata, dict) and metadata.get("version") == 1:
             try:
                 expected = tuple(tuple(row[key] for key in ("frame_index", "video_time_s", "relative_time_s", "value", "segment_index")) for row in metadata["samples"])
                 self._eventSamplesMatch = tuple(samples) == expected
@@ -710,7 +694,7 @@ class SignalAnalysisPanel(QWidget):
         self.signalPlot.setLabel("left", self.quantityChoice.currentText(), units=unit)
         actual = self.signalPlot.plot(times, values, connect=connect, pen=pg.mkPen("#008ca8", width=2),
                                        symbol="o", symbolSize=5, data=frames, name="Measured source")
-        actual.sigPointsClicked.connect(lambda _curve, points, _event: self.frameRequested.emit(int(points[0].data())) if points else None)
+        actual.sigPointsClicked.connect(lambda _curve, points, _event: self._requestSampleFrame(int(points[0].data())) if points else None)
         self._previewRange = (times, np.concatenate((values, predicted))) if predicted is not None else None
         outside = predicted is not None and (min(predicted) < min(values) or max(predicted) > max(values))
         self.showModelButton.setText("Model outside source view — show whole model" if outside else "Show whole model")
@@ -720,14 +704,46 @@ class SignalAnalysisPanel(QWidget):
             self.residualPlot.setDataRange(times, np.asarray(residual))
             self.residualPlot.setLabel("left", "Measured − predicted", units=unit)
             scatter = self.residualPlot.plot(times, residual, connect=connect, pen=pg.mkPen("#008ca8"), symbol="o", symbolSize=5, data=frames)
-            scatter.sigPointsClicked.connect(lambda _curve, points, _event: self.frameRequested.emit(int(points[0].data())) if points else None)
+            scatter.sigPointsClicked.connect(lambda _curve, points, _event: self._requestSampleFrame(int(points[0].data())) if points else None)
         if self.methods.currentIndex() == 1:
             self.signalPlot.addItem(self.referenceLine, ignoreBounds=True)
             self.referenceLine.setValue(self.level.value())
 
+    def _requestSampleFrame(self, frame: int) -> None:
+        if self.history.active and not any(str(track.track_id) == self.trackChoice.currentData() and track.video_id == self._video_id
+                                           for track in self._session.tracks):
+            self.showFeedback('This record belongs to another video or a missing track. Open its original video to locate a source frame.')
+            return
+        self.frameRequested.emit(frame)
+
     def displaySaved(self, *, previous: bool = False, notify: bool = False) -> None:
+        if self.history.active and not notify:
+            return
+        self._allowCachedEvents = True
+        if notify and self.cancelButton.isEnabled():
+            self.showFeedback('Wait for the current calculation or cancel it before viewing history.')
+            return
         self._viewingDiskSaved = previous
-        record = self.savedRecord()
+        record = self.savedRecord(disk=previous)
+        if notify:
+            if record is None:
+                self.showFeedback('No saved result for this quantity / tool.')
+                return
+            try:
+                metadata = record.extra_fields.get('analysis', {})
+                if not isinstance(metadata, dict) or metadata.get('version') != 1:
+                    raise ValueError('Unsupported recorded result version')
+                self.signalPlot.clear()
+                self.residualPlot.clear()
+                self._previewRange = self._valueRange = None
+                self.history.view(metadata, record=record)
+            except (KeyError, TypeError, ValueError) as error:
+                self.signalPlot.clear()
+                self.residualPlot.clear()
+                self._previewRange = self._valueRange = None
+                self.history.lock()
+                self.showFeedback(f'History is unreadable: {error}. Return to your draft to continue.')
+                return
         self.previousButton.setEnabled(self.savedRecord(disk=True) is not None)
         self.latestButton.setEnabled(self.savedRecord(disk=False) is not None)
         self.conversionActions.hide()
@@ -736,7 +752,7 @@ class SignalAnalysisPanel(QWidget):
         if notify:
             self.showFeedback(
                 ("Showing the last disk-saved result (most recent Save, not the previous attempt). " if previous else "Showing the latest applied result. ")
-                + "Formula and parameters are above the chart; the editor is unchanged.")
+                + "The full form now shows its recorded setup, read-only. Your draft is kept; Return to my draft or Use recorded setup to continue.")
         metadata = record.extra_fields.get("analysis") if record else None
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
             self.signalPlot.clear()
@@ -759,7 +775,7 @@ class SignalAnalysisPanel(QWidget):
             if fitting:
                 self.showFormula(metadata["spec"]["expression"],
                                  tuple((name, f"{value:.6g}") for name, value in summary["parameter_values"]), fitted=True)
-                self.conversionActions.setVisible(any(item.get("error") for item in summary.get("result_formulas", [])))
+                self.conversionActions.setVisible(not self.history.active and any(item.get("error") for item in summary.get("result_formulas", [])))
                 self.resultLabel.setText(f"{'Last disk-saved fit (snapshot)' if previous else 'Latest applied fit'} · {record.status} · {len(samples)} samples\n" + explain_fit(metadata, record.unit))
                 details = (f"{summary['status']}: {summary['message']}\n"
                            + f"RMSE: {summary['rmse']:.8g} {record.unit}; evaluations: {summary['evaluations']}\n"
@@ -796,6 +812,9 @@ class SignalAnalysisPanel(QWidget):
                                      + timing_message
                                      + details)
         except (KeyError, IndexError, TypeError, ValueError) as error:
+            self.signalPlot.clear()
+            self.residualPlot.clear()
+            self._previewRange = self._valueRange = None
             self.summary.setPlainText(f"Saved result is read-only; metadata cannot be displayed: {error}")
             self.resultLabel.setText(self.summary.toPlainText())
             self.modelLabel.clear()

@@ -214,7 +214,7 @@ def test_restore_disk_settings_becomes_draft_without_relabeling_current_curve(qt
     assert 'Disk-saved snapshot' not in panel.summary.toPlainText()
     assert panel.editor.text()=='a*t + b'
     assert not panel.signalPlot.listDataItems()
-    assert 'current draft' in panel.draftLabel.text()
+    assert 'Current draft' in panel.draftLabel.text()
     _preview(qtbot,panel)
     assert panel.signalPlot.listDataItems()[-1].name()=='Initial preview'
 
@@ -242,7 +242,8 @@ def test_history_shows_recorded_formula_and_parameters_beside_chart(qtbot,synthe
 
     assert 'a*t + b' in panel.modelLabel.text()
     assert 'Fitted parameters: a=20' in panel.modelLabel.text()
-    assert panel.editor.text()=='c'
+    assert panel.editor.text()=='a*t + b'
+    assert not panel.editor.isEnabled()
     assert 'last disk-saved result' in panel.jobLabel.text()
     assert window._analysisToolsScroll.verticalScrollBar().value()==0
     assert not panel.detailsGroup.isChecked()
@@ -252,6 +253,9 @@ def test_history_shows_recorded_formula_and_parameters_beside_chart(qtbot,synthe
     assert 'x(t) = c' in panel.modelLabel.text()
     assert 'no t' in panel.meaningLabel.text()
     assert 'latest applied result' in panel.jobLabel.text()
+    panel.returnDraftButton.click()
+    assert panel.editor.text()=='c'
+    assert panel.editor.isEnabled()
 
 
 def test_rejected_result_cannot_be_relabelled_as_completed(qtbot,synthetic_video_path,monkeypatch):
