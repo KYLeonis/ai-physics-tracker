@@ -75,22 +75,15 @@ class SignalPreview(QObject):
         self.panel.conversionActions.hide()
         self.panel.resultLabel.setText("Recorded results: Latest applied result or Previous saved result.")
         self.panel.jobLabel.setText("Preparing initial preview…")
+        if immediate:
+            self.panel.feedbackRequested.emit()
         self.describe()
         self._debounce.start(0 if immediate else 250)
 
     def describe(self):
-        expression = self.panel.editor.expression()
-        if expression is None:
-            self.panel.meaningLabel.setText(self.panel.editor.errorLabel.text())
-            return
-        quantity = self.panel.quantityChoice.currentText()
-        names = ", ".join(expression.parameter_names) or "none"
-        text = f"Target: {quantity}(t). t is seconds from interval start. Parameters: {names}. "
-        if not expression.uses_time:
-            text += "Fits a constant level; no time variation is modeled. Symbols such as theta on the right are parameters, not another data column."
-        else:
-            text += "Inspect the orange initial curve, then Fit to adjust the free parameters."
-        self.panel.meaningLabel.setText(text)
+        self.panel.showFormula(self.panel.editor.text(), tuple(
+            (self.panel.parameterTable.item(row, 0).text(), self.panel.parameterTable.item(row, 1).text())
+            for row in range(self.panel.parameterTable.rowCount())))
 
     def launch(self):
         if self.actions._closed:
@@ -132,12 +125,21 @@ class SignalPreview(QObject):
                     self.panel.setEstimatedValues(spec, suggestion.reason)
                 else:
                     self.panel.estimateLabel.setText(suggestion.reason)
+            self.describe()
             job = replace(self._job, spec=spec)
             values = np.array([row[3] for row in job.samples])
             self.panel.renderSamples(job.samples, job.source.unit, prediction, values-prediction,
                                      wrapped=job.source.kind == "angular_position")
             self.panel.draftLabel.setText("Initial preview — current editable values; not a fitted result")
-            self.panel.jobLabel.setText("Initial curve only — no fitted result published. Click Fit to calculate.")
+            if suggestion is not None:
+                preparation = suggestion.reason
+            elif self.panel.initialProtected:
+                preparation = "Manual / restored values are protected; use Estimate to replace free initial values."
+            else:
+                preparation = "Current initial values are shown above the chart."
+            if np.min(prediction) < np.min(values) or np.max(prediction) > np.max(values):
+                preparation += " Initial model extends outside the measured range; use Show whole model above the chart to see it."
+            self.panel.jobLabel.setText("Initial curve only — no fitted result published. Click Fit to calculate.\n" + preparation)
             self.panel.contextLabel.setText(f"{job.selection.quantity} [{job.source.unit}] · {len(job.samples)} actual samples · "
                                             f"frames {job.selection.start_frame}–{job.selection.end_frame} · "
                                             f"{job.source.kind} · t = 0 at interval start"

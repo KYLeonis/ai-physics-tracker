@@ -16,6 +16,9 @@ def explain_fit(metadata: dict, unit: str) -> str:
             lines.append('Improvement vs constant mean: unavailable — '+metrics.reason)
         else:
             lines.append(f'Error reduction vs constant mean: {metrics.improvement_percent:.1f}%')
+            lines.append(f'A constant line gives {metrics.baseline_rmse:.5g} {unit} error; this formula gives {metrics.rmse:.5g} {unit}.')
+            if round(metrics.improvement_percent, 1) == 0:
+                lines.append('At this displayed precision, the formula explains no more of the variation than a constant line. Try a different time-dependent formula or interval.')
     except ValueError as error:
         lines.append(f'Error comparison unavailable: {error}')
     expression = parse_expression(metadata['spec']['expression'])

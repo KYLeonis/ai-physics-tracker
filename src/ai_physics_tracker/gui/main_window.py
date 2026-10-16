@@ -755,6 +755,8 @@ class MainWindow(QMainWindow):
         self.chartActions.signalPanel.pageScrollRequested.connect(scroll.scrollPage)
         self.analysisTabs.addTab(scroll, "Formula fitting & intervals")
         self._analysisToolsScroll = scroll
+        self.chartActions.signalPanel.feedbackRequested.connect(
+            lambda: scroll.verticalScrollBar().setValue(0))
         self.workflowHeader.analysisToolsRequested.connect(self.openAnalysisTools)
         self.analysisTabs.currentChanged.connect(self._analysisTabsChanged)
         self.chartActions.signalPanel.methods.currentChanged.connect(self._analysisMethodChanged)

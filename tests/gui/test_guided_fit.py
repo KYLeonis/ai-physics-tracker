@@ -127,6 +127,7 @@ def test_full_model_view_is_explicit_and_reset_restores_source(qtbot,synthetic_v
     source=np.array(panel.signalPlot.viewRange())
     assert source[1,1]<100
     assert 'outside' in panel.showModelButton.text()
+    assert 'extends outside' in panel.jobLabel.text()
     panel.showModelButton.click()
     assert panel.signalPlot.viewRange()[1][1]>1e24
     panel.resetViewButton.click()
@@ -227,3 +228,88 @@ def test_attempt_display_tolerates_session_removed_during_project_transition(qtb
     actions.showAttempts()
 
     assert 'in memory' in actions.signalPanel.journalLabel.text()
+
+
+def test_history_shows_recorded_formula_and_parameters_beside_chart(qtbot,synthetic_video_path,tmp_path):
+    window,session,_=_window(qtbot,synthetic_video_path)
+    actions,panel=window.chartActions,window.chartActions.signalPanel
+    panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
+    session.save_as(tmp_path/'saved');actions.syncJournal(saved=True)
+    panel.editor.setText('c');panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
+    window._analysisToolsScroll.verticalScrollBar().setValue(10000)
+
+    panel.previousButton.click()
+
+    assert 'a*t + b' in panel.modelLabel.text()
+    assert 'Fitted parameters: a=20' in panel.modelLabel.text()
+    assert panel.editor.text()=='c'
+    assert 'last disk-saved result' in panel.jobLabel.text()
+    assert window._analysisToolsScroll.verticalScrollBar().value()==0
+    assert not panel.detailsGroup.isChecked()
+    assert not panel.controlsScroll.isAncestorOf(panel.modelLabel)
+    assert not panel.controlsScroll.isAncestorOf(panel.meaningLabel)
+    panel.latestButton.click()
+    assert 'x(t) = c' in panel.modelLabel.text()
+    assert 'no t' in panel.meaningLabel.text()
+    assert 'latest applied result' in panel.jobLabel.text()
+
+
+def test_rejected_result_cannot_be_relabelled_as_completed(qtbot,synthetic_video_path,monkeypatch):
+    from ai_physics_tracker.application.project_session import ProjectSessionError
+    window,session,track=_window(qtbot,synthetic_video_path)
+    actions,panel=window.chartActions,window.chartActions.signalPanel
+    panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
+    saved=session.derived_data(track,'function_fit_x')
+    def reject(_result):raise ProjectSessionError('Target result changed')
+    monkeypatch.setattr(session,'apply_analysis_result',reject)
+
+    panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
+
+    assert 'Target result changed' in panel.jobLabel.text()
+    assert 'Calculation completed' not in panel.jobLabel.text()
+    assert actions.attempts.journal.attempts[-1]['status']=='rejected'
+    assert session.derived_data(track,'function_fit_x')==saved
+
+
+def test_disclosures_accept_indicator_text_and_keyboard(qtbot,synthetic_video_path):
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QCheckBox,QStyle,QStyleOptionButton
+    window,_,_=_window(qtbot,synthetic_video_path)
+    panel=window.chartActions.signalPanel
+    boxes=panel.findChildren(QCheckBox)
+    assert len(boxes)==5
+    for box in boxes:
+        panel.methods.setCurrentIndex(1 if box.text()=='Noise / separation options' else 0)
+        box.setChecked(False)
+        option=QStyleOptionButton();box.initStyleOption(option)
+        indicator=box.style().subElementRect(QStyle.SubElement.SE_CheckBoxIndicator,option,box)
+        text=box.style().subElementRect(QStyle.SubElement.SE_CheckBoxContents,option,box)
+
+        qtbot.mouseClick(box,Qt.MouseButton.LeftButton,pos=indicator.center())
+        assert box.isChecked(),box.text()
+        text_point=QPoint(text.left()+min(text.width()//2,box.fontMetrics().horizontalAdvance(box.text())//2),text.center().y())
+        qtbot.mouseClick(box,Qt.MouseButton.LeftButton,pos=text_point)
+        assert not box.isChecked(),box.text()
+        box.setFocus();qtbot.keyClick(box,Qt.Key.Key_Space)
+        assert box.isChecked(),box.text()
+    assert panel.summary.isEnabled()
+
+
+@pytest.mark.parametrize('formula',['theta','cos(theta)'])
+def test_constant_formula_warning_and_current_formula_are_not_inside_controls(qtbot,synthetic_video_path,formula):
+    window,_,_=_window(qtbot,synthetic_video_path)
+    panel=window.chartActions.signalPanel
+    panel.editor.setText(formula)
+    _preview(qtbot,panel)
+    assert f'x(t) = {formula}' in panel.modelLabel.text()
+    assert 'no t' in panel.meaningLabel.text()
+    assert 'not another measured quantity' in panel.meaningLabel.text()
+    assert not panel.controlsScroll.isAncestorOf(panel.meaningLabel)
+
+
+def test_constant_fit_explanation_compares_same_sample_baseline_in_plain_units():
+    from ai_physics_tracker.gui.fit_explanation import explain_fit
+    text=explain_fit({'spec':{'expression':'theta'},'samples':[{'value':-1},{'value':1}],
+                      'summary':{'prediction':[0,0]}},'m')
+    assert 'A constant line gives 1 m error; this formula gives 1 m' in text
+    assert 'explains no more' in text

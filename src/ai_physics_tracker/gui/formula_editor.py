@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QGroupBox,
+    QCheckBox,
     QGridLayout,
     QLabel,
     QLineEdit,
@@ -87,8 +87,7 @@ class FormulaEditor(QWidget):
         formulaRow.addWidget(self.formulaEdit, 1)
         layout.addLayout(formulaRow)
 
-        insertionGroup = QGroupBox("Insert symbols / functions")
-        insertionGroup.setCheckable(True)
+        insertionGroup = QCheckBox("Insert symbols / functions")
         insertionGroup.setChecked(False)
         insertionHost = QWidget()
         insertionRow = QGridLayout(insertionHost)
@@ -103,10 +102,10 @@ class FormulaEditor(QWidget):
                 lambda _checked=False, token=insertion: self._insertText(token)
             )
             insertionRow.addWidget(button, index // 5, index % 5 + 1)
-        QVBoxLayout(insertionGroup).addWidget(insertionHost)
         insertionHost.hide()
         insertionGroup.toggled.connect(insertionHost.setVisible)
         layout.addWidget(insertionGroup)
+        layout.addWidget(insertionHost)
 
         exampleRow = QGridLayout()
         exampleRow.addWidget(QLabel("Editable examples:"), 0, 0, 1, 2)

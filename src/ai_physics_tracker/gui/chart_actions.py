@@ -410,7 +410,7 @@ class ChartActions(QObject):
         self._cancel.set()
         self.panel.jobLabel.setText("Calculation cancelled — pending results will be discarded")
         if self._signal_job is not None:
-            self.signalPanel.jobLabel.setText("Calculation cancelled — saved result retained")
+            self.signalPanel.showFeedback("Calculation cancelled — saved result retained")
 
     def _poll(self) -> None:
         if self.attempts.active and not self._cancel.is_set():
@@ -424,6 +424,7 @@ class ChartActions(QObject):
         signal_job = self._signal_job
         self._signal_job = None
         result = None
+        applied = False
         try:
             result = future.result()
             if self._cancel.is_set() or self._job_generation != self.window.deliveryGeneration:
@@ -433,7 +434,7 @@ class ChartActions(QObject):
                 raise CancelledError()
             if isinstance(result, SignalAnalysisResult):
                 if result.record is None:
-                    self.signalPanel.jobLabel.setText(result.fit_outcome.status + ": " + result.fit_outcome.message + " — saved result retained")
+                    self.signalPanel.showFeedback(result.fit_outcome.status + ": " + result.fit_outcome.message + " — saved result retained")
                     self._finishAttempt(result.fit_outcome.status, result.fit_outcome.message, solver=asdict(result.fit_outcome))
                     next_step = {
                         "evaluation_limit": "Raise Model evaluation limit in Optional settings, or Estimate initial values and retry.",
@@ -441,7 +442,7 @@ class ChartActions(QObject):
                         "unidentifiable": "Fix / remove redundant parameters or choose data that distinguishes them.",
                         "domain_error": "Check the formula domain (log, sqrt, division) and edit initial values.",
                     }.get(result.fit_outcome.status, "Inspect the initial curve, adjust values / bounds or Estimate, then retry.")
-                    self.signalPanel.jobLabel.setText(self.signalPanel.jobLabel.text() + ". Next: " + next_step)
+                    self.signalPanel.showFeedback(self.signalPanel.jobLabel.text() + ". Next: " + next_step)
                     self.refresh()
                     return
                 session.apply_analysis_result(result)
@@ -454,27 +455,28 @@ class ChartActions(QObject):
             self.panel.jobLabel.setText(charts_not_updated(
                 "calculation cancelled").full_text())
             if signal_job:
-                self.signalPanel.jobLabel.setText("Calculation cancelled — saved result retained; edit settings or retry.")
+                self.signalPanel.showFeedback("Calculation cancelled — saved result retained; edit settings or retry.")
                 self._finishAttempt("cancelled", "Calculation cancelled; late result discarded")
         except Exception as error:
             from ai_physics_tracker.application.user_messages import charts_not_updated
             self.panel.jobLabel.setText(charts_not_updated(str(error)).full_text())
             if signal_job:
-                self.signalPanel.jobLabel.setText(str(error) + " — saved result retained. Check source charts / settings, then retry.")
+                self.signalPanel.showFeedback(str(error) + " — saved result retained. Check source charts / settings, then retry.")
                 self._finishAttempt("rejected" if isinstance(error, ProjectSessionError) else "failed", str(error))
         else:
+            applied = True
             self._settings_edited = False
             self._seeded_controls = None
             self.panel.jobLabel.setText("Computed — save project to keep results")
             if signal_job:
-                self.signalPanel.jobLabel.setText("Computed — save project to keep results")
+                self.signalPanel.showFeedback("Computed — save project to keep results")
                 self._finishAttempt("completed", "Fit completed", summary=result.record.extra_fields["analysis"]["summary"])
             self.window.refreshAnalysisHistory()
         self.refresh()
-        if signal_job and not self._cancel.is_set() and isinstance(result, SignalAnalysisResult) and result.record is not None:
+        if signal_job and applied and isinstance(result, SignalAnalysisResult) and result.record is not None:
             self.signalPanel.resultLabel.setText(self.signalPanel.resultLabel.text().replace("Latest applied fit", "Current fit result").replace("Latest applied crossings", "Current crossings"))
             self.signalPanel.draftLabel.setText("Current calculation result — save project to retain the scientific result")
-            self.signalPanel.jobLabel.setText("Calculation completed. Inspect the overlay and error comparison; Save keeps the scientific result.")
+            self.signalPanel.showFeedback("Calculation completed. Inspect the overlay and error comparison; Save keeps the scientific result.")
 
     def _signalEdited(self) -> None:
         if hasattr(self.window, "trackingActions"):
@@ -497,12 +499,12 @@ class ChartActions(QObject):
         try:
             changed = session.redo_analysis() if redo else session.undo_analysis()
         except ProjectSessionError as error:
-            self.signalPanel.jobLabel.setText(str(error))
+            self.signalPanel.showFeedback(str(error))
             return
         if changed:
             self.window.refreshAnalysisHistory()
             self.refresh()
-            self.signalPanel.jobLabel.setText("Analysis history restored — saved settings remain available")
+            self.signalPanel.showFeedback("Analysis history restored — saved settings remain available")
 
     def _signalTargetChanged(self) -> None:
         self._signalEdited()
@@ -529,11 +531,11 @@ class ChartActions(QObject):
             self.signalPanel.renderSamples(job.samples, job.source.unit,
                                            wrapped=job.source.kind == "angular_position")
             self.signalPanel.refreshDraftDisplay()
-            self.signalPanel.jobLabel.setText("Source preview — adjust reference, then Measure crossing intervals")
+            self.signalPanel.showFeedback("Source preview — adjust reference, then Measure crossing intervals")
         except (ValueError, ProjectSessionError) as error:
             self.signalPanel.signalPlot.clear()
             self.signalPanel._valueRange = None
-            self.signalPanel.jobLabel.setText(str(error))
+            self.signalPanel.showFeedback(str(error))
 
     def previewSignal(self) -> None:
         self.preview.request(immediate=True)
@@ -547,11 +549,11 @@ class ChartActions(QObject):
         try:
             job = self._prepareSignal(fitting)
         except (ValueError, ProjectSessionError) as error:
-            self.signalPanel.jobLabel.setText(f"Fit blocked: {error}. Check source preparation and current settings.")
+            self.signalPanel.showFeedback(f"Fit blocked: {error}. Check source preparation and current settings.")
             self._finishAttempt("rejected", str(error))
             return
         except Exception as error:
-            self.signalPanel.jobLabel.setText(f"Fit preparation failed: {error}. Check inputs and retry.")
+            self.signalPanel.showFeedback(f"Fit preparation failed: {error}. Check inputs and retry.")
             self._finishAttempt("failed", str(error))
             return
         try:
@@ -569,10 +571,16 @@ class ChartActions(QObject):
             self._signal_job = None
             self._job_inputs = None
             self._finishAttempt("failed", str(error))
-            self.signalPanel.jobLabel.setText(f"Calculation could not start: {error}. Retry when the worker is available.")
+            self.signalPanel.showFeedback(f"Calculation could not start: {error}. Retry when the worker is available.")
             self.refresh()
             return
-        self.signalPanel.jobLabel.setText("Computing…")
+        self.signalPanel.showFeedback("Computing…")
+        if fitting:
+            self.signalPanel.signalPlot.clear()
+            self.signalPanel.residualPlot.clear()
+            self.signalPanel.draftLabel.setText("Fitting current draft — result pending")
+            self.signalPanel.showFormula(job.spec.expression, tuple(
+                (parameter.name, f"{parameter.initial:.6g}") for parameter in job.spec.parameters))
         self._timer.start(30)
         self.refresh()
 
@@ -649,6 +657,10 @@ class ChartActions(QObject):
             f"Elapsed: {attempt.get('elapsed_s', 0):.3g} s\n"
             + json.dumps({key: value for key, value in attempt.items() if key not in ('formula', 'status', 'reason', 'quantity', 'interval', 'elapsed_s')}, indent=2, ensure_ascii=False)
             if attempt else "No recorded Fit request yet. Live previews are not attempts.")
+        if _args and attempt:
+            self.signalPanel.showFeedback(
+                f"Recorded attempt: {attempt.get('formula', '?')} — {attempt.get('status', '?')}. "
+                f"{attempt.get('reason', 'Calculation in progress')}. Displayed curve and editor are unchanged.")
 
     def retryJournal(self) -> None:
         if self.attempts.journal:

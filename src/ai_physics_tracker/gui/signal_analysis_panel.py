@@ -6,7 +6,7 @@ import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QEvent, QSize, Qt, Signal, QSignalBlocker
 from PySide6.QtWidgets import (
-    QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout,
+    QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout,
     QLabel, QLineEdit, QPlainTextEdit, QPushButton, QSpinBox,
     QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSlider, QSizePolicy,
 )
@@ -15,6 +15,7 @@ from ai_physics_tracker.application.signal_analysis_job import SignalSelection
 from ai_physics_tracker.domain.analysis import QUANTITIES
 from ai_physics_tracker.domain.derived import DerivedData
 from ai_physics_tracker.domain.function_fit import FitParameter, FitSpec
+from ai_physics_tracker.domain.expression import parse_expression
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec
 from ai_physics_tracker.gui.formula_editor import FormulaEditor
 from ai_physics_tracker.gui.fit_explanation import explain_fit
@@ -55,6 +56,7 @@ class SignalAnalysisPanel(QWidget):
     frameRequested = Signal(int)
     undoRequested = Signal()
     redoRequested = Signal()
+    feedbackRequested = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -82,6 +84,10 @@ class SignalAnalysisPanel(QWidget):
             label.setWordWrap(True)
         self.draftLabel = QLabel("Draft — no analysis applied")
         self.draftLabel.setWordWrap(True)
+        self.modelLabel = QLabel()
+        self.modelLabel.setTextFormat(Qt.TextFormat.PlainText)
+        self.modelLabel.setWordWrap(True)
+        self.modelLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.editor = FormulaEditor()
         self.parameterTable = QTableWidget(0, 5)
         self.parameterTable.setHorizontalHeaderLabels(("Parameter", "Initial", "Lower (optional)", "Upper (optional)", "Fixed"))
@@ -110,27 +116,23 @@ class SignalAnalysisPanel(QWidget):
         fitLayout = QVBoxLayout(fit)
         fitLayout.addWidget(self.editor)
         fitLayout.addWidget(self.parameterTable)
-        parameterOptions = QGroupBox("Parameter bounds / fixed values")
-        parameterOptions.setCheckable(True)
+        parameterOptions = QCheckBox("Parameter bounds / fixed values")
         parameterOptions.setChecked(False)
         parameterOptions.toggled.connect(lambda checked: [self.parameterTable.setColumnHidden(col, not checked) for col in (2, 3, 4)])
         for col in (2, 3, 4):
             self.parameterTable.setColumnHidden(col, True)
         fitLayout.addWidget(parameterOptions)
-        advanced = QGroupBox("Optional settings")
+        advanced = QCheckBox("Optional settings")
         self.optionalGroup = advanced
-        advanced.setCheckable(True)
         advanced.setChecked(False)
-        form = QFormLayout(advanced)
+        advancedFields = QWidget()
+        form = QFormLayout(advancedFields)
         form.addRow("Model evaluation limit", self.budget)
         form.addRow(self.resultName, self.resultFormula)
-        for widget in (self.budget, self.resultName, self.resultFormula):
-            widget.setVisible(False)
-        budgetLabel = form.labelForField(self.budget)
-        budgetLabel.hide()
-        advanced.toggled.connect(budgetLabel.setVisible)
-        advanced.toggled.connect(lambda checked: [widget.setVisible(checked) for widget in (self.budget, self.resultName, self.resultFormula)])
+        advancedFields.hide()
+        advanced.toggled.connect(advancedFields.setVisible)
         fitLayout.addWidget(advanced)
+        fitLayout.addWidget(advancedFields)
         fitButtons = QHBoxLayout()
         fitButtons.addWidget(self.previewButton)
         fitButtons.addWidget(self.fitButton)
@@ -159,17 +161,16 @@ class SignalAnalysisPanel(QWidget):
         self.referenceStatus.setWordWrap(True)
         recurrenceLayout.addRow(self.referenceStatus)
         recurrenceLayout.addRow("Crossing direction", self.direction)
-        noiseOptions = QGroupBox("Noise / separation options")
-        noiseOptions.setCheckable(True)
+        noiseOptions = QCheckBox("Noise / separation options")
         noiseOptions.setChecked(False)
         noiseFields = QWidget()
         noiseForm = QFormLayout(noiseFields)
         noiseForm.addRow("Confirmation band", self.hysteresis)
         noiseForm.addRow("Minimum separation (s)", self.separation)
-        QVBoxLayout(noiseOptions).addWidget(noiseFields)
         noiseFields.hide()
         noiseOptions.toggled.connect(noiseFields.setVisible)
         recurrenceLayout.addRow(noiseOptions)
+        recurrenceLayout.addRow(noiseFields)
 
         self.methods.addTab(recurrence, "Crossing intervals")
         self.signalPlot, self.residualPlot = AnalysisPlot(), AnalysisPlot()
@@ -221,6 +222,7 @@ class SignalAnalysisPanel(QWidget):
         workspace = QHBoxLayout()
         chartColumn = QVBoxLayout()
         chartColumn.addWidget(self.draftLabel)
+        chartColumn.addWidget(self.modelLabel)
         chartColumn.addLayout(plotActions)
         self.showModelButton = QPushButton("Show whole model")
         self.showModelButton.clicked.connect(self.showWholeModel)
@@ -238,6 +240,7 @@ class SignalAnalysisPanel(QWidget):
         self.meaningLabel = QLabel("Choose data and an editable example, then inspect the initial curve and Fit.")
         self.meaningLabel.setWordWrap(True)
         sideLayout.addWidget(self.jobLabel)
+        sideLayout.addWidget(self.meaningLabel)
         self.resultLabel = QLabel("No saved result yet.")
         self.resultLabel.setWordWrap(True)
         sideLayout.addWidget(self.resultLabel)
@@ -275,7 +278,6 @@ class SignalAnalysisPanel(QWidget):
             preparationLayout.addWidget(preparation.takeAt(0).widget())
         controls = QWidget()
         controlsLayout = QVBoxLayout(controls)
-        controlsLayout.addWidget(self.meaningLabel)
         controlsLayout.addWidget(dataGroup)
         controlsLayout.addWidget(self.estimateLabel)
         controlsLayout.addWidget(self.estimateButton)
@@ -283,9 +285,9 @@ class SignalAnalysisPanel(QWidget):
         controlsLayout.addWidget(preparationHost)
         history = QHBoxLayout()
         self.previousButton = QPushButton("Previous saved result")
-        self.previousButton.clicked.connect(lambda: self.displaySaved(previous=True))
+        self.previousButton.clicked.connect(lambda: self.displaySaved(previous=True, notify=True))
         self.latestButton = QPushButton("Latest applied result")
-        self.latestButton.clicked.connect(lambda: self.displaySaved())
+        self.latestButton.clicked.connect(lambda: self.displaySaved(notify=True))
         history.addWidget(self.latestButton)
         history.addWidget(self.previousButton)
         controlsLayout.addWidget(self.restoreButton)
@@ -294,13 +296,12 @@ class SignalAnalysisPanel(QWidget):
         resultHistory.addWidget(self.undoButton)
         resultHistory.addWidget(self.redoButton)
         controlsLayout.addLayout(resultHistory)
-        self.detailsGroup = QGroupBox("Result details / provenance")
-        self.detailsGroup.setCheckable(True)
+        self.detailsGroup = QCheckBox("Result details / provenance")
         self.detailsGroup.setChecked(False)
-        QVBoxLayout(self.detailsGroup).addWidget(self.summary)
         self.summary.hide()
         self.detailsGroup.toggled.connect(self.summary.setVisible)
         controlsLayout.addWidget(self.detailsGroup)
+        controlsLayout.addWidget(self.summary)
         self.attemptChoice = QComboBox()
         self.attemptChoice.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.attemptChoice.setMinimumContentsLength(8)
@@ -359,6 +360,32 @@ class SignalAnalysisPanel(QWidget):
             event.accept()
             return True
         return super().eventFilter(watched, event)
+
+    def showFeedback(self, text: str) -> None:
+        """显式操作反馈定位到图旁；自动预览不抢夺用户正在编辑的滚动位置。"""
+        self.jobLabel.setText(text)
+        self.feedbackRequested.emit()
+
+    def showFormula(self, expression: str, parameters: tuple[tuple[str, str], ...], *, fitted: bool = False) -> None:
+        """展示当前曲线实际使用的公式和参数，不从仍可编辑的草稿推断历史模型。"""
+        self.modelLabel.setText(
+            f"Displayed formula: {self.quantityChoice.currentText()}(t) = {expression}\n"
+            + ("Fitted parameters: " if fitted else "Initial values: ")
+            + (", ".join(f"{name}={value}" for name, value in parameters) or "none"))
+        try:
+            parsed = parse_expression(expression)
+        except ValueError as error:
+            self.meaningLabel.setText(f"Invalid formula: {error}")
+            return
+        if not parsed.uses_time:
+            self.meaningLabel.setText(
+                "Fits a constant level: no t, so no time variation is modeled. "
+                "Right-hand symbols such as theta are fitted parameters, not another measured quantity.")
+        else:
+            self.meaningLabel.setText(
+                "t is seconds from interval start. "
+                + ("This curve uses the recorded fitted values; the editor remains your draft."
+                   if fitted else "This is an initial curve. Click Fit to adjust the free parameters."))
 
     @staticmethod
     def _number(value, nonnegative=False):
@@ -425,6 +452,7 @@ class SignalAnalysisPanel(QWidget):
             sourceRange = self.signalPlot._dataRange
             self.signalPlot.setDataRange(times, values)
             self.signalPlot._dataRange = sourceRange
+            self.showFeedback("Showing the whole model range. Reset view restores the measured signal range.")
 
     def _edited(self, *_args) -> None:
         if not self._loading:
@@ -608,13 +636,13 @@ class SignalAnalysisPanel(QWidget):
         record = self.savedRecord()
         metadata = record.extra_fields.get("analysis") if record else None
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
-            self.jobLabel.setText("No readable saved settings for this track / quantity / tool")
+            self.showFeedback("No readable saved settings for this track / quantity / tool")
             return
         interval = metadata.get("interval")
         if (not isinstance(interval, list) or len(interval) != 2
                 or not all(type(value) is int for value in interval)
                 or not self.startFrame.minimum() <= interval[0] <= interval[1] <= self.endFrame.maximum()):
-            self.jobLabel.setText("Saved interval is outside the working zone or unreadable; expand the working zone before restoring")
+            self.showFeedback("Saved interval is outside the working zone or unreadable; expand the working zone before restoring")
             return
         self.initialProtected = True
         self.estimateLabel.setText("Restored settings protected. Estimate only when you explicitly choose it.")
@@ -643,13 +671,14 @@ class SignalAnalysisPanel(QWidget):
                 self.separation.setValue(spec["min_separation_s"])
                 self.direction.setCurrentIndex(0 if spec["direction"] == "rising" else 1)
         except (KeyError, TypeError, ValueError) as error:
-            self.jobLabel.setText(f"Saved settings are unreadable: {error}")
+            self.showFeedback(f"Saved settings are unreadable: {error}")
             self.draftLabel.setText("Saved settings could not be fully restored")
             return
         finally:
             self._loading = False
         self.settingsChanged.emit()
         self.draftLabel.setText("Recorded settings restored to current draft — initial preview pending")
+        self.showFeedback("Recorded settings restored to the editor. Initial preview is being prepared; click Fit to calculate a new result.")
 
     def renderSamples(self, samples, unit, predicted=None, residual=None, *, wrapped=False, title="Initial preview") -> None:
         self.signalPlot.clear()
@@ -692,7 +721,7 @@ class SignalAnalysisPanel(QWidget):
             self.signalPlot.addItem(self.referenceLine, ignoreBounds=True)
             self.referenceLine.setValue(self.level.value())
 
-    def displaySaved(self, *, previous: bool = False) -> None:
+    def displaySaved(self, *, previous: bool = False, notify: bool = False) -> None:
         self._viewingDiskSaved = previous
         record = self.savedRecord()
         self.previousButton.setEnabled(self.savedRecord(disk=True) is not None)
@@ -700,12 +729,18 @@ class SignalAnalysisPanel(QWidget):
         self.conversionActions.hide()
         self.restoreButton.setEnabled(record is not None)
         self.draftLabel.setText("Previous disk-saved result — historical snapshot" if previous else "Latest applied result — recorded settings; edits require a new Fit")
+        if notify:
+            self.showFeedback(
+                ("Showing the last disk-saved result. " if previous else "Showing the latest applied result. ")
+                + "The displayed formula and parameters are above the chart. The editor is unchanged; use displayed result settings to reuse them.")
         metadata = record.extra_fields.get("analysis") if record else None
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
             self.signalPlot.clear()
             self.residualPlot.clear()
             self.summary.setPlainText("Unsupported saved result version (read-only)." if record else "No saved result for this quantity / tool.")
             self.resultLabel.setText(self.summary.toPlainText())
+            self.modelLabel.clear()
+            self.meaningLabel.clear()
             self._valueRange = None
             self._eventLines = []
             return
@@ -718,6 +753,8 @@ class SignalAnalysisPanel(QWidget):
             self.renderSamples(samples, record.unit, predicted, residual, wrapped=source["kind"] == "angular_position", title="Previous disk-saved result" if previous else "Latest applied result")
             summary = metadata["summary"]
             if fitting:
+                self.showFormula(metadata["spec"]["expression"],
+                                 tuple((name, f"{value:.6g}") for name, value in summary["parameter_values"]), fitted=True)
                 self.conversionActions.setVisible(any(item.get("error") for item in summary.get("result_formulas", [])))
                 self.resultLabel.setText(f"{'Previous disk-saved fit (historical)' if previous else 'Latest applied fit'} · {record.status} · {len(samples)} samples\n" + explain_fit(metadata, record.unit))
                 details = (f"{summary['status']}: {summary['message']}\n"
@@ -728,6 +765,8 @@ class SignalAnalysisPanel(QWidget):
                 for item in summary.get("result_formulas", []):
                     details += f"\nUser result {item['name']} = {item['formula']}: " + (str(item["value"]) if item["error"] is None else item["error"])
             else:
+                self.modelLabel.setText(f"Displayed crossing settings: {metadata['spec']}")
+                self.meaningLabel.setText("Recorded same-direction crossings; repeat intervals are not automatically a physical period.")
                 mean, std = summary["mean_interval_s"], summary["sample_std_s"]
                 meanText = f"{mean:.6g} s" if mean is not None else "unavailable"
                 stdText = f"{std:.6g} s" if std is not None else "unavailable"
@@ -755,3 +794,5 @@ class SignalAnalysisPanel(QWidget):
         except (KeyError, IndexError, TypeError, ValueError) as error:
             self.summary.setPlainText(f"Saved result is read-only; metadata cannot be displayed: {error}")
             self.resultLabel.setText(self.summary.toPlainText())
+            self.modelLabel.clear()
+            self.meaningLabel.clear()
