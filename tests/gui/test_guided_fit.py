@@ -163,7 +163,7 @@ def test_saved_snapshot_is_distinct_from_new_unsaved_fit(qtbot,synthetic_video_p
     panel.editor.setText('c');panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
     panel.previousButton.click()
     assert panel.savedRecord().extra_fields['analysis']['spec']['expression']=='a*t + b'
-    assert 'historical' in panel.draftLabel.text()
+    assert 'Save snapshot' in panel.draftLabel.text()
     panel.latestButton.click()
     assert panel.savedRecord().extra_fields['analysis']['spec']['expression']=='c'
     assert 'Latest applied' in panel.draftLabel.text()
@@ -207,11 +207,11 @@ def test_restore_disk_settings_becomes_draft_without_relabeling_current_curve(qt
     assert 'Recorded formula: c' in panel.summary.toPlainText()
     assert panel.signalPlot.listDataItems()[-1].name()=='Latest applied result'
     panel.previousButton.click()
-    assert panel.signalPlot.listDataItems()[-1].name()=='Previous disk-saved result'
+    assert panel.signalPlot.listDataItems()[-1].name()=='Last disk-saved result'
     panel.detailsGroup.setChecked(True)
     panel.restoreButton.click()
     assert 'Current draft' in panel.summary.toPlainText()
-    assert 'Disk-saved historical' not in panel.summary.toPlainText()
+    assert 'Disk-saved snapshot' not in panel.summary.toPlainText()
     assert panel.editor.text()=='a*t + b'
     assert not panel.signalPlot.listDataItems()
     assert 'current draft' in panel.draftLabel.text()
@@ -267,6 +267,7 @@ def test_rejected_result_cannot_be_relabelled_as_completed(qtbot,synthetic_video
 
     assert 'Target result changed' in panel.jobLabel.text()
     assert 'Calculation completed' not in panel.jobLabel.text()
+    assert 'Calculation not applied' in panel.draftLabel.text()
     assert actions.attempts.journal.attempts[-1]['status']=='rejected'
     assert session.derived_data(track,'function_fit_x')==saved
 

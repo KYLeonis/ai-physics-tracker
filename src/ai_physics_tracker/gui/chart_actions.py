@@ -434,6 +434,7 @@ class ChartActions(QObject):
                 raise CancelledError()
             if isinstance(result, SignalAnalysisResult):
                 if result.record is None:
+                    self.signalPanel.draftLabel.setText("Fit not completed — previous results retained")
                     self.signalPanel.showFeedback(result.fit_outcome.status + ": " + result.fit_outcome.message + " — saved result retained")
                     self._finishAttempt(result.fit_outcome.status, result.fit_outcome.message, solver=asdict(result.fit_outcome))
                     next_step = {
@@ -473,6 +474,8 @@ class ChartActions(QObject):
                 self._finishAttempt("completed", "Fit completed", summary=result.record.extra_fields["analysis"]["summary"])
             self.window.refreshAnalysisHistory()
         self.refresh()
+        if signal_job and not applied:
+            self.signalPanel.draftLabel.setText("Calculation not applied — previous results retained")
         if signal_job and applied and isinstance(result, SignalAnalysisResult) and result.record is not None:
             self.signalPanel.resultLabel.setText(self.signalPanel.resultLabel.text().replace("Latest applied fit", "Current fit result").replace("Latest applied crossings", "Current crossings"))
             self.signalPanel.draftLabel.setText("Current calculation result — save project to retain the scientific result")

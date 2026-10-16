@@ -284,7 +284,7 @@ class SignalAnalysisPanel(QWidget):
         controlsLayout.addWidget(self.methods)
         controlsLayout.addWidget(preparationHost)
         history = QHBoxLayout()
-        self.previousButton = QPushButton("Previous saved result")
+        self.previousButton = QPushButton("Last saved result")
         self.previousButton.clicked.connect(lambda: self.displaySaved(previous=True, notify=True))
         self.latestButton = QPushButton("Latest applied result")
         self.latestButton.clicked.connect(lambda: self.displaySaved(notify=True))
@@ -728,11 +728,11 @@ class SignalAnalysisPanel(QWidget):
         self.latestButton.setEnabled(self.savedRecord(disk=False) is not None)
         self.conversionActions.hide()
         self.restoreButton.setEnabled(record is not None)
-        self.draftLabel.setText("Previous disk-saved result — historical snapshot" if previous else "Latest applied result — recorded settings; edits require a new Fit")
+        self.draftLabel.setText("Last disk-saved result — most recent Save snapshot" if previous else "Latest applied result — recorded settings; edits require a new Fit")
         if notify:
             self.showFeedback(
-                ("Showing the last disk-saved result. " if previous else "Showing the latest applied result. ")
-                + "The displayed formula and parameters are above the chart. The editor is unchanged; use displayed result settings to reuse them.")
+                ("Showing the last disk-saved result (most recent Save, not the previous attempt). " if previous else "Showing the latest applied result. ")
+                + "Formula and parameters are above the chart; the editor is unchanged.")
         metadata = record.extra_fields.get("analysis") if record else None
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
             self.signalPlot.clear()
@@ -750,13 +750,13 @@ class SignalAnalysisPanel(QWidget):
             predicted = [row[0] for row in record.values] if fitting else None
             residual = [row[1] for row in record.values] if fitting else None
             source = metadata["source_snapshot"]
-            self.renderSamples(samples, record.unit, predicted, residual, wrapped=source["kind"] == "angular_position", title="Previous disk-saved result" if previous else "Latest applied result")
+            self.renderSamples(samples, record.unit, predicted, residual, wrapped=source["kind"] == "angular_position", title="Last disk-saved result" if previous else "Latest applied result")
             summary = metadata["summary"]
             if fitting:
                 self.showFormula(metadata["spec"]["expression"],
                                  tuple((name, f"{value:.6g}") for name, value in summary["parameter_values"]), fitted=True)
                 self.conversionActions.setVisible(any(item.get("error") for item in summary.get("result_formulas", [])))
-                self.resultLabel.setText(f"{'Previous disk-saved fit (historical)' if previous else 'Latest applied fit'} · {record.status} · {len(samples)} samples\n" + explain_fit(metadata, record.unit))
+                self.resultLabel.setText(f"{'Last disk-saved fit (snapshot)' if previous else 'Latest applied fit'} · {record.status} · {len(samples)} samples\n" + explain_fit(metadata, record.unit))
                 details = (f"{summary['status']}: {summary['message']}\n"
                            + f"RMSE: {summary['rmse']:.8g} {record.unit}; evaluations: {summary['evaluations']}\n"
                            + "Parameters: " + ", ".join(f"{name}={value:.8g}" for name, value in summary["parameter_values"])
@@ -770,7 +770,7 @@ class SignalAnalysisPanel(QWidget):
                 mean, std = summary["mean_interval_s"], summary["sample_std_s"]
                 meanText = f"{mean:.6g} s" if mean is not None else "unavailable"
                 stdText = f"{std:.6g} s" if std is not None else "unavailable"
-                self.resultLabel.setText(f"{'Disk-saved historical' if previous else 'Latest applied'} crossings ({record.status}) · {len(summary['events'])} events\nMean interval: {meanText} · sample std: {stdText}\n{summary['message']}")
+                self.resultLabel.setText(f"{'Disk-saved snapshot' if previous else 'Latest applied'} crossings ({record.status}) · {len(summary['events'])} events\nMean interval: {meanText} · sample std: {stdText}\n{summary['message']}")
                 details = (f"{summary['measurement_status']}: {summary['message']}\n"
                            + f"Events: {len(summary['events'])}; intervals: {len(summary['intervals_s'])}; "
                            + f"mean: {mean if mean is not None else 'unavailable'} s; sample std: {std if std is not None else 'unavailable'} s\n"
@@ -787,7 +787,7 @@ class SignalAnalysisPanel(QWidget):
                 timing_message = "Approximate timing\n" if timing.get("approximation") else ""
             if timing_message:
                 self.resultLabel.setText(self.resultLabel.text() + "\n" + timing_message.strip())
-            self.summary.setPlainText(f"{'Disk-saved historical' if previous else 'Latest applied'} result: {record.status} — {source['kind']} [{record.unit}]\n"
+            self.summary.setPlainText(f"{'Disk-saved snapshot' if previous else 'Latest applied'} result: {record.status} — {source['kind']} [{record.unit}]\n"
                                      + f"Samples: {len(samples)}; source frames {metadata['interval']}; t=0 at interval start\n"
                                      + timing_message
                                      + details)

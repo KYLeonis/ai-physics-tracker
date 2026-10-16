@@ -70,10 +70,10 @@ class SignalPreview(QObject):
         self.panel.residualPlot.clear()
         self.panel._previewRange = None
         self.panel.draftLabel.setText("Current draft — initial preview; no fitted result published")
-        self.panel.summary.setPlainText("Current draft — no fitted result published. Inspect the initial preview; use Latest applied result / Previous saved result to review recorded results.")
+        self.panel.summary.setPlainText("Current draft — no fitted result published. Inspect the initial preview; use Latest applied result / Last saved result to review recorded results.")
         self.panel._viewingDiskSaved = False
         self.panel.conversionActions.hide()
-        self.panel.resultLabel.setText("Recorded results: Latest applied result or Previous saved result.")
+        self.panel.resultLabel.setText("Recorded results: Latest applied result or Last saved result.")
         self.panel.jobLabel.setText("Preparing initial preview…")
         if immediate:
             self.panel.feedbackRequested.emit()
