@@ -83,3 +83,17 @@ GLM在3275ca0修复日志异常分类，但86de567的Windows CI仍失败（[3887
 | F30 | P3 / Should fix | 从crossing恢复设置仍提示click Fit，指向隐藏动作 | 按工具区分恢复标题/提示；实际保存/恢复crossing回归通过，Reviewer核对1项通过 | Closed（GUI复审） |
 
 只读Luna复审当前GUI增量：**Approve with limits，无P1/P2阻断项**；指出的F30也已修复并复审。Reviewer定向68项、后续35项、最终guided20项及crossing恢复1项均通过。主Agent定向47项、状态3项通过，本机最终全量 **1206 passed（166.80s）**；最新macOS / Windows CI通过。Limits是Windows原生体验与HR由主Agent/用户另行验收，不替代科学模型正确性。
+
+## R6 — 历史配方整页同步（独立复审通过，HR待复测）
+
+用户第三轮反馈否定“只换图表、编辑器仍是草稿”的交互；保存结果与底部尝试入口须一致响应。新增SignalHistory保留原始草稿并投影完整只读配方；attempt重建只评估已记录参数，严格检查原源与当前prepare守卫，不调用Fit、不激活 / 写入Project或日志。日志摘要契约保持不变。
+
+| ID | Severity | 发现 | 修复 / 证据 | 状态 |
+| --- | --- | --- | --- | --- |
+| F31 | P2 / Must fix | 保存快照只有曲线切换，表单与指引未同步 | 公式、记录初值 / 约束、输入 / 区间、方法与解释整页只读同步；Return原样恢复草稿、Use显式采用；无效草稿与项目 / dirty / Undo不变回归 | Closed（R6独立复审） |
+| F32 | P2 / Must fix | 底部尝试只有JSON摘要，未提供对应曲线 / 整页反馈 | activated选择（含同项重选）同步配方；原源严格匹配时后台重建，失败 / 缺源清旧图并就地说明；跨视频、变源、返回 / 新选择 / 授权撤销后迟到拒绝 | Closed（R6独立复审） |
+| F33 | P2 / Must fix | 全Fixed的given_parameters被误当非成功历史 | 接受既有可发布的success / given_parameters；真实全Fixed结果评估比对，显式浮点容差1e-12 | Closed（R6独立复审） |
+| F34 | P2 / Must fix | 切Acquire改源后仍保留历史模式和旧图 | 离开Analysis恢复草稿、取消历史交付、失效初值预览；Acquire修改源往返回归 | Closed（R6独立复审） |
+| F35 | P3 / Should fix | Use crossing setup后旧事件线被源预览重新叠加 | 清事件及样本匹配，禁止草稿源预览复用旧标记；下一次显式Measure / 历史回看才显示记录事件 | Closed（R6独立复审） |
+
+只读Reviewer `p631_independent_gui`独立检查GUI和新应用层重建模块，首轮定向22项并指出F33–F35；主Agent修复后，对产品`97d7238`复审 **Approve，无新增finding**，独立26项通过（21.76s）。主Agent同一新应用 / GUI回归26项通过（15.87s）；完整Gate证据见[验证记录](../notes/phase-6.3.1-verification.md)。本轮交互仍需[第三轮HR](../notes/phase-6.3.1-human-review.md#第三轮反馈与复测2026-10-16)，未集成main，不以自动Gate代替用户体验。

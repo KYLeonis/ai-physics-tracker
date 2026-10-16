@@ -63,3 +63,14 @@ b9a5311：显示曲线实际公式/参数直接位于图上方；Previous saved 
 - 相同600个已存样本的只读数学对照：内置Cosine经初值估算后单次Fit，RMSE=0.02467825026546338 m、相对常数误差减少79.375701%；Damped cosine RMSE=0.019109132415307636 m、减少84.029967%。只用于确认含t公式可产生不同模型/误差；不是用户点击记录，不写attempt日志、不保存/激活，不将数学效果当作物理模型正确。
 
 最终产品d90bd85的[CI38895710081](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38895710081)与PR CI38895717058均success：macOS / Windows Python3.11各 **1204 passed / 2 skipped**（可选pandas）；本机含pandas全量1206项通过。后续仅文档同步，产品/测试树与此SHA保持一致；R5自动Gate通过，等待用户重点复测，不宣称HR通过。
+
+## 第三轮HR返工：完整配方回看与底部尝试响应
+
+产品`97d7238`：历史选择同步记录的公式、初值 / 约束、源 / 平滑 / 区间及结果状态；表单只读，原草稿保留。Return恢复，Use才复用设置。底部activated选择同样响应，成功记录仅在原源ID / 指纹 / 单位 / 样本数及当前prepare守卫通过时后台评估已记录参数，不重跑Fit或激活结果；失败 / 缺源清旧图。交付核对Project对象、代际、视频、时序授权 / 近似说明；Save busy等待，返回 / 换选择 / 换页后拒绝迟到值。
+
+- 修复前两批全量分别1226 / 1228通过；独立R6发现全Fixed、离开Analysis、采用crossing设置后旧事件线三个边界，修复后新应用 / GUI26项通过（15.87s）。Reviewer独立26项通过（21.76s），`97d7238` **Approve**，F31–F35 Closed。最终同SHA全量和双平台CI回执补在下方。
+- 全Fixed预测与原求解结果存在约1 ULP差异（4与4.000000000000001），评估使用记录的表达式 / 参数，测试采用显式rel/abs=1e-12；不以逐位相等错误拒绝合法结果。
+- 本轮再次只读检查用户副本：project.json SHA仍`67e727a2e430c9ab5fe4202269422849fe4a508bd9d85d0d0a16e7ca9fb0ae57`，原冻结benchmark SHA仍`92c549a2b53e35c212cbb6e5cce8869a2215fbb073d6d40af65febfbde117ebb`。当前attempt日志已有6次（用户新增`exp(theta*t)`及`A*exp(-gamma*t)*cos(omega*t + phi) + y0`），不能沿用第二轮4次时的日志SHA宣称文件完全没变。新增两次均600样本 / completed；RMSE分别0.12367583594m、0.01910913242m，后者相对同源常数基线改善约84.03%。磁盘项目仍为二次式；未把日志中的新结果写入 / 激活或保存，已提示用户重启前保存当前GUI。
+- 原main仍985fd7c、论文线154f262，两个工作树均clean；没有进入6.4 / 6.5。[第三轮HR](phase-6.3.1-human-review.md#第三轮反馈与复测2026-10-16)仍须用户亲测，不把自动Gate当HR通过。
+
+最终`97d7238`本机全量 **1232 passed（176.50s）**；[push CI38901656875](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38901656875)与[PR CI38901662270](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38901662270)均success，macOS / Windows Python3.11各 **1230 passed / 2 skipped**（可选pandas），测试及安装 / FFprobe / 清理步骤全部完成。后续仅文档同步，产品 / 测试树与该SHA相同；不将文档HEAD当作另跑过CI的产品。
