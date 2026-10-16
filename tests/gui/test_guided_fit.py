@@ -216,3 +216,14 @@ def test_restore_disk_settings_becomes_draft_without_relabeling_current_curve(qt
     assert 'current draft' in panel.draftLabel.text()
     _preview(qtbot,panel)
     assert panel.signalPlot.listDataItems()[-1].name()=='Initial preview'
+
+
+def test_attempt_display_tolerates_session_removed_during_project_transition(qtbot,synthetic_video_path,monkeypatch):
+    window,_,_=_window(qtbot,synthetic_video_path)
+    actions=window.chartActions
+    assert actions.attempts.journal is not None
+    monkeypatch.setattr(type(window),'analysisSession',property(lambda self:None))
+
+    actions.showAttempts()
+
+    assert 'in memory' in actions.signalPanel.journalLabel.text()

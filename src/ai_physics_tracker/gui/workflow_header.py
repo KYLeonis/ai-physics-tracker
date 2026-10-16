@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -99,12 +98,6 @@ class WorkflowHeader(QWidget):
         self.nextStepLabel.setStyleSheet(
             "background: #eaf3ff; color: #172b4d; border-radius: 4px; padding: 4px;")
         self.nextStepLabel.hide()
-        # 换行状态标签按可用宽度换行显示；Windows 上换行标签的
-        # minimumSizeHint 是整行文本宽度，不能让它决定窗口最小宽度
-        #（否则窄屏笔记本用户无法缩小窗口），水平方向忽略其提示。
-        for label in (self.contextLabel, self.trajectoryLabel, self.analysisChipLabel,
-                      self.limitationsLabel, self.taskStripLabel, self.nextStepLabel):
-            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         status_column.addWidget(self.nextStepLabel)
         next_actions = QHBoxLayout()
         self.nextStepButtons = [QPushButton() for _ in range(3)]
@@ -168,10 +161,6 @@ class WorkflowHeader(QWidget):
             button.setEnabled(spec.enabled)
             button.setToolTip(spec.reason or "")
             button.show()
-        # 同步失效并重算布局：按钮显示/隐藏后立即按当前可见内容报告最小尺寸，
-        # 不等事件循环投递LayoutRequest（程序化连续刷新时旧缓存会虚高最小宽度）。
-        self.layout().invalidate()
-        self.layout().activate()
 
     def setAnalysisChip(self, state: str | None) -> None:
         self.analysisChipLabel.setText(

@@ -619,6 +619,10 @@ class MainWindow(QMainWindow):
             self._workspaceStack.setCurrentWidget(self._analysisPage)
         else:
             self._workspaceStack.setCurrentWidget(self._videoPage)
+        self.workflowHeader.setWorkspace(workspace)
+        self._refreshDeletePointButton()
+        self._refreshHistoryButtons()
+        self.analysisChanged.emit()
         tracking_panel = getattr(self, "trackingActions", None)
         if tracking_panel is not None:
             panel = tracking_panel.panel
@@ -628,19 +632,12 @@ class MainWindow(QMainWindow):
             else:
                 # 分析页以图表为主体；AI 状态经状态头任务条常驻（设计 §8.2）
                 panel.hide()
-        self.workflowHeader.setWorkspace(workspace)
-        self._refreshDeletePointButton()
-        self._refreshHistoryButtons()
-        # 显式失效并重算布局：隐藏的dock / 头部按钮 / 非当前工作区页不再按
-        # 隐藏前的宽度参与窗口最小宽度，程序化连续切换时可立即收缩；
-        # 含主窗口自身的QMainWindowLayout（dock区域宽度参与窗口最小值）。
-        for layout_owner in (self, self.centralWidget(), self._workspaceStack):
-            if layout_owner.layout() is not None:
-                layout_owner.layout().invalidate()
-                layout_owner.layout().activate()
-        self.analysisChanged.emit()
         if workspace == WORKSPACE_ANALYSIS:
             self.refreshAnalysisSourceBar()
+        # 用途卡刷新后重置主窗口中的 central widget 尺寸缓存，清除旧页与 dock 叠加的宽度。
+        self.centralWidget().updateGeometry()
+        self.layout().invalidate()
+        self.layout().activate()
 
     def refreshAnalysisSourceBar(self) -> None:
         """分析页顶部：当前输入来源 + 标定 + 时间依据（§11.2）。"""

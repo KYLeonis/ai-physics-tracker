@@ -626,6 +626,7 @@ class ChartActions(QObject):
 
     def showAttempts(self) -> None:
         panel = self.signalPanel
+        session = self.window.analysisSession
         previous = panel.attemptChoice.currentData()
         with QSignalBlocker(panel.attemptChoice):
             panel.attemptChoice.clear()
@@ -634,7 +635,7 @@ class ChartActions(QObject):
             index = panel.attemptChoice.findData(previous)
             panel.attemptChoice.setCurrentIndex(max(0, index))
         panel.journalLabel.setText(
-            (self.attempts.journal.warning or ("Attempts are in memory until the first Save." if self.window.analysisSession.project_root is None else "Attempts are stored in analysis/fit-attempts.json."))
+            (self.attempts.journal.warning or ("Attempts are in memory until the first Save." if session is None or session.project_root is None else "Attempts are stored in analysis/fit-attempts.json."))
             if self.attempts.journal else "No project attempt log")
         panel.retryJournalButton.setVisible(bool(self.attempts.journal and self.attempts.journal.warning and not self.attempts.journal.read_only))
         self.showAttempt()
