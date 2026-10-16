@@ -139,3 +139,5 @@ F12自动验证回执：04495a4的[CI38732368831](https://github.com/KYLeonis/ai
 ### 最终集成（2026-10-16）
 
 以92d00a2 `--no-ff`集成 / push main；产品 / 测试 / 依赖树与e4f04a0 CI已验证树完全一致。全部Human Review、AC-1–8 / S0–S5收口。新手体验反馈单独规划，不改变本轮科学结论或扩大验收范围。
+
+main集成CI回执：[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797) macOS1101 passed / 2 skipped（98.13s）、Windows1101 passed / 2 skipped（148.32s），全部步骤success；后续仅文档收尾 / 规划，不改变产品与测试树。

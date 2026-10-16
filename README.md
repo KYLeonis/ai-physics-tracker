@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
 Last Delivered:   Phase 6.3 显式函数拟合 / 通用信号重复间隔；自动Gate和整体Human Review通过
-Current Subphase: Phase 6.3 已以92d00a2集成main（2026-10-16）；新手分析体验grilling中，未开始6.4 / 6.5
+Current Subphase: Phase 6.3 已以92d00a2集成main（2026-10-16）；6.3.1新手分析体验计划已冻结、尚未实施；6.4 / 6.5未开始
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -169,3 +169,6 @@ P6.2 已按 [角量图表与相空间计划](docs/status/phase-6.2-plan.md)完�
 P6.2科学 / 事务修复全量 **1007 passed（88.42s）**、独立复审 **Approve**；轨迹多选修复含名称 / 框 / 键盘真实输入，相关GUI **51项通过**，最终双平台 **1008 passed / 2 skipped**。用户确认全部Human Review通过，已以 `12b0911` 集成main；[CI证据](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294)、[Review记录](docs/reviews/phase-6.2-review.md)及[真人验收记录](docs/notes/phase-6.2-human-review.md)。6.3计划已于2026-10-15获用户认可，S0真实基准和数据契约已冻结，S1–S4已实现；S5独立复审 / 全量 / 双平台CI及2026-10-16整体Human Review通过，已以92d00a2集成main。
 
 P6.3范围为用户显式函数编辑 / 数学预览、单标量拟合、参数与残差、可选结果公式，以及独立的信号重复间隔 / 周期工具。单摆仅作示例；非周期信号不强求周期，多峰信号不把交叉间隔自动称为基本周期。详见[6.3计划](docs/status/phase-6.3-plan.md)。ODE、单位管理与参数置信区间留后续。
+
+
+2026-10-16：用户已认可[P6.3.1新手分析体验计划](docs/status/phase-6.3.1-plan.md)，英文版继续开发，图表优先、解释旁置，增加用途引导、自动初值预览 / 有限公式初值建议、清楚的本次结果与尝试记录。当前只冻结计划，未实施；无固定响应或新手完成时限，翻译后续。

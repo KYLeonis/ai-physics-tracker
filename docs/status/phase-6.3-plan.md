@@ -204,3 +204,5 @@ P011应用层完整prepare→run→apply→save→load对照通过（原冻结�
 ## P6.3最终集成（2026-10-16）
 
 用户整体HR通过后，d011bdc仅同步验收文档；以`92d00a2`按`--no-ff`集成main并push。集成产品 / 测试 / 依赖树与e4f04a0已验证树完全一致，未重复本机全量。AC-1–8 / S0–S5完成；整个Phase 6仍有6.4 / 6.5，不继续实施。新的分析页新手体验另行grilling，不倒填为本期功能。
+
+main最终CI：[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped，全部步骤success。P6.3收尾完成；后续新手分析需求已单列6.3.1计划，不改变本期AC。

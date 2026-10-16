@@ -99,3 +99,12 @@ P011是Near-CFR；每次重开工程沿既有契约重新核对当前媒体会�
 用户原话：“现在看来没有什么问题了，HR通过。”整体HR已接受，不再将B / D或时序入口列为待测试。同期提出“初学者不知道能做什么 / 得到什么、反馈要直观及时”，作为新一轮分析页体验需求进入grilling；不据此修改已冻结的P6.3科学验收或把用户随意公式的收敛当作物理模型证明。此记录仅代表本轮产品HR，未扩展为Windows/CUDA真机验收。
 
 集成回执：2026-10-16以92d00a2 `--no-ff`集成main并push，本期整体HR关卡已完成。
+
+main集成验证：[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped。集成后的最短运行方式：
+
+```bash
+cd /Users/leonis/Documents/ai-physics-tracker
+.venv/bin/python -m ai_physics_tracker
+```
+
+打开已有工程，Analysis中顶栏Fit formula / Measure intervals可进入已验收工具；新的6.3.1用途入口等尚未实现。

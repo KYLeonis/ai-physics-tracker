@@ -2,20 +2,20 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-16（P6.3 HR通过并集成main；新手分析体验grilling进行中）
+- 最后更新：2026-10-16（P6.3已集成main；P6.3.1新手分析计划获用户认可并冻结，未实施）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3已完成，2026-10-16用户整体HR通过，以`92d00a2` `--no-ff`集成 / push main。产品 / 测试树与e4f04a0已通过CI完全相同（本机1103 / 定向15，[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，R8核心 / 交互独立复审Approve）。AC-1–8 / S0–S5收口；新手分析体验正在grill-me访谈，不混入旧6.3范围，未实施。
-- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；访谈会话暂仍 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3-function-fitting`；论文worktree未改。
+- **Subphase / Slice**：P6.3已完成，2026-10-16用户整体HR通过，以`92d00a2` `--no-ff`集成 / push main。产品 / 测试树与e4f04a0已通过CI完全相同（本机1103 / 定向15，[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，R8核心 / 交互独立复审Approve）。[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped。AC-1–8 / S0–S5收口；[P6.3.1新手分析计划](phase-6.3.1-plan.md)已完成Q1–16确认并冻结，未实施；独立于已完成的6.3，不提前开始6.4 / 6.5。
+- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；规划会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `codex/analysis-onboarding-plan`；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 完成main集成CI及Issue #29 / PR #30收口核对；产品 / 测试树已确认与e4f04a0一致，不重复运行本机数值测试。P6.3已完成，不自行开始6.4 / 6.5。
-2. 继续本轮分析页新手体验grilling：用户已确认Q1–15（图表优先 / 英文版 / 不设固定响应或新手完成时长），Q16整体确认待回复；达成共同理解并获得最终确认后再冻结新计划，不在访谈期实施新产品行为。
-3. 后台只读调查发现：用户最新保存的真实工程尝试为y源 / RHS `theta`，实际是常数拟合（-0.2109371164m），沿用的`T=2*pi/Omega`换算失败。改公式仅改草稿、旧结果仍显示；失败无独立历史日志。后续设计须解决表达式含义、初值预览 / 估算、本次任务状态、结果解释和尝试留痕。不得改用户工程或冒称恢复全部未保存历史。
+1. P6.3已完成并集成 / push main（92d00a2）；[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped，全部步骤success。Issue #29 / PR #30收口，新工作以6.3.1已冻结计划为准。已验证产品 / 测试树与e4f04a0一致。
+2. **等待P6.3.1开工指令**。[已冻结计划](phase-6.3.1-plan.md)、[Q1–16访谈及只读诊断](../notes/analysis-onboarding-interview.md)。英文、图表优先、三个用途入口、自动初值预览 / 有限结构初值估算、手改保护、结果解释 / 下一步、尝试留痕和就地准备；不设固定响应 / 新手时长。本次只计划，所有产品AC / Slices未勾选。
+3. 开工时先从main建立`feat/p6.3.1-guided-analysis`和Issue，完成S0数值 / 日志 / 生命周期契约与样本冻结；High-risk，Independent Review / 双平台CI / 本轮HR必须。原P6.3 HR不能替代新交互HR；不自动开6.4 / 6.5。
 
 ## Active Constraints
 
@@ -59,6 +59,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3.1规划冻结（2026-10-16）**：用户完成grilling Q1–16并明确认可冻结；偏好为英文版、图表主位 / 解释旁置，不接受固定毫秒或5分钟验收门槛。只读核查已保存试用：y源 / RHS theta实际是常数拟合，T换算缺Omega；旧结果仍显示、失败缺日志等机制解释“看起来没效果”。新计划单列High-risk估初值 / 解释指标 / 自动预览生命周期 / 日志契约，不倒填旧6.3交付或实施新代码，待开工。
 
 - **P6.3 HR通过（2026-10-16）**：用户明确确认整体HR通过；既有A / C、B与时序入口补测、D的本轮HR关卡按此次整体反馈收口。用户同时提出新手不知用途 / 输出、反馈不够直观的新一轮改进，单独进入grilling，未修改旧验收口径、计算算法或用户工程。此反馈不扩大为Windows/CUDA真机或任意公式均可成功的准确性验收。已以92d00a2集成并push main；后续只做新的体验规划。
 
