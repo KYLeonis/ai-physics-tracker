@@ -78,7 +78,7 @@
 | Video | opencv-python-headless 4.14.0.94；FFmpeg 边界后续补充 | OpenCV 不提供 GUI，避免与 PySide6 Qt 插件冲突 |
 | Array | NumPy 2.4.6 | 支持项目 Python 3.11–3.12；解码帧的 RGB 数组边界 |
 | Sci Comp | NumPy、SciPy、Pandas | |
-| Plotting | PyQtGraph 0.13.7（交互）、Matplotlib（Phase 8 导出） | Phase 3.3 / ADR-0009 |
+| Plotting | PyQtGraph 0.13.7（交互）、Matplotlib 3.8.4（P6.3 MathText预览，Phase 8 导出） | Phase 3.3 / ADR-0009 |
 | 包管理 | venv/conda + pip，`requirements.txt` / `pyproject.toml` | Phase 1 起锁定 |
 
 ### Python 3.11 选择依据（ADR-0002）
@@ -233,3 +233,10 @@ Open video（新会话）替代重连。Unknown/VFR 的浏览与“已验证可�
 - 认证状态（2026-08-27 已配置）：HTTPS remote + macOS 钥匙串凭据（GitHub OAuth 设备授权获取的 token，scope: `repo`/`workflow`）。`git push` / `pull` 开箱即用，无需再输入密码。
 - 说明：本机网络下 SSH 22/443 端口均被代理拦截不可达，必须使用 HTTPS remote。
 - 凭据失效时：重新走一次 GitHub OAuth 设备授权流程并存入钥匙串；或在 GitHub → Settings → Applications 查看/撤销已有授权。
+
+
+### P6.3公式预览依赖（2026-10-15）
+
+用户已批准Matplotlib，只使用MathText Agg，无外部TeX。显式约束`matplotlib>=3.8,<3.9`匹配DeepLabCut现有上界；锁定3.8.4。此版本二进制与NumPy 1.x配套，CI轻环境原NumPy 2.4.6 / OpenCV 4.14锁改为现有DLC开发环境已使用的NumPy 1.26.4 / OpenCV-headless 4.11.0.86，SciPy 1.17.1兼容。锁文件包含MathText所需传递依赖；已由P6.3最终macOS / Windows Python3.11 CI验证。
+
+Matplotlib及随附字体 / 第三方许可原文保存在`resources/licenses/matplotlib-3.8.4/`；Phase 9打包时连同发行包保留。项目自身License未变。当前pyparsing 3.3.2可运行，但Matplotlib 3.8.4会报告弃用提示；不因此单独升级到与DLC冲突的Matplotlib。

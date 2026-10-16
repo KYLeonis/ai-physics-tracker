@@ -44,6 +44,7 @@ class WorkflowHeader(QWidget):
 
     workspaceRequested = Signal(str)
     actionRequested = Signal(str)
+    analysisToolsRequested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -59,6 +60,14 @@ class WorkflowHeader(QWidget):
                 lambda _checked=False, k=key: self.workspaceRequested.emit(k))
             self._buttons[key] = button
             nav_column.addWidget(button)
+        self.analysisToolsButton = QPushButton("Fit formula / Measure intervals")
+        self.analysisToolsButton.setObjectName("openAnalysisTools")
+        self.analysisToolsButton.setToolTip(
+            "Open the formula editor, fitting results and crossing-interval measurement tools")
+        self.analysisToolsButton.setStyleSheet(
+            "background: #eaf3ff; color: #172b4d; font-weight: bold; padding: 5px;")
+        self.analysisToolsButton.clicked.connect(self.analysisToolsRequested)
+        nav_column.addWidget(self.analysisToolsButton)
 
         self.contextLabel = QLabel("No project")
         self.contextLabel.setWordWrap(True)

@@ -7,6 +7,7 @@ from pathlib import PurePosixPath
 from uuid import UUID, uuid4
 
 from ai_physics_tracker.domain.calibration import Calibration
+from ai_physics_tracker.domain.analysis import stale_analysis_dependents
 from ai_physics_tracker.domain.imported_model import ImportedModel
 from ai_physics_tracker.domain.derived import (
     DerivedData,
@@ -317,12 +318,12 @@ def delete_track(project: Project, track_id: UUID) -> Project:
         observations=tuple(
             point for point in project.observations if point.track_id != track_id
         ),
-        derived=tuple(
+        derived=stale_analysis_dependents(tuple(
             item
             for item in project.derived
             if item.track_id != track_id
             and item.input.reference_track_id != track_id
-        ),
+        )),
         tracking_runs=tuple(
             run for run in project.tracking_runs if run.track_id != track_id
         ),

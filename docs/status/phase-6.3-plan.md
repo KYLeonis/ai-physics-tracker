@@ -1,9 +1,9 @@
 # Subphase Plan — Phase 6.3 User-defined Function Fitting and Signal Recurrence
 
-- 日期 / 状态：2026-10-15 · **计划已冻结；用户最终回复“认可”，Q1–19全部共同确认；S0待启动，未开始实现**。
-- Issue：[#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)（Open；计划已确认，产品AC尚未完成）。
+- 日期 / 状态：2026-10-15 · **计划已冻结；用户最终回复“认可”，Q1–19全部共同确认；S0已完成；S0–S4实现；独立复审 / 全量 / 双平台CI通过，S5用户HR通过、准备集成main**。
+- Issue：[#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)（Open；AC-1–7自动验证通过，AC-8仅待集成收尾）。
 - 基线：`main @ 57462c9`，P6.1 / P6.2已完成；P6.2 [main CI38595699864](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38595699864) 双平台1008 passed / 2 skipped。
-- 计划分支：`codex/p63-plan`；实现分支在开发启动时从main建立；规划确认不等于产品实现或HR通过。
+- 计划分支：`codex/p63-plan`；实现分支：`feat/p6.3-function-fitting`（从main `feaa80f`建立）；规划确认不等于产品实现或HR通过。
 - 风险等级：High-risk（表达式执行边界、拟合与周期科学含义、结果依赖 / 后台事务 / 持久化）。
 
 ## Goal
@@ -21,6 +21,8 @@
 - [ADR-0008](../decisions/0008-numerical-differentiation-and-smoothing.md)：分段SG和短段；不把平滑信号当独立原始观测。
 - [后续回移档案](main-backport-backlog.md)、[论文/main差异](../notes/publication-main-feature-ui-differences.md)：借鉴来源披露、残差与失败诊断，不复制论文ODE/schema/UI。
 - `CODE_STANDARD.md`、[开源参考](../research/open-source-project-map.md) §3.3/3.11/3.12：实现前读取对应规范与参考。
+
+- [ADR-0021](../decisions/0021-function-fit-and-recurrence-result-contract.md)：本期结果槽、输入样本快照、上游依赖与发布规则；S0定向独立检查Approve。
 
 ### Relevant Historical Findings
 
@@ -99,24 +101,24 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 
 ## Acceptance Criteria
 
-- [ ] AC-1 编辑器：从输入到数学预览到实际计算语义一致；优先级、指数 / 分母括号、非法语法 / 名称、资源上限和数值域错误均有回归；无需外部LaTeX。
-- [ ] AC-2 输入与时间：测量值默认 / 平滑可选；任意非零源帧开始时相对`t`从所选区间起点计时，source frame / 原始视频时间映射与实际样本完整保存，缺测不重新计时 / 补值。
-- [ ] AC-3 通用拟合：线性 / 二次 / 阻尼余弦都由用户表达式计算。解析合成数据验证预测 / 参数恢复；非单摆示例可完成完整GUI流程。常量模型拟合有效而周期不可估计；初值、边界、固定参数、失败 / 取消 / 秩不足不伪装正常成功。
-- [ ] AC-4 周期方法：已知周期、恒定偏置、参考线不穿越、非单摆周期、非周期、噪声重复交叉、缺测、平坦在线、wrapped跳变和多峰 / 变周期测试；不把重复间隔强称基本周期。无噪声合成信号周期相对误差≤1%（用户Q18确认）。
-- [ ] AC-5 真实样本：实现前冻结P011候选的区间、连续轨迹 / 角参考、至少5个完整周期的独立人工源帧 / 时间参考及周期参数；自动平均周期与参考相对差≤5%（用户Q18确认）；不按算法效果换片段或改门槛。
-- [ ] AC-6 输出：叠图 / 残差 / RMSE / 样本数 / 参数与状态正确，可选结果公式数值正确，明确区分信号重复间隔与用户公式换算值；不输出正式参数置信区间。
-- [ ] AC-7 数据生命周期：round-trip、原子Undo/Redo、上游依赖失效、同输入重算版本、切换工程 / 参数 / 区间时取消及迟到拒绝；仅替换目标结果，未知扩展和旧线性 / 角量图表不退化。
+- [x] AC-1 编辑器：从输入到数学预览到实际计算语义一致；优先级、指数 / 分母括号、非法语法 / 名称、资源上限和数值域错误均有回归；无需外部LaTeX。
+- [x] AC-2 输入与时间：测量值默认 / 平滑可选；任意非零源帧开始时相对`t`从所选区间起点计时，source frame / 原始视频时间映射与实际样本完整保存，缺测不重新计时 / 补值。
+- [x] AC-3 通用拟合：线性 / 二次 / 阻尼余弦都由用户表达式计算。解析合成数据验证预测 / 参数恢复；非单摆示例可完成完整GUI流程。常量模型拟合有效而周期不可估计；初值、边界、固定参数、失败 / 取消 / 秩不足不伪装正常成功。
+- [x] AC-4 周期方法：已知周期、恒定偏置、参考线不穿越、非单摆周期、非周期、噪声重复交叉、缺测、平坦在线、wrapped跳变和多峰 / 变周期测试；不把重复间隔强称基本周期。无噪声合成信号周期相对误差≤1%（用户Q18确认）。
+- [x] AC-5 真实样本：实现前冻结P011候选的区间、连续轨迹 / 角参考、至少5个完整周期的独立人工源帧 / 时间参考及周期参数；自动平均周期与参考相对差≤5%（用户Q18确认）；不按算法效果换片段或改门槛。
+- [x] AC-6 输出：叠图 / 残差 / RMSE / 样本数 / 参数与状态正确，可选结果公式数值正确，明确区分信号重复间隔与用户公式换算值；不输出正式参数置信区间。
+- [x] AC-7 数据生命周期：round-trip、原子Undo/Redo、上游依赖失效、同输入重算版本、切换工程 / 参数 / 区间时取消及迟到拒绝；仅替换目标结果，未知扩展和旧线性 / 角量图表不退化。
 - [ ] AC-8 Gate：定向 / 全量、macOS+Windows CI、全新Independent Review / fixes / re-review及本轮Human Review全部通过后才`--no-ff`集成main / push / 收尾；整个Phase 6后续范围仍保持未完成。
 
 数值验证补充：拟合测试使用已知可辨识参数、明确的初值 / 边界和采样；测试不承诺任意初值下参数都可恢复。实现前在S1冻结各合成fixture的明确数值容差，Independent Review检查是否与问题条件相称，不用收敛标志替代数值断言。真实片段只验周期对照与实际拟合行为，不强迫大幅真实摆动符合小角度阻尼余弦。
 
 ## Slices
 
-- [ ] S0 — 冻结基准与科学 / 数据契约：人工周期参考和连续轨迹 / 角度参考准备；冻结样本 / 参数 / 门槛后再评估算法。定义additive结果与上游依赖、源样本快照、时间映射、失效 / 原子替换ADR；不复用四kind固定集。若需不兼容格式另走决策门。
-- [ ] S1 — 纯公式与拟合：受限表达式树 / 数学预览映射、参数 / 结果换算、普通有界最小二乘、状态 / 取消；解析合成回归，落实数值容差。
-- [ ] S2 — 通用事件 / 间隔：参考线交叉、噪声规则、段内配对、摘要 / 适用状态；以非单摆 / 非周期 / 多峰用例约束科学含义。
-- [ ] S3 — 应用与持久化：沿用AnalysisInputs / detached快照 / 主线程原子提交，扩展精确上游结果依赖与新结果目标键；round-trip、失效、未知字段和事务回归。
-- [ ] S4 — GUI：双区编辑器 / MathText、信号 / 区间 / 参数、初值预览、拟合与周期独立入口、叠图 / 残差 / 源帧导航、状态与保存恢复；锁定Matplotlib并验证双平台无TeX安装路径。
+- [x] S0 — 冻结基准与科学 / 数据契约：人工周期参考和连续轨迹 / 角度参考准备；冻结样本 / 参数 / 门槛后再评估算法。定义additive结果与上游依赖、源样本快照、时间映射、失效 / 原子替换ADR；不复用四kind固定集。若需不兼容格式另走决策门。
+- [x] S1 — 纯公式与拟合：受限表达式树 / 数学预览映射、参数 / 结果换算、普通有界最小二乘、状态 / 取消；解析合成回归，落实数值容差。
+- [x] S2 — 通用事件 / 间隔：参考线交叉、噪声规则、段内配对、摘要 / 适用状态；以非单摆 / 非周期 / 多峰用例约束科学含义。
+- [x] S3 — 应用与持久化：沿用AnalysisInputs / detached快照 / 主线程原子提交，扩展精确上游结果依赖与新结果目标键；round-trip、失效、未知字段和事务回归。
+- [x] S4 — GUI：双区编辑器 / MathText、信号 / 区间 / 参数、初值预览、拟合与周期独立入口、叠图 / 残差 / 源帧导航、状态与保存恢复；锁定Matplotlib并验证双平台无TeX安装路径。
 - [ ] S5 — 完整验收：真实参考对照、全量 / 双平台CI、独立review与返工复审，交付启动 / 操作步骤并停止等待新HR；通过后集成 / 文档 / push，仅收尾6.3。
 
 ## Verification
@@ -133,7 +135,7 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 - **Independent Review：必须**。新会话只读，覆盖表达式语义与资源限制、拟合科学含义 / 可辨识性、通用周期边界、相对时间 / 原帧映射、上游结果依赖、后台与持久化；结果记录`docs/reviews/phase-6.3-review.md`，实现方修复后新会话复审。
 - **PR：建议**作为完整diff容器；本轮建立跟踪Issue，实现启动时建工作分支，产品达到review状态再建立PR。
 - **Human Review：必须**。实施完成后给最短启动命令、逐条操作→预期及封闭问题，停止等用户亲测；本次计划访谈不是产品HR。
-- 本轮规划仅做资料核对 / 链接与diff检查，无产品代码变化，不以规划文档伪报上述Gate已通过。
+- 计划冻结时仅做资料核对 / 链接与diff检查，不以当时规划文档冒充产品Gate；当前实现验证见Result与review。
 
 ## Real Reference Preparation
 
@@ -144,7 +146,9 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 - clip SHA256：`f157fa8edd50b899a7d780cfd9d02a2138600643f109fdd6a7d6d08c773a1f88`。
 - `manifest.json`保存源 / clip SHA256、选段依据、变换与验证；`source-frame-map.csv`保存每帧clip / source索引及PTS。完整路径仅在本地manifest，不上传原视频 / 实验数据。
 - 项目FFprobeTimingProbe判定near-CFR：fps_reference=29.996833667557315；最大网格偏差约0.107222ms，最大间隔偏差约0.107593ms。导入后的nominal timeline必须经现有时序门核对 / 显式近似授权，不能直接用30fps冒充已授权。
-- **尚未完整冻结真实验收基准**：仍缺连续轨迹、标定 / 角度参考、独立人工≥5个完整周期的源帧 / 时间标记及最终周期设置；S0完成后才可评估周期算法。若参考准备失败，先处理基准，不自行降低门槛。
+- **S0已完整冻结真实基准**：用户提供7个独立人工交叉事件、明确时序授权及原P011参数TOML / 旧DLC CSV；600点、标定 / 角参考和噪声设置均已记录，见[冻结记录](../notes/phase-6.3-reference-preparation.md)。此为实现前冻结记录；后续AC-5应用对照通过，见Implementation checkpoint。
+
+2026-10-15 S0准备：已生成本地`reference-review.html`与600张逐帧查看图；用户独立标记至少6次左向右交叉，需回复后才能记录为人工参考。工具只显示原始帧，不检测事件或计算周期；用户已回复7个事件，人工参考帧 / PTS映射校验通过，形成6个间隔；详见[基准准备记录](../notes/phase-6.3-reference-preparation.md)。用户已授权时序近似，并提供原标定与旧DLC；原角参考门槛保留，S0已完成。
 
 ## Grilling Decision Log
 
@@ -159,11 +163,39 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 
 ## Result
 
-- 产品完成日期 / 合并commit：未实现，无产品合并；规划于2026-10-15冻结。
-- 已完成：P6.2交付 / 可复用点核对、grilling范围选择、Matplotlib路径官方文档核查、P011候选裁剪与源帧映射 / 时序 / 解码验证。
-- 下一步：计划已冻结并同步Issue与总计划；待启动开发时先执行S0，完成真实基准与additive数据契约。本轮仅规划收尾，未实现或安装新依赖。
+- 产品实现：S0–S4完成，2026-10-15；核心产品代码e74608d，入口04495a4，本轮交互修复2eeee68 / 3cc546a，bec8d61仅补核心测试；未合并main，S5仍待本轮Human Review / 后续集成。
+- 验证：解析数值 / 生命周期 / GUI、本机全量1095及最终双平台1095 passed / 2 skipped；R4 / R5 / R6独立复审Approve。P011均值对照差0.21996%，门槛 / 协议未改。详见[review](../reviews/phase-6.3-review.md)。
+- 下一步：按[HR步骤](../notes/phase-6.3-human-review.md)等待B交互补测 / D真人反馈（A / C已通过）；不自动合并或进入6.4 / 6.5。通过后核对未处置事项，--no-ff集成main、同步文档 / Issue / PR并push，仅收尾6.3。
 
 ## Technical Sources
 
 - [Matplotlib MathText](https://matplotlib.org/stable/users/explain/text/mathtext.html)、[MathTextParser API](https://matplotlib.org/stable/api/mathtext_api.html)：无需TeX的排版 / Agg预览；仅显示，不作计算器。
 - [Matplotlib许可](https://matplotlib.org/stable/project/license.html)：实施依赖时核对版本及随附许可通知。
+
+
+## S1 Frozen Numerical Fixtures（2026-10-15）
+
+- 无噪声时间区间0–4s / 161点；线性a=2.3,b=-4与二次a=.4,b=-2,c=1，良好初值；参数绝对容差1e-7（阻尼余弦1e-6），预测RMSE<1e-8。阻尼余弦c=.2,A=1.3,beta=.12,Omega=4.2,phi=.3；初值分别.1,1,.1,4,.2。单初值等权，不承诺任意初值收敛。
+- 非单摆正弦偏置7 / 振幅2 / 周期1.3s，3–15s / 1201点，两方向均要求周期相对误差≤1%；常量 / 单调 / 多峰漂移单独测试，不推断唯一基本周期。
+- 初次P011领域算法对照：协议未修改；均值1.041266844s，人工1.0389815s，相对差0.21996%，7事件夹点均匹配人工。应用层完整路径与最终验收仍待完成。
+
+
+## Implementation checkpoint（2026-10-15）
+
+S1–S4实现及定向验证完成；S5进行中，最终Gate仍待。GUI复用ChartActions单executor，新增Analysis中公式拟合 / 交叉工具标签，独立单量选择 / 相对t区间、公式MathText / 参数 / 初值曲线、叠图 / 残差 / 实际帧导航、保存结果与草稿披露、恢复设置。
+
+P011应用层完整prepare→run→apply→save→load对照通过（原冻结参数）：7事件 / 6间隔、均值1.041266844s、相对人工差0.21996%；保存到本地忽略analysis-result-project，不改冻结工程。用户公式阻尼余弦单初值示例可收敛，RMSE约0.0209024rad；只说明实际拟合行为，不证明大角摆动满足该模型。
+
+
+2026-10-15 HR入口补丁04495a4：顶栏常驻Fit formula / Measure intervals直达、分析页提示与短标签，绝对PYTHONPATH启动避免误用原main。31项GUI / 最新双平台1096 passed / 2 skipped；仅导航与提示变化，原科学 / 数据契约不变。等待入口补测和原A/B/C/D，未集成main。
+
+
+2026-10-15 HR进展：用户A / C通过；B因滚轮 / 图表拖动 / 参考线及信息密度不通过，D未反馈。交互修复2eeee68及独立复审返工3cc546a已推送，补测见[HR文档](../notes/phase-6.3-human-review.md)。最终35项定向通过；R8新只读独立复审Approve、R7两项finding Closed；3cc546a[双平台CI38760538586](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38760538586)各1100 passed / 2 skipped。科学协议 / 数据契约未改，不提前关闭AC-8。
+
+
+2026-10-16 Fit禁用追踪：e4f04a0修复Analysis缺少当前会话时序确认入口和无授权误报CFR；按钮附近显示禁用原因，沿用既有授权 / 源配方门，不增加标注或训练条件。15项定向通过；真实P011只读复现与确认后的x / theta prepare通过。最终验证见[current](current.md)与[review](../reviews/phase-6.3-review.md)，此入口与原B / D仍待真人HR。
+
+最终验证回执（e4f04a0）：本机全量1103 passed，定向15 passed；[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，全部步骤success。其后仅文档同步，不改变已验证产品 / 测试树，等待真人HR，不集成main。
+
+
+2026-10-16最终HR：用户明确确认“现在看来没有什么问题了，HR通过”。本期Human Review全部收口，准备--no-ff集成main / push并完成AC-8 / S5。新手用途引导、图表旁解释、自动初值预览 / 估算和尝试日志属于新一轮待确认计划，不倒填为旧6.3交付物。

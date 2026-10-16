@@ -198,3 +198,11 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 拒绝旧任务覆盖新参数结果；参考依赖和时序授权由应用边界守住。
 同步角运动保存 fps / 区间 / 近似来源，后台复用相同溯源，见
 [ADR-0020](decisions/0020-analysis-batch-result-and-recipe-consistency.md)。
+
+
+### Phase 6.3显式函数 / 重复间隔（开发分支，待HR集成）
+
+- 领域层`expression`使用受限AST同时计算 / 排版；`function_fit`做单初值等权有界最小二乘，`recurrence`保留同向交叉夹点和段内间隔，不推断基本周期。`analysis`仅处理既有源到两族结果的直接依赖。
+- 应用层`signal_analysis_job`捕获AnalysisInputs、确切源记录、实际样本 / 时间、目标旧ID和规格；后台计算后主线程核对两类版本并在现有Session历史边界发布。加载核对源指纹，保持detached的不可变Project共享。
+- GUI `FormulaEditor` / `SignalAnalysisPanel`复用ChartActions单执行器；MathText仅显示、不执行公式、不调用外部TeX。结果专用Undo只允许栈顶本期结果事务，不放开原始视频标注 / 标定编辑。
+- schema v1追加kind与`analysis.version=1`扩展，来源 / 配方 / 测量值 / 预测 / 残差 / 事件留存；每track / quantity两族各一个最新槽。见[ADR-0021](decisions/0021-function-fit-and-recurrence-result-contract.md)。

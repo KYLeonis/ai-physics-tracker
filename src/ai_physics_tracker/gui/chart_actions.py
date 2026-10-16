@@ -28,16 +28,23 @@ from ai_physics_tracker.domain.angular import AngularReference, PendulumReferenc
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS
 from ai_physics_tracker.domain.timeline import frame_to_time, time_to_frame, clamp_to_working_zone
 from ai_physics_tracker.gui.chart_panel import ChartPanel
+from ai_physics_tracker.gui.signal_analysis_panel import SignalAnalysisPanel
+from ai_physics_tracker.application.signal_analysis_job import (
+    SignalAnalysisJob, SignalAnalysisResult, prepare_signal_analysis, run_signal_analysis,
+)
+from ai_physics_tracker.domain.expression import parse_expression
 
 if TYPE_CHECKING:
     from ai_physics_tracker.gui.main_window import MainWindow
 
 
-def _run_chart_job(job: KinematicsJob | AngularJob, cancel: Event) -> KinematicsResult | AngularResult:
+def _run_chart_job(job: KinematicsJob | AngularJob | SignalAnalysisJob, cancel: Event):
     """后台线程唯一入口：按任务类型分发到既有 runner，共享一个执行器。"""
 
     if isinstance(job, AngularJob):
         return run_angular_job(job, cancel)
+    if isinstance(job, SignalAnalysisJob):
+        return run_signal_analysis(job, cancel)
     return run_kinematics_job(job, cancel)
 
 
@@ -48,11 +55,13 @@ class ChartActions(QObject):
         super().__init__(window)
         self.window = window
         self.panel = ChartPanel(window)  # Phase 5.7：由 MainWindow 挂入分析工作区
+        self.signalPanel = SignalAnalysisPanel(window)
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="kinematics")
         self._cancel = Event()
-        self._future: Future[KinematicsResult | AngularResult] | None = None
+        self._future: Future[KinematicsResult | AngularResult | SignalAnalysisResult] | None = None
         self._job_generation = -1
         self._job_inputs: AnalysisInputs | None = None
+        self._signal_job: SignalAnalysisJob | None = None
         self._job_workspace = window.currentWorkspace
         self._context_generation = window.deliveryGeneration
         self._render_key = None
@@ -81,6 +90,16 @@ class ChartActions(QObject):
         self.panel.cancelRequested.connect(self.cancel)
         self.panel.timeRequested.connect(self.seekTime)
         self.panel.frameRequested.connect(self.seekFrame)
+        self.signalPanel.fitRequested.connect(lambda: self.analyzeSignal(True))
+        self.signalPanel.recurrenceRequested.connect(lambda: self.analyzeSignal(False))
+        self.signalPanel.previewRequested.connect(self.previewSignal)
+        self.signalPanel.sourcePreviewRequested.connect(self.previewRecurrence)
+        self.signalPanel.cancelRequested.connect(self.cancel)
+        self.signalPanel.settingsChanged.connect(self._signalEdited)
+        self.signalPanel.targetChanged.connect(self._signalTargetChanged)
+        self.signalPanel.frameRequested.connect(self.seekFrame)
+        self.signalPanel.undoRequested.connect(lambda: self.analysisHistory(False))
+        self.signalPanel.redoRequested.connect(lambda: self.analysisHistory(True))
         self.refresh()
 
     @property
@@ -102,7 +121,11 @@ class ChartActions(QObject):
                            if session is not None else None)
             except ProjectSessionError:
                 current = None
-            if current != inputs or self.window.currentWorkspace != self._job_workspace:
+            source_changed = False
+            if self._signal_job is not None and session is not None:
+                job = self._signal_job
+                source_changed = next((item for item in session.project.derived if item.derived_id == job.source.derived_id), None) != job.source
+            if current != inputs or source_changed or self.window.currentWorkspace != self._job_workspace:
                 self.cancel()
         self.scheduleRefresh()
 
@@ -110,6 +133,7 @@ class ChartActions(QObject):
         self._cancel.set()
         self._future = None
         self._job_inputs = None
+        self._signal_job = None
         self._timer.stop()
         self._context_generation = self.window.deliveryGeneration
         self._render_key = None
@@ -132,6 +156,7 @@ class ChartActions(QObject):
         if self._closed:
             return
         session, video_id = self.window.analysisSession, self.window.activeVideoId
+        self.signalPanel.setContext(session, video_id, pending=self.pending)
         if session is None or video_id is None:
             self.panel.setTracks((), None, reset=True)
             self.panel.contextLabel.setText("No video selected")
@@ -367,6 +392,8 @@ class ChartActions(QObject):
     def cancel(self) -> None:
         self._cancel.set()
         self.panel.jobLabel.setText("Calculation cancelled — pending results will be discarded")
+        if self._signal_job is not None:
+            self.signalPanel.jobLabel.setText("Calculation cancelled — saved result retained")
 
     def _poll(self) -> None:
         future = self._future
@@ -375,6 +402,8 @@ class ChartActions(QObject):
         self._timer.stop()
         self._future = None
         self._job_inputs = None
+        signal_job = self._signal_job
+        self._signal_job = None
         try:
             result = future.result()
             if self._cancel.is_set() or self._job_generation != self.window.deliveryGeneration:
@@ -382,7 +411,13 @@ class ChartActions(QObject):
             session = self.window.analysisSession
             if session is None:
                 raise CancelledError()
-            if isinstance(result, AngularResult):
+            if isinstance(result, SignalAnalysisResult):
+                if result.record is None:
+                    self.signalPanel.jobLabel.setText(result.fit_outcome.status + ": " + result.fit_outcome.message + " — saved result retained")
+                    self.refresh()
+                    return
+                session.apply_analysis_result(result)
+            elif isinstance(result, AngularResult):
                 session.apply_angular_result(result)
             else:
                 session.apply_kinematics_result(result)
@@ -390,14 +425,107 @@ class ChartActions(QObject):
             from ai_physics_tracker.application.user_messages import charts_not_updated
             self.panel.jobLabel.setText(charts_not_updated(
                 "calculation cancelled").full_text())
+            if signal_job:
+                self.signalPanel.jobLabel.setText("Calculation cancelled — saved result retained")
         except Exception as error:
             from ai_physics_tracker.application.user_messages import charts_not_updated
             self.panel.jobLabel.setText(charts_not_updated(str(error)).full_text())
+            if signal_job:
+                self.signalPanel.jobLabel.setText(str(error) + " — saved result retained")
         else:
             self._settings_edited = False
             self._seeded_controls = None
             self.panel.jobLabel.setText("Computed — save project to keep results")
+            if signal_job:
+                self.signalPanel.jobLabel.setText("Computed — save project to keep results")
+                self.signalPanel.draftLabel.setText("Applied settings — latest result saved in project data")
             self.window.refreshAnalysisHistory()
+        self.refresh()
+
+    def _signalEdited(self) -> None:
+        if self._signal_job is not None:
+            self.cancel()
+        self.signalPanel.refreshDraftDisplay()
+
+    def analysisHistory(self, redo: bool) -> None:
+        if self.pending or self.window.projectActions.busy or self._closed:
+            return
+        session = self.window.analysisSession
+        if session is None:
+            return
+        try:
+            changed = session.redo_analysis() if redo else session.undo_analysis()
+        except ProjectSessionError as error:
+            self.signalPanel.jobLabel.setText(str(error))
+            return
+        if changed:
+            self.window.refreshAnalysisHistory()
+            self.refresh()
+            self.signalPanel.jobLabel.setText("Analysis history restored — saved settings remain available")
+
+    def _signalTargetChanged(self) -> None:
+        self._signalEdited()
+        self.signalPanel.displaySaved()
+        if self.signalPanel.methods.currentIndex() == 1:
+            self.previewRecurrence()
+
+    def _prepareSignal(self, fitting: bool):
+        session = self.window.analysisSession
+        if session is None:
+            raise ValueError("Open a project first")
+        panel = self.signalPanel
+        return prepare_signal_analysis(session, panel.selection(), panel.fitSpec() if fitting else panel.recurrenceSpec(),
+                                       panel.resultFormulas() if fitting else ())
+
+    def previewRecurrence(self) -> None:
+        """只展示实际源样本，不计算或发布事件；调线后显式Measure才产生结果。"""
+        if self.pending:
+            return
+        try:
+            job = self._prepareSignal(False)
+            self.signalPanel.renderSamples(job.samples, job.source.unit,
+                                           wrapped=job.source.kind == "angular_position")
+            self.signalPanel.refreshDraftDisplay()
+            self.signalPanel.jobLabel.setText("Source preview — adjust reference, then Measure crossing intervals")
+        except (ValueError, ProjectSessionError) as error:
+            self.signalPanel.signalPlot.clear()
+            self.signalPanel._valueRange = None
+            self.signalPanel.jobLabel.setText(str(error))
+
+    def previewSignal(self) -> None:
+        if self.pending:
+            return
+        try:
+            job = self._prepareSignal(True)
+            expression = parse_expression(job.spec.expression)
+            import numpy as np
+            times = np.array([row[2] for row in job.samples])
+            prediction = expression.evaluate(times, {parameter.name: parameter.initial for parameter in job.spec.parameters})
+            self.signalPanel.renderSamples(job.samples, job.source.unit, prediction,
+                                           np.array([row[3] for row in job.samples])-prediction,
+                                           wrapped=job.source.kind == "angular_position")
+            self.signalPanel.jobLabel.setText("Initial curve only — no fitted result published")
+        except (ValueError, ProjectSessionError) as error:
+            self.signalPanel.signalPlot.clear()
+            self.signalPanel.residualPlot.clear()
+            self.signalPanel.jobLabel.setText(str(error))
+
+    def analyzeSignal(self, fitting: bool) -> None:
+        if self.pending or self.window.projectActions.busy or self._closed:
+            return
+        try:
+            job = self._prepareSignal(fitting)
+        except (ValueError, ProjectSessionError) as error:
+            self.signalPanel.jobLabel.setText(str(error))
+            return
+        self._cancel = Event()
+        self._job_generation = self.window.deliveryGeneration
+        self._job_inputs = job.inputs
+        self._signal_job = job
+        self._job_workspace = self.window.currentWorkspace
+        self._future = self._executor.submit(_run_chart_job, job, self._cancel)
+        self.signalPanel.jobLabel.setText("Computing…")
+        self._timer.start(30)
         self.refresh()
 
     def shutdown(self) -> None:

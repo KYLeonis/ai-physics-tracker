@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QSplitter,
     QStackedWidget,
+    QTabWidget,
 )
 
 from ai_physics_tracker.application.playback import AsyncVideoSession, DecodeDelivery
@@ -331,7 +332,7 @@ class MainWindow(QMainWindow):
         self._workspace = WORKSPACE_ACQUIRE
         self._videoColumn = videoColumn
         self._videoColumnWidget = videoColumnWidget
-        self._videoViewHomeIndex: int | None = None
+        self._analysisMediaHome: list[tuple[int, QWidget]] = []
         self._analysisReferenceHost = QWidget(self)
         reference_layout = QVBoxLayout(self._analysisReferenceHost)
         reference_layout.setContentsMargins(0, 0, 0, 0)
@@ -485,6 +486,9 @@ class MainWindow(QMainWindow):
         reviewCorrectShortcut = QShortcut(QKeySequence(Qt.Key.Key_C), self)
         reviewCorrectShortcut.activated.connect(self._onReviewCorrectShortcut)
 
+        self.analysisChanged.connect(self.refreshAnalysisSourceBar)
+        self.projectChanged.connect(self.refreshAnalysisSourceBar)
+        self.selectedTrackChanged.connect(lambda _track_id: self.refreshAnalysisSourceBar())
         self.statusBar().showMessage("Ready")
 
     @property
@@ -623,7 +627,10 @@ class MainWindow(QMainWindow):
             source = (f"Using {traj.active_label} AI result + {manual_count} "
                       "manual position(s)")
         else:
-            source = f"Using manual positions only ({manual_count})"
+            from collections import Counter
+            counts = Counter(point.source for point in session.effective_points(track_id))
+            source = (f"Using manual positions only ({manual_count})" if not counts or set(counts) == {"manual"}
+                      else "Observations: " + ", ".join(f"{count} {name}" for name, count in sorted(counts.items())))
         track = next((t for t in session.tracks if t.track_id == track_id), None)
         if track is not None:
             calibration = self.activeCalibrationFor(track.video_id) \
@@ -632,31 +639,59 @@ class MainWindow(QMainWindow):
                 calibration = session.active_calibration(track.video_id)
             unit = calibration.unit if calibration is not None else "px (no calibration)"
             timing = session.measurement_timing_detail(track.video_id)
-            timing_note = "approximate timing" if timing else "verified CFR timing"
+            timing_note = ("not authorized — cached results only" if not session.can_measure(track.video_id)
+                           else "approximate timing" if timing else "verified CFR timing")
             source += f" · Units: {unit} · Timing: {timing_note}"
         self._analysisSourceLabel.setText(source)
 
     def _enterAnalysis(self) -> None:
-        """视频视图重挂为分析页参照窗；解码与 overlay 管线不变。"""
+        """视频与时序门一起移动，分析页也能完成当前媒体会话的授权。"""
         if self.videoView.parent() is self._analysisReferenceHost:
             return
-        layout = self._videoColumn
-        self._videoViewHomeIndex = layout.indexOf(self.videoView)
-        self._analysisReferenceHost.layout().addWidget(self.videoView)
+        widgets = (self.timingLabel, self.timingButton, self.videoView)
+        self._analysisMediaHome = [(self._videoColumn.indexOf(widget), widget) for widget in widgets]
+        layout = self._analysisReferenceHost.layout()
+        for widget in widgets:
+            hidden = widget.isHidden()
+            layout.addWidget(widget, 1 if widget is self.videoView else 0)
+            widget.setHidden(hidden)
 
     def _leaveAnalysis(self) -> None:
-        """视频视图回到获取轨迹/实验设置页原位置。"""
+        """返回原布局位置，保留当前时序按钮的显隐状态。"""
         if self.videoView.parent() is self._analysisReferenceHost:
-            index = self._videoViewHomeIndex
-            if index is None or index > self._videoColumn.count():
-                index = self._videoColumn.count()
-            self._videoColumn.insertWidget(index, self.videoView)
+            for index, widget in self._analysisMediaHome:
+                hidden = widget.isHidden()
+                self._videoColumn.insertWidget(index, widget, 1 if widget is self.videoView else 0)
+                widget.setHidden(hidden)
 
     def _installChartPanel(self, panel: QWidget) -> None:
         """ChartPanel 由 dock 转为分析页主体（Phase 5.7）。"""
         host_layout = self._analysisChartHost.layout()
         host_layout.setContentsMargins(0, 0, 0, 0)
-        host_layout.addWidget(panel)
+        self.analysisToolsHint = QLabel(
+            "Fit your formula or measure repeat intervals: open the Formula fitting & intervals tab.")
+        self.analysisToolsHint.setWordWrap(True)
+        self.analysisToolsHint.setStyleSheet(
+            "background: #eaf3ff; color: #172b4d; padding: 6px; border-radius: 4px;")
+        host_layout.addWidget(self.analysisToolsHint)
+        self.analysisTabs = QTabWidget()
+        self.analysisTabs.addTab(panel, "Charts & source data")
+        from ai_physics_tracker.gui.analysis_plot import AnalysisScrollArea
+        scroll = AnalysisScrollArea()
+        scroll.setWidget(self.chartActions.signalPanel)
+        self.chartActions.signalPanel.pageScrollRequested.connect(scroll.scrollPage)
+        self.analysisTabs.addTab(scroll, "Formula fitting & intervals")
+        self._analysisToolsScroll = scroll
+        self.workflowHeader.analysisToolsRequested.connect(self.openAnalysisTools)
+        self.analysisTabs.currentChanged.connect(lambda index: self.analysisToolsHint.setVisible(index == 0))
+        self.analysisTabs.currentChanged.connect(lambda _index: self.chartActions.cancel() if self.chartActions.pending else None)
+        host_layout.addWidget(self.analysisTabs)
+
+    def openAnalysisTools(self) -> None:
+        """常驻直达入口：只导航到公式 / 间隔工具，不执行计算或修改数据。"""
+        self.setWorkspace(WORKSPACE_ANALYSIS)
+        self.analysisTabs.setCurrentIndex(1)
+        self._analysisToolsScroll.verticalScrollBar().setValue(0)
 
     def setPlaybackRate(self, rate: float) -> None:
         """设置播放倍速并即时生效；非正值忽略。"""

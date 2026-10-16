@@ -90,12 +90,13 @@ def mark_calibrations_stale(
 ) -> tuple[DerivedData, ...]:
     """仅将标定溯源发生变化的派生序列标记为 stale。"""
 
-    return tuple(
+    from ai_physics_tracker.domain.analysis import stale_analysis_dependents
+    return stale_analysis_dependents(tuple(
         replace(item, status="stale")
         if item.calibration_ref in calibration_ids and item.status != "stale"
         else item
         for item in derived
-    )
+    ))
 
 
 def mark_tracks_stale(
@@ -107,7 +108,8 @@ def mark_tracks_stale(
     主 track_id 或 input.reference_track_id 命中即失效。
     """
 
-    return tuple(
+    from ai_physics_tracker.domain.analysis import stale_analysis_dependents
+    return stale_analysis_dependents(tuple(
         replace(item, status="stale")
         if (
             item.track_id in track_ids
@@ -119,4 +121,4 @@ def mark_tracks_stale(
         and item.status != "stale"
         else item
         for item in derived
-    )
+    ))
