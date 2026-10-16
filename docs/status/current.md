@@ -2,20 +2,20 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-16（P6.3已集成main；P6.3.1新手分析计划获用户认可并冻结，未实施）
+- 最后更新：2026-10-16（P6.3已集成main；P6.3.1已授权实施，S0契约冻结，S1–S5推进中）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3已完成，2026-10-16用户整体HR通过，以`92d00a2` `--no-ff`集成 / push main。产品 / 测试树与e4f04a0已通过CI完全相同（本机1103 / 定向15，[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，R8核心 / 交互独立复审Approve）。[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped。AC-1–8 / S0–S5收口；[P6.3.1新手分析计划](phase-6.3.1-plan.md)已完成Q1–16确认并冻结，未实施；独立于已完成的6.3，不提前开始6.4 / 6.5。
-- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；规划会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `codex/analysis-onboarding-plan`；论文worktree未改。
+- **Subphase / Slice**：P6.3已完成，2026-10-16用户整体HR通过，以`92d00a2` `--no-ff`集成 / push main。产品 / 测试树与e4f04a0已通过CI完全相同（本机1103 / 定向15，[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，R8核心 / 交互独立复审Approve）。[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped。AC-1–8 / S0–S5收口；[P6.3.1新手分析计划](phase-6.3.1-plan.md)已完成Q1–16确认并冻结，现已授权实施；独立于已完成的6.3，不提前开始6.4 / 6.5。
+- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；实现会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3.1-guided-analysis`；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
 1. P6.3已完成并集成 / push main（92d00a2）；[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped，全部步骤success。Issue #29 / PR #30收口，新工作以6.3.1已冻结计划为准。已验证产品 / 测试树与e4f04a0一致。
-2. **等待P6.3.1开工指令**。[已冻结计划](phase-6.3.1-plan.md)、[Q1–16访谈及只读诊断](../notes/analysis-onboarding-interview.md)。英文、图表优先、三个用途入口、自动初值预览 / 有限结构初值估算、手改保护、结果解释 / 下一步、尝试留痕和就地准备；不设固定响应 / 新手时长。本次只计划，所有产品AC / Slices未勾选。
-3. 开工时先从main建立`feat/p6.3.1-guided-analysis`和Issue，完成S0数值 / 日志 / 生命周期契约与样本冻结；High-risk，Independent Review / 双平台CI / 本轮HR必须。原P6.3 HR不能替代新交互HR；不自动开6.4 / 6.5。
+2. **P6.3.1开工已授权（2026-10-16）**。[已冻结计划](phase-6.3.1-plan.md)、[Q1–16访谈及只读诊断](../notes/analysis-onboarding-interview.md)。英文、图表优先、三个用途入口、自动初值预览 / 有限结构初值估算、手改保护、结果解释 / 下一步、尝试留痕和就地准备；不设固定响应 / 新手时长。S0见ADR-0022；产品AC仍待实现验证。
+3. 已从main建立`feat/p6.3.1-guided-analysis`及Issue #31，S0数值 / 日志 / 生命周期契约与样本冻结；接续S1–S5；High-risk，Independent Review / 双平台CI / 本轮HR必须。原P6.3 HR不能替代新交互HR；不自动开6.4 / 6.5。
 
 ## Active Constraints
 
