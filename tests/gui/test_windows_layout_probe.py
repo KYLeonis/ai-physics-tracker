@@ -1,6 +1,7 @@
 """临时诊断：Windows 窗口最小宽度贡献者。窄窗修复落地后删除本文件。"""
 
-from PySide6.QtWidgets import QLabel, QPushButton, QStackedWidget, QWidget
+from PySide6.QtGui import QFontMetrics
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QStackedWidget, QWidget
 
 from ai_physics_tracker.application.video_session import VideoSession
 from ai_physics_tracker.gui.main_window import MainWindow
@@ -30,31 +31,41 @@ def test_probe_window_min_width_after_workspace_roundtrip(qtbot) -> None:
     expanded = compact + 200
     window.resize(expanded, 760)
 
-    rows: list[str] = []
+    header = window.workflowHeader
+    lines: list[str] = []
 
-    def walk(widget: QWidget) -> None:
+    def walk(widget: QWidget, indent: str) -> None:
         try:
             minimum_width = widget.minimumWidth()
             hint_width = widget.minimumSizeHint().width()
         except RuntimeError:
             return
-        if max(minimum_width, hint_width) >= 300:
-            label = widget.text() if isinstance(widget, (QPushButton, QLabel)) else ""
-            rows.append(
-                f"W={max(minimum_width, hint_width):4d} {widget.metaObject().className()} "
-                f"obj={widget.objectName() or '-'} minW={minimum_width} minHint={hint_width} "
-                f"vis={widget.isVisible()} txt={label[:60]!r}"
-            )
+        text = widget.text() if isinstance(widget, (QPushButton, QLabel)) else ""
+        policy = widget.sizePolicy()
+        lines.append(
+            f"{indent}{widget.metaObject().className()} minW={minimum_width} "
+            f"minHint={hint_width} pol={policy.horizontalPolicy()} vis={widget.isVisible()} "
+            f"txt={text[:70]!r}"
+        )
         for child in widget.findChildren(QWidget):
             if child.parentWidget() is widget:
-                walk(child)
+                walk(child, indent + "  ")
 
-    walk(window)
+    walk(header, "  ")
 
-    header = window.workflowHeader
-    header_buttons = [
-        button.text() for button in header.nextStepButtons if button.isVisible()
-    ]
+    font = QApplication.font()
+    metrics = QFontMetrics(font)
+    lines.append(
+        f"font={font.family()} px={font.pixelSize()} pt={font.pointSize()} "
+        f"dpr={window.devicePixelRatio()} ref_width="
+        f"{metrics.horizontalAdvance('Fit formula / Measure intervals')}"
+    )
+    dock = window.trackingActions.panel
+    lines.append(
+        f"dock minW={dock.minimumWidth()} minHint={dock.minimumSizeHint().width()} "
+        f"visible={dock.isVisible()} floating={dock.isFloating()}"
+    )
+
     pages = []
     for stack in window.findChildren(QStackedWidget):
         pages.append(
@@ -63,9 +74,8 @@ def test_probe_window_min_width_after_workspace_roundtrip(qtbot) -> None:
         )
 
     report = [
-        "MIN-WIDTH CONTRIBUTORS >=300:",
-        *sorted(rows, reverse=True)[:30],
-        f"header next buttons: {header_buttons}",
+        "HEADER TREE:",
+        *lines,
         f"stacks: {pages}",
         f"initial hint={compact} post-roundtrip hint={window.minimumSizeHint().width()} "
         f"requested={expanded} actual={window.size().width()}",
