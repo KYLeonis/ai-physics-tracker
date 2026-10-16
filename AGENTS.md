@@ -23,7 +23,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表（✅ 已完成，2026-08-31） |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪（✅ 已完成，2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | 代表帧、困难帧、人工修正、迭代比较、交互重构（✅ 已完成，2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 / 6.2 完成并集成 main；独立复审 / 双平台 CI / 全部 Human Review 通过，2026-10-15；6.3已按 ADR-0017 完成计划冻结，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），准备集成main；其余子阶段另行规划） |
+| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 / 6.2 完成并集成 main；独立复审 / 双平台 CI / 全部 Human Review 通过，2026-10-15；6.3已按 ADR-0017 完成计划冻结，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；其余子阶段另行规划） |
 | Phase 7 | Model Library | 模型保存、版本管理、应用到新视频 |
 | Phase 8 | Export & Scientific Workflow | CSV/Excel/图表/视频导出、项目归档 |
 | Phase 9 | Optimization & Packaging | 性能优化、GPU、Windows 打包发布 |
@@ -85,7 +85,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - Phase 1 数据体系规范（**实现前必读**）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md`（持久化与项目目录）、`docs/spec/phase1-requirements.md`（Phase 1 需求与验收标准）
 - Phase 2 视频/GUI 规范：`docs/spec/phase2-requirements.md`；技术栈与分层决策见 ADR-0005
 - Phase 5 规划入口：`docs/spec/phase5-requirements.md`（需求与边界）、`docs/status/phase-5-plan.md`（Subphase 顺序与验收）
-- Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`、`docs/status/phase-6.2-plan.md`、`docs/status/phase-6.3-plan.md`（6.1 / 6.2已集成main；6.3计划已获用户认可，显式函数拟合 / 通用重复间隔工具，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），准备集成main。ADR-0019/0020为既有数据契约；ODE / 单位管理 / 参数置信区间后续）
+- Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`、`docs/status/phase-6.2-plan.md`、`docs/status/phase-6.3-plan.md`（6.1 / 6.2已集成main；6.3计划已获用户认可，显式函数拟合 / 通用重复间隔工具，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main。ADR-0019/0020为既有数据契约；ODE / 单位管理 / 参数置信区间后续）
 - 后续回移档案：`docs/status/main-backport-backlog.md`（含执行触发点，后续会话必须随相关阶段核对）
 - 模板：`docs/templates/`（subphase 计划、review）
 - 独立 review 记录（Review Record）：`docs/reviews/`（索引见其 README；生命周期规则以 `docs/workflow.md` §6 为准）

@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:    Phase 6（6.1 / 6.2 已完成并集成 main）
-Last Delivered:   Phase 6.2 角量图表、相空间、参考配置与多轨迹比较；全部 Human Review 通过
-Current Subphase: Phase 6.3 自动Gate与整体Human Review通过（2026-10-16）；显式函数拟合 / 通用信号重复间隔，准备集成main
+Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
+Last Delivered:   Phase 6.3 显式函数拟合 / 通用信号重复间隔；自动Gate和整体Human Review通过
+Current Subphase: Phase 6.3 已以92d00a2集成main（2026-10-16）；新手分析体验grilling中，未开始6.4 / 6.5
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -115,7 +115,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | 🔄 6.1 / 6.2 已完成并集成；方程部分按用户输入重规划 |
+| Phase 6 | Advanced Physics Analysis | 🔄 6.1 / 6.2 / 6.3 已完成并集成；用户公式驱动的通用分析 |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
 | Phase 9 | Optimization & Packaging | ⬜ |
@@ -135,7 +135,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ schema v1 项目保存/恢复闭环、跨平台视频 locator 与 ADR-0003/0004
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
-- ✅ Phase 6.1 角运动基础 / 6.2 图表与相空间已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
+- ✅ Phase 6.1 角运动基础 / 6.2 图表与相空间 / 6.3 显式函数拟合及重复间隔已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引
@@ -166,6 +166,6 @@ main 已交付 Analysis 视频只读、建议帧批量连续标注 / 修正与�
 P6.2 已按 [角量图表与相空间计划](docs/status/phase-6.2-plan.md)完成S1–S5并集成main；新增两种参考、θ/ω/α时间图、θ–ω / x–vx、degree显示和只读源帧导航；
 科学 / 时序 / 结果版本约束见 ADR-0019/0020，最新验证和下一步见 current。
 
-P6.2科学 / 事务修复全量 **1007 passed（88.42s）**、独立复审 **Approve**；轨迹多选修复含名称 / 框 / 键盘真实输入，相关GUI **51项通过**，最终双平台 **1008 passed / 2 skipped**。用户确认全部Human Review通过，已以 `12b0911` 集成main；[CI证据](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294)、[Review记录](docs/reviews/phase-6.2-review.md)及[真人验收记录](docs/notes/phase-6.2-human-review.md)。6.3计划已于2026-10-15获用户认可，S0真实基准和数据契约已冻结，S1–S4已实现；S5独立复审 / 全量 / 双平台CI及2026-10-16整体Human Review通过，准备集成main。
+P6.2科学 / 事务修复全量 **1007 passed（88.42s）**、独立复审 **Approve**；轨迹多选修复含名称 / 框 / 键盘真实输入，相关GUI **51项通过**，最终双平台 **1008 passed / 2 skipped**。用户确认全部Human Review通过，已以 `12b0911` 集成main；[CI证据](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38582553294)、[Review记录](docs/reviews/phase-6.2-review.md)及[真人验收记录](docs/notes/phase-6.2-human-review.md)。6.3计划已于2026-10-15获用户认可，S0真实基准和数据契约已冻结，S1–S4已实现；S5独立复审 / 全量 / 双平台CI及2026-10-16整体Human Review通过，已以92d00a2集成main。
 
 P6.3范围为用户显式函数编辑 / 数学预览、单标量拟合、参数与残差、可选结果公式，以及独立的信号重复间隔 / 周期工具。单摆仅作示例；非周期信号不强求周期，多峰信号不把交叉间隔自动称为基本周期。详见[6.3计划](docs/status/phase-6.3-plan.md)。ODE、单位管理与参数置信区间留后续。

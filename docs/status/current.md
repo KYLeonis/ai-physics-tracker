@@ -2,19 +2,19 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-16（用户确认P6.3 HR通过，集成收尾；新手分析体验grilling进行中）
+- 最后更新：2026-10-16（P6.3 HR通过并集成main；新手分析体验grilling进行中）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2已集成main；6.3开发已授权。
-- **Subphase / Slice**：P6.3 / S5集成收尾。用户2026-10-16明确回复“现在看来没有什么问题了，HR通过”；既有自动Gate通过（e4f04a0本机1103 / 定向15，[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，R8核心 / 交互独立复审Approve）。Issue #29 / PR #30待完成--no-ff集成与关闭。用户新提出的分析页新手体验需求正通过grill-me访谈，不混入旧6.3冻结范围；尚未实施。
-- **Worktree / Branch**：本会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3-function-fitting`；原目录仍main，论文worktree未改。
+- **Subphase / Slice**：P6.3已完成，2026-10-16用户整体HR通过，以`92d00a2` `--no-ff`集成 / push main。产品 / 测试树与e4f04a0已通过CI完全相同（本机1103 / 定向15，[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892)双平台各1101 passed / 2 skipped，R8核心 / 交互独立复审Approve）。AC-1–8 / S0–S5收口；新手分析体验正在grill-me访谈，不混入旧6.3范围，未实施。
+- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；访谈会话暂仍 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3-function-fitting`；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 将已验收P6.3按`--no-ff`集成main，核对产品 / 测试树与已通过CI的e4f04a0一致，同步收尾文档 / Issue #29 / PR #30并push；不自行开始6.4 / 6.5。
-2. 继续本轮分析页新手体验grilling：用户已确认Q1–11，Q12–15待回复；达成共同理解并获得最终确认后再冻结新计划，不在访谈期实施新产品行为。
+1. 完成main集成CI及Issue #29 / PR #30收口核对；产品 / 测试树已确认与e4f04a0一致，不重复运行本机数值测试。P6.3已完成，不自行开始6.4 / 6.5。
+2. 继续本轮分析页新手体验grilling：用户已确认Q1–15（图表优先 / 英文版 / 不设固定响应或新手完成时长），Q16整体确认待回复；达成共同理解并获得最终确认后再冻结新计划，不在访谈期实施新产品行为。
 3. 后台只读调查发现：用户最新保存的真实工程尝试为y源 / RHS `theta`，实际是常数拟合（-0.2109371164m），沿用的`T=2*pi/Omega`换算失败。改公式仅改草稿、旧结果仍显示；失败无独立历史日志。后续设计须解决表达式含义、初值预览 / 估算、本次任务状态、结果解释和尝试留痕。不得改用户工程或冒称恢复全部未保存历史。
 
 ## Active Constraints
@@ -60,7 +60,7 @@
 
 ## Recently Completed
 
-- **P6.3 HR通过（2026-10-16）**：用户明确确认整体HR通过；既有A / C、B与时序入口补测、D的本轮HR关卡按此次整体反馈收口。用户同时提出新手不知用途 / 输出、反馈不够直观的新一轮改进，单独进入grilling，未修改旧验收口径、计算算法或用户工程。此反馈不扩大为Windows/CUDA真机或任意公式均可成功的准确性验收。当前准备集成main。
+- **P6.3 HR通过（2026-10-16）**：用户明确确认整体HR通过；既有A / C、B与时序入口补测、D的本轮HR关卡按此次整体反馈收口。用户同时提出新手不知用途 / 输出、反馈不够直观的新一轮改进，单独进入grilling，未修改旧验收口径、计算算法或用户工程。此反馈不扩大为Windows/CUDA真机或任意公式均可成功的准确性验收。已以92d00a2集成并push main；后续只做新的体验规划。
 
 - **P6.3 Fit禁用 / 时序入口修复（2026-10-16）**：用户P011截图中的Fit / Preview禁用由本次媒体会话未确认Near-CFR引起，与公式类型 / 20帧训练门槛无关。只读实机探针复现：near_cfr、can_measure=False、确认按钮被Acquire父页面隐藏；Analysis还误报verified CFR。e4f04a0让同一时序状态 / 按钮随视频往返两工作区（不复制授权状态），Fit / 交叉按钮附近显示拦截原因，来源条随工程 / 轨迹 / 时序状态刷新。授权门、重开再确认、取消 / 拒绝守卫与计算契约保持不变；属Normal-risk局部GUI修复。新增工程重开 / 拒绝 / 接受 / 任意合法公式预览 / 布局恢复回归，定向15通过，本机全量1103通过（123.20s）；e4f04a0的[CI38766019892](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38766019892) macOS / Windows各1101 passed / 2 skipped，全部步骤success。真实P011读盘只读复现并核对project.json SHA256不变；按既有授权在独立内存会话确认后，x / theta各215样本prepare通过，未apply或save。B / D及此入口仍待真人补测，不集成main。
 

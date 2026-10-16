@@ -1,7 +1,7 @@
 # Subphase Plan — Phase 6.3 User-defined Function Fitting and Signal Recurrence
 
-- 日期 / 状态：2026-10-15 · **计划已冻结；用户最终回复“认可”，Q1–19全部共同确认；S0已完成；S0–S4实现；独立复审 / 全量 / 双平台CI通过，S5用户HR通过、准备集成main**。
-- Issue：[#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)（Open；AC-1–7自动验证通过，AC-8仅待集成收尾）。
+- 日期 / 状态：2026-10-15 · **计划已冻结；用户最终回复“认可”，Q1–19全部共同确认；S0已完成；S0–S4实现；独立复审 / 全量 / 双平台CI通过，S5完成：2026-10-16用户HR通过，以92d00a2集成main**。
+- Issue：[#29](https://github.com/KYLeonis/ai-physics-tracker/issues/29)（P6.3已集成main，AC-1–8通过）。
 - 基线：`main @ 57462c9`，P6.1 / P6.2已完成；P6.2 [main CI38595699864](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38595699864) 双平台1008 passed / 2 skipped。
 - 计划分支：`codex/p63-plan`；实现分支：`feat/p6.3-function-fitting`（从main `feaa80f`建立）；规划确认不等于产品实现或HR通过。
 - 风险等级：High-risk（表达式执行边界、拟合与周期科学含义、结果依赖 / 后台事务 / 持久化）。
@@ -108,7 +108,7 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 - [x] AC-5 真实样本：实现前冻结P011候选的区间、连续轨迹 / 角参考、至少5个完整周期的独立人工源帧 / 时间参考及周期参数；自动平均周期与参考相对差≤5%（用户Q18确认）；不按算法效果换片段或改门槛。
 - [x] AC-6 输出：叠图 / 残差 / RMSE / 样本数 / 参数与状态正确，可选结果公式数值正确，明确区分信号重复间隔与用户公式换算值；不输出正式参数置信区间。
 - [x] AC-7 数据生命周期：round-trip、原子Undo/Redo、上游依赖失效、同输入重算版本、切换工程 / 参数 / 区间时取消及迟到拒绝；仅替换目标结果，未知扩展和旧线性 / 角量图表不退化。
-- [ ] AC-8 Gate：定向 / 全量、macOS+Windows CI、全新Independent Review / fixes / re-review及本轮Human Review全部通过后才`--no-ff`集成main / push / 收尾；整个Phase 6后续范围仍保持未完成。
+- [x] AC-8 Gate：定向 / 全量、macOS+Windows CI、全新Independent Review / fixes / re-review及本轮Human Review全部通过后才`--no-ff`集成main / push / 收尾；整个Phase 6后续范围仍保持未完成。
 
 数值验证补充：拟合测试使用已知可辨识参数、明确的初值 / 边界和采样；测试不承诺任意初值下参数都可恢复。实现前在S1冻结各合成fixture的明确数值容差，Independent Review检查是否与问题条件相称，不用收敛标志替代数值断言。真实片段只验周期对照与实际拟合行为，不强迫大幅真实摆动符合小角度阻尼余弦。
 
@@ -119,7 +119,7 @@ ODE / PDE / 隐式方程、联立 / 多轨迹共享参数、任意多变量函�
 - [x] S2 — 通用事件 / 间隔：参考线交叉、噪声规则、段内配对、摘要 / 适用状态；以非单摆 / 非周期 / 多峰用例约束科学含义。
 - [x] S3 — 应用与持久化：沿用AnalysisInputs / detached快照 / 主线程原子提交，扩展精确上游结果依赖与新结果目标键；round-trip、失效、未知字段和事务回归。
 - [x] S4 — GUI：双区编辑器 / MathText、信号 / 区间 / 参数、初值预览、拟合与周期独立入口、叠图 / 残差 / 源帧导航、状态与保存恢复；锁定Matplotlib并验证双平台无TeX安装路径。
-- [ ] S5 — 完整验收：真实参考对照、全量 / 双平台CI、独立review与返工复审，交付启动 / 操作步骤并停止等待新HR；通过后集成 / 文档 / push，仅收尾6.3。
+- [x] S5 — 完整验收：真实参考对照、全量 / 双平台CI、独立review与返工复审，交付启动 / 操作步骤并停止等待新HR；通过后集成 / 文档 / push，仅收尾6.3。
 
 ## Verification
 
@@ -199,3 +199,8 @@ P011应用层完整prepare→run→apply→save→load对照通过（原冻结�
 
 
 2026-10-16最终HR：用户明确确认“现在看来没有什么问题了，HR通过”。本期Human Review全部收口，准备--no-ff集成main / push并完成AC-8 / S5。新手用途引导、图表旁解释、自动初值预览 / 估算和尝试日志属于新一轮待确认计划，不倒填为旧6.3交付物。
+
+
+## P6.3最终集成（2026-10-16）
+
+用户整体HR通过后，d011bdc仅同步验收文档；以`92d00a2`按`--no-ff`集成main并push。集成产品 / 测试 / 依赖树与e4f04a0已验证树完全一致，未重复本机全量。AC-1–8 / S0–S5完成；整个Phase 6仍有6.4 / 6.5，不继续实施。新的分析页新手体验另行grilling，不倒填为本期功能。

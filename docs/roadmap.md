@@ -5,8 +5,8 @@
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
-- 最近交付：**Phase 6.2 角量图表 / 相空间 / 参考配置 / 多轨迹比较（2026-10-15；全部 Human Review 通过，已集成 main）**
-- 当前阶段：**Phase 6 进行中（2026-10-15，6.1 / 6.2 完成并集成 main；6.3计划已冻结、S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），准备集成main；周期 / 用户方程 / 误差功能仍未完成）**
+- 最近交付：**Phase 6.3 显式函数拟合 / 通用信号重复间隔（2026-10-16；整体Human Review通过，92d00a2已集成main）**
+- 当前阶段：**Phase 6 进行中（2026-10-15，6.1 / 6.2 完成并集成 main；6.3计划已冻结、S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；周期 / 用户方程 / 误差功能仍未完成）**
 - 已交付 GUI 增量：首次学习 20 个人工帧、默认 K-means、推荐框自定义算法及沿真实建议帧连续标注；[计划](status/initial-annotation-guidance-plan.md)，Human Review 已通过。
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
@@ -188,7 +188,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 **目标**：更丰富的物理分析能力。
 
-**状态**：6.1 / 6.2已完成并集成main（6.2合并 `12b0911`，Issue #27）。科学 / 事务1007全量、独立复审Approve；控件51项GUI、最终双平台1008 passed / 2 skipped及全部Human Review通过。6.3已于2026-10-15完成grilling并获用户认可，见[6.3已冻结计划](status/phase-6.3-plan.md)：显式函数编辑 / 单标量拟合、独立通用信号重复间隔与可选结果公式；S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），准备集成main。整个Phase 6的周期 / 用户方程拟合 / 误差验收仍未完成。
+**状态**：6.1 / 6.2已完成并集成main（6.2合并 `12b0911`，Issue #27）。科学 / 事务1007全量、独立复审Approve；控件51项GUI、最终双平台1008 passed / 2 skipped及全部Human Review通过。6.3已于2026-10-15完成grilling并获用户认可，见[6.3已冻结计划](status/phase-6.3-plan.md)：显式函数编辑 / 单标量拟合、独立通用信号重复间隔与可选结果公式；S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main。整个Phase 6的周期 / 用户方程拟合 / 误差验收仍未完成。
 规划入口：[phase6-requirements.md](spec/phase6-requirements.md)、
 [phase-6-plan.md](status/phase-6-plan.md)、[phase-6.1-plan.md](status/phase-6.1-plan.md)、[phase-6.2-plan.md](status/phase-6.2-plan.md)。
 
