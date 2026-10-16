@@ -226,6 +226,7 @@ class ProjectActions(QObject):
             if self.window._annotation_session is not session:
                 return
             session.accept_autosaved_snapshot(saved)
+            self.window.chartActions.syncJournal()
             self.window._refreshHistoryButtons()
             self.window.statusBar().showMessage(f"Autosaved ({reason}): {saved.project_root}")
             self.refresh()
@@ -265,6 +266,7 @@ class ProjectActions(QObject):
             if self.window._annotation_session is not session:
                 return
             session.accept_saved_snapshot(saved)
+            self.window.chartActions.syncJournal()
             self.window._refreshHistoryButtons()
             self.window.statusBar().showMessage(f"Saved: {saved.project_root}")
             self.refresh()

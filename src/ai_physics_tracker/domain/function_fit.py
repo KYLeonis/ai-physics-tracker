@@ -124,11 +124,13 @@ def fit_function(
                 return FitOutcome("not_converged", result.message, evaluations=evaluations,
                                   solver_status=int(result.status))
             # 列归一化避免仅因参数单位不同误判；检查局部数值秩，不输出参数置信区间。
-            norms = np.linalg.norm(result.jac, axis=0)
-            if np.any(norms <= np.finfo(float).eps):
+            maxima = np.max(np.abs(result.jac), axis=0)
+            if np.any(maxima == 0) or not np.all(np.isfinite(maxima)):
                 return FitOutcome("unidentifiable", "Model is insensitive to a free parameter",
                                   evaluations=evaluations)
-            singular = np.linalg.svd(result.jac / norms, compute_uv=False)
+            normalized = result.jac / maxima
+            norms = np.linalg.norm(normalized, axis=0)
+            singular = np.linalg.svd(normalized / norms, compute_uv=False)
             if singular[-1] <= IDENTIFIABILITY_RTOL * singular[0]:
                 return FitOutcome("unidentifiable", "Free parameters have a rank-deficient local Jacobian",
                                   evaluations=evaluations)

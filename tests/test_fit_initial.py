@@ -77,3 +77,18 @@ def test_adopting_preserves_fixed_and_rejects_out_of_bounds_as_a_batch():
     assert adopted.parameters[0].initial == pytest.approx(3.)
     assert adopted.parameters[0].lower == 0
     assert adopted.parameters[1] == spec.parameters[1]
+
+
+@pytest.mark.parametrize('seed',range(5))
+def test_pure_noise_does_not_receive_oscillation_guess(seed):
+    time = np.linspace(0,12,601)
+    values = np.random.default_rng(seed).normal(size=len(time))
+    result = estimate_initial(time,values,'c+A*cos(w*t+p)')
+    assert not result.values
+    assert 'dominant oscillation' in result.reason
+
+
+@pytest.mark.parametrize('segments',[[0], [0]*600, [[0]]*601, [float('nan')]*601])
+def test_malformed_segment_labels_return_explicit_manual_fallback(segments):
+    time = np.linspace(0,12,601)
+    assert not estimate_initial(time,np.cos(5*time),'c+A*cos(w*t+p)',segment_indices=segments).values

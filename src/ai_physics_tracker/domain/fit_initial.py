@@ -11,6 +11,7 @@ from ai_physics_tracker.domain.function_fit import FitSpec
 
 MIN_OSCILLATION_SAMPLES = 24
 MIN_VISIBLE_CYCLES = 2.0
+MIN_OSCILLATION_EXPLAINED_VARIANCE = 0.5
 CONSTANT_RTOL = 64 * np.finfo(float).eps
 
 
@@ -139,8 +140,13 @@ def estimate_initial(
         coefficients = polynomial.coef if polynomial else [float(np.mean(scaled))]
         estimates = {name: coefficients[power] * sign * signal_scale for name, (power, sign) in roles.items()}
     else:
-        if (len(time) < MIN_OSCILLATION_SAMPLES or (segment_indices is not None
-                and len(set(np.asarray(segment_indices))) != 1)):
+        if segment_indices is not None:
+            segments = np.asarray(segment_indices, dtype=float)
+            if segments.shape != time.shape or not np.all(np.isfinite(segments)):
+                return manual("Segment labels must match the finite 1D samples.")
+            if len(np.unique(segments)) != 1:
+                return manual("Oscillation estimation needs one continuous segment.")
+        if len(time) < MIN_OSCILLATION_SAMPLES:
             return manual("Oscillation estimation needs at least 24 samples in one continuous segment.")
         if np.ptp(scaled) <= CONSTANT_RTOL:
             return manual("The source is constant or too close to constant.")
@@ -156,7 +162,7 @@ def estimate_initial(
         spectrum[0] = 0
         frequency = np.fft.rfftfreq(size, d=float(np.median(step)))[int(np.argmax(spectrum))]
         if frequency * (time[-1]-time[0]) < MIN_VISIBLE_CYCLES:
-            return manual("Fewer than two observable cycles; frequency is unreliable.")
+            return manual("The dominant sampled frequency is too close to fewer than two cycles; extend the interval.")
         omega = 2 * np.pi * frequency
         decay = 0.0
         if "decay" in roles:
@@ -172,6 +178,11 @@ def estimate_initial(
         envelope = np.exp(-decay*time)
         design = np.column_stack((np.ones(len(time)), envelope*np.cos(omega*time), envelope*np.sin(omega*time)))
         coef = np.linalg.lstsq(design, scaled, rcond=None)[0]
+        # 仅有最大频谱峰不足以证明能给出可靠建议：纯噪声也必有最大峰。
+        total = float(np.sum(centered**2))
+        unexplained = float(np.sum((scaled-design@coef)**2))
+        if not total or 1-unexplained/total < MIN_OSCILLATION_EXPLAINED_VARIANCE:
+            return manual("No dominant oscillation explains at least half the sample variation.")
         estimates = {roles["offset"]: coef[0]*signal_scale,
                      roles["amplitude"]: np.hypot(coef[1], coef[2])*signal_scale,
                      roles["frequency"]: omega, roles["phase"]: np.arctan2(-coef[2], coef[1])}
@@ -180,7 +191,7 @@ def estimate_initial(
     if not all(np.isfinite(value) for value in estimates.values()):
         return manual("Estimated parameters exceed the finite numerical range.")
     return InitialEstimate(family, tuple((name, float(estimates[name])) for name in parsed.parameter_names),
-                           "Estimated from data; inspect and edit before Fit. Frequency is an initial guess, not a physical period.")
+                           "Estimated from data; inspect and edit before Fit. Frequency describes the sampled signal; higher frequencies can alias. It is an initial guess, not a physical period.")
 
 
 def adopt_estimate(spec: FitSpec, estimate: InitialEstimate) -> FitSpec:

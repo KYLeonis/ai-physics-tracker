@@ -40,6 +40,7 @@ def test_nonpendulum_fit_preview_publish_and_restore_settings(qtbot, synthetic_v
     assert panel.sourceChoice.currentIndex() == 0
     panel.startFrame.setValue(1)
     panel.previewButton.click()
+    qtbot.waitUntil(lambda: 'Initial curve only' in panel.jobLabel.text())
     assert 'Initial curve only' in panel.jobLabel.text()
     assert session.derived_data(track, 'function_fit_x') is None
     panel.fitButton.click()
@@ -50,7 +51,7 @@ def test_nonpendulum_fit_preview_publish_and_restore_settings(qtbot, synthetic_v
     assert 'RMSE' in panel.summary.toPlainText()
     assert 'a=20' in panel.summary.toPlainText()
     panel.editor.setText('c')
-    assert 'Draft changed' in panel.draftLabel.text()
+    assert 'Current draft' in panel.draftLabel.text()
     assert 'a*t + b' in panel.summary.toPlainText()
     panel.restoreButton.click()
     assert panel.editor.text() == 'a*t + b'
@@ -111,6 +112,7 @@ def test_invalid_formula_clears_initial_preview(qtbot, synthetic_video_path):
     window, _, _ = _window(qtbot, synthetic_video_path)
     panel = window.chartActions.signalPanel
     panel.previewButton.click()
+    qtbot.waitUntil(lambda: bool(panel.signalPlot.listDataItems()))
     assert panel.signalPlot.listDataItems()
     panel.editor.setText('a**')
     assert not panel.signalPlot.listDataItems()
@@ -201,7 +203,7 @@ def test_wheel_scrolls_page_and_only_control_wheel_zooms(qtbot, synthetic_video_
     window, _, _ = _window(qtbot, synthetic_video_path)
     panel, scroll = window.chartActions.signalPanel, window._analysisToolsScroll
     panel.previewButton.click()
-    qtbot.wait(20)
+    qtbot.waitUntil(lambda: bool(panel.signalPlot.listDataItems()))
     bar = scroll.verticalScrollBar()
     bar.setValue(bar.maximum() // 2)
     old_scroll = bar.value()
@@ -282,7 +284,7 @@ def test_analysis_tools_fit_narrow_viewport_and_initial_curve_cannot_hide_signal
     panel.editor.setText('c')
     panel.parameterTable.item(0, 1).setText('1e24')
     panel.previewButton.click()
-    qtbot.wait(30)
+    qtbot.waitUntil(lambda: bool(panel.signalPlot.listDataItems()))
     scroll = window._analysisToolsScroll
     assert panel.width() <= scroll.viewport().width()
     window.resize(700, 640)
@@ -360,10 +362,12 @@ def test_reopened_near_cfr_explains_disabled_fit_and_confirmation_is_visible_in_
     assert panel.fitReadinessLabel.isHidden()
     assert window.timingButton.isHidden()
     panel.previewButton.click()
+    qtbot.waitUntil(lambda: 'recompute source first' in panel.jobLabel.text())
     assert 'recompute source first' in panel.jobLabel.text()
     session.compute_kinematics(session.tracks[0].track_id)
     window.chartActions.refresh()
     panel.previewButton.click()
+    qtbot.waitUntil(lambda: 'Initial curve only' in panel.jobLabel.text())
     assert 'Initial curve only' in panel.jobLabel.text()
     assert session.project.observations == original_points
     for workspace in ('acquire', 'analysis', 'setup', 'analysis'):

@@ -72,3 +72,10 @@ def test_constraints_are_validated_before_solving():
         FitParameter("a", 4, upper=2)
     with pytest.raises(ValueError):
         FitSpec("a*t", (FitParameter("b"),))
+
+
+@pytest.mark.parametrize('scale',[1e17,1e-200])
+def test_identifiable_constant_does_not_depend_on_signal_units(scale):
+    outcome = fit_function(np.arange(20.),np.full(20,scale),FitSpec('c',(FitParameter('c',scale),)))
+    assert outcome.is_publishable,outcome
+    assert dict(outcome.parameter_values)['c'] == pytest.approx(scale,rel=1e-10,abs=0)
