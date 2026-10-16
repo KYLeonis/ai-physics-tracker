@@ -85,7 +85,8 @@ def test_header_custom_algorithm_uses_same_selection_path_and_cancel_is_inert(
         return "Uniform", accepted
 
     monkeypatch.setattr(QInputDialog, "getItem", choose)
-    window.setWorkspace("analysis")
+    # 选帧属于Acquire；Analysis的推荐已改为用途入口。
+    window.setWorkspace("acquire")
     custom = next(button for button in window.workflowHeader.nextStepButtons
                   if button.property("actionId") == "customize_frames")
     assert custom.isVisible() and custom.isEnabled()

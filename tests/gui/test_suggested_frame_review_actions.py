@@ -549,7 +549,8 @@ def test_correct_mode_toggle_and_esc_cancel_ac4(
     if from_header:
         window.trackingActions._context_key = None
         window.trackingActions.refresh()
-        window.setWorkspace("analysis")
+        # 修正入口保留在Acquire头部，Analysis显示分析用途。
+        window.setWorkspace("acquire")
         assert window.workflowHeader.nextStepButtons[1].text() == "Correct position"
         window.workflowHeader.nextStepButtons[1].click()
         assert window.currentWorkspace == "acquire"
