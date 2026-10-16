@@ -52,7 +52,8 @@ def test_nonpendulum_fit_preview_publish_and_restore_settings(qtbot, synthetic_v
     assert 'a=20' in panel.summary.toPlainText()
     panel.editor.setText('c')
     assert 'Current draft' in panel.draftLabel.text()
-    assert 'a*t + b' in panel.summary.toPlainText()
+    assert 'Current draft' in panel.summary.toPlainText()
+    assert panel.savedRecord(disk=False).extra_fields['analysis']['spec']['expression'] == 'a*t + b'
     panel.restoreButton.click()
     assert panel.editor.text() == 'a*t + b'
     assert panel.startFrame.value() == 1
@@ -104,7 +105,7 @@ def test_upstream_change_cancels_and_stale_result_remains_readable(qtbot, synthe
     session.compute_kinematics(track)
     window.refreshAnalysisHistory()
     window.chartActions.refresh()
-    assert 'Saved result: stale' in panel.summary.toPlainText()
+    assert 'Latest applied result: stale' in panel.summary.toPlainText()
     assert 'RMSE' in panel.summary.toPlainText()
 
 

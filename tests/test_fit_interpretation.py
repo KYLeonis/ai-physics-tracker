@@ -123,3 +123,10 @@ def test_result_is_frozen():
     assert isinstance(result, FitInterpretation)
     with pytest.raises(FrozenInstanceError):
         result.rmse = 0.0
+
+
+def test_large_finite_constant_does_not_overflow_the_baseline_mean():
+    result=interpret_fit([1e308,1e308],[1e308,1e308])
+    assert result.rmse==0
+    assert result.baseline_rmse==0
+    assert result.improvement_percent is None

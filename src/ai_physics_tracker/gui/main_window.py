@@ -823,12 +823,21 @@ class MainWindow(QMainWindow):
     def analysisPurposeTaskCard(self):
         """分析工具页的用途卡；分析图表页继续使用原有任务投影。"""
 
-        if (self.currentWorkspace != WORKSPACE_ANALYSIS
-                or self.analysisTabs.currentIndex() != 1):
+        if self.currentWorkspace != WORKSPACE_ANALYSIS:
             return None
         from ai_physics_tracker.application.workflow_projection import ActionSpec, TaskCard
         from ai_physics_tracker.application.signal_analysis_job import signal_source
 
+        if self.analysisTabs.currentIndex() == 0:
+            ready = self.analysisSession is not None and bool(self.analysisSession.tracks)
+            return TaskCard(
+                mode="analyze", title="Current: Explore motion",
+                explanation=("Input: trajectory data. Output: motion charts. Next: choose a quantity, update source charts or choose a tool.",),
+                primary=ActionSpec("analysis_fit_formula", "Fit a formula", enabled=ready,
+                                   reason=None if ready else "Open a project and add a track first."),
+                secondary=(ActionSpec("analysis_measure_intervals", "Measure repeat intervals", enabled=ready),
+                           ActionSpec("update_charts", "Update source charts", enabled=self.chartActions.panel.recomputeButton.isEnabled())),
+            )
         panel = self.chartActions.signalPanel
         purpose = "measure" if panel.methods.currentIndex() == 1 else "fit"
         label = "Measure repeat intervals" if purpose == "measure" else "Fit a formula"

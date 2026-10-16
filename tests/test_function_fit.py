@@ -94,3 +94,13 @@ def test_parameter_units_do_not_cause_false_convergence(scale,quadratic):
     assert outcome.is_publishable,outcome
     assert outcome.rmse/scale<1e-8
     assert dict(outcome.parameter_values)==pytest.approx(true,rel=1e-7,abs=0)
+
+
+@pytest.mark.parametrize('scale',[1e12,1e-100,1e-200])
+def test_zero_initial_slope_is_scaled_from_bounded_model_response(scale):
+    time=np.linspace(0,8,241)
+    spec=FitSpec('a*t',(FitParameter('a',0.),))
+    outcome=fit_function(time,3*scale*time,spec)
+    assert outcome.is_publishable,outcome
+    assert outcome.rmse/scale<1e-8
+    assert dict(outcome.parameter_values)['a']==pytest.approx(3*scale,rel=1e-7,abs=0)

@@ -65,3 +65,11 @@ def test_analysis_tools_header_uses_purpose_source_guidance(
     assert "20" not in header.nextStepLabel.text()
     assert header.nextStepButtons[0].text() == "Show source"
     assert session.project.observations
+
+
+def test_explore_header_also_keeps_training_threshold_out_of_analysis(qtbot,synthetic_video_path):
+    window,_,_=_window(qtbot,synthetic_video_path)
+    window.openAnalysisPurpose('explore')
+    window.trackingActions.refresh()
+    assert 'Explore motion' in window.workflowHeader.nextStepLabel.text()
+    assert '20' not in window.workflowHeader.nextStepLabel.text()

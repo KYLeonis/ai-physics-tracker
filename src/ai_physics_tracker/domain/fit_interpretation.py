@@ -63,7 +63,9 @@ def interpret_fit(measured: npt.ArrayLike, predicted: npt.ArrayLike) -> FitInter
         # 缩放后求平方均值，与 function_fit 的 RMSE 口径一致。
         with np.errstate(over="raise", invalid="raise"):
             rmse = _scaled_rmse(predicted_arr - measured_arr)
-            baseline_rmse = _scaled_rmse(measured_arr - float(np.mean(measured_arr)))
+            signal_scale = float(np.max(np.abs(measured_arr)))
+            mean = float(np.mean(measured_arr / signal_scale)) * signal_scale if signal_scale else 0.0
+            baseline_rmse = _scaled_rmse(measured_arr - mean)
     except FloatingPointError as exc:
         raise ValueError("Fit error or baseline computation overflows the finite real domain") from exc
     if not (math.isfinite(rmse) and math.isfinite(baseline_rmse)):

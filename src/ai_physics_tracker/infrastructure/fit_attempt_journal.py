@@ -122,6 +122,10 @@ class FitAttemptJournal:
         destination = Path(root).resolve()
         if destination == self._root:
             return
+        if self._read_only:
+            # 冲突/未知内容不会因连续SaveAs复制相同字节而变成本实现拥有的数据。
+            self._root = destination
+            return
 
         path = _journal_path(destination)
         try:
@@ -414,7 +418,7 @@ def _decode_warning(error: _JournalDecodeError) -> str:
 def _read_warning(path: Path, error: OSError) -> str:
     return (
         f"Could not read fit attempt journal {path}: {error}. "
-        "The journal is read-only."
+        "Changes remain in memory; retry when the file can be read."
     )
 
 

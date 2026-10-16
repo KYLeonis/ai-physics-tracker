@@ -102,19 +102,45 @@ def fit_function(
     def parameter_values(vector: np.ndarray) -> dict[str, float]:
         return fixed | {parameter.name: float(value) for parameter, value in zip(free, vector * parameter_scales)}
 
-    def residual(vector: np.ndarray) -> np.ndarray:
+    def model(parameters: dict[str, float]) -> np.ndarray:
         nonlocal evaluations
         if is_cancelled():
             raise _FitStopped("cancelled", "Fit was cancelled")
         if evaluations >= spec.max_evaluations:
             raise _FitStopped("evaluation_limit", "Model evaluation budget was reached")
         evaluations += 1
-        predicted = expression.evaluate(time, parameter_values(vector))
+        return expression.evaluate(time, parameters)
+
+    def residual(vector: np.ndarray) -> np.ndarray:
+        predicted = model(parameter_values(vector))
         with np.errstate(over="raise", invalid="raise"):
             return (predicted - values) / residual_scale
 
-    initial = np.array([parameter.initial for parameter in free], dtype=float) / parameter_scales
     try:
+        if any(parameter.initial == 0 for parameter in free):
+            # 零初值没有自身尺度：在用户边界内用一次有限探针估算响应尺度。
+            # 探针只作坐标预处理，不改变可见初值/边界；同样消耗模型评估预算。
+            base_parameters = fixed | {parameter.name: parameter.initial for parameter in free}
+            base = model(base_parameters)
+            for index, parameter in enumerate(free):
+                if parameter.initial != 0:
+                    continue
+                probe = min(1.0, parameter.upper) if parameter.upper is not None else 1.0
+                if probe <= 0:
+                    probe = max(-1.0, parameter.lower) if parameter.lower is not None else -1.0
+                try:
+                    probed = model(base_parameters | {parameter.name: probe})
+                    with np.errstate(over="raise", invalid="raise"):
+                        response = float(np.max(np.abs(probed-base)))
+                    if response > 0:
+                        scale = math.exp(math.log(abs(probe))+math.log(residual_scale)-math.log(response))
+                        if not math.isfinite(scale) or scale <= 0:
+                            raise _FitStopped("unidentifiable", "Parameter scale is outside the finite numerical range")
+                        parameter_scales[index] = scale
+                except (ExpressionError, FloatingPointError, OverflowError):
+                    # 合法初值的探针可越出公式定义域；不因此修改初值或拒绝原模型。
+                    parameter_scales[index] = 1.0
+        initial = np.array([parameter.initial for parameter in free], dtype=float) / parameter_scales
         if not free:
             errors = residual(initial)
             solution, status, message = initial, None, "Computed with given fixed parameters"

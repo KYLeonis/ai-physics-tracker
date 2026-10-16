@@ -193,3 +193,26 @@ def test_source_bar_tracks_signal_panel_target(qtbot,synthetic_video_path):
     panel.trackChoice.setCurrentIndex(panel.trackChoice.findData(str(second.track_id)))
     assert 'Second signal' in window._analysisSourceLabel.text()
     assert '(5)' in window._analysisSourceLabel.text()
+
+
+def test_restore_disk_settings_becomes_draft_without_relabeling_current_curve(qtbot,synthetic_video_path,tmp_path):
+    window,session,_=_window(qtbot,synthetic_video_path)
+    actions,panel=window.chartActions,window.chartActions.signalPanel
+    panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
+    session.save_as(tmp_path/'saved');actions.syncJournal(saved=True);actions.refresh()
+    panel.editor.setText('c');panel.fitButton.click();qtbot.waitUntil(lambda:not actions.pending)
+    panel.latestButton.click()
+    assert 'Latest applied result:' in panel.summary.toPlainText()
+    assert 'Recorded formula: c' in panel.summary.toPlainText()
+    assert panel.signalPlot.listDataItems()[-1].name()=='Latest applied result'
+    panel.previousButton.click()
+    assert panel.signalPlot.listDataItems()[-1].name()=='Previous disk-saved result'
+    panel.detailsGroup.setChecked(True)
+    panel.restoreButton.click()
+    assert 'Current draft' in panel.summary.toPlainText()
+    assert 'Disk-saved historical' not in panel.summary.toPlainText()
+    assert panel.editor.text()=='a*t + b'
+    assert not panel.signalPlot.listDataItems()
+    assert 'current draft' in panel.draftLabel.text()
+    _preview(qtbot,panel)
+    assert panel.signalPlot.listDataItems()[-1].name()=='Initial preview'

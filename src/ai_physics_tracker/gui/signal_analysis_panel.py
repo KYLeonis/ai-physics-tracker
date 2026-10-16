@@ -649,8 +649,7 @@ class SignalAnalysisPanel(QWidget):
         finally:
             self._loading = False
         self.settingsChanged.emit()
-        self.draftLabel.setText("Saved settings restored; stale results remain read-only")
-        self.displaySaved()
+        self.draftLabel.setText("Recorded settings restored to current draft — initial preview pending")
 
     def renderSamples(self, samples, unit, predicted=None, residual=None, *, wrapped=False, title="Initial preview") -> None:
         self.signalPlot.clear()
@@ -716,7 +715,7 @@ class SignalAnalysisPanel(QWidget):
             predicted = [row[0] for row in record.values] if fitting else None
             residual = [row[1] for row in record.values] if fitting else None
             source = metadata["source_snapshot"]
-            self.renderSamples(samples, record.unit, predicted, residual, wrapped=source["kind"] == "angular_position", title="Previous saved result")
+            self.renderSamples(samples, record.unit, predicted, residual, wrapped=source["kind"] == "angular_position", title="Previous disk-saved result" if previous else "Latest applied result")
             summary = metadata["summary"]
             if fitting:
                 self.conversionActions.setVisible(any(item.get("error") for item in summary.get("result_formulas", [])))
@@ -724,7 +723,7 @@ class SignalAnalysisPanel(QWidget):
                 details = (f"{summary['status']}: {summary['message']}\n"
                            + f"RMSE: {summary['rmse']:.8g} {record.unit}; evaluations: {summary['evaluations']}\n"
                            + "Parameters: " + ", ".join(f"{name}={value:.8g}" for name, value in summary["parameter_values"])
-                           + "\nSaved formula: " + metadata["spec"]["expression"]
+                           + "\nRecorded formula: " + metadata["spec"]["expression"]
                            + "\nConvergence does not validate the physical model; residuals are not measurement uncertainty.")
                 for item in summary.get("result_formulas", []):
                     details += f"\nUser result {item['name']} = {item['formula']}: " + (str(item["value"]) if item["error"] is None else item["error"])
@@ -732,12 +731,12 @@ class SignalAnalysisPanel(QWidget):
                 mean, std = summary["mean_interval_s"], summary["sample_std_s"]
                 meanText = f"{mean:.6g} s" if mean is not None else "unavailable"
                 stdText = f"{std:.6g} s" if std is not None else "unavailable"
-                self.resultLabel.setText(f"Saved crossings ({record.status}) · {len(summary['events'])} events\nMean interval: {meanText} · sample std: {stdText}\n{summary['message']}")
+                self.resultLabel.setText(f"{'Disk-saved historical' if previous else 'Latest applied'} crossings ({record.status}) · {len(summary['events'])} events\nMean interval: {meanText} · sample std: {stdText}\n{summary['message']}")
                 details = (f"{summary['measurement_status']}: {summary['message']}\n"
                            + f"Events: {len(summary['events'])}; intervals: {len(summary['intervals_s'])}; "
                            + f"mean: {mean if mean is not None else 'unavailable'} s; sample std: {std if std is not None else 'unavailable'} s\n"
                            + "Intervals (s): " + ", ".join(f"{value:.6g}" for value in summary["intervals_s"])
-                           + "\nSaved crossing settings: " + str(metadata["spec"]))
+                           + "\nRecorded crossing settings: " + str(metadata["spec"]))
                 for event in summary["events"]:
                     details += f"\nEvent: frames {event['lower_frame_index']}–{event['upper_frame_index']}, video time {event['time_s']:.6f} s"
                 self.refreshDraftDisplay()
@@ -749,7 +748,7 @@ class SignalAnalysisPanel(QWidget):
                 timing_message = "Approximate timing\n" if timing.get("approximation") else ""
             if timing_message:
                 self.resultLabel.setText(self.resultLabel.text() + "\n" + timing_message.strip())
-            self.summary.setPlainText(f"Saved result: {record.status} — {source['kind']} [{record.unit}]\n"
+            self.summary.setPlainText(f"{'Disk-saved historical' if previous else 'Latest applied'} result: {record.status} — {source['kind']} [{record.unit}]\n"
                                      + f"Samples: {len(samples)}; source frames {metadata['interval']}; t=0 at interval start\n"
                                      + timing_message
                                      + details)

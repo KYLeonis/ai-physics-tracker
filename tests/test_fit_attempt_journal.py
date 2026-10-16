@@ -266,3 +266,17 @@ def test_bind_never_overwrites_diverged_same_project_history(tmp_path):
     first.bind(b)
     assert first.read_only
     assert (b/'analysis/fit-attempts.json').read_bytes()==before
+
+
+def test_conflicting_log_stays_read_only_after_second_save_as(tmp_path):
+    import shutil
+    a,b,c=tmp_path/'a',tmp_path/'b',tmp_path/'c'
+    first,second=FitAttemptJournal('p',a),FitAttemptJournal('p',b)
+    first.add({'id':'a','status':'failed'})
+    second.add({'id':'b','status':'failed'})
+    first.bind(b)
+    original=(b/'analysis/fit-attempts.json').read_bytes()
+    shutil.copytree(b,c)
+    first.bind(c)
+    assert first.read_only
+    assert (c/'analysis/fit-attempts.json').read_bytes()==original

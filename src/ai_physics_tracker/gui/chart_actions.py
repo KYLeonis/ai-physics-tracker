@@ -435,7 +435,13 @@ class ChartActions(QObject):
                 if result.record is None:
                     self.signalPanel.jobLabel.setText(result.fit_outcome.status + ": " + result.fit_outcome.message + " — saved result retained")
                     self._finishAttempt(result.fit_outcome.status, result.fit_outcome.message, solver=asdict(result.fit_outcome))
-                    self.signalPanel.jobLabel.setText(self.signalPanel.jobLabel.text() + ". Next: inspect the initial curve, adjust values / bounds or Estimate, then retry.")
+                    next_step = {
+                        "evaluation_limit": "Raise Model evaluation limit in Optional settings, or Estimate initial values and retry.",
+                        "insufficient_samples": "Extend the interval or fix / remove free parameters.",
+                        "unidentifiable": "Fix / remove redundant parameters or choose data that distinguishes them.",
+                        "domain_error": "Check the formula domain (log, sqrt, division) and edit initial values.",
+                    }.get(result.fit_outcome.status, "Inspect the initial curve, adjust values / bounds or Estimate, then retry.")
+                    self.signalPanel.jobLabel.setText(self.signalPanel.jobLabel.text() + ". Next: " + next_step)
                     self.refresh()
                     return
                 session.apply_analysis_result(result)
@@ -466,7 +472,7 @@ class ChartActions(QObject):
             self.window.refreshAnalysisHistory()
         self.refresh()
         if signal_job and not self._cancel.is_set() and isinstance(result, SignalAnalysisResult) and result.record is not None:
-            self.signalPanel.resultLabel.setText(self.signalPanel.resultLabel.text().replace("Latest applied fit", "Current fit result").replace("Saved crossings", "Current crossings"))
+            self.signalPanel.resultLabel.setText(self.signalPanel.resultLabel.text().replace("Latest applied fit", "Current fit result").replace("Latest applied crossings", "Current crossings"))
             self.signalPanel.draftLabel.setText("Current calculation result — save project to retain the scientific result")
             self.signalPanel.jobLabel.setText("Calculation completed. Inspect the overlay and error comparison; Save keeps the scientific result.")
 
