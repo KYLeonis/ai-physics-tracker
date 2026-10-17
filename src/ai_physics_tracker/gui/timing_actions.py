@@ -1,13 +1,14 @@
-"""非模态时序验证状态与显式近似测量确认；只在 GUI 线程提交结果。"""
+"""非模态时序验证与自动采用合格近似；只在 GUI 线程提交结果。"""
 
 from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
+from dataclasses import replace
 from threading import Event
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QTimer
-from PySide6.QtWidgets import QMessageBox
 
 from ai_physics_tracker.application.project_media import PreparedProject, ProjectMediaService, ValidatedMedia
+from ai_physics_tracker.application.project_session import ProjectSessionError
 from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
 
 if TYPE_CHECKING:
@@ -41,7 +42,7 @@ class TimingActions(QObject):
         self._future = None
         self._prepared, self._service, self._token = prepared, service, token
         self._report = prepared.timing
-        self._showReport()
+        self._applyReport()
         if prepared.validation is not None and service is not None:
             self._start()
 
@@ -80,13 +81,25 @@ class TimingActions(QObject):
             if session is not None and video_id is not None:
                 session.record_media_validation(video_id, result.timing, result.sha256)
                 self.window.projectActions.refresh()
-        self.window._measurement_allowed = self._report.status == "cfr"
-        self.window.addTrackButton.setEnabled(self.window._measurement_allowed)
-        self.window._refreshCalibrationUI()
-        self.window.analysisChanged.emit()
-        self._showReport()
+        self._applyReport()
         self.window.statusBar().showMessage(self._report.reason +
             (" — measurements enabled" if self.window._measurement_allowed else " — browsing only"))
+
+    def _applyReport(self) -> None:
+        window = self.window
+        session, video_id = window._annotation_session, window._annotation_video_id
+        if self._report.status == "near_cfr" and session is not None and video_id is not None:
+            try:
+                session.accept_approximate_timing(video_id, self._report, automatic=True)
+            except ProjectSessionError as error:
+                self._report = replace(self._report, status="unknown", reason=str(error))
+                session.confirm_video_timing(video_id, self._report)
+        window._measurement_allowed = bool(session is not None and video_id is not None
+                                           and self._report.status in ("cfr", "near_cfr") and session.can_measure(video_id))
+        self.window.addTrackButton.setEnabled(self.window._measurement_allowed)
+        self.window._refreshCalibrationUI()
+        self._showReport()
+        self.window.analysisChanged.emit()
 
     def _showReport(self) -> None:
         window = self.window
@@ -100,10 +113,8 @@ class TimingActions(QObject):
             errors = approximation_errors(report, window._timeline.fps_nominal)
             if errors is not None:
                 window.timingLabel.setText(
-                    f"Near-CFR: {window._timeline.fps_nominal:.8g} FPS; max time error ≈ {errors[0]*1000:.4f} ms; "
-                    f"interval error ≈ {errors[1]*1000:.4f} ms — confirmation required")
-                window.timingButton.setText("Use approximate timing…")
-                window.timingButton.show()
+                    f"Approximate timing (automatic): {window._timeline.fps_nominal:.8g} FPS; max time error ≈ {errors[0]*1000:.4f} ms; "
+                    f"interval error ≈ {errors[1]*1000:.4f} ms — measurements enabled")
                 return
             window.timingLabel.setText("Browsing only: saved Timeline exceeds the timing approximation budget")
             return
@@ -120,38 +131,7 @@ class TimingActions(QObject):
             self._cancel.set()
             window.timingLabel.setText("Cancelling timing validation — browsing remains available")
             return
-        if self._report.status != "near_cfr":
-            self._start()
-            return
-        session, video_id = window._annotation_session, window._annotation_video_id
-        if session is None or video_id is None or window._timeline is None:
-            return
-        errors = approximation_errors(self._report, window._timeline.fps_nominal)
-        if errors is None:
-            return
-        window.stopPlayback()
-        answer = QMessageBox.question(window, "Accept approximate timing?",
-            f"This video is NOT strictly constant-frame-rate.\n"
-            f"Measurements will use the saved Timeline: {window._timeline.fps_nominal:.10g} FPS.\n"
-            f"Maximum time-grid error: {errors[0]*1000:.6f} ms.\n"
-            f"Maximum interval error: {errors[1]*1000:.6f} ms.\n"
-            "These bounds do not guarantee velocity or acceleration accuracy.\n"
-            "New points will record this approximation. Existing points are unchanged.\n"
-            "Accept for this video session? (Reopening requires confirmation again.)",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
-        if answer != QMessageBox.StandardButton.Yes:
-            return
-        session.accept_approximate_timing(video_id, self._report)
-        window._measurement_allowed = True
-        window.addTrackButton.setEnabled(True)
-        window._refreshCalibrationUI()
-        window.analysisChanged.emit()
-        window.addTrackButton.setToolTip("Approximate timing explicitly accepted for this session")
-        window.timingLabel.setText(
-            f"Approximate timing accepted: {window._timeline.fps_nominal:.8g} FPS; "
-            f"max time error ≈ {errors[0]*1000:.4f} ms; interval error ≈ {errors[1]*1000:.4f} ms")
-        window.statusBar().showMessage("Approximate timing accepted — Add track is now available")
-        window.timingButton.hide()
+        self._start()
 
     def shutdown(self) -> None:
         self._cancel.set()

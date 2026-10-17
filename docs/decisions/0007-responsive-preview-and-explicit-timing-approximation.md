@@ -4,6 +4,8 @@
 
 Accepted (2026-08-30，用户授权执行 Human Review 反馈修复)
 
+Decision 4 / 5的人工确认部分由[ADR-0024](0024-automatic-near-cfr-acceptance.md)取代（2026-10-17），其余条款保持。
+
 部分取代 ADR-0006 Decision 1/4/5 的加载时机与时序门禁；其他条款不变。
 
 ## Context

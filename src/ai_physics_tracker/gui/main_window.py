@@ -161,7 +161,7 @@ class MainWindow(QMainWindow):
         self.videoSelector = QComboBox(self)
         self.timingLabel = QLabel("No video selected", self)
         self.timingLabel.setWordWrap(True)
-        self.timingButton = QPushButton("Use approximate timing…", self)
+        self.timingButton = QPushButton("Retry timing detection", self)
         self.timingButton.hide()
         self.previousButton = QPushButton("Previous frame", self)
         self.nextButton = QPushButton("Next frame", self)
@@ -888,8 +888,11 @@ class MainWindow(QMainWindow):
                 "Preview the initial curve, then click Fit explicitly."
             )
         elif self.analysisSession is not None and not self.analysisSession.can_measure(self.activeVideoId):
-            primary = ActionSpec("analysis_confirm_timing", "Review timing")
-            next_text = "Review timing beside the video, then confirm explicitly before calculating."
+            pending_timing = self.timingActions.pending
+            reason = self.timingLabel.text()
+            primary = ActionSpec("analysis_retry_timing", "Detecting timing…" if pending_timing else "Retry timing detection",
+                                 enabled=not pending_timing and not self.timingButton.isHidden(), reason=reason)
+            next_text = "Timing is detected automatically. " + reason
         elif self.analysisSession is not None and panel.trackChoice.currentData() is not None:
             primary = ActionSpec("analysis_prepare_source", "Prepare source charts")
             next_text = "Update the source charts, then return here; no result is published by navigation."
@@ -920,7 +923,7 @@ class MainWindow(QMainWindow):
         if panel.trackChoice.currentData() is None:
             return "Add or select a track."
         if not session.can_measure(self.activeVideoId):
-            return "Timing is not authorized; confirm timing beside the video."
+            return "Timing detection is incomplete or unavailable; see the video timing status."
         quantity = panel.quantityChoice.currentText()
         if not quantity:
             return "Select a signal."

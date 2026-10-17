@@ -116,7 +116,6 @@ class ChartActions(QObject):
         self.signalPanel.undoRequested.connect(lambda: self.analysisHistory(False))
         self.signalPanel.redoRequested.connect(lambda: self.analysisHistory(True))
         self.signalPanel.prepareRequested.connect(self.prepareSignalSource)
-        self.signalPanel.timingRequested.connect(lambda: window.timingButton.click())
         self.signalPanel.setupRequested.connect(self.prepareSignalReference)
         self.signalPanel.attemptChoice.activated.connect(self.showAttempt)
         self.signalPanel.retryJournalButton.clicked.connect(self.retryJournal)

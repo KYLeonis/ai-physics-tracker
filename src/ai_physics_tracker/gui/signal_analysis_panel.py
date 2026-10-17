@@ -44,7 +44,6 @@ class SignalAnalysisPanel(QWidget):
 
     estimateRequested = Signal()
     prepareRequested = Signal()
-    timingRequested = Signal()
     setupRequested = Signal()
     settingsChanged = Signal()
     targetChanged = Signal()
@@ -277,7 +276,7 @@ class SignalAnalysisPanel(QWidget):
         self.estimateLabel.setWordWrap(True)
         preparation = QHBoxLayout()
         for text, signal in (("Prepare source charts", self.prepareRequested),
-                             ("Timing", self.timingRequested), ("Calibration / reference", self.setupRequested)):
+                             ("Calibration / reference", self.setupRequested)):
             button = QPushButton(text)
             button.clicked.connect(signal)
             preparation.addWidget(button)
@@ -612,7 +611,7 @@ class SignalAnalysisPanel(QWidget):
         elif not tracks:
             reason = "Add a track before fitting or measuring."
         elif not session.can_measure(video_id):
-            reason = "Timing not authorized. See the timing status and confirmation / retry button beside the video. Cached results remain readable."
+            reason = "Timing detection is incomplete or unavailable. See the video timing status; retry detection if offered. Cached results remain readable."
         else:
             reason = ""
         for label in (self.fitReadinessLabel, self.crossingReadinessLabel):

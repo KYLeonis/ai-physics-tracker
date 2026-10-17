@@ -320,6 +320,8 @@ Phase 2.4 补充（[ADR-0007](../decisions/0007-responsive-preview-and-explicit-
 以 JSON 字符串记录 `timing_method=near_cfr_user_accepted_v1`、`fps_nominal`、
 `max_grid_error_s`、`max_interval_error_s`，旧点、Timeline 与 schema 不变。
 
+2026-10-17 [ADR-0024](../decisions/0024-automatic-near-cfr-acceptance.md)覆盖上述人工确认步骤：同一守卫通过后GUI自动采用，新来源方法为`near_cfr_auto_accepted_v1`。旧人工来源标记不改写；重开重新探测并自动采用，无需用户再次判断。预算和unknown / VFR处理保持。
+
 - 登记视频时若探测发现容器 `avg_frame_rate ≠ r_frame_rate` 或时间戳不规则迹象，置 `vfr_suspected = true`。
 - **Phase 1 明确策略：只支持 CFR；对 `vfr_suspected` 的视频拒绝进入分析并提示用户转码为 CFR**（提示语建议 ffmpeg 命令模板）。此结论即使未来改变，也只是放宽校验 + 启用"逐帧真实时间戳"路径——数据模型已通过"观测冻结 time_s"为此留位（TrackLab time 权威制、Kinovea `AverageTimeStampsPerFrame` 的教训均已吸收）。
 

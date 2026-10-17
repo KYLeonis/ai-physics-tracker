@@ -186,9 +186,10 @@ H.264/HEVC 走完整 packet PTS 快路径，其他媒体回退完整帧扫描。
 缺工具或验证失败仍可浏览/恢复数据，但不能新增测量。现有项目数据不会被重算或删除。
 
 新视频首帧就绪后即可播放/跳帧/缩放，顶部常驻显示后台验证状态，可取消或重试。
-验证通过 CFR 后自动启用 Add track；若显示 near-CFR，选择 `Use approximate timing…`
-查看当前 Timeline FPS、全片网格误差和间隔误差，再明确 Yes 才允许测量。默认 No；
-unknown/超预算 VFR 不提供近似绕过。该确认不跨重开复用，新点保存近似来源说明。
+验证通过CFR后自动启用Add track；合格Near-CFR也自动采用近似，无需Review timing或点击Yes。
+当前Timeline FPS、全片网格误差和间隔误差保持可见；unknown / 超预算VFR保留原因及适用的重试。
+重开重新检测并自动采用，新点以`near_cfr_auto_accepted_v1`保存近似来源，旧人工接受来源保持。
+该策略由2026-10-17用户授权，[ADR-0024](decisions/0024-automatic-near-cfr-acceptance.md)覆盖原人工确认步骤。
 上限为 min(1 ms, 帧周期 1%)，**不保证速度/加速度精度**，见 ADR-0007。
 
 CI 通过 `scripts/setup_ffprobe.py` 下载固定 `eugeneware/ffmpeg-static` release

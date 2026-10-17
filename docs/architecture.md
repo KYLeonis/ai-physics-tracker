@@ -40,6 +40,8 @@ AI Physics Tracker 是一个单机桌面应用，内部由四层组成：
 Phase 2.4 项目候选提交见 [ADR-0006](decisions/0006-project-workflow-and-timing-gate.md)；
 首帧预览/后台时序验证与显式近似测量见
 [ADR-0007](decisions/0007-responsive-preview-and-explicit-timing-approximation.md)。
+
+2026-10-17起合格Near-CFR由TimingActions在主线程自动调用既有应用层接受守卫；同一入口覆盖同步接管和后台交付，重开重新检测，不再弹出Yes。新来源区分auto与旧user accepted；原误差预算、未知 / VFR / 身份与迟到守卫不变。见[ADR-0024](decisions/0024-automatic-near-cfr-acceptance.md)。
 `ProjectMediaService` 产生只读验证请求/结果，`TimingActions` 按固定加载代际在 GUI
 线程合并验证状态，不让后台任务替换用户正在编辑的 Project 快照。
 

@@ -340,28 +340,20 @@ def test_invalid_smoothing_parameters_are_rejected_before_starting_job(
     assert window.analysisSession.project.derived == ()
 
 
-def test_near_cfr_requires_explicit_authorization_before_chart_recompute(
+def test_near_cfr_automatically_enables_chart_recompute(
     qtbot: QtBot,
     monkeypatch: pytest.MonkeyPatch,
     synthetic_video_path: Path,
 ) -> None:
     window = _opened(qtbot, synthetic_video_path, _StaticProbe(_near_cfr_report()))
-    # 重新走用户使用的 deferred timing 路径；图表可读但新计算必须被锁住。
+    # 走实际菜单的后台检测路径，不再要求用户接受近似时序。
     window.projectActions._load(
         lambda service, cancel: service.open_video(synthetic_video_path, cancel)
     )
     qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
     qtbot.waitUntil(lambda: not window.timingActions.pending, timeout=5000)
-    assert not window._measurement_allowed
-    assert not window.chartActions.panel.recomputeButton.isEnabled()
-
-    monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *args: QMessageBox.StandardButton.Yes,
-    )
-    window.timingButton.click()
     assert window._measurement_allowed
+    assert window.timingButton.isHidden()
     _add_track(window)
     window.chartActions.refresh()
     assert window.chartActions.panel.recomputeButton.isEnabled()

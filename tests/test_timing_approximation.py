@@ -146,41 +146,47 @@ def _near_session(
         _near_report(fps_reference=math.nan),
     ],
 )
+@pytest.mark.parametrize('automatic', [False, True])
 def test_accept_approximate_timing_rejects_invalid_or_stale_reports(
     tmp_path: Path,
     report: TimingReport,
+    automatic: bool,
 ) -> None:
     session, video = _near_session(ProjectRepository(), tmp_path / "media.avi")
 
     with pytest.raises(ProjectSessionError, match="approximation"):
-        session.accept_approximate_timing(video.video_id, report)
+        session.accept_approximate_timing(video.video_id, report, automatic=automatic)
 
 
+@pytest.mark.parametrize('automatic', [False, True])
 def test_accept_approximate_timing_rejects_saved_fps_that_exceeds_budget(
     tmp_path: Path,
+    automatic: bool,
 ) -> None:
     session, video = _near_session(
         ProjectRepository(), tmp_path / "media.avi", fps_nominal=9.0
     )
 
     with pytest.raises(ProjectSessionError, match="approximation"):
-        session.accept_approximate_timing(video.video_id, _near_report())
+        session.accept_approximate_timing(video.video_id, _near_report(), automatic=automatic)
 
 
+@pytest.mark.parametrize('automatic', [False, True])
 def test_accepted_approximate_timing_survives_raw_point_roundtrip(
     tmp_path: Path,
     synthetic_video_path: Path,
+    automatic: bool,
 ) -> None:
     repository = ProjectRepository()
     session, video = _near_session(repository, synthetic_video_path)
     report = _near_report(max_grid_error_s=0.0001, max_interval_error_s=0.0002)
 
-    session.accept_approximate_timing(video.video_id, report)
+    session.accept_approximate_timing(video.video_id, report, automatic=automatic)
     track = session.add_track(video.video_id)
     point = session.mark_point(track.track_id, 2, 17.5, 21.25)
     assert point.source_detail is not None
     detail = json.loads(point.source_detail)
-    assert detail["timing_method"] == "near_cfr_user_accepted_v1"
+    assert detail["timing_method"] == ("near_cfr_auto_accepted_v1" if automatic else "near_cfr_user_accepted_v1")
     assert detail["fps_nominal"] == pytest.approx(10.0)
     assert detail["max_grid_error_s"] == pytest.approx(0.0001)
     assert detail["max_interval_error_s"] == pytest.approx(0.0002)

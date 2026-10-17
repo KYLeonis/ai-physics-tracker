@@ -618,8 +618,8 @@ class ProjectSession:
         self._project = replace(self._project, videos=videos)
         self.confirm_video_timing(video_id, report)
 
-    def accept_approximate_timing(self, video_id: UUID, report: TimingReport) -> None:
-        """仅在 UI 明确确认后调用；仍在应用层再次检查完整性与当前时间轴误差。"""
+    def accept_approximate_timing(self, video_id: UUID, report: TimingReport, *, automatic: bool = False) -> None:
+        """采用合格近似并区分自动 / 人工来源；再次核对完整性与实际时间轴误差。"""
 
         video = next(item for item in self._project.videos if item.video_id == video_id)
         timeline = next(item for item in self._project.timelines if item.video_id == video_id)
@@ -627,7 +627,7 @@ class ProjectSession:
         if errors is None or report.frame_count != video.frame_count:
             raise ProjectSessionError("timing approximation exceeds the allowed error budget")
         self._approximate_timing[video_id] = json.dumps({
-            "timing_method": "near_cfr_user_accepted_v1",
+            "timing_method": "near_cfr_auto_accepted_v1" if automatic else "near_cfr_user_accepted_v1",
             "fps_nominal": timeline.fps_nominal,
             "max_grid_error_s": errors[0], "max_interval_error_s": errors[1],
         }, sort_keys=True)
