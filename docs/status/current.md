@@ -7,7 +7,7 @@
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：P6.3.1 S0–S5 / AC-1–8闭环，用户HR通过，c0d1461集成main / 9250a3e文档收尾并push，main双平台CI39011226102通过，Issue #31 Closed / PR #32 Merged。当前执行[自动近似时序修复](automatic-timing-plan.md)，产品f34053f本机1241项通过，独立复审Approve / 73项通过；4a713bc仅清多余Timing入口，31项通过，[最终CI39011866524](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39011866524)双平台各1239 passed / 2 skipped；用户2026-10-17回复“通过”，此补丁完成HR并以--no-ff集成main。6.4 / 6.5未开始。
+- **Subphase / Slice**：P6.3.1 S0–S5 / AC-1–8闭环，用户HR通过，c0d1461集成main / 9250a3e文档收尾并push，main双平台CI39011226102通过，Issue #31 Closed / PR #32 Merged。当前执行[自动近似时序修复](automatic-timing-plan.md)，产品f34053f本机1241项通过，独立复审Approve / 73项通过；4a713bc仅清多余Timing入口，31项通过，[最终CI39011866524](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39011866524)双平台各1239 passed / 2 skipped；用户2026-10-17回复“通过”，此补丁完成HR并以--no-ff（801fda5）集成main，main双平台CI39014441071也已通过。6.4 / 6.5未开始。
 - **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`已集成时序补丁；bd40已完成的实现工作树 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `fix/automatic-timing-acceptance`；论文worktree未改。
 - **Development Mode**：Build Mode
 
@@ -60,7 +60,7 @@
 
 ## Recently Completed
 
-- **自动近似时序 HR通过 / 集成（2026-10-17）**：用户确认本轮免确认流程“通过”。以已复审 / CI验证的4a713bc产品树集成main；代码与数值不再改动，保留近似来源 / FPS / 误差及异常重试。同步计划、Review与状态，等待下一条指令；不启动6.4 / 6.5。
+- **自动近似时序 HR通过 / 集成（2026-10-17）**：用户确认本轮免确认流程“通过”。以已复审 / CI验证的4a713bc产品树通过801fda5集成main，集成CI39014441071双平台通过；代码与数值不再改动，保留近似来源 / FPS / 误差及异常重试。同步计划、Review与状态，等待下一条指令；不启动6.4 / 6.5。
 
 - **自动近似时序增量（2026-10-17）**：用户授权取消Review timing / Yes；f34053f让同步 / 后台 / 重开对合格Near-CFR自动调用既有守卫，来源区分auto与旧user accepted，保持FPS / 两项误差说明；unknown / 真VFR / 超预算 / 取消不伪造权限。首批46、扩大91、charts单项及f34053f全量1241项通过，独立复审Approve / 73项通过；4a713bc清多余入口后31项通过，最终双平台CI通过，本轮HR待用户；未合并此补丁。
 

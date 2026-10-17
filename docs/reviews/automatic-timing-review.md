@@ -13,3 +13,5 @@ Reviewer只读检查基线后的diff；实现 / 修复由主Agent完成。核对
 最后入口清理`4a713bc`经同一只读Reviewer复审 **Approve，无finding**；确认全仓库无timingRequested残留，实际Retry / Cancel与其余准备动作保留。独立`guided_fit / timing_actions / workflow_ui` **51 passed**，diff检查通过。最终产品与测试树以4a713bc为准；f34053f全量及其后31 / 51项局部验证组成同一回归证据，最后双平台CI回执见下。
 
 最终产品`4a713bc`的[最终CI39011866524](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39011866524) **success**，macOS / Windows Python3.11各 **1239 passed / 2 skipped**（可选pandas），安装 / FFprobe / 测试 / 清理步骤全部完成。后续只改文档，源 / 测试树与此SHA相同，不将文档HEAD说成另跑过CI。2026-10-17用户HR通过，此补丁以--no-ff集成main；集成没有代码变化，不重复科学 / 交互验收。
+
+main集成`801fda5`的[CI39014441071](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39014441071)已完成，macOS / Windows Python3.11均success；源 / 测试 / CI配置与已验收`4a713bc`完全一致。本次回执仅改文档。
