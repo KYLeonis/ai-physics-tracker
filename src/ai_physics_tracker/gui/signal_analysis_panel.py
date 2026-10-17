@@ -44,7 +44,6 @@ class SignalAnalysisPanel(QWidget):
 
     estimateRequested = Signal()
     prepareRequested = Signal()
-    timingRequested = Signal()
     setupRequested = Signal()
     settingsChanged = Signal()
     targetChanged = Signal()
@@ -277,7 +276,7 @@ class SignalAnalysisPanel(QWidget):
         self.estimateLabel.setWordWrap(True)
         preparation = QHBoxLayout()
         for text, signal in (("Prepare source charts", self.prepareRequested),
-                             ("Timing", self.timingRequested), ("Calibration / reference", self.setupRequested)):
+                             ("Calibration / reference", self.setupRequested)):
             button = QPushButton(text)
             button.clicked.connect(signal)
             preparation.addWidget(button)
