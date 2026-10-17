@@ -12,7 +12,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 
 | Subphase | Review Record | 最终 Verdict | 日期 |
 | --- | --- | --- | --- |
-| 公式拟合源自动补齐 | [fit-linked-source-review.md](fit-linked-source-review.md) | 进行中；93项定向通过，完整Gate / 本轮HR待完成 | 2026-10-17 |
+| 公式拟合源自动补齐 | [fit-linked-source-review.md](fit-linked-source-review.md) | 独立Approve / F1–F3 Closed / 全量1271 / 双平台CI通过；本轮HR待反馈 | 2026-10-17 |
 | 4.3 | [phase-4.3-plan.md](../status/phase-4.3-plan.md) Result 节（机制建立前的记录） | 修改后通过；3 项 finding 已修复并复审确认 | 2026-08-31 |
 | 4.4 | [phase-4.4-plan.md](../status/phase-4.4-plan.md) Result 节（机制建立前的记录） | 修改后通过；2 项 finding 已修复并复审确认 | 2026-09-01 |
 | 4.5 | [phase-4.5-review.md](phase-4.5-review.md) | 通过（R1 对抗性自查 + R2 独立 code-reviewer 复审 approve-with-comments；7 项 finding 全部 Closed，R2 的 4 项 Suggestion 已修复） | 2026-09-01 |

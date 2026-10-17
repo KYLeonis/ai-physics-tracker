@@ -2,12 +2,12 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-17（公式拟合联动 / 源自动补齐增量实现，93项定向通过，全量 / 独立复审进行中，未集成main）
+- 最后更新：2026-10-17（公式拟合联动最终8ea1f1b：全量1271 / 独立Approve / 双平台CI通过，本轮HR待反馈，未集成main）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[公式拟合联动](fit-linked-source-plan.md) S0–S2实现，S3完整Gate进行中。用户已认可先体验后内部整理、先公式拟合，并明确“自动补齐”。定向93项通过；全量 / 独立复审进行中，未集成或宣称本轮HR通过。P6.3.1及自动近似时序补丁已完成 / 集成main，既有Gate不替代本轮。6.4 / 6.5未开始。
+- **Subphase / Slice**：[公式拟合联动](fit-linked-source-plan.md) S0–S2及S3自动Gate完成；最终8ea1f1b全量1271 / 独立Approve / 双平台CI通过，S3本轮HR待反馈。用户已认可先体验后内部整理、先公式拟合，并明确“自动补齐”。未集成或宣称本轮HR通过。P6.3.1及自动近似时序补丁已完成 / 集成main，既有Gate不替代本轮。6.4 / 6.5未开始。
 - **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/fit-linked-source/ai-physics-tracker` / `codex/fit-linked-source`；产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main @ d38d15e`保持原验收状态；论文worktree未改。
 - **Development Mode**：Build Mode
 
@@ -15,7 +15,7 @@
 
 - **当前授权增量**：用户已通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。从main `d38d15e`在`codex/fit-linked-source` / `/Users/leonis/.codex/worktrees/fit-linked-source/ai-physics-tracker`实施[联动计划](fit-linked-source-plan.md)，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。High-risk，完整Gate / 本轮HR后集成；main与论文线暂不改。
 
-1. 完成本轮全量 / 独立复审 / 双平台CI，处理finding后交付可运行增量与本轮HR步骤，停止等待用户测试；通过前不集成main。
+1. **等待本轮Human Review反馈**：按[联动计划的启动命令与4步](fit-linked-source-plan.md#human-review-delivery)体验独立副本；自动Gate已通过，F1–F3 Closed，草稿PR [#33](https://github.com/KYLeonis/ai-physics-tracker/pull/33)。用户通过后才`--no-ff`集成main / 同步文档 / push；不把继续工作或旧HR当作本轮通过。
 2. [架构扫描复核建议](../notes/architecture-review-assessment-2026-10-17.md)保留；按用户选择先体验B后内部A，当前先完成公式拟合，后续重复间隔联动及内部整理另按已确认方向推进，全局任务统一与Undo拆分仍后置。
 3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
