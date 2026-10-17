@@ -726,7 +726,7 @@ class TrackingActions(QObject):
             }[action_id]
             window.openAnalysisPurpose(purpose)
             return
-        if action_id == "analysis_confirm_timing":
+        if action_id == "analysis_retry_timing":
             window.timingButton.click()
             return
         if action_id == "analysis_prepare_source":

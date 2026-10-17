@@ -2,6 +2,7 @@
 
 from concurrent.futures import CancelledError
 from dataclasses import dataclass
+from dataclasses import replace
 import json
 from pathlib import Path
 import shutil
@@ -176,11 +177,14 @@ def test_unknown_timing_keeps_add_track_disabled(
     assert window.trackList.count() == 0
 
 
-def test_near_cfr_no_keeps_add_track_disabled_and_allows_later_confirmation(
+def test_near_cfr_automatically_enables_measurements_without_a_question(
     qtbot: QtBot,
     monkeypatch: pytest.MonkeyPatch,
     synthetic_video_path: Path,
 ) -> None:
+    def unexpected_question(*args):
+        pytest.fail('Near-CFR must not ask the user to accept timing')
+    monkeypatch.setattr(QMessageBox, 'question', unexpected_question)
     probe = _ScriptedProbe(_ProbeStep(_near_report()))
     window = _window(probe)
     qtbot.addWidget(window)
@@ -189,23 +193,17 @@ def test_near_cfr_no_keeps_add_track_disabled_and_allows_later_confirmation(
     _start_deferred_open(window, synthetic_video_path)
     qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
     qtbot.waitUntil(lambda: not window.timingActions.pending, timeout=5000)
-    assert not window.addTrackButton.isEnabled()
-    assert window.timingButton.isVisible()
-    assert "Near-CFR" in window.timingLabel.text()
 
-    monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *args: QMessageBox.StandardButton.No,
-    )
-    window.timingButton.click()
-
-    assert not window._measurement_allowed
-    assert not window.addTrackButton.isEnabled()
-    assert window.timingButton.isVisible()
+    assert window._measurement_allowed
+    assert window.addTrackButton.isEnabled()
+    assert window.timingButton.isHidden()
+    assert 'Approximate timing (automatic)' in window.timingLabel.text()
+    assert '10 FPS' in window.timingLabel.text()
+    assert '0.1000 ms' in window.timingLabel.text()
+    assert '0.2000 ms' in window.timingLabel.text()
 
 
-def test_near_cfr_yes_records_source_detail_and_reopen_requires_confirmation(
+def test_auto_near_cfr_records_source_detail_and_revalidates_on_reopen(
     qtbot: QtBot,
     monkeypatch: pytest.MonkeyPatch,
     synthetic_video_path: Path,
@@ -220,12 +218,6 @@ def test_near_cfr_yes_records_source_detail_and_reopen_requires_confirmation(
     qtbot.waitUntil(lambda: not window.projectActions.busy, timeout=5000)
     qtbot.waitUntil(lambda: not window.timingActions.pending, timeout=5000)
 
-    monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *args: QMessageBox.StandardButton.Yes,
-    )
-    window.timingButton.click()
     assert window._measurement_allowed
     assert window.addTrackButton.isEnabled()
 
@@ -236,7 +228,7 @@ def test_near_cfr_yes_records_source_detail_and_reopen_requires_confirmation(
     point = session.mark_point(track.track_id, 2, 17.5, 21.25)
     assert point.source_detail is not None
     detail = json.loads(point.source_detail)
-    assert detail["timing_method"] == "near_cfr_user_accepted_v1"
+    assert detail["timing_method"] == "near_cfr_auto_accepted_v1"
     assert detail["fps_nominal"] == pytest.approx(10.0)
     assert detail["max_grid_error_s"] == pytest.approx(0.0001)
     assert detail["max_interval_error_s"] == pytest.approx(0.0002)
@@ -251,29 +243,46 @@ def test_near_cfr_yes_records_source_detail_and_reopen_requires_confirmation(
 
     assert window._annotation_session is not None
     assert window._annotation_session.project.observations[0].source_detail == original_source_detail
+    assert window._measurement_allowed
+    assert window.addTrackButton.isEnabled()
+    assert window.timingButton.isHidden()
+    assert probe.calls >= 2
+
+
+def test_automatic_acceptance_keeps_saved_fps_and_rejects_excess_error(qtbot, synthetic_video_path, tmp_path):
+    probe = _ScriptedProbe(_ProbeStep(_cfr_report()), _ProbeStep(_near_report()))
+    window = _window(probe)
+    qtbot.addWidget(window)
+    window.show()
+    assert window.openVideo(synthetic_video_path, show_error=False)
+    session = window.analysisSession
+    session._project = replace(session.project, timelines=(replace(session.project.timelines[0], fps_nominal=9.),))
+    root = tmp_path/'wrong-saved-fps'
+    session.save_as(root)
+
+    _start_deferred_project_open(window, root)
+    qtbot.waitUntil(lambda: not window.projectActions.busy)
+    qtbot.waitUntil(lambda: not window.timingActions.pending)
+
+    assert window.analysisSession.project.timelines[0].fps_nominal == 9.
     assert not window._measurement_allowed
+    assert not window.analysisSession.can_measure(window.activeVideoId)
     assert not window.addTrackButton.isEnabled()
-    assert window.timingButton.isVisible()
-
-    monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *args: QMessageBox.StandardButton.No,
-    )
-    window.timingButton.click()
-    assert not window._measurement_allowed
-    assert not window.addTrackButton.isEnabled()
+    assert 'allowed error budget' in window.timingLabel.text()
+    assert 'Retry' in window.timingButton.text()
 
 
+@pytest.mark.parametrize('report', [_cfr_report(), _near_report()])
 def test_late_timing_result_after_opening_new_video_cannot_change_active_session(
     qtbot: QtBot,
     synthetic_video_path: Path,
     tmp_path: Path,
+    report: TimingReport,
 ) -> None:
     second_video = tmp_path / "second.avi"
     shutil.copyfile(synthetic_video_path, second_video)
     probe = _ScriptedProbe(
-        _ProbeStep(_cfr_report(), block=True, cancel_aware=False),
+        _ProbeStep(report, block=True, cancel_aware=False),
         _ProbeStep(_unknown_report()),
     )
     window = _window(probe)
@@ -374,15 +383,17 @@ def test_cancel_validation_exposes_retry_and_retry_can_grant_cfr_permission(
     assert "CFR" in window.timingLabel.text()
 
 
+@pytest.mark.parametrize('report', [_cfr_report(), _near_report()])
 def test_save_during_validation_preserves_points_and_applies_permission_to_saved_session(
     qtbot: QtBot,
     monkeypatch: pytest.MonkeyPatch,
     synthetic_video_path: Path,
     tmp_path: Path,
+    report: TimingReport,
 ) -> None:
     probe = _ScriptedProbe(
         _ProbeStep(_cfr_report()),
-        _ProbeStep(_cfr_report(), block=True, cancel_aware=False),
+        _ProbeStep(report, block=True, cancel_aware=False),
     )
     window = _window(probe)
     qtbot.addWidget(window)

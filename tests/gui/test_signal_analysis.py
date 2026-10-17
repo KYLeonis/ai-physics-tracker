@@ -323,10 +323,13 @@ def test_live_reference_edit_cancels_pending_measurement_without_publishing(qtbo
     assert panel.referenceLine in panel.signalPlot.items()
 
 
-def test_reopened_near_cfr_explains_disabled_fit_and_confirmation_is_visible_in_analysis(
+def test_reopened_near_cfr_automatically_enables_analysis_without_confirmation(
     qtbot, synthetic_video_path, tmp_path, monkeypatch,
 ):
     from PySide6.QtWidgets import QMessageBox
+    def unexpected_question(*args):
+        raise AssertionError('Analysis must not ask for timing confirmation')
+    monkeypatch.setattr(QMessageBox, 'question', unexpected_question)
     window, session, _ = _window(qtbot, synthetic_video_path)
     root = tmp_path / 'reopened-near-cfr'
     session.save_as(root)
@@ -343,22 +346,15 @@ def test_reopened_near_cfr_explains_disabled_fit_and_confirmation_is_visible_in_
     qtbot.wait(20)
     session, panel = window.analysisSession, window.chartActions.signalPanel
     panel.editor.setText('A*exp(-gamma*t)*cos(omega*t+phi)+y0')
-    assert not panel.fitButton.isEnabled()
-    assert panel.fitReadinessLabel.isVisible()
-    assert 'Timing not authorized' in panel.fitReadinessLabel.text()
-    assert 'Timing not authorized' in panel.fitButton.toolTip()
-    assert 'not authorized' in window._analysisSourceLabel.text()
-    assert 'verified CFR' not in window._analysisSourceLabel.text()
-    assert window.timingLabel.isVisible() and window.timingButton.isVisible()
+    assert session.can_measure(window.activeVideoId)
+    assert panel.fitButton.isEnabled()
+    assert panel.previewButton.isEnabled()
+    assert panel.recurrenceButton.isEnabled()
+    assert not panel.fitReadinessLabel.isVisible()
+    assert window.timingLabel.isVisible()
     assert window.timingButton.parent() is window._analysisReferenceHost
-    assert 'Use approximate timing' in window.timingButton.text()
-    monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.StandardButton.No)
-    window.timingButton.click()
-    assert not session.can_measure(window.activeVideoId)
-    assert not panel.fitButton.isEnabled()
-    monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.StandardButton.Yes)
-    window.timingButton.click()
-    qtbot.waitUntil(panel.fitButton.isEnabled)
+    assert window.timingButton.isHidden()
+    assert 'Approximate timing (automatic)' in window.timingLabel.text()
     assert 'approximate timing' in window._analysisSourceLabel.text()
     assert panel.fitReadinessLabel.isHidden()
     assert window.timingButton.isHidden()

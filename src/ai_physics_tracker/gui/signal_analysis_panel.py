@@ -612,7 +612,7 @@ class SignalAnalysisPanel(QWidget):
         elif not tracks:
             reason = "Add a track before fitting or measuring."
         elif not session.can_measure(video_id):
-            reason = "Timing not authorized. See the timing status and confirmation / retry button beside the video. Cached results remain readable."
+            reason = "Timing detection is incomplete or unavailable. See the video timing status; retry detection if offered. Cached results remain readable."
         else:
             reason = ""
         for label in (self.fitReadinessLabel, self.crossingReadinessLabel):
