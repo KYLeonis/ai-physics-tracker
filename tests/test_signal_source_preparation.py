@@ -125,3 +125,36 @@ def test_stale_but_structurally_invalid_sources_are_never_overwritten(signal_ses
     with pytest.raises(ProjectSessionError, match="Source"):
         prepare_signal_source(session, selection, SmoothingParameters())
     assert session.project == before
+
+
+@pytest.mark.parametrize("conflict", ["smoothing", "reference", "calibration"])
+def test_conflicting_group_recipes_are_preserved_for_explicit_confirmation(signal_session, conflict):
+    session, video, track = signal_session
+    if conflict == "reference":
+        session.add_calibration(video, scale_end_1_px=(0., 0.), scale_end_2_px=(10., 0.), known_length=1., unit="m")
+        session.compute_angular(track, reference=PendulumReference((10., 0.)))
+        source = session.derived_data(track, "angular_velocity")
+        altered = replace(source, pipeline=tuple({**step, "params": {**step["params"], "pivot_px": [20., 0.]}}
+                          if step["step"] == "angular_reference" else step for step in source.pipeline))
+        quantity = "omega"
+    elif conflict == "calibration":
+        session.add_calibration(video, scale_end_1_px=(0., 0.), scale_end_2_px=(10., 0.), known_length=1., unit="m")
+        calibrated = session.compute_kinematics(track)
+        altered = next(item for item in calibrated if item.kind == "velocity")
+        session.clear_derived(track)
+        session._project = replace(session.project, active_calibration_by_video={})
+        session.compute_kinematics(track)
+        quantity = "vx"
+    else:
+        source = session.derived_data(track, "velocity")
+        altered = replace(source, pipeline=tuple({**step, "params": {**step["params"], "window_length": 9, "polyorder": 3}}
+                          if step["step"] == "savitzky_golay" else step for step in source.pipeline))
+        quantity = "vx"
+    session._project = replace(session.project, derived=tuple(
+        replace(altered if item.kind == altered.kind else item, status="stale") for item in session.project.derived))
+    before = session.project
+    for parameters in (None, SmoothingParameters()):
+        with pytest.raises(ProjectSessionError, match="conflicting"):
+            prepare_signal_source(session, SignalSelection(track, quantity, 20, 70), parameters,
+                                  PendulumReference((10., 0.)) if conflict == "reference" else None)
+    assert session.project == before

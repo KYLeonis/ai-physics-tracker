@@ -14,7 +14,7 @@ import scipy
 from ai_physics_tracker.application.chart_recipe import (
     calibration_recipe_reject_reason, reference_reject_reason, smoothing_readable_reject_reason,
     smoothing_recipe, timing_identity, unreadable_step_reason, prepare_derived_rows,
-    pipeline_step_names, reference_recipe,
+    pipeline_step_names, reference_recipe, step_params,
 )
 from ai_physics_tracker.application.kinematics_job import AnalysisInputs, analysis_inputs, derived_result_ids
 from ai_physics_tracker.application.kinematics_job import SmoothingParameters, prepare_kinematics_job, KinematicsJob
@@ -164,6 +164,16 @@ def prepare_signal_source(
             raise ProjectSessionError("Source has an unreadable timing recipe; inspect it before recomputing")
         calibration = next((value for value in session.calibrations if value.calibration_id == item.calibration_ref), None)
         _validate_source_recipe(item, identity.fps_nominal if identity else None, calibration)
+    if len({item.calibration_ref for item in group}) > 1:
+        raise ProjectSessionError("Source group has conflicting calibrations; confirm settings and recompute in Charts first")
+    for name in ("calibration_transform", "angular_reference", "angular_unwrap", "savitzky_golay"):
+        recipes = [dict(recipe) for item in group if (recipe := step_params(item, name)) is not None]
+        if name == "savitzky_golay":
+            for recipe in recipes:
+                recipe.pop("deriv", None)
+                recipe.pop("delta", None)
+        if recipes and any(recipe != recipes[0] for recipe in recipes[1:]):
+            raise ProjectSessionError("Source group has conflicting recipes; confirm settings and recompute in Charts first")
     if parameters is None:
         parameters, reference = _recorded_source_settings(sources + [item for item in group if item.kind != kind])
     if angular:
