@@ -2,7 +2,7 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-16（P6.3已集成main；P6.3.1新手分析计划获用户认可并冻结，未实施）
+- 最后更新：2026-10-17（架构扫描复核建议已记录；P6.3.1计划仍冻结、未实施）
 
 ## Current
 
@@ -16,6 +16,7 @@
 1. P6.3已完成并集成 / push main（92d00a2）；[main CI38853760797](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38853760797)双平台各1101 passed / 2 skipped，全部步骤success。Issue #29 / PR #30收口，新工作以6.3.1已冻结计划为准。已验证产品 / 测试树与e4f04a0一致。
 2. **等待P6.3.1开工指令**。[已冻结计划](phase-6.3.1-plan.md)、[Q1–16访谈及只读诊断](../notes/analysis-onboarding-interview.md)。英文、图表优先、三个用途入口、自动初值预览 / 有限结构初值估算、手改保护、结果解释 / 下一步、尝试留痕和就地准备；不设固定响应 / 新手时长。本次只计划，所有产品AC / Slices未勾选。
 3. 开工时先从main建立`feat/p6.3.1-guided-analysis`和Issue，完成S0数值 / 日志 / 生命周期契约与样本冻结；High-risk，Independent Review / 双平台CI / 本轮HR必须。原P6.3 HR不能替代新交互HR；不自动开6.4 / 6.5。
+4. 用户正在讨论GLM架构扫描结果：[复核建议草案](../notes/architecture-review-assessment-2026-10-17.md)。建议先收敛已知配方 / 源信号解释，并结合6.3.1局部整理分析生命周期；全局任务统一与Undo拆分后置。尚未认可实施，不改变冻结计划；先确定最小范围再写mini-plan。
 
 ## Active Constraints
 
@@ -59,6 +60,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **架构扫描复核（2026-10-17）**：核对GLM五个候选与现有代码 / ADR / 测试；修正任务生命周期Normal-risk、Undo / 配方无测试等判断。定向59项通过（2.62s），独立只读核查任务 / GUI回归137项通过（39.54s，561 warnings）；[建议草案](../notes/architecture-review-assessment-2026-10-17.md)按配方 / 源元数据、6.3.1局部生命周期、计算提取、后续全局生命周期 / Undo排顺序。仅评估与文档，未改产品、未开始6.3.1或重构，待用户选定方向。
 
 - **P6.3.1规划冻结（2026-10-16）**：用户完成grilling Q1–16并明确认可冻结；偏好为英文版、图表主位 / 解释旁置，不接受固定毫秒或5分钟验收门槛。只读核查已保存试用：y源 / RHS theta实际是常数拟合，T换算缺Omega；旧结果仍显示、失败缺日志等机制解释“看起来没效果”。新计划单列High-risk估初值 / 解释指标 / 自动预览生命周期 / 日志契约，不倒填旧6.3交付或实施新代码，待开工。
 
