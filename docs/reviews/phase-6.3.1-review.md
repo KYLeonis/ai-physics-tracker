@@ -97,3 +97,7 @@ GLM在3275ca0修复日志异常分类，但86de567的Windows CI仍失败（[3887
 | F35 | P3 / Should fix | Use crossing setup后旧事件线被源预览重新叠加 | 清事件及样本匹配，禁止草稿源预览复用旧标记；下一次显式Measure / 历史回看才显示记录事件 | Closed（R6独立复审） |
 
 只读Reviewer `p631_independent_gui`独立检查GUI和新应用层重建模块，首轮定向22项并指出F33–F35；主Agent修复后，对产品`97d7238`复审 **Approve，无新增finding**，独立26项通过（21.76s）。主Agent同一新应用 / GUI回归26项通过（15.87s）；完整Gate证据见[验证记录](../notes/phase-6.3.1-verification.md)。本轮交互仍需[第三轮HR](../notes/phase-6.3.1-human-review.md#第三轮反馈与复测2026-10-16)，未集成main，不以自动Gate代替用户体验。
+
+## 2026-10-17最终HR与集成
+
+用户明确回复“HR通过”。P6.3.1按本轮整体反馈收口，c0d1461以--no-ff集成main，保留084422f架构评估文档；产品 / 测试树与97d7238相同，已有1232本机全量 / R6 Approve / 双平台CI通过。不把该反馈扩大为Windows/CUDA真机通过，也不包含同条消息新提出的自动接受近似时序；后者单独开发 / 验收。

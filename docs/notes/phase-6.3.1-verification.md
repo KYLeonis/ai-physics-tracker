@@ -74,3 +74,7 @@ b9a5311：显示曲线实际公式/参数直接位于图上方；Previous saved 
 - 原main仍985fd7c、论文线154f262，两个工作树均clean；没有进入6.4 / 6.5。[第三轮HR](phase-6.3.1-human-review.md#第三轮反馈与复测2026-10-16)仍须用户亲测，不把自动Gate当HR通过。
 
 最终`97d7238`本机全量 **1232 passed（176.50s）**；[push CI38901656875](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38901656875)与[PR CI38901662270](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38901662270)均success，macOS / Windows Python3.11各 **1230 passed / 2 skipped**（可选pandas），测试及安装 / FFprobe / 清理步骤全部完成。后续仅文档同步，产品 / 测试树与该SHA相同；不将文档HEAD当作另跑过CI的产品。
+
+## 2026-10-17最终HR与集成
+
+用户明确回复“HR通过”。P6.3.1按本轮整体反馈收口，c0d1461以--no-ff集成main，保留084422f架构评估文档；产品 / 测试树与97d7238相同，已有1232本机全量 / R6 Approve / 双平台CI通过。不把该反馈扩大为Windows/CUDA真机通过，也不包含同条消息新提出的自动接受近似时序；后者单独开发 / 验收。

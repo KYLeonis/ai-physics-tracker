@@ -2,22 +2,20 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-16（P6.3.1第三轮HR反馈已返工；历史配方整页同步，R6独立复审通过，最终自动Gate通过（本机1232项 / 双平台CI），HR待复测）
+- 最后更新：2026-10-17（P6.3.1整体HR通过，c0d1461集成main；用户新授权自动接受近似时序）
 
 ## Current
 
-- **Phase**：Phase 6；6.1 / 6.2 / 6.3已集成main；6.3.1第三轮HR反馈返工，R6独立复审通过，最终自动Gate通过（本机1232项 / 双平台CI），HR待用户复测。
-- **Subphase / Slice**：P6.3已以92d00a2集成main。P6.3.1 S0–S4实现，第三轮HR反馈后完成历史配方整页只读同步 / 保留草稿 / 底部尝试曲线与反馈；产品97d7238，R6独立复审Approve，F31–F35闭环，新应用 / GUI26项通过，本机全量1232项通过（176.50s），[97d7238双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/38901656875)通过。Issue #31 / PR #32仍open/draft；等待本轮用户复测，不进入6.4 / 6.5。
-- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`（已集成6.3）；实现会话 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `feat/p6.3.1-guided-analysis`；论文worktree未改。
+- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
+- **Subphase / Slice**：P6.3.1 S0–S5 / AC-1–8闭环；产品97d7238，本机1232 passed / R6 Approve / 双平台CI各1230 passed + 2 optional-pandas skips；用户2026-10-17明确HR通过，c0d1461以--no-ff集成main。Issue #31 / PR #32收口；6.4 / 6.5未开始。
+- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`；bd40实现工作树将从此main建立独立时序修复分支；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 本轮HR未通过；本轮最终自动Gate通过，等待用户按[第三轮复测](../notes/phase-6.3.1-human-review.md#第三轮反馈与复测2026-10-16)亲测三项；PR #32仍为草稿完整diff容器，未集成main。
-2. 本轮已给启动命令，原A–E保留并补历史整页同步三项重点复测，停止等待用户亲测。通过后才`--no-ff`集成main / 文档收尾 / push，不自动启动6.4 / 6.5。
-3. 后续GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)：先验证worker工具权限；科学输出逐项核对实际代码和独立测试。原始证据只留本地忽略目录。
-
-4. [架构扫描复核建议](../notes/architecture-review-assessment-2026-10-17.md)保留；尚未授权全面重构，全局任务统一与Undo拆分仍后置。
+1. 用户已授权取消Review timing / Yes确认：对原本可点击Yes的Near-CFR检测结果自动采用近似时序，保留误差来源，不伪造帧率；独立分支实施 / 验证 / 复审与本轮HR。
+2. [架构扫描复核建议](../notes/architecture-review-assessment-2026-10-17.md)保留；尚未授权全面重构，全局任务统一与Undo拆分仍后置。
+3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
 ## Active Constraints
 
@@ -61,6 +59,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.3.1 HR通过 / 集成（2026-10-17）**：用户明确回复HR通过；已有独立R6 / 本机1232项 / 双平台CI通过，c0d1461以--no-ff集成main，保留main上084422f的架构评估文档和记录，源 / 测试树与97d7238一致。同步AC / 状态与HR记录；不将用户新增的取消时序确认需求倒填为旧HR已通过功能。
 
 - **架构扫描复核（2026-10-17）**：核对GLM五个候选与现有代码 / ADR / 测试；修正任务生命周期Normal-risk、Undo / 配方无测试等判断。定向59项通过（2.62s），独立只读核查任务 / GUI回归137项通过（39.54s，561 warnings）；[建议草案](../notes/architecture-review-assessment-2026-10-17.md)按配方 / 源元数据、6.3.1局部生命周期、计算提取、后续全局生命周期 / Undo排顺序。仅评估与文档，未改产品、未开始6.3.1或重构，待用户选定方向。
 
