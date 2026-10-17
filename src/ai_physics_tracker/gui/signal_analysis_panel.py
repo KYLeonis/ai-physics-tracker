@@ -275,9 +275,9 @@ class SignalAnalysisPanel(QWidget):
         self.estimateLabel = QLabel("Initial values are editable. Estimation supports the examples below.")
         self.estimateLabel.setWordWrap(True)
         preparation = QHBoxLayout()
-        for text, signal in (("Prepare source charts", self.prepareRequested),
-                             ("Calibration / reference", self.setupRequested)):
-            button = QPushButton(text)
+        self.prepareSourceButton = QPushButton("Retry source / preview")
+        for button, signal in ((self.prepareSourceButton, self.prepareRequested),
+                               (QPushButton("Calibration / reference"), self.setupRequested)):
             button.clicked.connect(signal)
             preparation.addWidget(button)
         # 准备入口分行，窄窗不靠隐藏横向条裁掉按钮。
@@ -433,6 +433,7 @@ class SignalAnalysisPanel(QWidget):
 
     def _methodVisibility(self) -> None:
         fitting = self.methods.currentIndex() == 0
+        self.prepareSourceButton.setText("Retry source / preview" if fitting else "Prepare source charts")
         for widget in (self.previewButton, self.fitButton, self.fitReadinessLabel, self.estimateButton, self.estimateLabel):
             widget.setVisible(fitting)
         self.recurrenceButton.setVisible(not fitting)
@@ -480,10 +481,17 @@ class SignalAnalysisPanel(QWidget):
         if self._loading:
             return
         self.editor.setQuantityLabel(self.quantityChoice.currentText() + "(t)")
-        self.sourceChoice.setEnabled(self.quantityChoice.currentText() in ("x", "y", "theta"))
+        self.refreshSourceChoice()
         self._cache = None
         self.estimateLabel.setText("Target changed. Current initial values kept; choose Estimate to prepare values for this signal.")
         self.targetChanged.emit()
+
+    def refreshSourceChoice(self) -> None:
+        """导数量只有既定SG来源，显示真实含义而非遗留的平滑选择。"""
+        selectable = self.quantityChoice.currentText() in ("x", "y", "theta")
+        self.sourceChoice.setItemText(0, "Measured" if selectable else "SG derivative")
+        self.sourceChoice.setItemText(1, "Smoothed" if selectable else "SG derivative")
+        self.sourceChoice.setEnabled(selectable and not self.history.active)
 
     def _methodChanged(self, *_args) -> None:
         if self._loading:
@@ -554,7 +562,10 @@ class SignalAnalysisPanel(QWidget):
         if track_id is None:
             raise ValueError("Select a track")
         return SignalSelection(UUID(str(track_id)), self.quantityChoice.currentText(), self.startFrame.value(),
-                               self.endFrame.value(), self.sourceChoice.currentIndex() == 1)
+                               self.endFrame.value(), self.smoothedSource())
+
+    def smoothedSource(self) -> bool:
+        return self.sourceChoice.currentIndex() == 1 and self.quantityChoice.currentText() in ("x", "y", "theta")
 
     def fitSpec(self) -> FitSpec:
         parameters = []
@@ -632,7 +643,7 @@ class SignalAnalysisPanel(QWidget):
             self.initialProtected = False
             self.jobLabel.clear()
             self.draftLabel.setText("Draft — no analysis applied")
-        if timeline:
+        if timeline and self._previewRange is None:
             self.contextLabel.setToolTip(session.measurement_timing_detail(video_id) or "Nominal video time is retained with every sample.")
             self.contextLabel.setText("Source charts required · t = 0 at interval start · angles: rad · derivatives: recorded SG. "
                                       + ("Timing not authorized; cached results only." if not session.can_measure(video_id)

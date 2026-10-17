@@ -172,3 +172,5 @@ P6.3范围为用户显式函数编辑 / 数学预览、单标量拟合、参数�
 
 
 2026-10-16：[P6.3.1英文分析体验](docs/status/phase-6.3.1-plan.md)已在[PR #32](https://github.com/KYLeonis/ai-physics-tracker/pull/32)实现；第三轮HR反馈后，保存结果与底部尝试整页同步只读配方，Return恢复原草稿，Use显式复用；原源严格匹配时重建尝试曲线，失败 / 缺源清旧图并就地反馈。2026-10-17用户HR通过，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过，不设固定响应或新手完成时限，翻译后续。
+
+2026-10-17：[公式拟合联动增量](docs/status/fit-linked-source-plan.md)已在独立工作分支实现，全量1271 / 独立复审 / 双平台CI通过，本轮HR待反馈，尚未合并：拟合页自动补齐当前轨迹缺失 / 过期的源曲线，再同步预览、单位和说明；沿用所选轨迹自身设置，冲突定义保留并提示。正式Fit仍显式，原始观测保持不变。契约见[ADR-0025](docs/decisions/0025-automatic-fit-source-preparation.md)，不把旧HR视为本轮通过。

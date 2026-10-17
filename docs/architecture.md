@@ -220,3 +220,7 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 `gui.signal_history`保留编辑草稿并投影所选历史的完整只读配方；Return恢复草稿，Use recorded setup显式复用设置，均不激活历史结果。`application.fit_attempt_view`在现有prepare守卫及源ID / 指纹 / 单位 / 样本数匹配后，用已记录参数评估曲线与残差；不调用拟合器、不写工程或日志。ChartActions复用预览executor、主线程轮询并拒绝换选择 / 上下文后的迟到值；无可核对源或失败记录清图并显示原因。日志仍只有摘要，重建曲线不被称为完整历史快照。
 
 当前应用结果来自`Project.derived`；Last saved result读取`ProjectSession`最近一次成功保存的基线，Latest applied result读取当前槽。回看时表单显示所选记录的只读配方，原编辑草稿保留；Use recorded setup才将其作为可编辑设置，不改变原始观测或激活结果。保存成功才更新磁盘基线。
+
+### 公式拟合源自动补齐（维护分支，待本轮HR）
+
+`prepare_signal_source`集中判断当前量的源是否可复用或需要准备，只返回既有线性 / 角运动job；未知配方和重复源拒绝自动覆盖。ChartActions复用原执行器、输入 / 目标版本校验和Session事务，成功后由SignalPreview同一入口刷新当前预览。只读历史、保存和无关结果不触发源计算；正式Fit仍显式，普通Charts / 重复间隔仍保留原触发方式。见[ADR-0025](decisions/0025-automatic-fit-source-preparation.md)。

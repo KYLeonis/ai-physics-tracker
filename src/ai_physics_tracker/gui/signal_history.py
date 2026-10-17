@@ -84,6 +84,7 @@ class SignalHistory:
         finally:
             p._loading = False
         p._methodVisibility()
+        p.refreshSourceChoice()
         p.plotTabs.setTabVisible(1, state['method'] == 0)
 
     def view(self, metadata: dict, *, record: DerivedData | None = None, attempt_id: str | None = None) -> None:
@@ -154,7 +155,7 @@ class SignalHistory:
         p.latestButton.setEnabled(p.savedRecord(disk=False) is not None)
         p.parameterTable.horizontalHeaderItem(1).setText('Recorded initial')
         self.source_text = (f"Viewing history · {p.trackChoice.currentText()} · {quantity} · "
-                            f"{'smoothed' if selection.get('smoothed') else 'measured'} · frames {selection.get('start_frame')}–{selection.get('end_frame')}")
+                            f"{p.sourceChoice.currentText().lower()} · frames {selection.get('start_frame')}–{selection.get('end_frame')}")
         p.contextLabel.setText(self.source_text)
         p.restoreButton.setEnabled(True)
         self.lock()
@@ -167,8 +168,7 @@ class SignalHistory:
         p.methods.tabBar().setEnabled(not self.active)
         p.referenceLine.setMovable(not self.active)
         p.returnDraftButton.setVisible(self.active)
-        if not self.active:
-            p.sourceChoice.setEnabled(p.quantityChoice.currentText() in ('x', 'y', 'theta'))
+        p.refreshSourceChoice()
 
     def leave(self, *, adopt: bool = False, discard: bool = False) -> None:
         if not self.active:
