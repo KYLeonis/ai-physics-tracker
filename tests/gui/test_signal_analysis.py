@@ -348,22 +348,24 @@ def test_reopened_near_cfr_automatically_enables_analysis_without_confirmation(
     session, panel = window.analysisSession, window.chartActions.signalPanel
     panel.editor.setText('A*exp(-gamma*t)*cos(omega*t+phi)+y0')
     assert session.can_measure(window.activeVideoId)
-    assert panel.fitButton.isEnabled()
+    assert not panel.fitButton.isEnabled()
     assert panel.previewButton.isEnabled()
     assert panel.recurrenceButton.isEnabled()
-    assert not panel.fitReadinessLabel.isVisible()
+    assert 'Source data need updating' in panel.fitReadinessLabel.text()
     assert window.timingLabel.isVisible()
     assert window.timingButton.parent() is window._analysisReferenceHost
     assert window.timingButton.isHidden()
     assert 'Approximate timing (automatic)' in window.timingLabel.text()
     assert 'approximate timing' in window._analysisSourceLabel.text()
-    assert panel.fitReadinessLabel.isHidden()
+    assert panel.fitReadinessLabel.isVisible()
     assert window.timingButton.isHidden()
     panel.previewButton.click()
     qtbot.waitUntil(lambda: 'Initial curve only' in panel.jobLabel.text())
     assert 'Initial curve only' in panel.jobLabel.text()
     source = session.derived_data(session.tracks[0].track_id, 'world_position')
     assert source.extra_fields['timing_context']['approximation'] == session.measurement_timing_detail(window.activeVideoId)
+    assert panel.fitButton.isEnabled()
+    assert panel.fitReadinessLabel.isHidden()
     assert session.project.observations == original_points
     for workspace in ('acquire', 'analysis', 'setup', 'analysis'):
         window.setWorkspace(workspace)

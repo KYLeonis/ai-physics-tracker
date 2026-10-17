@@ -21,7 +21,8 @@ from ai_physics_tracker.application.kinematics_job import SmoothingParameters, p
 from ai_physics_tracker.application.angular_job import AngularJob, AngularSpec, prepare_angular_job
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.analysis import QUANTITIES, source_fingerprint, source_snapshot
-from ai_physics_tracker.domain.angular import AngularReference, PendulumReference
+from ai_physics_tracker.domain.angular import AngularReference, PendulumReference, TwoPointReference
+from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS, DerivedData, DerivedInput
 from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula, parse_expression
 from ai_physics_tracker.domain.function_fit import FitOutcome, FitSpec, fit_function
@@ -83,11 +84,37 @@ class SignalAnalysisResult:
     fit_outcome: FitOutcome | None = None
 
 
+def _recorded_source_settings(records: list[DerivedData]) -> tuple[SmoothingParameters, AngularReference | None]:
+    """拟合独立选轨迹时沿用该轨迹配方，不借用另一轨迹的控件。"""
+    parameters = SmoothingParameters()
+    reference = None
+    for record in records:
+        recipe = smoothing_recipe(record)
+        if recipe is not None:
+            parameters = SmoothingParameters(recipe["window_length"], recipe["polyorder"])
+            break
+    for record in records:
+        recipe = reference_recipe(record)
+        if recipe is None:
+            continue
+        try:
+            if recipe.get("mode") == "pendulum":
+                reference = PendulumReference(tuple(recipe["pivot_px"]))
+            elif recipe.get("mode") == "two_point":
+                reference = TwoPointReference(UUID(str(recipe["reference_track_id"])))
+            else:
+                raise ValueError("Unsupported recorded reference")
+        except (KeyError, TypeError, ValueError) as error:
+            raise ProjectSessionError("Recorded angular reference is unreadable; confirm the intended reference first") from error
+        break
+    return parameters, reference
+
+
 def prepare_signal_source(
-    session: ProjectSession, selection: SignalSelection, parameters: SmoothingParameters,
+    session: ProjectSession, selection: SignalSelection, parameters: SmoothingParameters | None,
     reference: AngularReference | None = None,
 ) -> KinematicsJob | AngularJob | None:
-    """只为当前量准备已知源；可用时不重算，未知配方与重复记录拒绝自动覆盖。"""
+    """只准备当前量；parameters为None时沿用本轨迹记录，未知或重复源不覆盖。"""
     track = next((item for item in session.tracks if item.track_id == selection.track_id), None)
     if track is None:
         raise ProjectSessionError("Select an existing track")
@@ -100,7 +127,7 @@ def prepare_signal_source(
     if len(sources) > 1:
         raise ProjectSessionError("Source is ambiguous; inspect the duplicate results before recomputing")
     angular = kind in ANGULAR_KINDS
-    if angular and (inputs.calibration is None or reference is None):
+    if angular and parameters is not None and (inputs.calibration is None or reference is None):
         raise ProjectSessionError("Angular source needs a calibration and an applied reference. Use Set calibration / reference below.")
     if sources:
         source = sources[0]
@@ -114,6 +141,8 @@ def prepare_signal_source(
             and identity.working_zone == inputs.timeline.working_zone and identity.approximation == inputs.timing_detail)
         if fresh:
             _validate_source(source, inputs)
+            if parameters is None:
+                return None
             smoothing = smoothing_recipe(source)
             same_smoothing = smoothing is None or (
                 smoothing["window_length"] == parameters.window_length and smoothing["polyorder"] == parameters.polyorder)
@@ -129,7 +158,17 @@ def prepare_signal_source(
             unreadable_step_reason(item) or any(name not in supported_steps
                 for name in pipeline_step_names(item)) for item in group):
         raise ProjectSessionError("Source group has duplicate or unsupported recipes; inspect it before recomputing")
+    for item in group:
+        identity = timing_identity(item)
+        if "timing_context" in item.extra_fields and identity is None:
+            raise ProjectSessionError("Source has an unreadable timing recipe; inspect it before recomputing")
+        calibration = next((value for value in session.calibrations if value.calibration_id == item.calibration_ref), None)
+        _validate_source_recipe(item, identity.fps_nominal if identity else None, calibration)
+    if parameters is None:
+        parameters, reference = _recorded_source_settings(sources + [item for item in group if item.kind != kind])
     if angular:
+        if inputs.calibration is None or reference is None:
+            raise ProjectSessionError("Angular source needs a calibration and an applied reference. Use Set calibration / reference below.")
         return prepare_angular_job(session, track.video_id, (AngularSpec(track.track_id, reference),), parameters)
     return prepare_kinematics_job(session, track.video_id, (track.track_id,), parameters)
 
@@ -188,37 +227,50 @@ def prepare_signal_analysis(
 
 
 def _validate_source(source: DerivedData, inputs: AnalysisInputs) -> None:
-    checks = [unreadable_step_reason, calibration_recipe_reject_reason, smoothing_readable_reject_reason]
-    if source.kind in ANGULAR_KINDS:
-        checks.append(reference_reject_reason)
-    reasons = [check(source) for check in checks]
     identity = timing_identity(source)
     calibration_id = inputs.calibration.calibration_id if inputs.calibration else None
     if (source.status != "valid" or source.calibration_ref != calibration_id or identity is None
             or abs(identity.fps_nominal - inputs.timeline.fps_nominal) > 1e-9
             or identity.working_zone != inputs.timeline.working_zone or identity.approximation != inputs.timing_detail):
         raise ProjectSessionError("Source is stale or its calibration / timing differs; recompute source first")
+    _validate_source_recipe(source, identity.fps_nominal, inputs.calibration)
+
+
+def _validate_source_recipe(source: DerivedData, fps_nominal: float | None, calibration: Calibration | None) -> None:
+    """按记录自己的配方核对结构；过期不意味着可覆盖未知或损坏的数据。"""
+    checks = [unreadable_step_reason, calibration_recipe_reject_reason, smoothing_readable_reject_reason]
+    if source.kind in ANGULAR_KINDS:
+        checks.append(reference_reject_reason)
+    reasons = [check(source) for check in checks]
     if any(reason is not None for reason in reasons):
         raise ProjectSessionError("Source recipe unreadable: " + "; ".join(reason for reason in reasons if reason))
     names = [step["step"] for step in source.pipeline]
     angular = source.kind in ANGULAR_KINDS
     raw = source.kind in ("world_position", "angular_position")
-    expected_steps = (["calibration_transform"] if calibration_id else [])
+    width = 1 if angular else 2
+    if (any(type(frame) is not int or frame < 0 for frame in source.frames)
+            or source.frames != tuple(sorted(set(source.frames))) or source.values is None
+            or any(not isinstance(row, (tuple, list)) or len(row) != width
+                   or any(not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value)
+                          for value in row) for row in source.values)):
+        raise ProjectSessionError("Source samples do not match the declared quantity")
+    expected_steps = (["calibration_transform"] if source.calibration_ref else [])
     if angular:
-        if calibration_id is None:
-            raise ProjectSessionError("Angular source requires an active calibration")
+        if source.calibration_ref is None:
+            raise ProjectSessionError("Angular source requires a recorded calibration")
         expected_steps += ["angular_reference"] + ([] if raw else ["angular_unwrap"])
     if not raw:
         expected_steps.append("savitzky_golay")
     if names != expected_steps:
         raise ProjectSessionError("Source processing steps do not match its declared kind")
     derivative_order = 1 if source.kind in ("velocity", "angular_velocity") else 2 if source.kind in ("acceleration", "angular_acceleration") else 0
-    base_unit = "rad" if angular else inputs.calibration.unit if inputs.calibration else "px"
-    if source.unit != derive_unit(base_unit, derivative_order):
+    base_units = (("rad",) if angular else (calibration.unit,) if calibration else
+                  ("m", "cm", "mm") if source.calibration_ref else ("px",))
+    if source.unit not in {derive_unit(base, derivative_order) for base in base_units}:
         raise ProjectSessionError("Source unit does not match its quantity / calibration")
     smoothing = smoothing_recipe(source)
-    if derivative_order and (smoothing is None or abs(smoothing["delta"] - 1/inputs.timeline.fps_nominal) > 1e-12):
-        raise ProjectSessionError("Source derivative timing does not match the current timeline")
+    if derivative_order and (smoothing is None or (fps_nominal is not None and abs(smoothing["delta"] - 1/fps_nominal) > 1e-12)):
+        raise ProjectSessionError("Source derivative timing does not match its recorded timeline")
     if source.kind in ("smoothed_position", "velocity", "acceleration") and smoothing_recipe(source) is None:
         raise ProjectSessionError("Source requires a readable smoothing recipe")
     if (source.input.source_filter is not None or source.input.include_superseded

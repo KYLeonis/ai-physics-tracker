@@ -256,6 +256,22 @@ class ChartActions(QObject):
         self.presentFrame(self.window.presentedFrameIndex)
         self.panel.updateStatus()
         self.preview.syncContext()
+        self.refreshFitReadiness()
+
+    def refreshFitReadiness(self) -> None:
+        if (self.pending or self.signalPanel.history.active or self.signalPanel.methods.currentIndex() != 0
+                or self.window.currentWorkspace != "analysis" or not hasattr(self.window, "analysisTabs")
+                or self.window.analysisTabs.currentIndex() != 1):
+            return
+        try:
+            reason = ("Source data need updating — Preview prepares them; retry Preview if cancelled."
+                      if self._prepareSignalSource() is not None else "")
+        except (ValueError, ProjectSessionError) as error:
+            reason = str(error)
+        self.signalPanel.fitButton.setEnabled(not reason)
+        self.signalPanel.fitButton.setToolTip(reason)
+        self.signalPanel.fitReadinessLabel.setText(reason)
+        self.signalPanel.fitReadinessLabel.setVisible(bool(reason))
 
     def presentFrame(self, frame_index: int | None) -> None:
         if self._closed or self._context_generation != self.window.deliveryGeneration:
@@ -450,10 +466,13 @@ class ChartActions(QObject):
             if source_selection is not None and (
                     self.signalPanel.history.active or self.signalPanel.methods.currentIndex() != 0
                     or self.signalPanel.selection() != source_selection
-                    or self.window.currentWorkspace != self._job_workspace
-                    or self.panel.parameters() != result.parameters
-                    or (isinstance(result, AngularResult) and self.panel.angularControls.appliedReference() != result.specs[0].reference)):
+                    or self.window.currentWorkspace != self._job_workspace):
                 raise CancelledError()
+            if source_selection is not None:
+                current = self._prepareSignalSource()
+                if (current is None or current.inputs != result.inputs or current.parameters != result.parameters
+                        or (isinstance(result, AngularResult) and current.specs != result.specs)):
+                    raise CancelledError()
             if isinstance(result, SignalAnalysisResult):
                 if result.record is None:
                     self.signalPanel.draftLabel.setText("Fit not completed — previous results retained")
@@ -637,12 +656,8 @@ class ChartActions(QObject):
             return True
         if self.window.currentWorkspace != "analysis" or self.window.analysisTabs.currentIndex() != 1:
             return False
-        session = self.window.analysisSession
-        if session is None:
-            raise ProjectSessionError("Open a project first")
         selection = self.signalPanel.selection()
-        job = prepare_signal_source(session, selection, self.panel.parameters(),
-                                    self.panel.angularControls.appliedReference())
+        job = self._prepareSignalSource()
         if job is None:
             return False
         self._cancel = Event()
@@ -660,6 +675,16 @@ class ChartActions(QObject):
         self._timer.start(30)
         self.refresh()
         return True
+
+    def _prepareSignalSource(self):
+        session = self.window.analysisSession
+        if session is None:
+            raise ProjectSessionError("Open a project first")
+        selection = self.signalPanel.selection()
+        owns_controls = selection.track_id in self.panel.checkedTracks()
+        return prepare_signal_source(session, selection,
+                                     self.panel.parameters() if owns_controls else None,
+                                     self.panel.angularControls.appliedReference() if owns_controls else None)
 
     def _showSignalSourceControls(self) -> None:
         panel = self.signalPanel
@@ -699,7 +724,7 @@ class ChartActions(QObject):
                       for row in range(panel.parameterTable.rowCount())]
         self.attempts.start({
                            "track_id": panel.trackChoice.currentData(), "quantity": panel.quantityChoice.currentText(),
-                           "interval": [panel.startFrame.value(), panel.endFrame.value()], "smoothed": panel.sourceChoice.currentIndex() == 1,
+                           "interval": [panel.startFrame.value(), panel.endFrame.value()], "smoothed": panel.smoothedSource(),
                            "formula": panel.editor.text(), "initial_fields": parameters,
                            "max_evaluations": panel.budget.value(), "result_formulas": panel.resultFormulas()})
         self.showAttempts()

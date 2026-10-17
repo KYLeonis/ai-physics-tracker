@@ -5,6 +5,7 @@ from dataclasses import replace
 from threading import Event
 
 from tests.gui.test_signal_analysis import _window
+from ai_physics_tracker.domain.angular import PendulumReference
 
 
 def _ready(qtbot, panel):
@@ -22,6 +23,7 @@ def test_missing_source_is_prepared_in_place_without_fitting_or_touching_other_t
     session.clear_derived(track)
     raw = session.project.observations
     actions.refresh()
+    assert not panel.fitButton.isEnabled()
 
     _ready(qtbot, panel)
 
@@ -31,6 +33,7 @@ def test_missing_source_is_prepared_in_place_without_fitting_or_touching_other_t
     assert all(session.derived_data(other.track_id, item.kind) == item for item in untouched)
     assert session.derived_data(track, "function_fit_x") is None
     assert actions.attempts.journal.attempts == []
+    assert panel.fitButton.isEnabled()
     assert "world_position" in panel.contextLabel.text()
     assert "px" in panel.contextLabel.text()
     actions.refresh()
@@ -223,3 +226,55 @@ def test_failed_source_update_is_visible_without_automatic_retry(qtbot, syntheti
     assert "source worker unavailable" in panel.jobLabel.text()
     assert not actions.pending and not actions.preview._debounce.isActive()
     assert session.derived_data(track, "world_position") is None
+
+
+def test_switching_fit_track_keeps_that_tracks_own_reference(qtbot, synthetic_video_path):
+    window, session, track = _window(qtbot, synthetic_video_path)
+    actions, panel = window.chartActions, window.chartActions.signalPanel
+    actions.preview.invalidate()
+    session.add_calibration(window.activeVideoId, scale_end_1_px=(0., 0.),
+                            scale_end_2_px=(10., 0.), known_length=1., unit="m")
+    other = session.add_track(window.activeVideoId, "Other reference")
+    for frame in range(5):
+        session.mark_point(other.track_id, frame, pixel_x=20 + frame, pixel_y=10)
+    session.compute_angular(track, reference=PendulumReference((10., 0.)))
+    session.compute_angular(other.track_id, reference=PendulumReference((50., 0.)))
+    source = session.derived_data(other.track_id, "angular_position")
+    actions.refresh()
+    actions.panel.angularControls.seedApplied(PendulumReference((10., 0.)))
+    assert actions.panel.checkedTracks() == (track,)
+    panel.trackChoice.setCurrentIndex(panel.trackChoice.findData(str(other.track_id)))
+    panel.quantityChoice.setCurrentText("theta")
+    _ready(qtbot, panel)
+    assert session.derived_data(other.track_id, "angular_position") == source
+
+
+def test_new_track_reports_its_own_default_smoothing_instead_of_other_tracks_controls(qtbot, synthetic_video_path):
+    window, session, _ = _window(qtbot, synthetic_video_path)
+    actions, panel = window.chartActions, window.chartActions.signalPanel
+    actions.preview.invalidate()
+    actions.panel.windowLength.setValue(9)
+    other = session.add_track(window.activeVideoId, "New source")
+    for frame in range(5):
+        session.mark_point(other.track_id, frame, pixel_x=frame, pixel_y=10)
+    actions.refresh()
+    panel.trackChoice.setCurrentIndex(panel.trackChoice.findData(str(other.track_id)))
+    panel.quantityChoice.setCurrentText("vx")
+    _ready(qtbot, panel)
+    assert actions.panel.windowLength.value() == 9
+    assert "SG window 7, order 2" in panel.contextLabel.text()
+    assert session.derived_data(other.track_id, "function_fit_vx") is None
+
+
+def test_derivative_attempt_and_history_record_actual_source_semantics(qtbot, synthetic_video_path):
+    window, _, _ = _window(qtbot, synthetic_video_path)
+    actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.sourceChoice.setCurrentIndex(1)
+    panel.quantityChoice.setCurrentText("vx")
+    _ready(qtbot, panel)
+    panel.fitButton.click()
+    qtbot.waitUntil(lambda: not actions.pending)
+    assert actions.attempts.journal.attempts[-1]["smoothed"] is False
+    panel.latestButton.click()
+    assert panel.history.active
+    assert "sg derivative" in panel.contextLabel.text()

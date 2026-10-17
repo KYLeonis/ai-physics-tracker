@@ -803,7 +803,7 @@ class MainWindow(QMainWindow):
         self.analysisToolsHint.setVisible(self.analysisTabs.currentIndex() == 0)
 
     def openAnalysisPurpose(self, purpose: str) -> None:
-        """导航到用途入口；只触发已有的 source-preview 信号，不自动计算。"""
+        """导航到用途入口；公式页按需准备源，正式拟合仍需显式触发。"""
 
         if purpose not in {"explore", "measure", "fit"}:
             return
@@ -820,7 +820,7 @@ class MainWindow(QMainWindow):
         self.analysisChanged.emit()
 
     def openAnalysisTools(self, method_index: int | None = 0) -> None:
-        """常驻直达入口：只导航到公式 / 间隔工具，不执行计算或修改数据。"""
+        """直达公式 / 间隔工具；公式页自动补齐已知源，不自动Fit。"""
         self.chartActions.signalPanel.history.leave()
         self.setWorkspace(WORKSPACE_ANALYSIS)
         self.analysisTabs.setCurrentIndex(1)

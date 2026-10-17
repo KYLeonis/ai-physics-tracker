@@ -562,8 +562,10 @@ class SignalAnalysisPanel(QWidget):
         if track_id is None:
             raise ValueError("Select a track")
         return SignalSelection(UUID(str(track_id)), self.quantityChoice.currentText(), self.startFrame.value(),
-                               self.endFrame.value(), self.sourceChoice.currentIndex() == 1
-                               and self.quantityChoice.currentText() in ("x", "y", "theta"))
+                               self.endFrame.value(), self.smoothedSource())
+
+    def smoothedSource(self) -> bool:
+        return self.sourceChoice.currentIndex() == 1 and self.quantityChoice.currentText() in ("x", "y", "theta")
 
     def fitSpec(self) -> FitSpec:
         parameters = []
