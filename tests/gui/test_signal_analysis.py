@@ -105,6 +105,7 @@ def test_upstream_change_cancels_and_stale_result_remains_readable(qtbot, synthe
     session.compute_kinematics(track)
     window.refreshAnalysisHistory()
     window.chartActions.refresh()
+    panel.latestButton.click()
     assert 'Latest applied result: stale' in panel.summary.toPlainText()
     assert 'RMSE' in panel.summary.toPlainText()
 
@@ -359,13 +360,10 @@ def test_reopened_near_cfr_automatically_enables_analysis_without_confirmation(
     assert panel.fitReadinessLabel.isHidden()
     assert window.timingButton.isHidden()
     panel.previewButton.click()
-    qtbot.waitUntil(lambda: 'recompute source first' in panel.jobLabel.text())
-    assert 'recompute source first' in panel.jobLabel.text()
-    session.compute_kinematics(session.tracks[0].track_id)
-    window.chartActions.refresh()
-    panel.previewButton.click()
     qtbot.waitUntil(lambda: 'Initial curve only' in panel.jobLabel.text())
     assert 'Initial curve only' in panel.jobLabel.text()
+    source = session.derived_data(session.tracks[0].track_id, 'world_position')
+    assert source.extra_fields['timing_context']['approximation'] == session.measurement_timing_detail(window.activeVideoId)
     assert session.project.observations == original_points
     for workspace in ('acquire', 'analysis', 'setup', 'analysis'):
         window.setWorkspace(workspace)

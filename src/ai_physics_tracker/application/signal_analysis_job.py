@@ -14,11 +14,15 @@ import scipy
 from ai_physics_tracker.application.chart_recipe import (
     calibration_recipe_reject_reason, reference_reject_reason, smoothing_readable_reject_reason,
     smoothing_recipe, timing_identity, unreadable_step_reason, prepare_derived_rows,
+    pipeline_step_names, reference_recipe,
 )
 from ai_physics_tracker.application.kinematics_job import AnalysisInputs, analysis_inputs, derived_result_ids
+from ai_physics_tracker.application.kinematics_job import SmoothingParameters, prepare_kinematics_job, KinematicsJob
+from ai_physics_tracker.application.angular_job import AngularJob, AngularSpec, prepare_angular_job
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.analysis import QUANTITIES, source_fingerprint, source_snapshot
-from ai_physics_tracker.domain.derived import ANGULAR_KINDS, DerivedData, DerivedInput
+from ai_physics_tracker.domain.angular import AngularReference, PendulumReference
+from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS, DerivedData, DerivedInput
 from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula, parse_expression
 from ai_physics_tracker.domain.function_fit import FitOutcome, FitSpec, fit_function
 from ai_physics_tracker.domain.kinematics import derive_unit
@@ -77,6 +81,57 @@ class SignalAnalysisResult:
     job: SignalAnalysisJob
     record: DerivedData | None
     fit_outcome: FitOutcome | None = None
+
+
+def prepare_signal_source(
+    session: ProjectSession, selection: SignalSelection, parameters: SmoothingParameters,
+    reference: AngularReference | None = None,
+) -> KinematicsJob | AngularJob | None:
+    """只为当前量准备已知源；可用时不重算，未知配方与重复记录拒绝自动覆盖。"""
+    track = next((item for item in session.tracks if item.track_id == selection.track_id), None)
+    if track is None:
+        raise ProjectSessionError("Select an existing track")
+    inputs = analysis_inputs(session, track.video_id, (track.track_id,))
+    if not inputs.timeline.working_zone[0] <= selection.start_frame <= selection.end_frame <= inputs.timeline.working_zone[1]:
+        raise ProjectSessionError("Analysis interval must be inside the working zone")
+    kind, _ = signal_source(selection.quantity, selection.smoothed)
+    supported_steps = {"calibration_transform", "angular_reference", "angular_unwrap", "savitzky_golay"}
+    sources = [item for item in session.project.derived if item.track_id == track.track_id and item.kind == kind]
+    if len(sources) > 1:
+        raise ProjectSessionError("Source is ambiguous; inspect the duplicate results before recomputing")
+    angular = kind in ANGULAR_KINDS
+    if angular and (inputs.calibration is None or reference is None):
+        raise ProjectSessionError("Angular source needs a calibration and an applied reference. Use Set calibration / reference below.")
+    if sources:
+        source = sources[0]
+        names = pipeline_step_names(source)
+        if unreadable_step_reason(source) or any(name not in supported_steps for name in names):
+            raise ProjectSessionError("Source has an unsupported recipe; automatic replacement is unavailable")
+        identity = timing_identity(source)
+        fresh = (source.status == "valid" and source.calibration_ref == (
+            inputs.calibration.calibration_id if inputs.calibration else None) and identity is not None
+            and abs(identity.fps_nominal - inputs.timeline.fps_nominal) <= 1e-9
+            and identity.working_zone == inputs.timeline.working_zone and identity.approximation == inputs.timing_detail)
+        if fresh:
+            _validate_source(source, inputs)
+            smoothing = smoothing_recipe(source)
+            same_smoothing = smoothing is None or (
+                smoothing["window_length"] == parameters.window_length and smoothing["polyorder"] == parameters.polyorder)
+            expected_reference = ({"mode": "pendulum", "pivot_px": list(reference.pivot_px)}
+                                  if isinstance(reference, PendulumReference) else
+                                  {"mode": "two_point", "reference_track_id": str(reference.reference_track_id)}
+                                  if reference is not None else None)
+            if same_smoothing and (not angular or reference_recipe(source) == expected_reference):
+                return None
+    kinds = ANGULAR_KINDS if angular else KINEMATICS_KINDS
+    group = [item for item in session.project.derived if item.track_id == track.track_id and item.kind in kinds]
+    if len({item.kind for item in group}) != len(group) or any(
+            unreadable_step_reason(item) or any(name not in supported_steps
+                for name in pipeline_step_names(item)) for item in group):
+        raise ProjectSessionError("Source group has duplicate or unsupported recipes; inspect it before recomputing")
+    if angular:
+        return prepare_angular_job(session, track.video_id, (AngularSpec(track.track_id, reference),), parameters)
+    return prepare_kinematics_job(session, track.video_id, (track.track_id,), parameters)
 
 
 def prepare_signal_analysis(

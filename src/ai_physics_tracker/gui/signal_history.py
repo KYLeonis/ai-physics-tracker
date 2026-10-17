@@ -167,8 +167,7 @@ class SignalHistory:
         p.methods.tabBar().setEnabled(not self.active)
         p.referenceLine.setMovable(not self.active)
         p.returnDraftButton.setVisible(self.active)
-        if not self.active:
-            p.sourceChoice.setEnabled(p.quantityChoice.currentText() in ('x', 'y', 'theta'))
+        p.refreshSourceChoice()
 
     def leave(self, *, adopt: bool = False, discard: bool = False) -> None:
         if not self.active:
