@@ -2,18 +2,18 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-17（P6.3.1整体HR通过，c0d1461集成main且9250a3e双平台CI通过；自动接受近似时序已实现，本机1241项 / 独立复审通过，最终双平台CI通过，待本轮HR）
+- 最后更新：2026-10-17（P6.3.1整体HR通过，c0d1461集成main且9250a3e双平台CI通过；自动接受近似时序已实现，本机1241项 / 独立复审通过，最终双平台CI及本轮HR通过，补丁集成main）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：P6.3.1 S0–S5 / AC-1–8闭环，用户HR通过，c0d1461集成main / 9250a3e文档收尾并push，main双平台CI39011226102通过，Issue #31 Closed / PR #32 Merged。当前执行[自动近似时序修复](automatic-timing-plan.md)，产品f34053f本机1241项通过，独立复审Approve / 73项通过；4a713bc仅清多余Timing入口，31项通过，[最终CI39011866524](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39011866524)双平台各1239 passed / 2 skipped；此补丁HR尚未通过。6.4 / 6.5未开始。
-- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`；bd40实现工作树 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `fix/automatic-timing-acceptance`；论文worktree未改。
+- **Subphase / Slice**：P6.3.1 S0–S5 / AC-1–8闭环，用户HR通过，c0d1461集成main / 9250a3e文档收尾并push，main双平台CI39011226102通过，Issue #31 Closed / PR #32 Merged。当前执行[自动近似时序修复](automatic-timing-plan.md)，产品f34053f本机1241项通过，独立复审Approve / 73项通过；4a713bc仅清多余Timing入口，31项通过，[最终CI39011866524](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39011866524)双平台各1239 passed / 2 skipped；用户2026-10-17回复“通过”，此补丁完成HR并以--no-ff集成main。6.4 / 6.5未开始。
+- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`已集成时序补丁；bd40已完成的实现工作树 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `fix/automatic-timing-acceptance`；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 用户已授权取消Review timing / Yes确认：对原本可点击Yes的Near-CFR检测结果自动采用近似时序，保留误差来源，不伪造帧率；产品已在独立分支实现；自动Gate已通过，按[免确认HR步骤](automatic-timing-plan.md#human-review本轮待用户)等待用户补测；通过后才--no-ff合并此补丁 / 同步文档 / push。
+1. 自动近似时序补丁已完成独立复审 / 双平台CI / 本轮用户HR并集成main；本轮收尾，等待用户指定后续工作。无需重复本轮HR，不自动开始6.4 / 6.5。
 2. [架构扫描复核建议](../notes/architecture-review-assessment-2026-10-17.md)保留；尚未授权全面重构，全局任务统一与Undo拆分仍后置。
 3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
@@ -59,6 +59,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **自动近似时序 HR通过 / 集成（2026-10-17）**：用户确认本轮免确认流程“通过”。以已复审 / CI验证的4a713bc产品树集成main；代码与数值不再改动，保留近似来源 / FPS / 误差及异常重试。同步计划、Review与状态，等待下一条指令；不启动6.4 / 6.5。
 
 - **自动近似时序增量（2026-10-17）**：用户授权取消Review timing / Yes；f34053f让同步 / 后台 / 重开对合格Near-CFR自动调用既有守卫，来源区分auto与旧user accepted，保持FPS / 两项误差说明；unknown / 真VFR / 超预算 / 取消不伪造权限。首批46、扩大91、charts单项及f34053f全量1241项通过，独立复审Approve / 73项通过；4a713bc清多余入口后31项通过，最终双平台CI通过，本轮HR待用户；未合并此补丁。
 

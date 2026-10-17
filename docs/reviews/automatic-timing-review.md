@@ -6,10 +6,10 @@ Reviewer只读检查基线后的diff；实现 / 修复由主Agent完成。核对
 
 ## Review / Verification
 
-- 主Agent首批46项、扩大91项（86.27s）、charts自动近似重算1项通过；f34053f本机全量1241 passed（307.87s）。最后4a713bc仅删除多余Timing准备按钮 / 信号 / 连接，定向31 passed（20.30s），最终双平台CI进行中。
+- 主Agent首批46项、扩大91项（86.27s）、charts自动近似重算1项通过；f34053f本机全量1241 passed（307.87s）。最后4a713bc仅删除多余Timing准备按钮 / 信号 / 连接，定向31 passed（20.30s），最终双平台CI通过（回执见下）。
 - 独立Reviewer：`p631_independent_gui`只读复审`9250a3e..f34053f`：**Approve，无finding**；独立73项通过，覆盖时序应用、GUI、Analysis与Charts。原unknown / VFR / 预算、帧数、Timeline、save-busy / 取消 / 换视频 / 迟到守卫保持。
-- 本轮HR：待用户，禁止据自动Gate提前合并。
+- 本轮HR：2026-10-17用户明确回复“通过”；独立review / CI / Human Gate齐全。
 
 最后入口清理`4a713bc`经同一只读Reviewer复审 **Approve，无finding**；确认全仓库无timingRequested残留，实际Retry / Cancel与其余准备动作保留。独立`guided_fit / timing_actions / workflow_ui` **51 passed**，diff检查通过。最终产品与测试树以4a713bc为准；f34053f全量及其后31 / 51项局部验证组成同一回归证据，最后双平台CI回执见下。
 
-最终产品`4a713bc`的[最终CI39011866524](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39011866524) **success**，macOS / Windows Python3.11各 **1239 passed / 2 skipped**（可选pandas），安装 / FFprobe / 测试 / 清理步骤全部完成。后续只改文档，源 / 测试树与此SHA相同，不将文档HEAD说成另跑过CI。新交互仍待本轮用户HR，未合并main。
+最终产品`4a713bc`的[最终CI39011866524](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39011866524) **success**，macOS / Windows Python3.11各 **1239 passed / 2 skipped**（可选pandas），安装 / FFprobe / 测试 / 清理步骤全部完成。后续只改文档，源 / 测试树与此SHA相同，不将文档HEAD说成另跑过CI。2026-10-17用户HR通过，此补丁以--no-ff集成main；集成没有代码变化，不重复科学 / 交互验收。

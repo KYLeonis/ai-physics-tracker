@@ -43,4 +43,4 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 - 2026-10-13：Phase 6.1 用户要求的完整复审追加于原记录，R2 / R8–R13 Closed / Approve，
   929 全量 / 最新代码双平台 CI 通过；6.2 入口准备就绪。前置 HR 已通过，三条分支已按序集成 main。
 
-- [自动近似时序](automatic-timing-review.md)：2026-10-17用户授权取消人工Yes，独立维护补丁，状态以记录 / current为准。
+- [自动近似时序](automatic-timing-review.md)：2026-10-17用户授权取消人工Yes，独立复审Approve、双平台CI及本轮HR通过，已集成main。
