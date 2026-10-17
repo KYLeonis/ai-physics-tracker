@@ -278,3 +278,5 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 - Python 3.11（2026-08 确定）：DeepLabCut 3.x 官方支持 Python 3.10–3.12，PyTorch/PySide6 在 3.11 上轮子最成熟。详见 [development.md](development.md) 与 [decisions/0002](decisions/0002-choose-python-3.11.md)。
 - GUI 框架（PySide6）与交互绘图（PyQtGraph）为"优先评估"项，最终确认分别在 Phase 2 / Phase 3 前完成并记录 ADR。
 - License：TBD，须在发布前完成第三方依赖（DeepLabCut AGPL-3.0、Qt LGPL、FFmpeg 等）license review。
+
+2026-10-17维护补丁：[自动采用合格近似时序](status/automatic-timing-plan.md)，取消Review timing / Yes，独立review与本轮HR；不改变Phase 6.4 / 6.5状态。

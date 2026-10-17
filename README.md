@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
 Last Delivered:   Phase 6.3 显式函数拟合 / 通用信号重复间隔；自动Gate和整体Human Review通过
-Current Subphase: Phase 6.3已集成main；6.3.1已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；6.4 / 6.5未开始
+Current Subphase: Phase 6.3.1已完成并通过HR / 集成main；当前独立维护补丁自动接受合格近似时序，自动Gate通过，HR待用户；6.4 / 6.5未开始
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
