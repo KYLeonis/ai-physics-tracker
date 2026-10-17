@@ -72,3 +72,35 @@ def test_constraints_are_validated_before_solving():
         FitParameter("a", 4, upper=2)
     with pytest.raises(ValueError):
         FitSpec("a*t", (FitParameter("b"),))
+
+
+@pytest.mark.parametrize('scale',[1e17,1e-200])
+def test_identifiable_constant_does_not_depend_on_signal_units(scale):
+    outcome = fit_function(np.arange(20.),np.full(20,scale),FitSpec('c',(FitParameter('c',scale),)))
+    assert outcome.is_publishable,outcome
+    assert dict(outcome.parameter_values)['c'] == pytest.approx(scale,rel=1e-10,abs=0)
+
+
+@pytest.mark.parametrize('scale',[1e12,1e-200])
+@pytest.mark.parametrize('quadratic',[False,True])
+def test_parameter_units_do_not_cause_false_convergence(scale,quadratic):
+    time=np.linspace(0,8,241)
+    formula='a*t^2+b*t+c' if quadratic else 'a*t+b'
+    true={'a':.7*scale,'b':-2*scale,'c':5*scale} if quadratic else {'a':3*scale,'b':-2*scale}
+    spec=FitSpec(formula,tuple(FitParameter(name,value*.9) for name,value in true.items()))
+    from ai_physics_tracker.domain.expression import parse_expression
+    measured=parse_expression(formula).evaluate(time,true)
+    outcome=fit_function(time,measured,spec)
+    assert outcome.is_publishable,outcome
+    assert outcome.rmse/scale<1e-8
+    assert dict(outcome.parameter_values)==pytest.approx(true,rel=1e-7,abs=0)
+
+
+@pytest.mark.parametrize('scale',[1e12,1e-100,1e-200])
+def test_zero_initial_slope_is_scaled_from_bounded_model_response(scale):
+    time=np.linspace(0,8,241)
+    spec=FitSpec('a*t',(FitParameter('a',0.),))
+    outcome=fit_function(time,3*scale*time,spec)
+    assert outcome.is_publishable,outcome
+    assert outcome.rmse/scale<1e-8
+    assert dict(outcome.parameter_values)['a']==pytest.approx(3*scale,rel=1e-7,abs=0)

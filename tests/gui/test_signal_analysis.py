@@ -40,6 +40,7 @@ def test_nonpendulum_fit_preview_publish_and_restore_settings(qtbot, synthetic_v
     assert panel.sourceChoice.currentIndex() == 0
     panel.startFrame.setValue(1)
     panel.previewButton.click()
+    qtbot.waitUntil(lambda: 'Initial curve only' in panel.jobLabel.text())
     assert 'Initial curve only' in panel.jobLabel.text()
     assert session.derived_data(track, 'function_fit_x') is None
     panel.fitButton.click()
@@ -50,8 +51,9 @@ def test_nonpendulum_fit_preview_publish_and_restore_settings(qtbot, synthetic_v
     assert 'RMSE' in panel.summary.toPlainText()
     assert 'a=20' in panel.summary.toPlainText()
     panel.editor.setText('c')
-    assert 'Draft changed' in panel.draftLabel.text()
-    assert 'a*t + b' in panel.summary.toPlainText()
+    assert 'Current draft' in panel.draftLabel.text()
+    assert 'Current draft' in panel.summary.toPlainText()
+    assert panel.savedRecord(disk=False).extra_fields['analysis']['spec']['expression'] == 'a*t + b'
     panel.restoreButton.click()
     assert panel.editor.text() == 'a*t + b'
     assert panel.startFrame.value() == 1
@@ -103,7 +105,7 @@ def test_upstream_change_cancels_and_stale_result_remains_readable(qtbot, synthe
     session.compute_kinematics(track)
     window.refreshAnalysisHistory()
     window.chartActions.refresh()
-    assert 'Saved result: stale' in panel.summary.toPlainText()
+    assert 'Latest applied result: stale' in panel.summary.toPlainText()
     assert 'RMSE' in panel.summary.toPlainText()
 
 
@@ -111,6 +113,7 @@ def test_invalid_formula_clears_initial_preview(qtbot, synthetic_video_path):
     window, _, _ = _window(qtbot, synthetic_video_path)
     panel = window.chartActions.signalPanel
     panel.previewButton.click()
+    qtbot.waitUntil(lambda: bool(panel.signalPlot.listDataItems()))
     assert panel.signalPlot.listDataItems()
     panel.editor.setText('a**')
     assert not panel.signalPlot.listDataItems()
@@ -148,14 +151,14 @@ def test_unreadable_cached_timing_metadata_remains_read_only(qtbot, synthetic_vi
 
 
 def test_restoring_old_interval_does_not_silently_clamp_settings(qtbot, synthetic_video_path):
-    window, _, _ = _window(qtbot, synthetic_video_path)
+    window, session, _ = _window(qtbot, synthetic_video_path)
     panel = window.chartActions.signalPanel
     panel.fitButton.click()
     qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
-    panel.startFrame.setRange(2, 4)
-    panel.endFrame.setRange(2, 4)
+    session._project = replace(session.project, timelines=tuple(replace(item, working_zone=(2, 4)) for item in session.project.timelines))
+    window.chartActions.refresh()
     panel.restoreButton.click()
-    assert 'outside the working zone' in panel.jobLabel.text()
+    assert 'outside this video or working zone' in panel.jobLabel.text()
     assert 'Saved settings restored' not in panel.draftLabel.text()
 
 
@@ -201,7 +204,7 @@ def test_wheel_scrolls_page_and_only_control_wheel_zooms(qtbot, synthetic_video_
     window, _, _ = _window(qtbot, synthetic_video_path)
     panel, scroll = window.chartActions.signalPanel, window._analysisToolsScroll
     panel.previewButton.click()
-    qtbot.wait(20)
+    qtbot.waitUntil(lambda: bool(panel.signalPlot.listDataItems()))
     bar = scroll.verticalScrollBar()
     bar.setValue(bar.maximum() // 2)
     old_scroll = bar.value()
@@ -282,7 +285,7 @@ def test_analysis_tools_fit_narrow_viewport_and_initial_curve_cannot_hide_signal
     panel.editor.setText('c')
     panel.parameterTable.item(0, 1).setText('1e24')
     panel.previewButton.click()
-    qtbot.wait(30)
+    qtbot.waitUntil(lambda: bool(panel.signalPlot.listDataItems()))
     scroll = window._analysisToolsScroll
     assert panel.width() <= scroll.viewport().width()
     window.resize(700, 640)
@@ -360,10 +363,12 @@ def test_reopened_near_cfr_explains_disabled_fit_and_confirmation_is_visible_in_
     assert panel.fitReadinessLabel.isHidden()
     assert window.timingButton.isHidden()
     panel.previewButton.click()
+    qtbot.waitUntil(lambda: 'recompute source first' in panel.jobLabel.text())
     assert 'recompute source first' in panel.jobLabel.text()
     session.compute_kinematics(session.tracks[0].track_id)
     window.chartActions.refresh()
     panel.previewButton.click()
+    qtbot.waitUntil(lambda: 'Initial curve only' in panel.jobLabel.text())
     assert 'Initial curve only' in panel.jobLabel.text()
     assert session.project.observations == original_points
     for workspace in ('acquire', 'analysis', 'setup', 'analysis'):

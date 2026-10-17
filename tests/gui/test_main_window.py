@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QDockWidget, QMessageBox, QScrollArea
 from pytestqt.qtbot import QtBot
 
@@ -59,6 +60,26 @@ def test_main_chart_and_ai_panels_allow_window_resizing(qtbot: QtBot) -> None:
     window.resize(expanded_width, 760)
     assert window.size().width() == expanded_width
     assert window.size().height() == 760
+
+
+def test_large_font_workspace_roundtrip_releases_analysis_header_width(qtbot: QtBot) -> None:
+    window = _window()
+    qtbot.addWidget(window)
+    font = QFont(window.font())
+    font.setPointSize(24)
+    window.setFont(font)
+    window.show()
+    compact_width = max(900, window.minimumSizeHint().width())
+    panel = window.trackingActions.panel
+    panel.setFloating(True)
+    panel.resize(640, 480)
+    panel.setFloating(False)
+
+    window.setWorkspace("analysis")
+    window.setWorkspace("acquire")
+    window.resize(compact_width + 200, window.height())
+
+    assert window.width() == compact_width + 200
 
 
 def test_main_window_opens_video_and_navigates_frames(

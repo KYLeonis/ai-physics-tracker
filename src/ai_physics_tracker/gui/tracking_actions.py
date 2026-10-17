@@ -155,6 +155,7 @@ class TrackingActions(QObject):
                self.window.reviewActions.paused_run_id
                if hasattr(self.window, "reviewActions") else None,
                chart_family,
+               getattr(self.window, "analysisNavigationKey", lambda: ())(),
                self._execution_input())
         if key == self._context_key:
             return
@@ -319,7 +320,8 @@ class TrackingActions(QObject):
             state = self._workflow_state(session, track_id, runs)
             if session is None:
                 self.panel.setTaskCard(None)
-                self.window.workflowHeader.setTaskCard(select_task_card(state))
+                self.window.workflowHeader.setTaskCard(
+                    self._header_task_card(select_task_card(state)))
                 self.window.workflowHeader.setStatus(
                     "No project", "Current trajectory: —", None)
                 self.window.workflowHeader.setLimitations(())
@@ -347,7 +349,7 @@ class TrackingActions(QObject):
                     from dataclasses import replace as _replace
                     card = _replace(card, explanation=ux.body)
             self.panel.setTaskCard(card)
-            self.window.workflowHeader.setTaskCard(card)
+            self.window.workflowHeader.setTaskCard(self._header_task_card(card))
             self._current_workflow_state = state
             self._refresh_header(session, state, video, track)
             self._sync_candidate_preview(session, runs, state, track, video)
@@ -355,6 +357,12 @@ class TrackingActions(QObject):
             logger.warning("workflow projection failed: %s", error)
             self.panel.setTaskCard(None)
             self.window.workflowHeader.setTaskCard(None)
+
+    def _header_task_card(self, card):
+        """工具页用用途 / 源就绪状态覆盖训练前置推荐。"""
+
+        purpose_card = getattr(self.window, "analysisPurposeTaskCard", lambda: None)()
+        return purpose_card if purpose_card is not None else card
 
     def _sync_candidate_preview(self, session, runs, state, track, video) -> None:
         candidate = state.trajectory.candidate
@@ -703,6 +711,38 @@ class TrackingActions(QObject):
         if action_id == "update_charts":
             window.setWorkspace("analysis")
             window.chartActions.recompute()
+            return
+        if action_id == "analysis_return_draft":
+            window.chartActions.signalPanel.history.leave()
+            return
+        if action_id == "analysis_use_history_setup":
+            window.chartActions.signalPanel.restoreSaved()
+            return
+        if action_id in {"analysis_explore_motion", "analysis_measure_intervals", "analysis_fit_formula"}:
+            purpose = {
+                "analysis_explore_motion": "explore",
+                "analysis_measure_intervals": "measure",
+                "analysis_fit_formula": "fit",
+            }[action_id]
+            window.openAnalysisPurpose(purpose)
+            return
+        if action_id == "analysis_confirm_timing":
+            window.timingButton.click()
+            return
+        if action_id == "analysis_prepare_source":
+            window.chartActions.prepareSignalSource()
+            return
+        if action_id == "analysis_preview_source":
+            window.setWorkspace("analysis")
+            previous_method = window.chartActions.signalPanel.methods.currentIndex()
+            window.openAnalysisTools(method_index=1)
+            if previous_method == 1:
+                window.chartActions.signalPanel.sourcePreviewRequested.emit()
+            return
+        if action_id == "analysis_preview_fit":
+            window.setWorkspace("analysis")
+            window.openAnalysisTools(method_index=0)
+            window.chartActions.signalPanel.previewRequested.emit()
             return
         if action_id == "cancel_task":
             if self.pending:

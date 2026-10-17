@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QCheckBox,
     QGridLayout,
     QLabel,
     QLineEdit,
@@ -26,6 +27,7 @@ from ai_physics_tracker.domain.expression import (
 _EXAMPLES = {
     "Linear": "a*t + b",
     "Quadratic": "a*t^2 + b*t + c",
+    "Cosine": "A*cos(omega*t + phi) + y0",
     "Damped cosine": "A*exp(-gamma*t)*cos(omega*t + phi) + y0",
 }
 
@@ -47,6 +49,7 @@ class FormulaEditor(QWidget):
     """单行数学表达式编辑器，预览和计算使用同一领域表达式树。"""
 
     formulaChanged = Signal(str)
+    exampleSelected = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -84,7 +87,10 @@ class FormulaEditor(QWidget):
         formulaRow.addWidget(self.formulaEdit, 1)
         layout.addLayout(formulaRow)
 
-        insertionRow = QGridLayout()
+        insertionGroup = QCheckBox("Insert symbols / functions")
+        insertionGroup.setChecked(False)
+        insertionHost = QWidget()
+        insertionRow = QGridLayout(insertionHost)
         insertionRow.addWidget(QLabel("Insert:"), 0, 0, 2, 1)
         for index, (name, insertion) in enumerate(_INSERTIONS.items()):
             button = QPushButton(name)
@@ -96,17 +102,19 @@ class FormulaEditor(QWidget):
                 lambda _checked=False, token=insertion: self._insertText(token)
             )
             insertionRow.addWidget(button, index // 5, index % 5 + 1)
-        layout.addLayout(insertionRow)
+        insertionHost.hide()
+        insertionGroup.toggled.connect(insertionHost.setVisible)
+        layout.addWidget(insertionGroup)
+        layout.addWidget(insertionHost)
 
-        exampleRow = QHBoxLayout()
-        exampleRow.addWidget(QLabel("Examples:"))
-        for name, formula in _EXAMPLES.items():
+        exampleRow = QGridLayout()
+        exampleRow.addWidget(QLabel("Editable examples:"), 0, 0, 1, 2)
+        for index, (name, formula) in enumerate(_EXAMPLES.items()):
             button = QPushButton(name)
             button.setObjectName(f"example_{name.lower().replace(' ', '_')}")
             button.setAccessibleName(f"Load editable {name.lower()} example")
-            button.clicked.connect(lambda _checked=False, value=formula: self.setText(value))
-            exampleRow.addWidget(button)
-        exampleRow.addStretch(1)
+            button.clicked.connect(lambda _checked=False, value=formula: self._selectExample(value))
+            exampleRow.addWidget(button, 1+index//2, index%2)
         layout.addLayout(exampleRow)
 
         previewScroll = QScrollArea()
@@ -119,6 +127,10 @@ class FormulaEditor(QWidget):
 
         self.formulaEdit.textChanged.connect(self._onTextChanged)
         self._updatePreview(self.formulaEdit.text())
+
+    def _selectExample(self, value: str) -> None:
+        self.setText(value)
+        self.exampleSelected.emit()
 
     def text(self) -> str:
         """返回输入框中的原始表达式文本。"""

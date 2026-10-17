@@ -191,7 +191,8 @@ def test_start_learning_card_confirms_fixed_check_then_trains(
 
     assert panel.cardPrimaryButton.text() == "Start learning"
     if from_header:
-        window.setWorkspace("analysis")
+        # 获取轨迹的动作仍在Acquire头部；Analysis使用用途推荐。
+        window.setWorkspace("acquire")
         window.workflowHeader.nextStepButtons[0].click()
         assert window.currentWorkspace == "acquire"
     else:
@@ -321,7 +322,8 @@ def test_adopt_card_replaces_after_confirmation_and_history_only_previews(
 
     button = panel.cardPrimaryButton
     if from_header:
-        window.setWorkspace("analysis")
+        # 获取轨迹的动作仍在Acquire头部；Analysis使用用途推荐。
+        window.setWorkspace("acquire")
         button = window.workflowHeader.nextStepButtons[0]
     # conftest 把 question 桩化为 Discard：确认被拒 → 不采用
     button.click()

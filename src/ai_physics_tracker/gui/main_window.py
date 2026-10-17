@@ -330,6 +330,7 @@ class MainWindow(QMainWindow):
         # Phase 5.7：三工作区。视频页承载 实验设置/获取轨迹；分析页以图表为主体、
         # 视频作为参照窗（videoView 在进入/离开分析页时重挂父，解码管线不受影响）。
         self._workspace = WORKSPACE_ACQUIRE
+        self._analysis_purpose = "explore"
         self._videoColumn = videoColumn
         self._videoColumnWidget = videoColumnWidget
         self._analysisMediaHome: list[tuple[int, QWidget]] = []
@@ -564,6 +565,28 @@ class MainWindow(QMainWindow):
     def currentWorkspace(self) -> str:
         return self._workspace
 
+    @property
+    def analysisPurpose(self) -> str:
+        """当前分析用途；只描述导航状态，不代表已执行计算。"""
+
+        return self._analysis_purpose
+
+    def analysisNavigationKey(self) -> tuple:
+        """返回会影响分析入口推荐的瞬时 GUI 状态。"""
+
+        tabs = getattr(self, "analysisTabs", None)
+        signal_panel = getattr(getattr(self, "chartActions", None), "signalPanel", None)
+        methods = getattr(signal_panel, "methods", None)
+        return (
+            self._workspace,
+            tabs.currentIndex() if tabs is not None else None,
+            methods.currentIndex() if methods is not None else None,
+            self._analysis_purpose,
+            signal_panel.trackChoice.currentData() if signal_panel else None,
+            signal_panel.quantityChoice.currentText() if signal_panel else None,
+            signal_panel.sourceChoice.currentIndex() if signal_panel else None,
+        )
+
     def setWorkspace(self, workspace: str) -> None:
         """切换工作区；不取消任务、不改变采用结果、不触发计算。"""
         if workspace == WORKSPACE_ANALYSIS:
@@ -584,6 +607,9 @@ class MainWindow(QMainWindow):
             self.refreshAnalysisSourceBar()
         else:
             if self._workspace == WORKSPACE_ANALYSIS:
+                if self.chartActions.signalPanel.history.active:
+                    self.chartActions.signalPanel.history.leave()
+                    self.chartActions.preview.invalidate()
                 self._leaveAnalysis()
         self._workspace = workspace
         if workspace == WORKSPACE_ACQUIRE:
@@ -596,6 +622,10 @@ class MainWindow(QMainWindow):
             self._workspaceStack.setCurrentWidget(self._analysisPage)
         else:
             self._workspaceStack.setCurrentWidget(self._videoPage)
+        self.workflowHeader.setWorkspace(workspace)
+        self._refreshDeletePointButton()
+        self._refreshHistoryButtons()
+        self.analysisChanged.emit()
         tracking_panel = getattr(self, "trackingActions", None)
         if tracking_panel is not None:
             panel = tracking_panel.panel
@@ -605,22 +635,29 @@ class MainWindow(QMainWindow):
             else:
                 # 分析页以图表为主体；AI 状态经状态头任务条常驻（设计 §8.2）
                 panel.hide()
-        self.workflowHeader.setWorkspace(workspace)
-        self._refreshDeletePointButton()
-        self._refreshHistoryButtons()
-        self.analysisChanged.emit()
         if workspace == WORKSPACE_ANALYSIS:
             self.refreshAnalysisSourceBar()
+        # 用途卡刷新后重置主窗口中的 central widget 尺寸缓存，清除旧页与 dock 叠加的宽度。
+        self.centralWidget().updateGeometry()
+        self.layout().invalidate()
+        self.layout().activate()
 
     def refreshAnalysisSourceBar(self) -> None:
         """分析页顶部：当前输入来源 + 标定 + 时间依据（§11.2）。"""
         session = self.analysisSession
         track_id = self.selectedTrackId
+        tools = hasattr(self, "analysisTabs") and self.analysisTabs.currentIndex() == 1
+        if tools:
+            if self.chartActions.signalPanel.history.active:
+                self._analysisSourceLabel.setText(self.chartActions.signalPanel.history.source_text + " · read-only")
+                return
+            identity = self.chartActions.signalPanel.trackChoice.currentData()
+            track_id = UUID(identity) if identity else None
         if session is None or track_id is None:
             self._analysisSourceLabel.setText("No analysis source selected")
             return
         state = getattr(self.trackingActions, "_current_workflow_state", None)
-        traj = state.trajectory if state is not None else None
+        traj = state.trajectory if state is not None and not tools else None
         manual_count = traj.manual_count if traj is not None else len(
             session.manual_points(track_id))
         if traj is not None and traj.active_label:
@@ -642,6 +679,8 @@ class MainWindow(QMainWindow):
             timing_note = ("not authorized — cached results only" if not session.can_measure(track.video_id)
                            else "approximate timing" if timing else "verified CFR timing")
             source += f" · Units: {unit} · Timing: {timing_note}"
+        if tools and track is not None:
+            source = f"{track.name} · {self.chartActions.signalPanel.quantityChoice.currentText()} · " + source
         self._analysisSourceLabel.setText(source)
 
     def _enterAnalysis(self) -> None:
@@ -668,6 +707,46 @@ class MainWindow(QMainWindow):
         """ChartPanel 由 dock 转为分析页主体（Phase 5.7）。"""
         host_layout = self._analysisChartHost.layout()
         host_layout.setContentsMargins(0, 0, 0, 0)
+        purpose_label = QLabel("Choose an analysis purpose")
+        purpose_label.setStyleSheet("font-weight: bold; color: #172b4d;")
+        host_layout.addWidget(purpose_label)
+        purpose_row = QHBoxLayout()
+        self.analysisPurposeButtons = {}
+        purpose_specs = (
+            (
+                "explore",
+                "Explore motion",
+                "Input: current trajectory data. Output: motion charts. Next: inspect the movement or choose a tool.",
+            ),
+            (
+                "measure",
+                "Measure repeat intervals",
+                "Input: a measured signal and crossing reference. Output: crossing times and repeat intervals.",
+            ),
+            (
+                "fit",
+                "Fit a formula",
+                "Input: a selected signal and your formula. Output: fitted parameters, curve, and residuals.",
+            ),
+        )
+        for purpose, label, tooltip in purpose_specs:
+            button = QPushButton(label)
+            button.setObjectName(f"{purpose}AnalysisPurposeButton")
+            button.setCheckable(True)
+            button.setToolTip(tooltip)
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            button.clicked.connect(
+                lambda _checked=False, selected=purpose: self.openAnalysisPurpose(selected)
+            )
+            self.analysisPurposeButtons[purpose] = button
+            purpose_row.addWidget(button)
+        host_layout.addLayout(purpose_row)
+        self.analysisPurposeLabel = QLabel()
+        self.analysisPurposeLabel.setWordWrap(True)
+        self.analysisPurposeLabel.setStyleSheet(
+            "background: #f5f8fc; color: #172b4d; padding: 5px; border-radius: 4px;"
+        )
+        host_layout.addWidget(self.analysisPurposeLabel)
         self.analysisToolsHint = QLabel(
             "Fit your formula or measure repeat intervals: open the Formula fitting & intervals tab.")
         self.analysisToolsHint.setWordWrap(True)
@@ -682,16 +761,179 @@ class MainWindow(QMainWindow):
         self.chartActions.signalPanel.pageScrollRequested.connect(scroll.scrollPage)
         self.analysisTabs.addTab(scroll, "Formula fitting & intervals")
         self._analysisToolsScroll = scroll
+        self.chartActions.signalPanel.feedbackRequested.connect(
+            lambda: scroll.verticalScrollBar().setValue(0))
         self.workflowHeader.analysisToolsRequested.connect(self.openAnalysisTools)
-        self.analysisTabs.currentChanged.connect(lambda index: self.analysisToolsHint.setVisible(index == 0))
+        self.analysisTabs.currentChanged.connect(self._analysisTabsChanged)
+        self.chartActions.signalPanel.methods.currentChanged.connect(self._analysisMethodChanged)
         self.analysisTabs.currentChanged.connect(lambda _index: self.chartActions.cancel() if self.chartActions.pending else None)
         host_layout.addWidget(self.analysisTabs)
+        self._updateAnalysisPurposeUi()
 
-    def openAnalysisTools(self) -> None:
+    def _analysisTabsChanged(self, index: int) -> None:
+        if index == 0:
+            self._analysis_purpose = "explore"
+        else:
+            self._analysis_purpose = "measure" if self.chartActions.signalPanel.methods.currentIndex() == 1 else "fit"
+        self._updateAnalysisPurposeUi()
+        if hasattr(self, "analysisChanged"):
+            self.analysisChanged.emit()
+
+    def _analysisMethodChanged(self, index: int) -> None:
+        if self.analysisTabs.currentIndex() == 1:
+            self._analysis_purpose = "measure" if index == 1 else "fit"
+            self._updateAnalysisPurposeUi()
+            self.analysisChanged.emit()
+
+    def _updateAnalysisPurposeUi(self) -> None:
+        if not hasattr(self, "analysisTabs"):
+            return
+        selected = self._analysis_purpose
+        for purpose, button in self.analysisPurposeButtons.items():
+            button.setChecked(purpose == selected)
+        explanations = {
+            "explore": "Explore motion: inspect the current trajectory in the Charts tab. Input: trajectory data. Output: position, velocity, acceleration, and phase plots.",
+            "measure": "Measure repeat intervals: show the source, set the orange reference, then measure. Input: one signal. Output: crossing times and repeat intervals.",
+            "fit": "Fit a formula: choose a signal and equation, preview the initial curve, then fit explicitly. Input: signal + formula. Output: parameters, curve, and residuals.",
+        }
+        panel = self.chartActions.signalPanel
+        self.analysisPurposeLabel.setText(
+            "Viewing recorded analysis — the form and chart follow your selection. Return to my draft, or Use recorded setup to edit and calculate."
+            if self.analysisTabs.currentIndex() == 1 and panel.history.active else explanations[selected])
+        self.analysisToolsHint.setVisible(self.analysisTabs.currentIndex() == 0)
+
+    def openAnalysisPurpose(self, purpose: str) -> None:
+        """导航到用途入口；只触发已有的 source-preview 信号，不自动计算。"""
+
+        if purpose not in {"explore", "measure", "fit"}:
+            return
+        previous_method = self.chartActions.signalPanel.methods.currentIndex()
+        self._analysis_purpose = purpose
+        self.setWorkspace(WORKSPACE_ANALYSIS)
+        if purpose == "explore":
+            self.analysisTabs.setCurrentIndex(0)
+        else:
+            self.openAnalysisTools(method_index=1 if purpose == "measure" else 0)
+            if purpose == "measure" and previous_method == 1:
+                self.chartActions.signalPanel.sourcePreviewRequested.emit()
+        self._updateAnalysisPurposeUi()
+        self.analysisChanged.emit()
+
+    def openAnalysisTools(self, method_index: int | None = 0) -> None:
         """常驻直达入口：只导航到公式 / 间隔工具，不执行计算或修改数据。"""
+        self.chartActions.signalPanel.history.leave()
         self.setWorkspace(WORKSPACE_ANALYSIS)
         self.analysisTabs.setCurrentIndex(1)
+        if method_index is None:
+            method_index = self.chartActions.signalPanel.methods.currentIndex()
+        if method_index not in (0, 1):
+            method_index = 0
+        self.chartActions.signalPanel.methods.setCurrentIndex(method_index)
         self._analysisToolsScroll.verticalScrollBar().setValue(0)
+        self._analysis_purpose = "measure" if method_index == 1 else "fit"
+        self._updateAnalysisPurposeUi()
+        self.analysisChanged.emit()
+        if method_index == 0 and not self.chartActions.pending:
+            self.chartActions.preview.request()
+
+    def analysisPurposeTaskCard(self):
+        """分析工具页的用途卡；分析图表页继续使用原有任务投影。"""
+
+        if self.currentWorkspace != WORKSPACE_ANALYSIS:
+            return None
+        from ai_physics_tracker.application.workflow_projection import ActionSpec, TaskCard
+        from ai_physics_tracker.application.signal_analysis_job import signal_source
+
+        if self.analysisTabs.currentIndex() == 0:
+            ready = self.analysisSession is not None and bool(self.analysisSession.tracks)
+            return TaskCard(
+                mode="analyze", title="Current: Explore motion",
+                explanation=("Input: trajectory data. Output: motion charts. Next: choose a quantity, update source charts or choose a tool.",),
+                primary=ActionSpec("analysis_fit_formula", "Fit a formula", enabled=ready,
+                                   reason=None if ready else "Open a project and add a track first."),
+                secondary=(ActionSpec("analysis_measure_intervals", "Measure repeat intervals", enabled=ready),
+                           ActionSpec("update_charts", "Update source charts", enabled=self.chartActions.panel.recomputeButton.isEnabled())),
+            )
+        panel = self.chartActions.signalPanel
+        if panel.history.active:
+            return TaskCard(
+                mode="analyze", title="Current: Viewing recorded analysis",
+                explanation=("The form and chart show the selected record. Your editable draft is kept.",
+                             "Return to your draft, or use the recorded setup before calculating again."),
+                primary=ActionSpec("analysis_return_draft", "Return to my draft"),
+                secondary=(ActionSpec("analysis_use_history_setup", "Use recorded setup", enabled=panel.restoreButton.isEnabled()),),
+            )
+        purpose = "measure" if panel.methods.currentIndex() == 1 else "fit"
+        label = "Measure repeat intervals" if purpose == "measure" else "Fit a formula"
+        purpose_action = "analysis_measure_intervals" if purpose == "measure" else "analysis_fit_formula"
+        preview_action = "analysis_preview_source" if purpose == "measure" else "analysis_preview_fit"
+        input_text = (
+            "a measured signal and a same-direction crossing reference"
+            if purpose == "measure" else "a selected signal and your equation"
+        )
+        output_text = (
+            "crossing times and repeat intervals"
+            if purpose == "measure" else "fitted parameters, an overlaid curve, and residuals"
+        )
+        readiness = self._analysisSourceReadiness(panel, signal_source)
+        has_source = readiness is None
+        if has_source:
+            next_action = (
+                "Show source" if purpose == "measure" else "Preview initial curve"
+            )
+            primary = ActionSpec(preview_action, next_action)
+            next_text = (
+                "Show the source, set the orange reference, then measure explicitly."
+                if purpose == "measure" else
+                "Preview the initial curve, then click Fit explicitly."
+            )
+        elif self.analysisSession is not None and not self.analysisSession.can_measure(self.activeVideoId):
+            primary = ActionSpec("analysis_confirm_timing", "Review timing")
+            next_text = "Review timing beside the video, then confirm explicitly before calculating."
+        elif self.analysisSession is not None and panel.trackChoice.currentData() is not None:
+            primary = ActionSpec("analysis_prepare_source", "Prepare source charts")
+            next_text = "Update the source charts, then return here; no result is published by navigation."
+        else:
+            primary = ActionSpec(purpose_action, label)
+            next_text = "Open a project and select a track before using this tool."
+        explanation = (
+            f"{label}: input is {input_text}; output is {output_text}.",
+            next_text,
+        )
+        if readiness is not None:
+            explanation += (f"Source readiness: {readiness}",)
+        other_action = "analysis_fit_formula" if purpose == "measure" else "analysis_measure_intervals"
+        other_label = "Fit a formula" if purpose == "measure" else "Measure repeat intervals"
+        return TaskCard(
+            mode="analyze",
+            title=f"Current: {label}",
+            explanation=explanation,
+            primary=primary,
+            secondary=(ActionSpec(other_action, other_label),
+                       ActionSpec("analysis_explore_motion", "Explore motion")),
+        )
+
+    def _analysisSourceReadiness(self, panel, signal_source) -> str | None:
+        session = self.analysisSession
+        if session is None or self.activeVideoId is None:
+            return "Open a project and select a video."
+        if panel.trackChoice.currentData() is None:
+            return "Add or select a track."
+        if not session.can_measure(self.activeVideoId):
+            return "Timing is not authorized; confirm timing beside the video."
+        quantity = panel.quantityChoice.currentText()
+        if not quantity:
+            return "Select a signal."
+        try:
+            kind, _component = signal_source(quantity, panel.sourceChoice.currentIndex() == 1)
+        except ValueError:
+            return "Select a supported signal."
+        source = session.derived_data(UUID(panel.trackChoice.currentData()), kind)
+        if source is None:
+            return f"No {quantity}(t) source chart is available; update source charts first."
+        if source.status != "valid":
+            return "The selected source chart is stale; update source charts first."
+        return None
 
     def setPlaybackRate(self, rate: float) -> None:
         """设置播放倍速并即时生效；非正值忽略。"""

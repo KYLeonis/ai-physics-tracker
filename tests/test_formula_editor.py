@@ -120,6 +120,8 @@ def test_insertion_and_examples_remain_editable(qtbot) -> None:
     ):
         assert editor.findChild(QPushButton, object_name) is not None
 
+    from PySide6.QtWidgets import QCheckBox
+    editor.findChild(QCheckBox).setChecked(True)
     for name in ("sin", "cos", "exp", "log", "sqrt", "abs"):
         editor.setText("")
         button = editor.findChild(QPushButton, f"insert_{name}")

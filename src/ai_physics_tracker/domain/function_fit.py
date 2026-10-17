@@ -65,6 +65,8 @@ class FitOutcome:
     rmse: float | None = None
     evaluations: int = 0
     solver_status: int | None = None
+    residual_scale: float = 1.0
+    parameter_scales: tuple[tuple[str, float], ...] = ()
 
     @property
     def is_publishable(self) -> bool:
@@ -91,41 +93,76 @@ def fit_function(
     if free and len(time) <= len(free):
         return FitOutcome("insufficient_samples", "More samples than free parameters are required")
     fixed = {parameter.name: parameter.initial for parameter in spec.parameters if parameter.fixed}
+    # 在无量纲参数坐标求解，避免巨大初值触发xtol假收敛或微小参数差分下溢。
+    parameter_scales = np.array([abs(parameter.initial) or 1.0 for parameter in free])
     evaluations = 0
+    # 同一常数缩放保留等权最小二乘目标，避免小单位信号过早满足绝对gtol。
+    residual_scale = float(np.max(np.abs(values))) or 1.0
 
     def parameter_values(vector: np.ndarray) -> dict[str, float]:
-        return fixed | {parameter.name: float(value) for parameter, value in zip(free, vector)}
+        return fixed | {parameter.name: float(value) for parameter, value in zip(free, vector * parameter_scales)}
 
-    def residual(vector: np.ndarray) -> np.ndarray:
+    def model(parameters: dict[str, float]) -> np.ndarray:
         nonlocal evaluations
         if is_cancelled():
             raise _FitStopped("cancelled", "Fit was cancelled")
         if evaluations >= spec.max_evaluations:
             raise _FitStopped("evaluation_limit", "Model evaluation budget was reached")
         evaluations += 1
-        predicted = expression.evaluate(time, parameter_values(vector))
-        with np.errstate(over="raise", invalid="raise"):
-            return predicted - values
+        return expression.evaluate(time, parameters)
 
-    initial = np.array([parameter.initial for parameter in free], dtype=float)
+    def residual(vector: np.ndarray) -> np.ndarray:
+        predicted = model(parameter_values(vector))
+        with np.errstate(over="raise", invalid="raise"):
+            return (predicted - values) / residual_scale
+
     try:
+        if any(parameter.initial == 0 for parameter in free):
+            # 零初值没有自身尺度：在用户边界内用一次有限探针估算响应尺度。
+            # 探针只作坐标预处理，不改变可见初值/边界；同样消耗模型评估预算。
+            base_parameters = fixed | {parameter.name: parameter.initial for parameter in free}
+            base = model(base_parameters)
+            for index, parameter in enumerate(free):
+                if parameter.initial != 0:
+                    continue
+                probe = min(1.0, parameter.upper) if parameter.upper is not None else 1.0
+                if probe <= 0:
+                    probe = max(-1.0, parameter.lower) if parameter.lower is not None else -1.0
+                try:
+                    probed = model(base_parameters | {parameter.name: probe})
+                    with np.errstate(over="raise", invalid="raise"):
+                        response = float(np.max(np.abs(probed-base)))
+                    if response > 0:
+                        scale = math.exp(math.log(abs(probe))+math.log(residual_scale)-math.log(response))
+                        if not math.isfinite(scale) or scale <= 0:
+                            raise _FitStopped("unidentifiable", "Parameter scale is outside the finite numerical range")
+                        parameter_scales[index] = scale
+                except (ExpressionError, FloatingPointError, OverflowError):
+                    # 合法初值的探针可越出公式定义域；不因此修改初值或拒绝原模型。
+                    parameter_scales[index] = 1.0
+        initial = np.array([parameter.initial for parameter in free], dtype=float) / parameter_scales
         if not free:
             errors = residual(initial)
             solution, status, message = initial, None, "Computed with given fixed parameters"
         else:
             lower = [parameter.lower if parameter.lower is not None else -np.inf for parameter in free]
             upper = [parameter.upper if parameter.upper is not None else np.inf for parameter in free]
+            with np.errstate(over="ignore"):
+                lower = np.asarray(lower) / parameter_scales
+                upper = np.asarray(upper) / parameter_scales
             result = least_squares(residual, initial, bounds=(lower, upper), max_nfev=spec.max_evaluations,
                                    x_scale="jac", ftol=1e-10, xtol=1e-10, gtol=1e-10)
             if not result.success:
                 return FitOutcome("not_converged", result.message, evaluations=evaluations,
                                   solver_status=int(result.status))
             # 列归一化避免仅因参数单位不同误判；检查局部数值秩，不输出参数置信区间。
-            norms = np.linalg.norm(result.jac, axis=0)
-            if np.any(norms <= np.finfo(float).eps):
+            maxima = np.max(np.abs(result.jac), axis=0)
+            if np.any(maxima == 0) or not np.all(np.isfinite(maxima)):
                 return FitOutcome("unidentifiable", "Model is insensitive to a free parameter",
                                   evaluations=evaluations)
-            singular = np.linalg.svd(result.jac / norms, compute_uv=False)
+            normalized = result.jac / maxima
+            norms = np.linalg.norm(normalized, axis=0)
+            singular = np.linalg.svd(normalized / norms, compute_uv=False)
             if singular[-1] <= IDENTIFIABILITY_RTOL * singular[0]:
                 return FitOutcome("unidentifiable", "Free parameters have a rank-deficient local Jacobian",
                                   evaluations=evaluations)
@@ -133,6 +170,7 @@ def fit_function(
             status, message = int(result.status), str(result.message)
         if is_cancelled():
             return FitOutcome("cancelled", "Fit was cancelled", evaluations=evaluations)
+        errors = errors * residual_scale
         # 缩放后求平方均值，避免有限大残差在平方步骤溢出。
         scale = float(np.max(np.abs(errors)))
         rmse = scale * math.sqrt(float(np.mean((errors / scale) ** 2))) if scale else 0.0
@@ -142,7 +180,8 @@ def fit_function(
         ordered = parameter_values(solution)
         return FitOutcome("success" if free else "given_parameters", message,
                           tuple((parameter.name, ordered[parameter.name]) for parameter in spec.parameters),
-                          tuple(map(float, predicted)), tuple(map(float, -errors)), rmse, evaluations, status)
+                          tuple(map(float, predicted)), tuple(map(float, -errors)), rmse, evaluations, status, residual_scale,
+                          tuple((parameter.name, float(scale)) for parameter, scale in zip(free, parameter_scales)))
     except _FitStopped as exc:
         return FitOutcome(exc.status, exc.message, evaluations=evaluations)
     except (ValueError, FloatingPointError, np.linalg.LinAlgError) as exc:

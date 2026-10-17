@@ -4,7 +4,7 @@
 > [6.2 子计划](phase-6.2-plan.md)已形成；6.3 已按 [ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)
 > 的用户方程口径完成规划并由用户确认；旧固定拟合列表只作历史草案。
 
-- 状态：Phase 6进行中；6.1 / 6.2 / 6.3完成并集成main（6.3为92d00a2，2026-10-16）；6.3.1新手分析计划已冻结、未实施，6.4 / 6.5未开始。
+- 状态：Phase 6进行中；6.1 / 6.2 / 6.3完成并集成main（6.3为92d00a2，2026-10-16）；6.3.1 S0–S4实现，S5第三轮HR反馈返工完成，历史配方整页同步，R6独立复审通过，最终自动Gate通过（本机1232项 / 双平台CI），HR待复测，6.4 / 6.5未开始。
 - 基线 / 最新证据：[current.md](current.md)、[6.1 review](../reviews/phase-6.1-review.md)。
 - 需求入口：[phase6-requirements.md](../spec/phase6-requirements.md)。
 
@@ -15,7 +15,7 @@
 | 6.1 — Angular Analysis Foundation（已完成 / 集成） | 固定支点/两点方向定义、θ/ω/α 纯计算与 Session 快照事务；解析测试、依赖失效、保存重开。对应 AC-1/2 及 AC-7 的角运动部分 | High-risk，Independent Review 已通过；无 GUI 增量，不触发 Human Review |
 | 6.2 — Angular Charts & Phase Space（已完成 / 集成） | 角度配置、三种时间曲线、θ–ω 与 x–vx 相图，源帧导航；AC-3 的角运动部分 | 6.1；科学适配/参考配置需 Independent Review，交互需 Human Review |
 | 6.3 — User-defined Function Fitting & Signal Recurrence（S1–S4实现，Issue #29 / PR #30，已完成 / 92d00a2集成main） | 用户显式函数编辑 / 预览 / 单标量拟合、可选结果公式；独立信号重复间隔 / 周期工具；[6.3计划](phase-6.3-plan.md)及通用周期适用条件已获用户最终认可 | 6.2；High-risk，Independent Review + Human Review；P011真实源 / 标定 / 7人工事件已冻结；应用周期均值对照差0.21996%，独立复审 / 双平台CI / 整体HR通过，已集成main；ODE与正式参数置信区间后续 |
-| 6.3.1 — Guided Analysis & Immediate Feedback（计划冻结，未实施） | 英文用途入口、图表优先 / 旁侧解释、自动预览 / 有限结构初值估算、清楚的本次反馈 / 下一步、尝试留痕与就地准备；[6.3.1计划](phase-6.3.1-plan.md)Q1–16已获用户认可 | 6.3；High-risk，数值 / 日志 / 生命周期Independent Review + 双平台CI + 新Human Review；不设固定响应或新手完成时限 |
+| 6.3.1 — Guided Analysis & Immediate Feedback（S0–S4实现，待S5 Gate / HR） | 英文用途入口、图表优先 / 旁侧解释、自动预览 / 有限结构初值估算、清楚的本次反馈 / 下一步、尝试留痕与就地准备；[6.3.1计划](phase-6.3.1-plan.md)Q1–16已获用户认可 | 6.3；High-risk，数值 / 日志 / 生命周期Independent Review + 双平台CI + 新Human Review；不设固定响应或新手完成时限 |
 | 6.4 — Comparison & Error Interpretation | 同视频多轨迹比较/同帧差值、周期离散/拟合标准误差及局限展示；AC-3 的比较部分、AC-6 | 6.3；High-risk，Independent Review + Human Review；不做完整系统误差传播 |
 | 6.5 — Integrated Pendulum Acceptance | 冻结真实单摆全流程，AC-1–7 与 roadmap 两项逐条核对，文档/双平台 CI/最终 Human Review；AC-5 | 6.1–6.4；Independent Review + Human Review；完成后停止，不进入 Phase 7 |
 
