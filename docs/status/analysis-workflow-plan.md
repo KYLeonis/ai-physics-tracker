@@ -2,7 +2,7 @@
 
 - 2026-10-18用户明确“启动重构”，授权[整体方案](architecture-next-round-plan.md)A–D；基线main `2edf0b9`。
 - Worktree `/Users/leonis/.codex/worktrees/analysis-workflow/ai-physics-tracker`；branch `codex/analysis-workflow`。
-- 状态：S0已冻结；产品实现与Gate尚未完成，不能提前标已完成。
+- 状态：S0 / A–C及D自动Gate完成（最终产品bd848f1）；独立Approve、F1 Closed、本机1316 / 双平台通过。真人Gate待用户，产品未合并main。
 
 ## Goal / Scope
 
@@ -22,10 +22,10 @@
 ## Slices / Acceptance
 
 - [x] S0：范围 / owner / 调用关系与Review Gate冻结，ADR0027。
-- [ ] A：motion_computation只读计算 / 结果构造；job只含AnalysisInputs和参数 / 目标版本；删除snapshot.compute_*，同步 / 后台共用。
-- [ ] B：同步compute_*经同一prepare/run/apply核对；四类正式结果仍由Session原子提交；未知扩展 / 失效 / 取消 / 双版本回归。
-- [ ] C：源准备 / 当前资格事实由application统一提供给GUI；冻结相关应用事实一次读取，自动显示不触发显式定位，草稿 / 历史 / 预览与正式任务保持隔离；退出旧路径。
-- [ ] D自动Gate：数值 / 同步后台等价 / 无写入 / 分层 / GUI相关与全量；独立完整复审，双平台CI；同步当前架构与完成标记。
+- [x] A：motion_computation只读计算 / 结果构造；job只含AnalysisInputs和参数 / 目标版本；删除snapshot.compute_*，同步 / 后台共用。583ce05。
+- [x] B：同步compute_*经同一prepare/run/apply核对；四类正式结果仍由Session原子提交；未知扩展 / 失效 / 取消 / 双版本回归。583ce05，原有signal发布路径保留。
+- [x] C：源准备 / 当前资格事实由application统一提供给GUI；冻结相关应用事实一次读取，自动显示不触发显式定位，草稿 / 历史 / 预览与正式任务保持隔离；退出旧路径。10f6887；bd848f1闭环自动补源定位F1。
+- [x] D自动Gate：数值 / 同步后台等价 / 无写入 / 分层 / GUI相关与全量；独立完整复审，双平台CI；同步当前架构与完成标记。bd848f1本机1316 / 双平台各1314 + 2既有skip；独立Approve，F1 Closed。
 - [ ] D真人Gate：涉及GUI连接或反馈归属变化时，以独立副本≤5步HR验收，再集成 / push；若只有内部实现变化，在Review明确免新增HR依据。
 
 ## Review Gate
@@ -36,4 +36,20 @@ High-risk（科学输入、结果构造、事务与后台交付）。Independent
 
 ## Verification / Handoff
 
-待实现。完整证据将记录于docs/reviews/analysis-workflow-review.md。每批标明已实现 / 自动验证 / 待HR / 已合并，不能只因搬出文件便算R04完成。
+最终产品bd848f1；修复自动补源跳顶F1，58项定向及独立增量通过。最终本机1316 passed（142.73s），[双平台CI39119607020](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39119607020)各1314 passed / 2个既有可选skip，全部步骤success；完整独立复审Approve，F1 Closed。首版数值 / 发布93、相关GUI70、新回归12、工作流 / AI / 保存 / Undo75也通过。[PR #37](https://github.com/KYLeonis/ai-physics-tracker/pull/37)是完整diff / CI容器，完整证据见[Review](../reviews/analysis-workflow-review.md)。C涉及GUI指导与缓存连接，必须真人回归；当前仅剩本轮HR及其后的集成，不能提前标整个R04已完成 / 已合并。
+
+## Human Review（自动Gate全部通过后执行）
+
+独立副本：主工作区`experiment/analysis-workflow-human-review/project`，从现有R03试用副本复制，原manifest SHA256 `ebae7a1ce5ffc3daf456c43789daebc8676ac703f29ba5bbbfa0f9f866559306`；复制前后所有原文件hash一致。复用外部视频，两个旧试用副本不覆盖。
+
+```bash
+zsh /Users/leonis/Documents/ai-physics-tracker/experiment/analysis-workflow-human-review/start.command
+```
+
+1. 启动后进入Fit a formula，切换x / vx / theta：源曲线、单位和提示对应所选量；可准备的来源自动准备，未点击Fit不新增正式拟合。
+2. 选择vx，点击Show source，调整SG window并回到Fit a formula：预览按新设置更新；顶部提示与按钮状态一致，等待准备后可Fit。不要把更改草稿支点当作已Apply。
+3. 在公式框输入`a*t+b`并点击Fit，再查看Latest applied result并Return to my draft：正式结果和草稿区分，回看不会清空当前编辑；本步骤检查操作与结果显示，不要求直线准确描述振荡。
+4. 切Measure repeat intervals，选x，Center reference，滚动至图及控件可见处，连续拖橙线并松手：候选点更新，页面位置和缩放保持；点击Measure才产生正式测量。
+5. 在此新副本Save，关闭后用同一命令重开：保存结果可查看，源和单位正确；自动预览不会冒充新正式结果。
+
+封闭式反馈：上述5项是否全部通过（通过 / 第N项未通过）？当前尚未执行HR，产品不合并main。

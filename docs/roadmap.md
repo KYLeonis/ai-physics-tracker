@@ -6,6 +6,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近交付：**重复间隔源联动与交点预览（2026-10-18；独立复审 / 双平台CI / 全部HR通过，2600f2a已集成main）**
+- 当前维护：[R04分析主干重构](status/analysis-workflow-plan.md)，A–C已实现于codex/analysis-workflow，本机1316 / 独立 / 双平台通过，自动Gate完成，待本轮HR；未合并main，不改变Phase6后续范围。
 - 当前阶段：**Phase 6 进行中（2026-10-18，6.1 / 6.2 完成并集成 main；6.3计划已冻结、S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1 S0–S4已实现，已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；比较 / 误差及整体单摆验收仍未完成）**
 - 已交付 GUI 增量：首次学习 20 个人工帧、默认 K-means、推荐框自定义算法及沿真实建议帧连续标注；[计划](status/initial-annotation-guidance-plan.md)，Human Review 已通过。
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
@@ -295,4 +296,4 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 该内部整理未改变Phase 6未完成验收项；后续重复间隔联动见下述R03交付，6.4 / 6.5未开始。
 
-2026-10-18维护增量：[R03重复间隔源联动 / 候选交点预览](status/recurrence-linked-plan.md)，全部AC / Independent / 双平台CI / HR通过，2600f2a集成main。F1拖线跳顶修复4bd723a经81项相关GUI / 独立17 / 最终双平台1296 passed（2个既有可选skip）及用户复测通过；正式Measure、算法、格式与事务契约保持。R01–R03已完成，R04待规划，6.4 / 6.5未开始。
+2026-10-18维护增量：[R03重复间隔源联动 / 候选交点预览](status/recurrence-linked-plan.md)，全部AC / Independent / 双平台CI / HR通过，2600f2a集成main。F1拖线跳顶修复4bd723a经81项相关GUI / 独立17 / 最终双平台1296 passed（2个既有可选skip）及用户复测通过；正式Measure、算法、格式与事务契约保持。R01–R03已完成；R04随后获用户授权，当前实施 / Gate状态见顶部及current.md；6.4 / 6.5未开始。
