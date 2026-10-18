@@ -1,6 +1,45 @@
 # Architecture — AI Physics Tracker
 
-本文档记录**高层设计**与未来模块关系。当前刻意不提前固定所有类和接口——具体设计在进入对应 Phase 时细化，重要决策以 ADR 形式记录在 `docs/decisions/`。
+本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。重要决策见`docs/decisions/`。
+
+## 当前架构总览（接手先读）
+
+2026-10-18核对，main产品基线0afe9f9：6.1 / 6.2 / 6.3 / 6.3.1、自动Near-CFR、公式拟合联动、配方统一解释均已集成。重复间隔自动联动为R03进行中，不能提前当作main已完成。
+
+```mermaid
+flowchart TD
+    UI[MainWindow / 工作区与交付] --> SESSION[ProjectSession / 活动工程与原子事务]
+    SESSION --> DOMAIN[domain / 模型与纯数值]
+    SESSION --> REPO[ProjectRepository / JSON原子保存]
+    UI --> CHART[ChartActions / 正式分析执行器]
+    CHART --> JOBS[kinematics / angular / signal jobs]
+    JOBS --> DOMAIN
+    JOBS --> VALID[输入 / 源 / 目标版本校验]
+    VALID --> SESSION
+    CHART --> PREVIEW[SignalPreview / 独立预览执行器]
+    PREVIEW --> DOMAIN
+    RECIPE[source_recipe / 配方事实与读写] --> JOBS
+    RECIPE --> SESSION
+    RECIPE --> DISPLAY[chart_recipe / 比较与披露策略]
+    DISPLAY --> DATA[chart_data / ChartSeries来源字段]
+    DATA --> PLOT[ChartPlot / AnalysisPlot]
+    UI --> TRACK[TrackingActions / 训练与推理]
+    TRACK --> RUNNER[TrackingJobRunner / BackgroundTaskRunner spawn]
+```
+
+| 规则 / 工作 | 唯一owner或既有调用关系 |
+| --- | --- |
+| 领域 / 数值 | domain模型、kinematics / angular / expression / function_fit / recurrence；不依赖Qt / application |
+| 活动工程 / 原子写入 / Undo | ProjectSession / TrackStore；所有后台结果经apply_*与校验后提交。compute仍在Session装配结果，R04尚未提取 |
+| 配方事实 / 读写 | source_recipe；chart_recipe仅保留图表比较 / 披露 / 行读取策略及旧路径再导出；不得新增另一份SG / 参考定义 |
+| 正式分析 | ChartActions单executor→既有job→GUI主线程apply；prepare_signal_source复用此链路，不绕过目标版本检查 |
+| 草稿预览 | SignalPreview独立executor（ADR-0023），只读不可变输入，旧值核对后显示；不发布结果 / 尝试日志 / Undo |
+| 历史与日志 | SignalHistory保留草稿、只读查看；fit_attempt_view按严格源身份重建；fit_attempts / FitAttemptJournal管理独立日志，不并入工程Undo |
+| AI与候选激活 | TrackingActions→TrackingJobRunner→BackgroundTaskRunner.spawn；取消 / terminate / kill / reap保留；候选经Session显式激活才改观测 |
+| 解码交付 | MainWindow的SimpleQueue + 无参Qt signal→GUI drain→generation / request_id核对；禁止worker直接发携带Python对象的信号 |
+| 保存与时序 | ProjectActions独立保存，文件写入阶段不可取消；TimingActions / ProjectMediaService按ADR-0024自动采用合格Near-CFR |
+
+不存在全局JobSupervisor、WorldSnapshot、通用计算框架或统一图表widget；[进度表](status/architecture-progress.md)标明哪些已做、哪些后置。历史设计若与顶部 / ADR / 代码冲突，应先修正文档，不恢复旧实现。
 
 ---
 
@@ -180,11 +219,18 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 - [0017 — 用户方程通用分析平台口径](decisions/0017-user-defined-equation-analysis-platform.md)
 - [0018 — 受管教师模型导入](decisions/0018-managed-teacher-model-import.md)
 - [0019 — 角运动计算与多输入派生数据 additive 契约](decisions/0019-angular-kinematics-and-multi-input-derived-data.md)
+- [0020 — 分析批次的目标结果版本与计算配方一致性](decisions/0020-analysis-batch-result-and-recipe-consistency.md)
+- [0021 — 显式函数拟合与信号重复间隔的输入 / 结果契约](decisions/0021-function-fit-and-recurrence-result-contract.md)
+- [0022 — 可检查的拟合准备、解释与尝试日志](decisions/0022-guided-fit-preparation-and-attempt-journal.md)
+- [0023 — 草稿预览与正式计算的执行隔离](decisions/0023-preview-task-isolation.md)
+- [0024 — 自动采用合格的近似时序](decisions/0024-automatic-near-cfr-acceptance.md)
+- [0025 — 公式拟合的源曲线自动准备](decisions/0025-automatic-fit-source-preparation.md)
+- [0026 — 重复间隔源自动准备与交叉点草稿预览](decisions/0026-live-recurrence-preview.md)
 
 
 ## 主线后续分析与受管教师模型（2026-10-11）
 
-用户定义方程 / 公式，由通用计算平台完成求解、拟合、比较和导出；论文固定 ODE 仅作为示例。当前只确认口径，Phase 6 须按 [ADR-0017](decisions/0017-user-defined-equation-analysis-platform.md) 重规划。
+用户定义方程 / 公式，由通用计算平台完成求解、拟合、比较和导出；论文固定 ODE 仅作为示例。主线已按[ADR-0017](decisions/0017-user-defined-equation-analysis-platform.md)采用此口径，6.3 / 6.3.1已完成并集成；后续比较 / 误差仍按Phase计划推进。
 
 角运动分析（Phase 6.1）作为通用平台的首批标量分析能力落地：domain `angular` 提供单摆/两点方向 θ、段内 unwrap 与标量稀疏记录；`DerivedInput.reference_track_id`（additive）承载双轨迹依赖，`compute_angular` 产出四种 rad 系标量 kind，`angular_job` 复用 detached 快照 / 输入复核 / 原子批次提交骨架。契约见 [ADR-0019](decisions/0019-angular-kinematics-and-multi-input-derived-data.md)；6.2 的 Qt-free `chart_data` 已消费单列角量和按源帧配对的相空间，`chart_recipe` 核对输入 / 参考 / SG / 标定 / 时序并披露缓存来源；GUI已接入十图和参考配置，复用同一ChartActions executor/取消/提交管线；显示选择走workflow.charts视图状态，科学配方仍由DerivedData提供。
 
@@ -202,14 +248,14 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 [ADR-0020](decisions/0020-analysis-batch-result-and-recipe-consistency.md)。
 
 
-### Phase 6.3显式函数 / 重复间隔（开发分支，待HR集成）
+### Phase 6.3显式函数 / 重复间隔（已集成main）
 
 - 领域层`expression`使用受限AST同时计算 / 排版；`function_fit`做单初值等权有界最小二乘，`recurrence`保留同向交叉夹点和段内间隔，不推断基本周期。`analysis`仅处理既有源到两族结果的直接依赖。
 - 应用层`signal_analysis_job`捕获AnalysisInputs、确切源记录、实际样本 / 时间、目标旧ID和规格；后台计算后主线程核对两类版本并在现有Session历史边界发布。加载核对源指纹，保持detached的不可变Project共享。
 - GUI `FormulaEditor` / `SignalAnalysisPanel`复用ChartActions单执行器；MathText仅显示、不执行公式、不调用外部TeX。结果专用Undo只允许栈顶本期结果事务，不放开原始视频标注 / 标定编辑。
 - schema v1追加kind与`analysis.version=1`扩展，来源 / 配方 / 测量值 / 预测 / 残差 / 事件留存；每track / quantity两族各一个最新槽。见[ADR-0021](decisions/0021-function-fit-and-recurrence-result-contract.md)。
 
-### Phase 6.3.1引导分析与诊断日志（实现分支）
+### Phase 6.3.1引导分析与诊断日志（已集成main）
 
 `domain.fit_initial`只识别有限示例结构，初值与正式求解分开；`fit_interpretation`比较同样本常数均值基线。求解使用等权残差及参数坐标缩放，摘要记录缩放因子，预测/残差仍是源单位。
 

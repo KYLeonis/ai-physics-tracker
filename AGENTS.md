@@ -2,6 +2,8 @@
 
 本文件面向在本仓库工作的 Coding Agent（以及人类开发者），帮助其快速理解项目并按统一规范继续开发。请保持本文件简洁、随项目进展持续更新。
 
+**架构接手必读**：[当前架构总览](docs/architecture.md#当前架构总览接手先读) → [重构进度与已淘汰做法](docs/status/architecture-progress.md) → [本轮状态 / 下一步](docs/status/current.md)。每次重构完成须同步对应计划 / Review、进度表及受影响架构关系；实现完成、待HR、已合并分开标记。历史HTML / notes不覆盖当前代码、ADR和此入口。
+
 ## 1. 项目长期目标
 
 AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量和科学教育的**桌面视频跟踪与数据分析平台**：

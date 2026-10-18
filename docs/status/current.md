@@ -2,21 +2,23 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（计算配方统一解释全Gate通过，以26af812集成main；74a3213主分支双平台CI39101746905通过，已验证产品树保持不变）
+- 最后更新：2026-10-18（用户授权R03重复间隔源 / 交叉点预览，及架构交接入口；已完成项保留标记，新交互未实施 / 未验收）
 
 ## Current
 
+- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01 / R02已合并；R03进行中，不能使用旧HTML覆盖当前状态。
+
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[计算配方统一解释](source-recipe-plan.md) S0–S3完成；产品cdc2be3全量1276 / 独立Approve / 双平台CI通过，以26af812集成main。公式拟合联动已完成并集成。6.4 / 6.5未开始。
-- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`，集成26af812；`codex/source-recipe`已集成，论文worktree未改。
+- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md) S0范围冻结；S1–S3实现 / 自动Gate / 本轮HR待完成。R01 / R02已完成，6.4 / 6.5未开始。
+- **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/recurrence-linked/ai-physics-tracker` / `codex/recurrence-linked`，产品基线0afe9f9；main本轮只更新架构 / 接手文档，产品及论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
 - **本轮已交付**：用户通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。本轮[联动计划](fit-linked-source-plan.md)自动Gate / HR均通过并已集成，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。不扩大为重复间隔或后续阶段已完成。
 
-1. **本轮收尾后停止，等待下一条指令**：用户选择的[source-recipe内部整理](source-recipe-plan.md)已通过全量 / 独立复审 / 双平台CI并以26af812集成，PR [#34](https://github.com/KYLeonis/ai-physics-tracker/pull/34)。下一次按已确认方向先梳理重复间隔工具的联动范围，再形成mini-plan；不自动混入纯计算提取或全局重构。
-2. [第一次复核](../notes/architecture-review-assessment-2026-10-17.md)保留为历史输入。拟合联动已经完成，不再按旧文的“6.3.1未开始”安排工作。推荐次序为设置解释收拢→重复间隔联动→计算与结果装配分离；最终先后以用户当前选择为准。
+1. **执行已授权R03**：按[recurrence-linked计划](recurrence-linked-plan.md)复用当前源准备 / 独立预览，自动预览候选交叉点，不自动Measure；完成定向 / 全量 / 独立复审 / 双平台CI后给出独立副本HR并停止等待。用户通过前不得合并产品到main。
+2. 架构完成状态只在[进度表](architecture-progress.md)统一维护，并同步对应计划 / Review及architecture.md。R01 / R02不要重复实施；R04计算 / 写入分离及全局任务 / Undo仍后置。
 3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
 ## Active Constraints

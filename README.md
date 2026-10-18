@@ -141,6 +141,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 ## 文档索引
 
 - [AGENTS.md](AGENTS.md) — 面向 Coding Agent 的项目指南
+- [当前架构总览](docs/architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](docs/status/architecture-progress.md) — Agent接手时先读；完成 / 进行中 / 后置明确区分
 - [CODE_STANDARD.md](CODE_STANDARD.md) — 代码规范（写代码前必读）
 - [docs/status/current.md](docs/status/current.md) — 当前状态与下一步（不知道做什么先读）
 - [docs/workflow.md](docs/workflow.md) — 开发循环说明书（Phase / Subphase / Slice）
