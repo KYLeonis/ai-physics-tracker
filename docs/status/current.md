@@ -2,23 +2,23 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（R03全部HR通过，F1 Closed；已以2600f2a集成main，收尾文档同步；R01–R03均完成）
+- 最后更新：2026-10-18（R01–R03已完成；下一轮R04整体架构方案已成文，待用户确认，本次仅文档）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R03已完成 / 已合并，不能使用旧HTML覆盖当前状态。
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md)全部实现 / 自动Gate / HR完成，F1拖线跳顶已修复且用户复测通过，2600f2a集成main。R01–R03已完成，R04待规划，6.4 / 6.5未开始。
+- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md)全部实现 / 自动Gate / HR完成，F1拖线跳顶已修复且用户复测通过，2600f2a集成main。R01–R03已完成，R04方案待确认 / 未实施，6.4 / 6.5未开始。
 - **Worktree / Branch**：主工作区 `/Users/leonis/Documents/ai-physics-tracker` / `main`；已集成`codex/recurrence-linked`，合并树与b2823b9一致，源码 / 测试与已验证4bd723a一致。试用worktree保留以兼容既有启动器；论文线及用户实验未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-- **本轮已交付**：重复间隔工具复用源自动准备和独立预览；改参考线 / 方向 / 区间自动更新候选交点与说明，Measure仍显式。2026-10-18用户先确认其他项目通过，再确认拖线稳定性修复“通过”，所有Gate完成，2600f2a集成main。
+- **最近产品交付**：重复间隔工具复用源自动准备和独立预览；改参考线 / 方向 / 区间自动更新候选交点与说明，Measure仍显式。2026-10-18用户先确认其他项目通过，再确认拖线稳定性修复“通过”，所有Gate完成，2600f2a集成main。
 
-1. **本轮收尾后停止**：等待用户下一条指令；R01–R03不要重复实施。集成收尾CI39107041901双平台success，回执已记录，源码不再改动。
-2. **下次建议讨论R04**：只整理纯计算 / 记录装配与Session写入职责，目标为后续改计算规则时集中一处，并保留保存 / Undo / 科学输入校验。当前尚未授权实施，先按[进度表](architecture-progress.md)和[后续复核](../notes/architecture-followup-2026-10-18.md)冻结范围与Gate。
+1. **审阅下一轮整体方案**：[architecture-next-round-plan.md](architecture-next-round-plan.md)。目标贯通计算、核对、工程写回及界面更新，A–D分批覆盖完整分析主干；与AI、视频及保存保留明确协作关系。方案已形成，尚未授权实施；不把目标图当成已落地架构。
+2. **用户确认范围后再实施R04**：据方案冻结可执行mini-plan / ADR及Review Gate。R01–R03不要重做；R05 / R06继续后置，当前产品代码保持已验收版本。
 3. 架构完成状态同步进度表、对应计划 / Review及architecture.md；全局任务 / Undo仍后置，不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
 ## Active Constraints
@@ -63,6 +63,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **下一轮整体架构方案（2026-10-18，仅文档）**：新增[方案](architecture-next-round-plan.md)，围绕计算输入 / 无会话写入计算 / 科学核对与原子写回 / 只读状态与交互归属安排A–D完整迁移，明确全产品关系、实际影响、退出旧路径及验收标准。R04为方案待确认，未实施，未改产品代码或验收契约。
 
 - **R03集成验证回执（2026-10-18）**：集成收尾ddb5bd3的[主分支CI39107041901](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39107041901) macOS / Windows Python3.11均success；之后仅补文档回执，不再改动源码 / 测试。
 

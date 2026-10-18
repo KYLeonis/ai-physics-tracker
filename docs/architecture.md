@@ -1,6 +1,6 @@
 # Architecture — AI Physics Tracker
 
-本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。重要决策见`docs/decisions/`。
+本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。重要决策见`docs/decisions/`。下一轮目标见[整体重构方案（待确认，未实施）](status/architecture-next-round-plan.md)，不能用其目标图替代本文当前事实。
 
 ## 当前架构总览（接手先读）
 
