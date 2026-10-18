@@ -1,6 +1,6 @@
 # Architecture — AI Physics Tracker
 
-本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04均已完成 / 已合并，下一轮[R07工程变更与界面更新方案](status/change-notification-proposal.md)仅为建议、未实施。
+本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04均已完成 / 已合并，[R07工程变更与界面更新方案](status/change-notification-proposal.md)已由用户搁置、未实施；当前讨论见[GLM剩余项复核](notes/glm-remaining-review-2026-10-18.md)。
 
 ## 当前架构总览（接手先读）
 
@@ -53,7 +53,7 @@ flowchart TD
 
 **R04已退出的旧路径**：Session内运动学计算 / 候选装配、job.snapshot.compute_*、MainWindow只按源是否存在推断可用、同轮重复采集执行事实。自动源任务的启动 / 取消 / 失败只更新jobLabel，显式Preview自己发定位信号；F1与R03橙线更新共同保持页面位置。频繁比较事实的analysis_inputs不深拷贝整个Project；detached()继续服务保存等既有用途。
 
-当前GUI仍通过analysisChanged等通知协调多个页面，保存 / 导航也会触发此通知，消费方自行核对是否需要更新；[R07方案](status/change-notification-proposal.md)拟梳理这条链路，尚未实施。已有失效传播与迟到拒绝保护有效，不能以方案中的目标替换当前事实。
+当前GUI仍通过analysisChanged等通知协调多个页面，保存 / 导航也会触发此通知，消费方自行核对是否需要更新；[R07方案](status/change-notification-proposal.md)曾拟梳理这条链路，用户现已搁置，未实施。已有失效传播与迟到拒绝保护有效，不能以方案中的目标替换当前事实。
 
 不存在全局JobSupervisor、WorldSnapshot、通用计算框架或统一图表widget；R05 / R06继续后置。历史设计若与顶部 / ADR / 代码冲突，应修正文档，不恢复旧实现。当前设计依据为[ADR-0027](decisions/0027-analysis-computation-and-publication.md)。
 

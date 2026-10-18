@@ -6,7 +6,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近交付：**R04分析主干职责重构（2026-10-18；本机1316 / 独立 / 双平台 / 本轮HR通过，085219e已集成main）**
-- 当前建议：[R07工程变更与界面更新方案 / 待办](status/change-notification-proposal.md)已形成，未实施；R01–R04均已完成 / 已合并，不改变Phase6后续范围。
+- 当前建议：[R07工程变更与界面更新方案 / 待办](status/change-notification-proposal.md)已由用户搁置，未实施；当前讨论见[GLM剩余项复核](notes/glm-remaining-review-2026-10-18.md)；R01–R04均已完成 / 已合并，不改变Phase6后续范围。
 - 当前阶段：**Phase 6 进行中（2026-10-18，6.1 / 6.2 完成并集成 main；6.3计划已冻结、S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1 S0–S4已实现，已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；比较 / 误差及整体单摆验收仍未完成）**
 - 已交付 GUI 增量：首次学习 20 个人工帧、默认 K-means、推荐框自定义算法及沿真实建议帧连续标注；[计划](status/initial-annotation-guidance-plan.md)，Human Review 已通过。
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。

@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
 Last Delivered:   R04分析主干职责重构；本机1316 / 独立 / 双平台 / 本轮HR通过，2026-10-18以085219e集成main
-Current Subphase: R01–R04已完成并集成main；R07方案与待办已形成，未实施；6.4 / 6.5未开始
+Current Subphase: R01–R04已完成并集成main；R07由用户搁置，GLM剩余项讨论中；6.4 / 6.5未开始
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -138,7 +138,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ Phase 6.1 角运动基础 / 6.2 图表与相空间 / 6.3 显式函数拟合及重复间隔已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
 - ✅ R01–R04架构维护已完成：公式拟合联动、计算设置统一、重复间隔联动、分析计算与写回分离；当前架构与完成进度有统一接手入口
 - ✅ [R04分析主干重构](docs/status/analysis-workflow-plan.md)：本机1316 / 独立 / 双平台 / 本轮HR通过，085219e已集成main
-- ⬜ [R07下一轮方案与待办](docs/status/change-notification-proposal.md)：工程变更与界面更新链路，待用户确认实施
+- ⬜ [R07下一轮方案与待办](docs/status/change-notification-proposal.md)：工程变更与界面更新链路，用户已搁置，未实施
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引

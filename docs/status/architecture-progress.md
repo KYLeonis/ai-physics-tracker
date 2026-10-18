@@ -19,7 +19,7 @@
 | R04 分析主干职责重构（含计算 / 写入分离） | **已完成 / 已合并** | 583ce05计算退出Session，job删除snapshot，同步 / 后台同一核对发布；10f6887提示 / 按钮 / 执行共享源事实；bd848f1修复自动补源跳顶F1（Closed）。本机1316 / 独立Approve / 最终双平台CI / 本轮HR通过；2026-10-18用户确认“通过”，085219e集成main | [实施计划](analysis-workflow-plan.md) / [Review](../reviews/analysis-workflow-review.md) / [整体方案](architecture-next-round-plan.md) / [PR #37](https://github.com/KYLeonis/ai-physics-tracker/pull/37) |
 | R05 全局JobSupervisor / WorldSnapshot | **后置，未实施** | 现有runner及各任务专属校验继续有效；没有通用hash替代科学条件 | [首次复核](../notes/architecture-review-assessment-2026-10-17.md) / [后续复核](../notes/architecture-followup-2026-10-18.md) |
 | R06 Undo拆分 / 通用图表渲染器 | **后置，未实施** | Session拥有事务；ChartPlot / AnalysisPlot保留不同交互；不按文件大小重写 | 同上；不与R03 / R04捆绑 |
-| R07 工程变更与界面更新链路 | **方案已形成 / 待确认，未实施** | 建议明确数据 / 保存 / 任务 / 导航变化的含义，贯通全部通知消费者；复用现有失效与结果校验，不建全局事件总线 | [方案与唯一待办清单](change-notification-proposal.md)；T01–T08均未开始 |
+| R07 工程变更与界面更新链路 | **用户已搁置，未实施** | 用户认为使用上没有必要继续；不启动T01–T08，转为重新核对GLM剩余建议 | [保留原方案](change-notification-proposal.md) / [剩余项复核](../notes/glm-remaining-review-2026-10-18.md) |
 
 ## 不要恢复的旧做法
 
@@ -32,4 +32,4 @@
 7. 不把“生命周期Normal-risk”“Undo / recipe无测试”“6.3.1未实施”等旧报告陈述当现状。
 8. R04已集成：计算已退出Session；不恢复job.snapshot或在worker临时会话写Undo。兼容compute_*协调prepare/run/apply，事务仍归Session。
 
-最后核对：2026-10-18，main集成085219e，R01–R04已完成 / 已合并；R07方案待确认、未实施；下一步以[current.md](current.md)为准。
+最后核对：2026-10-18，main集成085219e，R01–R04已完成 / 已合并；R07用户已搁置、未实施；下一步以[current.md](current.md)为准。
