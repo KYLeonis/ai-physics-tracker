@@ -274,3 +274,10 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 ### 计算配方事实收拢（2026-10-18已验收 / 集成main）
 
 `application.source_recipe`承接既有步骤 / SG / 参考 / 时序事实，提供同步构造与记录读取；不导入Session / job / Qt。`chart_recipe`保留图表比较、披露、行读取并兼容旧导入路径；job / signal各自的发布及自动覆盖资格不合并。`ChartSeries.reference_label` / `source_smoothed`由源记录构造，GUI不从摘要文案推断语义。沿用现有ADR与JSON，无迁移 / 新依赖；这是可逆内部整理，范围与Gate见[计划](status/source-recipe-plan.md)。
+
+
+### R03重复间隔联动（实现 / 自动Gate完成，待HR / 集成）
+
+`codex/recurrence-linked`的0888297让两个工具共用SignalPreview的请求合并 / 取消 / 后台交付及prepare_signal_source。纯预览入口为application的`preview_signal_analysis`：Fit返回初值曲线，Recurrence返回既有measure_recurrence的候选事件；GUI只绘制候选线，不创建DerivedData或日志。Measure继续使用正式执行器及Session提交。
+
+同一源改参考线只换候选线；源曲线及view保留。源任务同时捕获工具 / 轨迹 / 输入版本，历史、换页及工程代际使旧交付失效。此处说明开发分支现状，main产品仍以上述已集成快照为准；验收后更新本节及[进度](status/architecture-progress.md)，不要新建第二套预览调度。

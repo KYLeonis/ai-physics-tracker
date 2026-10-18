@@ -46,3 +46,5 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
   929 全量 / 最新代码双平台 CI 通过；6.2 入口准备就绪。前置 HR 已通过，三条分支已按序集成 main。
 
 - [自动近似时序](automatic-timing-review.md)：2026-10-17用户授权取消人工Yes，独立复审Approve、双平台CI及本轮HR通过，已集成main。
+
+- [重复间隔源联动与候选交叉点](recurrence-linked-review.md)：R03实现0888297，自动Gate / 独立Approve / 最终双平台CI通过，本轮HR待用户，未合并main。

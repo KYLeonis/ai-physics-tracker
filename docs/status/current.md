@@ -2,22 +2,22 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（用户授权R03重复间隔源 / 交叉点预览，及架构交接入口；已完成项保留标记，新交互未实施 / 未验收）
+- 最后更新：2026-10-18（用户授权R03重复间隔源 / 交叉点预览，及架构交接入口；已完成项保留标记，新交互已实现，自动Gate通过，本轮HR待用户，未合并）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01 / R02已合并；R03进行中，不能使用旧HTML覆盖当前状态。
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md) S0范围冻结；S1–S3实现 / 自动Gate / 本轮HR待完成。R01 / R02已完成，6.4 / 6.5未开始。
-- **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/recurrence-linked/ai-physics-tracker` / `codex/recurrence-linked`，产品基线0afe9f9；main本轮只更新架构 / 接手文档，产品及论文worktree未改。
+- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md) S0–S2已实现；S3自动Gate完成（全量1289 / 补充31 / 独立Approve / 最终双平台CI通过），本轮HR待用户。R01 / R02已完成，6.4 / 6.5未开始。
+- **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/recurrence-linked/ai-physics-tracker` / `codex/recurrence-linked`，产品基线0afe9f9；main本轮只更新架构 / 接手文档；产品0888297及测试f5c727a只在上述开发分支，论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
 - **本轮已交付**：用户通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。本轮[联动计划](fit-linked-source-plan.md)自动Gate / HR均通过并已集成，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。不扩大为重复间隔或后续阶段已完成。
 
-1. **执行已授权R03**：按[recurrence-linked计划](recurrence-linked-plan.md)复用当前源准备 / 独立预览，自动预览候选交叉点，不自动Measure；完成定向 / 全量 / 独立复审 / 双平台CI后给出独立副本HR并停止等待。用户通过前不得合并产品到main。
+1. **等待R03本轮Human Review**：产品0888297已实现，测试f5c727a；定向59 / 本机全量1289 / 补充31 / 独立Approve及最终macOS / Windows CI39103525201全部通过。已按[计划](recurrence-linked-plan.md#human-review自动gate通过后执行)提供独立副本、启动命令及5步试用，停止等待用户“通过 / 第N项未通过”。用户通过前不得合并产品到main；通过后按--no-ff集成、同步架构及进度为已完成、push并停止。
 2. 架构完成状态只在[进度表](architecture-progress.md)统一维护，并同步对应计划 / Review及architecture.md。R01 / R02不要重复实施；R04计算 / 写入分离及全局任务 / Undo仍后置。
 3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
@@ -63,6 +63,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **R03实现检查点（2026-10-18，未完成 / 未合并）**：0888297让重复间隔复用源自动准备与独立预览，候选事件 / 曲线 / 单位 / 说明联动；正式Measure仍显式。1289全量及补充31通过；[PR #35](https://github.com/KYLeonis/ai-physics-tracker/pull/35)，独立Approve / 最终双平台CI39103525201通过；本轮HR待用户。架构总览、进度表、AGENTS入口及独立HR副本已准备，不能写成产品已完成。
 
 - **计算配方统一解释 / 集成（2026-10-18）**：用户明确选择先统一计算设置。source_recipe收拢原步骤 / SG / 参考 / 时序事实，Session生成、后台校验、源准备与GUI恢复共用；图例读取明确来源字段，删除英文摘要反解析与线性后台时序覆写。产品cdc2be3全量1276 / 独立Approve（134项）/ 双平台CI39101339745通过，以26af812集成；合并树与分支b24c374一致，源码 / 测试与已验证产品一致。无新交互，不新增HR；用户实验 / JSON / 资格策略 / Undo未改。
 
