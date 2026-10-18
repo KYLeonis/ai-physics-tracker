@@ -9,6 +9,7 @@ from threading import Event
 from uuid import UUID, uuid4
 
 import numpy as np
+import numpy.typing as npt
 import scipy
 
 from ai_physics_tracker.application.chart_recipe import prepare_derived_rows
@@ -27,8 +28,9 @@ from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS, DerivedData, DerivedInput
 from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula, parse_expression
 from ai_physics_tracker.domain.function_fit import FitOutcome, FitSpec, fit_function
+from ai_physics_tracker.domain.fit_initial import InitialEstimate, estimate_initial, adopt_estimate
 from ai_physics_tracker.domain.kinematics import derive_unit
-from ai_physics_tracker.domain.recurrence import RecurrenceSpec, measure_recurrence
+from ai_physics_tracker.domain.recurrence import RecurrenceSpec, RecurrenceOutcome, measure_recurrence
 from ai_physics_tracker.domain.timeline import frame_to_time
 from ai_physics_tracker.domain.types import utc_now
 
@@ -83,6 +85,29 @@ class SignalAnalysisResult:
     job: SignalAnalysisJob
     record: DerivedData | None
     fit_outcome: FitOutcome | None = None
+
+
+def preview_signal_analysis(
+    job: SignalAnalysisJob, estimate: bool = False, cancel: Event | None = None,
+) -> tuple[FitSpec, InitialEstimate | None, npt.NDArray[np.float64]] | RecurrenceOutcome:
+    """worker只持有不可变输入，不访问Qt或活动工程。"""
+    if cancel is not None and cancel.is_set():
+        raise CancelledError()
+    samples = np.asarray(job.samples)
+    spec, suggestion = job.spec, None
+    if isinstance(spec, RecurrenceSpec):
+        return measure_recurrence(samples[:, 0].astype(int), samples[:, 1], samples[:, 3], spec,
+                                  cancel.is_set if cancel is not None else lambda: False)
+    if estimate:
+        suggestion = estimate_initial(samples[:, 2], samples[:, 3], spec.expression,
+                                      segment_indices=samples[:, 4], wrapped=job.source.kind == "angular_position")
+        if suggestion.values:
+            spec = adopt_estimate(spec, suggestion)
+    if cancel is not None and cancel.is_set():
+        raise CancelledError()
+    prediction = parse_expression(spec.expression).evaluate(
+        samples[:, 2], {parameter.name: parameter.initial for parameter in spec.parameters})
+    return spec, suggestion, prediction
 
 
 def _recorded_source_settings(records: list[DerivedData]) -> tuple[SmoothingParameters, AngularReference | None]:

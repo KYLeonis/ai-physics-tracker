@@ -335,5 +335,5 @@ def test_restored_crossing_settings_point_to_measure_instead_of_hidden_fit(qtbot
     assert panel.level.value()==13
     assert 'Measure crossing intervals' in panel.jobLabel.text()
     assert 'click Fit' not in panel.jobLabel.text()
-    assert 'not recalculated' in panel.draftLabel.text()
+    assert 'no measured result published' in panel.draftLabel.text()
     assert session.derived_data(track,'signal_recurrence_x')==record

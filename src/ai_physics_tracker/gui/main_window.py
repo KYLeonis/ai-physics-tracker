@@ -793,7 +793,7 @@ class MainWindow(QMainWindow):
             button.setChecked(purpose == selected)
         explanations = {
             "explore": "Explore motion: inspect the current trajectory in the Charts tab. Input: trajectory data. Output: position, velocity, acceleration, and phase plots.",
-            "measure": "Measure repeat intervals: show the source, set the orange reference, then measure. Input: one signal. Output: crossing times and repeat intervals.",
+            "measure": "Measure repeat intervals: inspect the automatic source / crossing preview, set the orange reference, then measure explicitly. Input: one signal. Output: crossing times and repeat intervals.",
             "fit": "Fit a formula: choose a signal and equation, preview the initial curve, then fit explicitly. Input: signal + formula. Output: parameters, curve, and residuals.",
         }
         panel = self.chartActions.signalPanel
@@ -803,7 +803,7 @@ class MainWindow(QMainWindow):
         self.analysisToolsHint.setVisible(self.analysisTabs.currentIndex() == 0)
 
     def openAnalysisPurpose(self, purpose: str) -> None:
-        """导航到用途入口；公式页按需准备源，正式拟合仍需显式触发。"""
+        """导航到用途入口；工具页按需准备预览，正式分析仍需显式触发。"""
 
         if purpose not in {"explore", "measure", "fit"}:
             return
@@ -820,7 +820,7 @@ class MainWindow(QMainWindow):
         self.analysisChanged.emit()
 
     def openAnalysisTools(self, method_index: int | None = 0) -> None:
-        """直达公式 / 间隔工具；公式页自动补齐已知源，不自动Fit。"""
+        """直达公式 / 间隔工具；自动准备已知源及预览，正式分析显式触发。"""
         self.chartActions.signalPanel.history.leave()
         self.setWorkspace(WORKSPACE_ANALYSIS)
         self.analysisTabs.setCurrentIndex(1)
@@ -833,7 +833,7 @@ class MainWindow(QMainWindow):
         self._analysis_purpose = "measure" if method_index == 1 else "fit"
         self._updateAnalysisPurposeUi()
         self.analysisChanged.emit()
-        if method_index == 0 and not self.chartActions.pending:
+        if not self.chartActions.pending:
             self.chartActions.preview.request()
 
     def analysisPurposeTaskCard(self):

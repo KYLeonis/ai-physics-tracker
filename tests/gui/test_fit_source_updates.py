@@ -4,6 +4,8 @@ from concurrent.futures import Future
 from dataclasses import replace
 from threading import Event
 
+import pytest
+
 from tests.gui.test_signal_analysis import _window
 from ai_physics_tracker.domain.angular import PendulumReference
 
@@ -61,9 +63,11 @@ def test_source_edit_updates_preview_and_stales_previous_fit_without_automatic_f
     assert panel.signalPlot.listDataItems()[0].getData()[1][2] == 50
 
 
-def test_cancelled_source_does_not_publish_or_restart_on_refresh(qtbot, synthetic_video_path, monkeypatch):
+@pytest.mark.parametrize('method', [0, 1])
+def test_cancelled_source_does_not_publish_or_restart_on_refresh(qtbot, synthetic_video_path, monkeypatch, method):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(method)
     actions.preview.invalidate()
     session.clear_derived(track)
     captured = []
@@ -118,9 +122,11 @@ def test_changed_selection_discards_late_source_group(qtbot, synthetic_video_pat
     assert session.derived_data(track, "function_fit_x") is None
 
 
-def test_unknown_source_recipe_is_not_automatically_replaced(qtbot, synthetic_video_path):
+@pytest.mark.parametrize('method', [0, 1])
+def test_unknown_source_recipe_is_not_automatically_replaced(qtbot, synthetic_video_path, method):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(method)
     actions.preview.invalidate()
     source = session.derived_data(track, "world_position")
     unknown = replace(source, status="stale", pipeline=source.pipeline + ({"step": "future_method", "params": {}},))
