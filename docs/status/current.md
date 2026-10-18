@@ -2,12 +2,12 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（用户选择先统一计算设置；source-recipe S0–S2实现，定向142 / 新增回归文件30项通过，完整Gate进行中，未集成）
+- 最后更新：2026-10-18（计算配方统一解释S0–S3完成，产品cdc2be3全量1276 / 独立Approve / 双平台CI通过，待集成）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[计算配方统一解释](source-recipe-plan.md) S0–S2实现，S3自动Gate进行中；定向142及新增回归文件30项通过，独立复审 / 全量 / 双平台待完成。公式拟合联动已完成并集成。6.4 / 6.5未开始。
+- **Subphase / Slice**：[计算配方统一解释](source-recipe-plan.md) S0–S3完成；产品cdc2be3全量1276 / 独立Approve / 双平台CI通过，待集成。公式拟合联动已完成并集成。6.4 / 6.5未开始。
 - **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/source-recipe/ai-physics-tracker` / `codex/source-recipe`，基线main362ac85；主线与论文worktree暂不改。
 - **Development Mode**：Build Mode
 

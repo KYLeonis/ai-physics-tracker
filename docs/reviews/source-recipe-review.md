@@ -13,9 +13,9 @@
 - 定向142 passed（35.92s，325 warnings）：旧 / 坏 / 未知源、F1–F3、两类job与图表 / GUI / 分层规则。
 - 新增同步 / 后台记录等价、旧入口同一实现、未知JSON不变、图例不受摘要措辞影响；所在两文件30 passed（20.24s，277 warnings）。
 - 机械迁移20个函数 / 类型AST与基线一致。初次编辑误将展示函数插入检查列表，已修正并通过上述定向验证。
-- 本机全量 / macOS与Windows CI待最终结果。
-- Independent Reviewer `fit_source_final_review`只读审核完整diff，待回执；未宣称Approve。
+- 产品cdc2be3本机全量1276 passed（181.77s，1613 warnings）；[CI39101339745](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39101339745) macOS / Windows Python3.11均success。
+- Independent Reviewer `fit_source_final_review`只读审核cdc2be3完整diff，**Approve，无新增finding**；独立78项源配方 / 角图 / GUI，以及56项分层 / 三类job，共134 passed。确认旧导入路径 / 类型兼容、F1–F3与未知字段保护、同步 / 后台值与配方一致。
 
 ## Findings / Result
 
-待独立review；实现方处理finding，复审及全部Gate通过后才集成。
+独立review与全部自动Gate通过，无待处置finding。PR [#34](https://github.com/KYLeonis/ai-physics-tracker/pull/34)作为完整diff / CI容器；按计划集成。本轮为内部整理，不引入交互模式 / 视觉设计变化，不额外发起HR。
