@@ -2,19 +2,21 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-17（P6.3.1整体HR通过，c0d1461集成main且9250a3e双平台CI通过；自动接受近似时序已实现，本机1241项 / 独立复审通过，最终双平台CI及本轮HR通过，补丁集成main）
+- 最后更新：2026-10-17（公式拟合联动最终8ea1f1b：全量1271 / 独立Approve / 双平台CI通过，本轮HR待反馈，未集成main）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：P6.3.1 S0–S5 / AC-1–8闭环，用户HR通过，c0d1461集成main / 9250a3e文档收尾并push，main双平台CI39011226102通过，Issue #31 Closed / PR #32 Merged。当前执行[自动近似时序修复](automatic-timing-plan.md)，产品f34053f本机1241项通过，独立复审Approve / 73项通过；4a713bc仅清多余Timing入口，31项通过，[最终CI39011866524](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39011866524)双平台各1239 passed / 2 skipped；用户2026-10-17回复“通过”，此补丁完成HR并以--no-ff（801fda5）集成main，main双平台CI39014441071也已通过。6.4 / 6.5未开始。
-- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`已集成时序补丁；bd40已完成的实现工作树 `/Users/leonis/.codex/worktrees/bd40/ai-physics-tracker` / `fix/automatic-timing-acceptance`；论文worktree未改。
+- **Subphase / Slice**：[公式拟合联动](fit-linked-source-plan.md) S0–S2及S3自动Gate完成；最终8ea1f1b全量1271 / 独立Approve / 双平台CI通过，S3本轮HR待反馈。用户已认可先体验后内部整理、先公式拟合，并明确“自动补齐”。未集成或宣称本轮HR通过。P6.3.1及自动近似时序补丁已完成 / 集成main，既有Gate不替代本轮。6.4 / 6.5未开始。
+- **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/fit-linked-source/ai-physics-tracker` / `codex/fit-linked-source`；产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main @ d38d15e`保持原验收状态；论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. 自动近似时序补丁已完成独立复审 / 双平台CI / 本轮用户HR并集成main；本轮收尾，等待用户指定后续工作。无需重复本轮HR，不自动开始6.4 / 6.5。
-2. [架构扫描复核建议](../notes/architecture-review-assessment-2026-10-17.md)保留；尚未授权全面重构，全局任务统一与Undo拆分仍后置。
+- **当前授权增量**：用户已通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。从main `d38d15e`在`codex/fit-linked-source` / `/Users/leonis/.codex/worktrees/fit-linked-source/ai-physics-tracker`实施[联动计划](fit-linked-source-plan.md)，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。High-risk，完整Gate / 本轮HR后集成；main与论文线暂不改。
+
+1. **等待本轮Human Review反馈**：按[联动计划的启动命令与4步](fit-linked-source-plan.md#human-review-delivery)体验独立副本；自动Gate已通过，F1–F3 Closed，草稿PR [#33](https://github.com/KYLeonis/ai-physics-tracker/pull/33)。用户通过后才`--no-ff`集成main / 同步文档 / push；不把继续工作或旧HR当作本轮通过。
+2. [架构扫描复核建议](../notes/architecture-review-assessment-2026-10-17.md)保留；按用户选择先体验B后内部A，当前先完成公式拟合，后续重复间隔联动及内部整理另按已确认方向推进，全局任务统一与Undo拆分仍后置。
 3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
 ## Active Constraints

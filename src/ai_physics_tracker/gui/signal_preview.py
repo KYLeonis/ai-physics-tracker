@@ -9,6 +9,11 @@ from PySide6.QtCore import QObject, QTimer
 
 from ai_physics_tracker.domain.expression import parse_expression
 from ai_physics_tracker.domain.fit_initial import estimate_initial, adopt_estimate
+from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS
+from ai_physics_tracker.application.kinematics_job import analysis_inputs
+from ai_physics_tracker.application.signal_analysis_job import signal_source
+from ai_physics_tracker.application.project_session import ProjectSessionError
+from ai_physics_tracker.application.chart_recipe import smoothing_recipe, reference_summary
 
 
 def _preview(job, estimate, cancel=None):
@@ -41,6 +46,7 @@ class SignalPreview(QObject):
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="signal-preview")
         self._cancel = Event()
         self._estimate = False
+        self._context = None
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)
         self._debounce.timeout.connect(self.launch)
@@ -61,11 +67,48 @@ class SignalPreview(QObject):
     def example(self):
         self.request(estimate=not self.panel.initialProtected)
 
+    def syncContext(self, *, refresh=True):
+        """相关源变化与编辑共用预览入口；保存和无关结果不触发重算。"""
+        window = self.actions.window
+        if (self.panel.history.active or window.currentWorkspace != "analysis"
+                or not hasattr(window, "analysisTabs") or window.analysisTabs.currentIndex() != 1
+                or self.panel.methods.currentIndex() != 0):
+            self._context = None
+            self.invalidate()
+            return
+        session = window.analysisSession
+        try:
+            selection = self.panel.selection()
+            kind, _ = signal_source(selection.quantity, selection.smoothed)
+            sources = tuple(item for item in session.project.derived
+                            if item.track_id == selection.track_id and item.kind == kind)
+            owns_controls = selection.track_id in self.actions.panel.checkedTracks()
+            related = tuple(item for item in session.project.derived if item.track_id == selection.track_id
+                            and item.kind in (ANGULAR_KINDS if kind in ANGULAR_KINDS else KINEMATICS_KINDS))
+            reference = self.actions.panel.angularControls.appliedReference() if owns_controls and kind in ANGULAR_KINDS else None
+            reference_id = (getattr(reference, "reference_track_id", None) if owns_controls else
+                            next((item.input.reference_track_id for item in sources + related if item.input.reference_track_id), None))
+            tracks = tuple(dict.fromkeys((selection.track_id,) + ((reference_id,) if reference_id else ())))
+            key = (id(session), window.deliveryGeneration, selection, sources,
+                   analysis_inputs(session, window.activeVideoId, tracks),
+                   self.actions.panel.parameters() if owns_controls and kind not in ("world_position", "angular_position") else None,
+                   reference, owns_controls, related if not owns_controls else ())
+        except (ValueError, AttributeError, ProjectSessionError) as error:
+            key = (id(session), window.deliveryGeneration, self.panel.trackChoice.currentData(),
+                   self.panel.quantityChoice.currentText(), str(error))
+        if key != self._context:
+            if refresh and self.actions._signal_job is not None:
+                return
+            self._context = key
+            if refresh:
+                self.request(estimate=self._estimate)
+
     def request(self, *, estimate=False, immediate=False):
         self.invalidate()
         self._estimate = estimate
         if self.actions._closed or self.panel.history.active or self.panel.methods.currentIndex() != 0:
             return
+        self.actions.refreshFitReadiness()
         self.panel.signalPlot.clear()
         self.panel.residualPlot.clear()
         self.panel._previewRange = None
@@ -75,6 +118,7 @@ class SignalPreview(QObject):
         self.panel.conversionActions.hide()
         self.panel.resultLabel.setText("Recorded results: Latest applied result or Last saved result.")
         self.panel.jobLabel.setText("Preparing initial preview…")
+        self.panel.contextLabel.setText(f"{self.panel.quantityChoice.currentText()} · checking the current source and interval…")
         if immediate:
             self.panel.feedbackRequested.emit()
         self.describe()
@@ -86,12 +130,15 @@ class SignalPreview(QObject):
             for row in range(self.panel.parameterTable.rowCount())))
 
     def launch(self):
+        self._debounce.stop()
         if self.actions._closed:
             return
         if self.actions.pending or self.actions.window.projectActions.busy:
             self._debounce.start(250)
             return
         try:
+            if self.actions.ensureSignalSource():
+                return
             job = self.actions._prepareSignal(True)
         except Exception as error:
             # 准备错误必须当前可见；不让旧曲线冒充新草稿。
@@ -140,9 +187,13 @@ class SignalPreview(QObject):
             if np.min(prediction) < np.min(values) or np.max(prediction) > np.max(values):
                 preparation += " Initial model extends outside the measured range; use Show whole model above the chart to see it."
             self.panel.jobLabel.setText("Initial curve only — no fitted result published. Click Fit to calculate.\n" + preparation)
+            recipe = smoothing_recipe(job.source)
+            source_details = (f" · SG window {recipe['window_length']}, order {recipe['polyorder']}" if recipe else "")
+            if job.source.kind in ANGULAR_KINDS:
+                source_details += " · " + reference_summary(job.source, {track.track_id: track for track in job.inputs.tracks})
             self.panel.contextLabel.setText(f"{job.selection.quantity} [{job.source.unit}] · {len(job.samples)} actual samples · "
                                             f"frames {job.selection.start_frame}–{job.selection.end_frame} · "
-                                            f"{job.source.kind} · t = 0 at interval start"
+                                            f"{job.source.kind}{source_details} · t = 0 at interval start"
                                             + (" · Approximate timing" if self.actions.window.analysisSession.measurement_timing_detail(job.inputs.video.video_id) else ""))
         except Exception as error:
             self.panel.signalPlot.clear()

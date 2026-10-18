@@ -105,14 +105,15 @@ def test_unexpected_prepare_error_is_a_failed_attempt(qtbot,synthetic_video_path
     assert 'broken preparation' in actions.signalPanel.jobLabel.text()
 
 
-def test_prepare_buttons_select_correct_family_and_never_invent_calibration(qtbot,synthetic_video_path):
+def test_source_retry_stays_on_fitting_page_and_never_invents_calibration(qtbot,synthetic_video_path):
     window,session,track = _window(qtbot,synthetic_video_path)
     actions,panel = window.chartActions,window.chartActions.signalPanel
     before=session.project
     panel.quantityChoice.setCurrentText('theta')
     panel.prepareRequested.emit()
-    assert actions.panel.currentFamily=='angular'
-    assert actions.panel.checkedTracks()==(track,)
+    assert window.analysisTabs.currentIndex()==1
+    actions.preview.launch()
+    assert 'calibration' in panel.jobLabel.text()
     panel.setupRequested.emit()
     assert window.currentWorkspace=='setup'
     assert session.project==before
