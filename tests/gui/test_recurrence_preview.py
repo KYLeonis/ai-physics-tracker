@@ -112,7 +112,7 @@ def test_raw_interval_quantity_updates_source_and_preserves_old_measurement(qtbo
     assert actions.attempts.journal.attempts == []
 
 
-@pytest.mark.parametrize('change', ['level', 'method', 'workspace', 'history', 'track'])
+@pytest.mark.parametrize('change', ['level', 'method', 'workspace', 'history', 'track', 'generation'])
 def test_late_recurrence_preview_cannot_replace_current_context(qtbot, synthetic_video_path, monkeypatch, change):
     window, session, track = _periodic(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
@@ -139,10 +139,15 @@ def test_late_recurrence_preview_cannot_replace_current_context(qtbot, synthetic
         window.setWorkspace('tracking')
     elif change == 'history':
         panel.latestButton.click()
+    elif change == 'generation':
+        window._delivery_generation += 1
+        actions.resetContext()
     else:
         other = session.add_track(window.activeVideoId)
         actions.refresh()
-        panel.trackChoice.setCurrentIndex(panel.trackChoice.findData(other.track_id))
+        index = panel.trackChoice.findData(str(other.track_id))
+        assert index >= 0
+        panel.trackChoice.setCurrentIndex(index)
     text = panel.jobLabel.text()
     pending.set_result(run(job, False, Event()))
     actions.preview.poll()
@@ -172,6 +177,7 @@ def test_late_source_after_method_switch_is_not_applied(qtbot, synthetic_video_p
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
     actions.preview.invalidate()
+
     session.clear_derived(track)
     panel.methods.setCurrentIndex(1)
     future = Future()
@@ -193,3 +199,28 @@ def test_late_source_after_method_switch_is_not_applied(qtbot, synthetic_video_p
     assert session.derived_data(track, 'world_position') is None
     assert len(captured) == 1
     actions.preview.invalidate()
+
+
+def test_recurrence_preview_waits_for_save_before_display(qtbot, synthetic_video_path, monkeypatch):
+    window, session, _ = _periodic(qtbot, synthetic_video_path)
+    actions, panel = window.chartActions, window.chartActions.signalPanel
+    pending, captured = Future(), []
+
+    def submit(run, job, estimate, cancel):
+        captured.append((run, job))
+        return pending
+
+    monkeypatch.setattr(actions.preview._executor, 'submit', submit)
+    actions.preview.request(immediate=True)
+    actions.preview.launch()
+    run, job = captured[0]
+    pending.set_result(run(job, False, Event()))
+    project = session.project
+    window.projectActions.busy = True
+    actions.preview.poll()
+    assert not panel._eventPreview
+    assert actions.preview._future is pending
+    window.projectActions.busy = False
+    actions.preview.poll()
+    assert panel._eventPreview
+    assert session.project == project
