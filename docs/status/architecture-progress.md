@@ -16,9 +16,10 @@
 | R01 公式拟合源自动补齐与预览联动 | **已完成 / 已合并** | 当前拟合页复用prepare_signal_source及既有job；不再要求缺源时切Charts；Fit仍显式 | [计划](fit-linked-source-plan.md) / [Review](../reviews/fit-linked-source-review.md)；aa86d79；全量1271 / 独立 / 双平台 / HR通过 |
 | R02 计算配方统一解释 | **已完成 / 已合并** | source_recipe拥有共同事实与构造，chart_recipe保留图表策略。删除重复导数阶表、角参考恢复、图例摘要反解析、线性job时序覆写 | [计划](source-recipe-plan.md) / [Review](../reviews/source-recipe-review.md)；26af812；全量1276 / 独立134 / 双平台通过，无新增交互 |
 | R03 重复间隔源联动与交叉预览 | **已完成 / 已合并** | 两个工具共用prepare_signal_source / SignalPreview；改线 / 方向 / 区间自动更新候选点，Measure仍显式。自动预览不滚回顶部，保留曲线及页面位置 | [计划](recurrence-linked-plan.md) / [Review](../reviews/recurrence-linked-review.md) / [PR #35](https://github.com/KYLeonis/ai-physics-tracker/pull/35) / [ADR-0026](../decisions/0026-live-recurrence-preview.md)；2600f2a；独立 / 双平台CI / 全部HR通过，F1 Closed |
-| R04 分析主干职责重构（含计算 / 写入分离） | **实现 / 自动Gate完成，待HR，未合并** | 583ce05计算退出Session，job删除snapshot，同步 / 后台同一核对发布；10f6887提示 / 按钮 / 执行共享源事实；bd848f1修复自动补源跳顶F1（Closed）。本机1316 / 独立Approve / 最终双平台CI通过；main产品仍R03，本轮HR待用户 | [实施计划](analysis-workflow-plan.md) / [Review](../reviews/analysis-workflow-review.md) / [整体方案](architecture-next-round-plan.md) / [PR #37](https://github.com/KYLeonis/ai-physics-tracker/pull/37) |
+| R04 分析主干职责重构（含计算 / 写入分离） | **已完成 / 已合并** | 583ce05计算退出Session，job删除snapshot，同步 / 后台同一核对发布；10f6887提示 / 按钮 / 执行共享源事实；bd848f1修复自动补源跳顶F1（Closed）。本机1316 / 独立Approve / 最终双平台CI / 本轮HR通过；2026-10-18用户确认“通过”，085219e集成main | [实施计划](analysis-workflow-plan.md) / [Review](../reviews/analysis-workflow-review.md) / [整体方案](architecture-next-round-plan.md) / [PR #37](https://github.com/KYLeonis/ai-physics-tracker/pull/37) |
 | R05 全局JobSupervisor / WorldSnapshot | **后置，未实施** | 现有runner及各任务专属校验继续有效；没有通用hash替代科学条件 | [首次复核](../notes/architecture-review-assessment-2026-10-17.md) / [后续复核](../notes/architecture-followup-2026-10-18.md) |
 | R06 Undo拆分 / 通用图表渲染器 | **后置，未实施** | Session拥有事务；ChartPlot / AnalysisPlot保留不同交互；不按文件大小重写 | 同上；不与R03 / R04捆绑 |
+| R07 工程变更与界面更新链路 | **方案已形成 / 待确认，未实施** | 建议明确数据 / 保存 / 任务 / 导航变化的含义，贯通全部通知消费者；复用现有失效与结果校验，不建全局事件总线 | [方案与唯一待办清单](change-notification-proposal.md)；T01–T08均未开始 |
 
 ## 不要恢复的旧做法
 
@@ -29,6 +30,6 @@
 5. 不恢复Review timing / Yes；合格Near-CFR按ADR-0024自动采用，保留来源与异常处理。
 6. 自动预览只更新提示，不调用会触发滚动定位的showFeedback；显式操作才定位。页面scrollbar与图表view要分别验证。
 7. 不把“生命周期Normal-risk”“Undo / recipe无测试”“6.3.1未实施”等旧报告陈述当现状。
-8. R04工作分支计算已退出Session；不要在该分支恢复job.snapshot或在worker临时会话写Undo。兼容compute_*协调prepare/run/apply，事务仍归Session；main待HR后集成。
+8. R04已集成：计算已退出Session；不恢复job.snapshot或在worker临时会话写Undo。兼容compute_*协调prepare/run/apply，事务仍归Session。
 
-最后核对：2026-10-18，main集成2600f2a，R01–R03已完成 / 已合并；R04最终bd848f1实现 / 自动Gate完成，HR待用户，未合并；下一步以[current.md](current.md)为准。
+最后核对：2026-10-18，main集成085219e，R01–R04已完成 / 已合并；R07方案待确认、未实施；下一步以[current.md](current.md)为准。

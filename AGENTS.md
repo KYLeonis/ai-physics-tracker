@@ -25,7 +25,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表（✅ 已完成，2026-08-31） |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪（✅ 已完成，2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | 代表帧、困难帧、人工修正、迭代比较、交互重构（✅ 已完成，2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 / 6.2 完成并集成 main；独立复审 / 双平台 CI / 全部 Human Review 通过，2026-10-15；6.3已按 ADR-0017 完成计划冻结，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；公式拟合联动维护增量于2026-10-18通过HR，以aa86d79集成main（全量1271 / 独立复审 / 双平台CI通过）；计算配方统一解释内部整理于2026-10-18以26af812集成main（全量1276 / 独立复审 / 双平台CI通过）；重复间隔联动R03于2026-10-18通过全部HR并以2600f2a集成main（独立复审 / 双平台CI通过，拖线跳顶F1 Closed）；R04分析主干A–C已实现于codex/analysis-workflow，最终本机1316 / 独立 / 双平台通过，待HR，未合并；其余子阶段另行规划） |
+| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 / 6.2 完成并集成 main；独立复审 / 双平台 CI / 全部 Human Review 通过，2026-10-15；6.3已按 ADR-0017 完成计划冻结，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；公式拟合联动维护增量于2026-10-18通过HR，以aa86d79集成main（全量1271 / 独立复审 / 双平台CI通过）；计算配方统一解释内部整理于2026-10-18以26af812集成main（全量1276 / 独立复审 / 双平台CI通过）；重复间隔联动R03于2026-10-18通过全部HR并以2600f2a集成main（独立复审 / 双平台CI通过，拖线跳顶F1 Closed）；R04分析主干于2026-10-18本轮HR通过，以085219e集成main（本机1316 / 独立 / 双平台通过，F1 Closed）；R07工程变更与界面更新方案已形成，待确认、未实施；其余子阶段另行规划） |
 | Phase 7 | Model Library | 模型保存、版本管理、应用到新视频 |
 | Phase 8 | Export & Scientific Workflow | CSV/Excel/图表/视频导出、项目归档 |
 | Phase 9 | Optimization & Packaging | 性能优化、GPU、Windows 打包发布 |
@@ -91,7 +91,8 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - Phase 6.3.1 新手分析计划：`docs/status/phase-6.3.1-plan.md`（Q1–16已认可，英文 / 图表优先；自动预览 / 初值建议 / 解释 / 尝试日志及就地准备，S0–S4实现、S5已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；不设固定响应或新手完成时限）。访谈事实见`docs/notes/analysis-onboarding-interview.md`。
 - 后续回移档案：`docs/status/main-backport-backlog.md`（含执行触发点，后续会话必须随相关阶段核对）
 - 当前维护补丁：`docs/status/automatic-timing-plan.md`（2026-10-17用户授权取消Review timing / Yes；ADR-0024将原合格Near-CFR的人工接受改为自动，保留探测与来源；2026-10-17独立review / 双平台CI / 本轮HR均通过，已集成main，详情以current.md为准）。
-- 分析主干职责重构R04：`docs/status/analysis-workflow-plan.md`（A–C已实现583ce05 / 10f6887，计算与发布分离、来源判断共用；ADR-0027，最终bd848f1本机1316 / 独立Approve / 双平台通过，F1 Closed，待HR，未合并；接手须阅读architecture.md的branch关系）。
+- 分析主干职责重构R04：`docs/status/analysis-workflow-plan.md`（全部实现 / 自动Gate / 本轮HR完成，085219e集成main；ADR-0027，源码 / 测试与bd848f1一致，本机1316 / 独立Approve / 双平台通过，F1 Closed）。
+- 下一轮架构建议R07：`docs/status/change-notification-proposal.md`（工程变更与界面更新链路，含唯一T01–T08待办；仅方案、未授权产品实现，不覆盖R05 / R06后置决定）。
 - 计算配方统一解释内部整理：`docs/status/source-recipe-plan.md`（2026-10-18以26af812集成main；source_recipe共用事实 / 读写，chart_recipe保留图表策略与兼容导入；旧 / 未知源保护不变）。
 - 公式拟合联动维护增量：`docs/status/fit-linked-source-plan.md`（2026-10-18本轮HR通过，aa86d79已集成main；ADR-0025，所选轨迹源自动补齐 / 预览联动；后续计算配方统一已以26af812集成，重复间隔联动已以2600f2a集成；各项完成证据见architecture-progress.md）。
 - GLM派工前读`docs/notes/glm-collaboration-playbook.md`：项目内协作约束、可复现问题与接管证据；原始运行日志不入库。

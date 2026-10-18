@@ -40,8 +40,12 @@ motion_computation构造线性 / 角运动候选；job只持有必要冻结输�
 
 Reviewer复核10f6887..bd848f1：**Approve，F1 Closed，完整R04通过独立复审**。独立58 passed（45.14s）及diff检查通过；自动源启动 / 取消 / 迟到取消 / 失败4条反馈只更新标签，显式Preview定位、正式Fit / Measure路径保留。结合R1 / R2全部结论，无未处置finding；Reviewer未改文件。
 
-**独立复审Approve / 自动Gate完成，F1 Closed，无未处置finding。** 最终bd848f1全量与双平台通过；本轮真人Gate待用户，R04未收口 / 未合并。不得用前几轮HR代替本轮。
+**独立复审Approve / 自动Gate完成，F1 Closed，无未处置finding。** 最终bd848f1全量与双平台通过；2026-10-18用户明确确认本轮5项HR“通过”，085219e以--no-ff集成main，R04已收口 / 已合并。
 
 ## Human Review
 
-按[计划中的独立副本与5步操作](../status/analysis-workflow-plan.md#human-review自动gate全部通过后执行)交付用户，等待反馈。GUI指导及连接变化必须由用户体验确认，自动化不替代；通过前不合并产品。副本可加载600观测 / 12记录且外部视频存在，原R03副本所有文件hash核对未变。
+按[计划中的独立副本与5步操作](../status/analysis-workflow-plan.md#human-review自动gate全部通过后执行)交付用户；2026-10-18用户回复“通过”，本轮HR完成。副本可加载600观测 / 12记录且外部视频存在，原R03副本所有文件hash核对未变。
+
+## Integration
+
+085219e合并树与53c2886一致，源码 / 测试与bd848f1一致，保留此前完整验证，不重复无变化的本机全量。主分支集成CI39127491849另记回执；产品之后仅文档收尾。

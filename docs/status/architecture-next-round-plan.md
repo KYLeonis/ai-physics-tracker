@@ -1,7 +1,7 @@
 # 下一轮整体架构重构方案：贯通计算、结果写回与界面更新
 
 - 日期：2026-10-18；核查基线：main `ab9e810`，R03集成提交`2600f2a`。
-- 状态：**2026-10-18用户已明确“启动重构”，A–D已授权实施。** 执行进度与Gate见[实施计划](analysis-workflow-plan.md)，目标架构不等于main已落地。
+- 状态：**R04已完成 / 已合并。** 2026-10-18用户本轮HR通过，085219e集成main；完整证据见[实施计划](analysis-workflow-plan.md)。本文保留原方案依据；新的下一轮建议见[R07方案与待办](change-notification-proposal.md)。
 - 对应进度：R04，承接[重构进度表](architecture-progress.md)；R01–R03保持已完成。
 - 本文描述目标架构；[architecture.md](../architecture.md)描述当前架构。接手Agent必须区分二者。
 

@@ -1,26 +1,22 @@
 # Current Status
 
-> 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
+> 用户当前需求：2026-10-18确认R04本轮真人验收“通过”，要求给出下一轮整体优化方案及待办；本轮完成R04集成和R07建议，未授权R07产品实现。
 
-- 最后更新：2026-10-18（R04 A–C已实现；最终本机1316 / 独立Approve / 双平台通过，F1 Closed，待本轮HR，产品未合并main）
+- 最后更新：2026-10-18（R04全部Gate及本轮HR通过，085219e已集成main；R07方案与待办已形成，未实施）
 
 ## Current
 
-- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R03已完成 / 已合并，不能使用旧HTML覆盖当前状态。
-
-- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md)全部Gate完成，2600f2a集成main；R04 S0 / A–C已实现，最终产品bd848f1，本机1316 / 独立 / 双平台通过，D自动Gate完成，F1 Closed，本轮HR待用户，未合并。6.4 / 6.5未开始。
-- **Worktree / Branch**：R04 `/Users/leonis/.codex/worktrees/analysis-workflow/ai-physics-tracker` / `codex/analysis-workflow`（基线2edf0b9）；main本轮仅同步计划 / 交接文档。上一轮主工作区 `/Users/leonis/Documents/ai-physics-tracker` / `main`；已集成`codex/recurrence-linked`，合并树与b2823b9一致，源码 / 测试与已验证4bd723a一致。试用worktree保留以兼容既有启动器；论文线及用户实验未改。
+- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04已完成 / 已合并，不能使用旧HTML覆盖当前状态。
+- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04维护重构均完成并集成main，6.4 / 6.5未开始。
+- **Subphase / Slice**：R04全部实现 / 自动Gate / Independent / 本轮HR通过，F1自动补源跳顶Closed；085219e集成，源码 / 测试与bd848f1一致，本机1316 / 最终双平台各1314 + 2个既有skip通过。
+- **Worktree / Branch**：当前主工作区`/Users/leonis/Documents/ai-physics-tracker` / `main`。R04分支`codex/analysis-workflow`已集成；其worktree及较早试用worktree仍保留以兼容启动器，不覆盖用户试用工程。论文线未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-- **最近产品交付**：重复间隔工具复用源自动准备和独立预览；改参考线 / 方向 / 区间自动更新候选交点与说明，Measure仍显式。2026-10-18用户先确认其他项目通过，再确认拖线稳定性修复“通过”，所有Gate完成，2600f2a集成main。
-
-1. **等待本轮R04 HR反馈**：自动Gate全部完成。产品bd848f1本机1316 passed（142.73s），[最终双平台CI39119607020](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39119607020)各1314 passed / 2个既有可选skip，独立完整复审Approve，自动补源跳顶F1 Closed；[Review](../reviews/analysis-workflow-review.md) / [PR #37](https://github.com/KYLeonis/ai-physics-tracker/pull/37)。C改变指导与缓存连接，按[独立副本5步](analysis-workflow-plan.md#human-review自动gate全部通过后执行)交付，自动化不代替本轮HR。启动器依赖R04 worktree，保留它，不覆盖新旧试用内容。
-2. **用户通过后再集成**：确认产品 / 测试树仍为bd848f1，用--no-ff集成main、处理同一批已cherry-pick的文档、同步架构主图 / 完成标记 / Review / README / roadmap / AGENTS并push，然后停止。若HR失败，在此分支返工并记录finding，不另起R05 / R06或6.4 / 6.5。
-
-3. 架构完成状态同步进度表、对应计划 / Review及architecture.md；全局任务 / Undo仍后置，不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
+1. **向用户交付[R07方案及唯一待办](change-notification-proposal.md)**：建议贯通工程变更与界面更新，区分数据 / 保存基线 / 任务状态 / 导航意图，覆盖7类现有消费者。T01–T08均未开始；用户当前要求是方案，不据此自动实现。
+2. **用户确认启动后**：先执行T01影响矩阵及T02 mini-plan / ADR / High-risk Gate冻结，再按T03–T08完整迁移、验证、HR及集成；复用R04与既有科学核对、Undo、解码和AI专属协议。
+3. **保持停止边界**：R05全局任务 / 状态、R06 Undo / 绘图重写继续后置；6.4多轨迹比较 / 误差解释、6.5及其他产品阶段须另行冻结，不自动开工。主分支R04集成CI39127491849回执另行补录，不因文档同步重跑本机全量。
 
 ## Active Constraints
 
@@ -65,9 +61,12 @@
 
 ## Recently Completed
 
-- **R04实现检查点（2026-10-18，未合并）**：583ce05让计算退出Session，job只携带必要冻结输入，同步 / 后台共用prepare/run/validated/apply；10f6887让顶部指导、按钮与实际源准备共用application事实，同轮执行状态只采集一次。bd848f1另修复自动补源跳顶F1；S0 / A–C及D自动Gate完成，最终本机1316 / 独立Approve / 双平台通过，HR待用户；当前架构区分main事实与branch已实现关系。
+- **R04 HR通过 / 集成（2026-10-18）**：用户明确确认本轮5项“通过”，085219e以--no-ff集成main，合并树与53c2886一致，源码 / 测试与最终验收bd848f1一致；本机1316 / 完整独立Approve / 最终双平台通过，F1 Closed。架构主图、完成进度、计划 / Review及交接入口已同步为已完成 / 已合并。用户另要求下一轮方案，已形成R07建议与T01–T08待办，仅文档、未实施。
 
-- **下一轮整体架构方案（2026-10-18，仅文档）**：新增[方案](architecture-next-round-plan.md)，围绕计算输入 / 无会话写入计算 / 科学核对与原子写回 / 只读状态与交互归属安排A–D完整迁移，明确全产品关系、实际影响、退出旧路径及验收标准。R04为方案待确认，未实施，未改产品代码或验收契约。
+
+- **R04历史实现检查点（2026-10-18；后续已由085219e完成集成）**：583ce05让计算退出Session，job只携带必要冻结输入，同步 / 后台共用prepare/run/validated/apply；10f6887让顶部指导、按钮与实际源准备共用application事实，同轮执行状态只采集一次。bd848f1另修复自动补源跳顶F1；S0 / A–C及D自动Gate完成，最终本机1316 / 独立Approve / 双平台通过，HR待用户；当前架构区分main事实与branch已实现关系。
+
+- **R04原整体方案（2026-10-18，历史文档检查点）**：新增[方案](architecture-next-round-plan.md)，围绕计算输入 / 无会话写入计算 / 科学核对与原子写回 / 只读状态与交互归属安排A–D完整迁移，明确全产品关系、实际影响、退出旧路径及验收标准。当时R04为方案待确认，未改产品代码或验收契约；后续已实施 / HR / 集成，见本页顶部。
 
 - **R03集成验证回执（2026-10-18）**：集成收尾ddb5bd3的[主分支CI39107041901](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39107041901) macOS / Windows Python3.11均success；之后仅补文档回执，不再改动源码 / 测试。
 

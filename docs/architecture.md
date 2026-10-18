@@ -1,28 +1,36 @@
 # Architecture — AI Physics Tracker
 
-本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。重要决策见`docs/decisions/`。下一轮目标见[整体重构方案（R04已授权实施，未合并）](status/architecture-next-round-plan.md)，不能用其目标图替代本文当前事实。
+本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04均已完成 / 已合并，下一轮[R07工程变更与界面更新方案](status/change-notification-proposal.md)仅为建议、未实施。
 
 ## 当前架构总览（接手先读）
 
-2026-10-18核对，main集成2600f2a：6.1 / 6.2 / 6.3 / 6.3.1、自动Near-CFR、公式拟合联动、配方统一解释均已集成。R03重复间隔自动联动及拖线滚动修复亦已通过全部HR并集成main，R01–R03已完成。
+2026-10-18用户确认R04真人验收“通过”，085219e以--no-ff集成main。合并树与53c2886一致，源码 / 测试与最终验收产品bd848f1一致；本机1316 / 独立Approve / 双平台CI / 本轮HR通过，F1 Closed。此前6.1 / 6.2 / 6.3 / 6.3.1、自动Near-CFR及R01–R03均已集成。
 
 ```mermaid
 flowchart TD
-    UI[MainWindow / 工作区与交付] --> SESSION[ProjectSession / 活动工程与原子事务]
-    SESSION --> DOMAIN[domain / 模型与纯数值]
+    UI[MainWindow / 选择与交互] --> SESSION[ProjectSession / 活动工程与原子事务]
     SESSION --> REPO[ProjectRepository / JSON原子保存]
-    UI --> CHART[ChartActions / 正式分析执行器]
-    CHART --> JOBS[kinematics / angular / signal jobs]
-    JOBS --> DOMAIN
-    JOBS --> VALID[输入 / 源 / 目标版本校验]
-    VALID --> SESSION
-    CHART --> PREVIEW[SignalPreview / 独立预览执行器]
-    PREVIEW --> SIGNALPREVIEW[preview_signal_analysis / 冻结输入纯预览]
-    SIGNALPREVIEW --> DOMAIN
-    RECIPE[source_recipe / 配方事实与读写] --> JOBS
-    RECIPE --> SESSION
+    SYNC[Session.compute_*兼容同步入口] --> PREP[prepare_kinematics / angular_job]
+    UI --> CHART[ChartActions正式执行器 / 自动源准备]
+    CHART --> PREP
+    PREP --> INPUTS[必要AnalysisInputs / 参数 / 目标版本]
+    INPUTS --> RUN[run_* / motion_computation候选构造]
+    RUN --> DOMAIN[domain / 模型与纯数值]
+    RUN --> CHECK[validated_* / 科学输入与目标核对]
+    CHART --> SIGNALPREP[prepare_signal_analysis / 冻结源与目标]
+    SIGNALPREP --> SIGNALRUN[run_signal_analysis / 拟合或重复间隔]
+    SIGNALRUN --> DOMAIN
+    SIGNALRUN --> CHECK
+    CHECK --> APPLY[Session.apply_* / 原子写入与Undo]
+    APPLY --> SESSION
+    FACTS[analysis_readiness / 既有源准备规则] --> GUIDE[顶部指导 / 按钮 / 实际源准备]
+    SESSION --> FACTS
+    CHART --> PREVIEW[SignalPreview独立执行器]
+    PREVIEW --> READONLY[只读预览 / 保持草稿与页面位置]
+    RECIPE[source_recipe / 配方事实与读写] --> RUN
+    RECIPE --> SIGNALPREP
     RECIPE --> DISPLAY[chart_recipe / 比较与披露策略]
-    DISPLAY --> DATA[chart_data / ChartSeries来源字段]
+    DISPLAY --> DATA[chart_data / 结构化来源]
     DATA --> PLOT[ChartPlot / AnalysisPlot]
     UI --> TRACK[TrackingActions / 训练与推理]
     TRACK --> RUNNER[TrackingJobRunner / BackgroundTaskRunner spawn]
@@ -31,43 +39,23 @@ flowchart TD
 | 规则 / 工作 | 唯一owner或既有调用关系 |
 | --- | --- |
 | 领域 / 数值 | domain模型、kinematics / angular / expression / function_fit / recurrence；不依赖Qt / application |
-| 活动工程 / 原子写入 / Undo | ProjectSession / TrackStore；所有后台结果经apply_*与校验后提交。main的compute仍在Session装配结果，R04提取待HR后集成 |
-| 配方事实 / 读写 | source_recipe；chart_recipe仅保留图表比较 / 披露 / 行读取策略及旧路径再导出；不得新增另一份SG / 参考定义 |
-| 正式分析 | ChartActions单executor→既有job→GUI主线程apply；prepare_signal_source复用此链路，不绕过目标版本检查 |
-| 草稿预览 | SignalPreview独立executor（ADR-0023），只读不可变输入，旧值核对后显示；不发布结果 / 尝试日志 / Undo |
-| 历史与日志 | SignalHistory保留草稿、只读查看；fit_attempt_view按严格源身份重建；fit_attempts / FitAttemptJournal管理独立日志，不并入工程Undo |
-| AI与候选激活 | TrackingActions→TrackingJobRunner→BackgroundTaskRunner.spawn；取消 / terminate / kill / reap保留；候选经Session显式激活才改观测 |
+| 必要输入 / 运动学候选构造 | motion_computation拥有AnalysisInputs和线性 / 角运动记录构造；不依赖Session / Qt / 文件；旧kinematics_job导入路径再导出同一类型 |
+| 准备 / 运行 / 科学核对 | kinematics_job / angular_job / signal_analysis_job；任务值不携带Session，采集时复制必要嵌套值；同步 / 后台共用路径，保留各类专属核对 |
+| 活动工程 / 原子写入 / Undo | ProjectSession / TrackStore；apply_*和_commit_store保留事务所有权；compute_*仅协调prepare/run/apply；未知扩展在受控发布时合并 |
+| 配方事实 / 读写 | source_recipe；chart_recipe仅保留图表比较 / 披露 / 行读取策略及兼容再导出 |
+| 源可操作事实 | analysis_readiness.assess_signal_source复用prepare_signal_source；SignalSourceState分别保留基础问题 / 源问题 / 可准备任务，供顶部指导、按钮及实际准备共用；不替代正式发布核对 |
+| 正式分析 | ChartActions单executor→既有job→GUI主线程apply；自动补源也使用此链路，Fit / Measure仍显式 |
+| 草稿预览 / 交互 | SignalPreview独立executor（ADR-0023）；只读输入，旧值核对后显示，不发布结果 / 日志 / Undo；页面位置、缩放、焦点、草稿归GUI |
+| 历史与日志 | SignalHistory保留草稿只读查看；fit_attempt_view按严格源身份重建；fit_attempts / FitAttemptJournal管理独立日志 |
+| 工作流与AI | TrackingActions同轮复用ExecutionInput，真实review状态改变后重采集；现有spawn / 取消 / terminate / kill / reap保持，候选显式激活后才改观测 |
 | 解码交付 | MainWindow的SimpleQueue + 无参Qt signal→GUI drain→generation / request_id核对；禁止worker直接发携带Python对象的信号 |
-| 保存与时序 | ProjectActions独立保存，文件写入阶段不可取消；TimingActions / ProjectMediaService按ADR-0024自动采用合格Near-CFR |
+| 保存与时序 | ProjectActions独立保存，文件写入阶段不可取消；显式Save与autosave的历史语义保持；TimingActions按ADR-0024自动采用合格Near-CFR |
 
-不存在全局JobSupervisor、WorldSnapshot、通用计算框架或统一图表widget；[进度表](status/architecture-progress.md)标明哪些已做、哪些后置。历史设计若与顶部 / ADR / 代码冲突，应先修正文档，不恢复旧实现。
+**R04已退出的旧路径**：Session内运动学计算 / 候选装配、job.snapshot.compute_*、MainWindow只按源是否存在推断可用、同轮重复采集执行事实。自动源任务的启动 / 取消 / 失败只更新jobLabel，显式Preview自己发定位信号；F1与R03橙线更新共同保持页面位置。频繁比较事实的analysis_inputs不深拷贝整个Project；detached()继续服务保存等既有用途。
 
-### R04工作分支已实现关系（bd848f1，自动Gate完成 / 待HR，未合并main）
+当前GUI仍通过analysisChanged等通知协调多个页面，保存 / 导航也会触发此通知，消费方自行核对是否需要更新；[R07方案](status/change-notification-proposal.md)拟梳理这条链路，尚未实施。已有失效传播与迟到拒绝保护有效，不能以方案中的目标替换当前事实。
 
-接手`codex/analysis-workflow`时以下为实际代码；上图仍记录main产品。最终本机1316 / 独立Approve / 双平台CI通过，F1 Closed；集成前仍须完成[计划](status/analysis-workflow-plan.md)的本轮HR，不能混淆已实现与已合并。
-
-```mermaid
-flowchart TD
-    SYNC[Session.compute_*兼容同步入口] --> PREP[prepare_kinematics / angular_job]
-    CHART[ChartActions正式执行器 / 自动源准备] --> PREP
-    PREP --> INPUTS[只复制必要AnalysisInputs / 参数 / 目标版本]
-    INPUTS --> RUN[run_* / motion_computation候选构造]
-    RUN --> CHECK[validated_* / 来源与输入目标核对]
-    CHART --> SIGNALPREP[prepare_signal_analysis / 冻结源与目标]
-    SIGNALPREP --> SIGNALRUN[run_signal_analysis / 拟合或重复间隔]
-    SIGNALRUN --> CHECK
-    CHECK --> APPLY[Session.apply_* / 原子事务与Undo]
-    FACTS[analysis_readiness / 既有prepare_signal_source规则] --> GUIDE[顶部指导 / 按钮 / 实际源准备]
-    APPLY --> FACTS
-    PREVIEW[SignalPreview独立执行器] --> READONLY[只读预览 / GUI保持草稿与页面位置]
-```
-
-- `motion_computation`拥有AnalysisInputs和线性 / 角运动结果构造，复用domain与source_recipe；不依赖Session / Qt / 文件。旧kinematics_job导入路径再导出同一类型。
-- job不再包含snapshot；采集任务时复制必要嵌套值，频繁比较事实的analysis_inputs不深拷贝整个Project。同步 / 后台共用计算及核对，未知扩展在发布时保留。
-- `SignalSourceState`分别保留基础可操作问题、源问题和可准备任务；不替代正式分析的源 / 目标双版本。GUI按当前project身份及选择 / 已应用设置 / 时序复用事实，相关变化后失效。
-- TrackingActions同一refresh的缓存键与投影复用ExecutionInput；真实review状态改变后仍重新采集。交互意图、线程交付、历史与草稿保持GUI所有权，AI / 解码 / 保存协议保持。
-- 已退出：Session内450余行计算 / 记录装配、job.snapshot.compute_*、MainWindow只按源存在判断的旧路径、同轮重复读取执行状态。未拆Undo、未建全局总控制器。
-- bd848f1补齐自动源任务启动 / 取消 / 失败反馈的归属：只更新jobLabel，显式Preview自己发定位信号；与R03候选交叉预览共同保持页面位置。最终Gate见Review，不以首版CI代替修复后验证。
+不存在全局JobSupervisor、WorldSnapshot、通用计算框架或统一图表widget；R05 / R06继续后置。历史设计若与顶部 / ADR / 代码冲突，应修正文档，不恢复旧实现。当前设计依据为[ADR-0027](decisions/0027-analysis-computation-and-publication.md)。
 
 ---
 
@@ -260,7 +248,7 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 
 用户定义方程 / 公式，由通用计算平台完成求解、拟合、比较和导出；论文固定 ODE 仅作为示例。主线已按[ADR-0017](decisions/0017-user-defined-equation-analysis-platform.md)采用此口径，6.3 / 6.3.1已完成并集成；后续比较 / 误差仍按Phase计划推进。
 
-角运动分析（Phase 6.1）作为通用平台的首批标量分析能力落地：domain `angular` 提供单摆/两点方向 θ、段内 unwrap 与标量稀疏记录；`DerivedInput.reference_track_id`（additive）承载双轨迹依赖，`compute_angular` 产出四种 rad 系标量 kind，`angular_job` 复用 detached 快照 / 输入复核 / 原子批次提交骨架。契约见 [ADR-0019](decisions/0019-angular-kinematics-and-multi-input-derived-data.md)；6.2 的 Qt-free `chart_data` 已消费单列角量和按源帧配对的相空间，`chart_recipe` 核对输入 / 参考 / SG / 标定 / 时序并披露缓存来源；GUI已接入十图和参考配置，复用同一ChartActions executor/取消/提交管线；显示选择走workflow.charts视图状态，科学配方仍由DerivedData提供。
+角运动分析（Phase 6.1）作为通用平台的首批标量分析能力落地：domain `angular` 提供单摆/两点方向 θ、段内 unwrap 与标量稀疏记录；`DerivedInput.reference_track_id`（additive）承载双轨迹依赖，`compute_angular` 产出四种 rad 系标量 kind，`angular_job`在R04后仅持有必要冻结输入，复用输入复核 / 原子批次提交骨架（ADR-0027），不再创建计算用detached Session。契约见 [ADR-0019](decisions/0019-angular-kinematics-and-multi-input-derived-data.md)；6.2 的 Qt-free `chart_data` 已消费单列角量和按源帧配对的相空间，`chart_recipe` 核对输入 / 参考 / SG / 标定 / 时序并披露缓存来源；GUI已接入十图和参考配置，复用同一ChartActions executor/取消/提交管线；显示选择走workflow.charts视图状态，科学配方仍由DerivedData提供。
 
 教师模型由 domain `ImportedModel` + Project 集合保存身份，infrastructure `imported_models` 管理安全 YAML / staged copy / SHA256，`imported_model_inference` 共用实际帧探针与全视频 runner。GUI `ModelActions` 拥有导入线程 / 自检 spawn 的完整生命周期；`imported_model_job` 将选定关键点接入既有跟踪候选 / 激活事务。[ADR-0018](decisions/0018-managed-teacher-model-import.md) 规定 schema v1 可选扩展、身份和不伪造训练履历。
 
