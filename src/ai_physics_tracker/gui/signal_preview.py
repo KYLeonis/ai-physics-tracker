@@ -227,7 +227,7 @@ class SignalPreview(QObject):
         self.panel.modelLabel.setText(f"Reference: {job.spec.level:g} {job.source.unit} · direction: {job.spec.direction}")
         self.panel.meaningLabel.setText("Candidate same-direction crossings; repeat intervals are not automatically a physical period.")
         self.panel.summary.setPlainText(f"Preview only: {len(outcome.events)} crossing events. {outcome.message}.")
-        self.panel.showFeedback(f"Crossing preview only — {len(outcome.events)} candidate events. Click Measure crossing intervals to publish a result.")
+        self.panel.jobLabel.setText(f"Crossing preview only — {len(outcome.events)} candidate events. Click Measure crossing intervals to publish a result.")
 
     def describeSource(self, job):
         recipe = smoothing_recipe(job.source)

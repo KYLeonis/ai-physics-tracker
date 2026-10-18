@@ -26,6 +26,32 @@ def _periodic(qtbot, path):
     return window, session, track
 
 
+@pytest.mark.parametrize('setting', ['reference', 'direction', 'separation'])
+def test_automatic_crossing_preview_preserves_page_scroll(qtbot, synthetic_video_path, setting):
+    window, _, _ = _periodic(qtbot, synthetic_video_path)
+    panel = window.chartActions.signalPanel
+    window.resize(1024, 640)
+    bar = window._analysisToolsScroll.verticalScrollBar()
+    qtbot.waitUntil(lambda: bar.maximum() > 0)
+    bar.setValue(bar.maximum() // 2)
+    before = bar.value()
+    assert before > 0
+
+    if setting == 'reference':
+        panel.referenceLine.setValue(15)
+        panel.referenceLine.sigPositionChangeFinished.emit(panel.referenceLine)
+    elif setting == 'direction':
+        panel.direction.setCurrentIndex(1)
+    else:
+        panel.separation.setValue(.3)
+    _ready(qtbot, panel)
+
+    assert bar.value() == before
+    panel.showSourceButton.click()
+    assert bar.value() == 0  # 显式查看仍定位到反馈，自动更新不能借用这个动作。
+    _ready(qtbot, panel)
+
+
 def test_missing_recurrence_source_prepared_in_place_without_measurement(qtbot, synthetic_video_path):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
