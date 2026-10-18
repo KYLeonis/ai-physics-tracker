@@ -47,4 +47,4 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 
 - [自动近似时序](automatic-timing-review.md)：2026-10-17用户授权取消人工Yes，独立复审Approve、双平台CI及本轮HR通过，已集成main。
 
-- [重复间隔源联动与候选交叉点](recurrence-linked-review.md)：R03实现0888297，自动Gate / 独立Approve / 最终双平台CI通过，本轮HR待用户，未合并main。
+- [重复间隔源联动与候选交叉点](recurrence-linked-review.md)：R03实现0888297，自动Gate / 独立Approve / 最终双平台CI通过，全部HR通过，F1 Closed，2600f2a集成main。

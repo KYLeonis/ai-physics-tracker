@@ -15,7 +15,7 @@
 | --- | --- | --- | --- |
 | R01 公式拟合源自动补齐与预览联动 | **已完成 / 已合并** | 当前拟合页复用prepare_signal_source及既有job；不再要求缺源时切Charts；Fit仍显式 | [计划](fit-linked-source-plan.md) / [Review](../reviews/fit-linked-source-review.md)；aa86d79；全量1271 / 独立 / 双平台 / HR通过 |
 | R02 计算配方统一解释 | **已完成 / 已合并** | source_recipe拥有共同事实与构造，chart_recipe保留图表策略。删除重复导数阶表、角参考恢复、图例摘要反解析、线性job时序覆写 | [计划](source-recipe-plan.md) / [Review](../reviews/source-recipe-review.md)；26af812；全量1276 / 独立134 / 双平台通过，无新增交互 |
-| R03 重复间隔源联动与交叉预览 | **实现 / 自动Gate完成，待HR，未合并** | 已授权自动准备源、拖线 / 改方向预览候选点，Measure仍显式。`codex/recurrence-linked`；worktree `/Users/leonis/.codex/worktrees/recurrence-linked/ai-physics-tracker`；实现0888297 / 测试f5c727a；本机全量1289 / 补充31通过；独立Approve / 最终双平台CI通过；首次HR其余通过；F1拖线跳顶修复4bd723a定向81 / 独立17通过，最新双平台CI39105765356通过，仅待本项复测 | [计划](recurrence-linked-plan.md) / [Review](../reviews/recurrence-linked-review.md) / [PR #35](https://github.com/KYLeonis/ai-physics-tracker/pull/35) / [ADR-0026](../decisions/0026-live-recurrence-preview.md) |
+| R03 重复间隔源联动与交叉预览 | **已完成 / 已合并** | 两个工具共用prepare_signal_source / SignalPreview；改线 / 方向 / 区间自动更新候选点，Measure仍显式。自动预览不滚回顶部，保留曲线及页面位置 | [计划](recurrence-linked-plan.md) / [Review](../reviews/recurrence-linked-review.md) / [PR #35](https://github.com/KYLeonis/ai-physics-tracker/pull/35) / [ADR-0026](../decisions/0026-live-recurrence-preview.md)；2600f2a；独立 / 双平台CI / 全部HR通过，F1 Closed |
 | R04 计算 / 记录装配与Session写入分离 | **待规划** | worker仍对detached Session调用compute入口；尚未提取，不混入Undo | [依据](../notes/architecture-followup-2026-10-18.md)；R03验收后再确认 |
 | R05 全局JobSupervisor / WorldSnapshot | **后置，未实施** | 现有runner及各任务专属校验继续有效；没有通用hash替代科学条件 | [首次复核](../notes/architecture-review-assessment-2026-10-17.md) / [后续复核](../notes/architecture-followup-2026-10-18.md) |
 | R06 Undo拆分 / 通用图表渲染器 | **后置，未实施** | Session拥有事务；ChartPlot / AnalysisPlot保留不同交互；不按文件大小重写 | 同上；不与R03 / R04捆绑 |
@@ -27,6 +27,7 @@
 3. 可读旧缓存、允许新计算、允许自动覆盖是不同策略；不得合成一个valid布尔值或删除源 / 目标版本核对。
 4. 预览与正式执行器按ADR-0023隔离；不得改回同一单线程队列。预览不发布正式结果。
 5. 不恢复Review timing / Yes；合格Near-CFR按ADR-0024自动采用，保留来源与异常处理。
-6. 不把“生命周期Normal-risk”“Undo / recipe无测试”“6.3.1未实施”等旧报告陈述当现状。
+6. 自动预览只更新提示，不调用会触发滚动定位的showFeedback；显式操作才定位。页面scrollbar与图表view要分别验证。
+7. 不把“生命周期Normal-risk”“Undo / recipe无测试”“6.3.1未实施”等旧报告陈述当现状。
 
-最后核对：2026-10-18，main产品基线0afe9f9。R03自动Gate已完成，真人验收 / 集成未完成，下一步以[current.md](current.md)为准。
+最后核对：2026-10-18，main集成2600f2a，R01–R03已完成 / 已合并，下一步以[current.md](current.md)为准。

@@ -2,24 +2,24 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（用户授权R03重复间隔源 / 交叉点预览，及架构交接入口；已完成项保留标记，新交互已实现，自动Gate通过，首次HR其余通过；F1拖线跳顶4bd723a已修复，定向81 / 独立17通过；最终双平台CI通过，仅待本项复测，未合并）
+- 最后更新：2026-10-18（R03全部HR通过，F1 Closed；已以2600f2a集成main，收尾文档同步；R01–R03均完成）
 
 ## Current
 
-- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01 / R02已合并；R03进行中，不能使用旧HTML覆盖当前状态。
+- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R03已完成 / 已合并，不能使用旧HTML覆盖当前状态。
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md) S0–S2已实现；首版S3自动Gate通过；首次HR其余通过。F1拖线跳顶修复4bd723a定向81 / 独立17通过，最新双平台CI39105765356通过，仅待单项复测。R01 / R02已完成，6.4 / 6.5未开始。
-- **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/recurrence-linked/ai-physics-tracker` / `codex/recurrence-linked`，产品基线0afe9f9；main本轮只更新架构 / 接手文档；产品0888297 / 测试f5c727a及F1修复4bd723a只在上述开发分支，论文worktree未改。
+- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md)全部实现 / 自动Gate / HR完成，F1拖线跳顶已修复且用户复测通过，2600f2a集成main。R01–R03已完成，R04待规划，6.4 / 6.5未开始。
+- **Worktree / Branch**：主工作区 `/Users/leonis/Documents/ai-physics-tracker` / `main`；已集成`codex/recurrence-linked`，合并树与b2823b9一致，源码 / 测试与已验证4bd723a一致。试用worktree保留以兼容既有启动器；论文线及用户实验未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-- **本轮已交付**：用户通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。本轮[联动计划](fit-linked-source-plan.md)自动Gate / HR均通过并已集成，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。不扩大为重复间隔或后续阶段已完成。
+- **本轮已交付**：重复间隔工具复用源自动准备和独立预览；改参考线 / 方向 / 区间自动更新候选交点与说明，Measure仍显式。2026-10-18用户先确认其他项目通过，再确认拖线稳定性修复“通过”，所有Gate完成，2600f2a集成main。
 
-1. **R03 HR返工 / 单项复测**：用户已确认其他项目通过，只有拖橙色参考线松手后页面跳顶未通过（[Review F1](../reviews/recurrence-linked-review.md#f1--自动交叉预览把页面滚回顶部代码已修复待本项复测)）。4bd723a改为自动提示不触发滚动定位；新增3种页面scroll回归，旧代码均复现失败。定向81及独立增量复审Approve（17项）通过；最新双平台CI39105765356通过，仅按[单项复测](recurrence-linked-plan.md#hr返工--单项复测)让用户复测拖线。原HR其他通过项保留，试用副本不要覆盖；通过前不得合并产品到main；通过后按--no-ff集成、将F1标Closed及R03标已完成、同步文档 / push并停止。
-2. 架构完成状态只在[进度表](architecture-progress.md)统一维护，并同步对应计划 / Review及architecture.md。R01 / R02不要重复实施；R04计算 / 写入分离及全局任务 / Undo仍后置。
-3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
+1. **本轮收尾后停止**：等待用户下一条指令；R01–R03不要重复实施。集成收尾CI触发后记录回执，源码不再改动。
+2. **下次建议讨论R04**：只整理纯计算 / 记录装配与Session写入职责，目标为后续改计算规则时集中一处，并保留保存 / Undo / 科学输入校验。当前尚未授权实施，先按[进度表](architecture-progress.md)和[后续复核](../notes/architecture-followup-2026-10-18.md)冻结范围与Gate。
+3. 架构完成状态同步进度表、对应计划 / Review及architecture.md；全局任务 / Undo仍后置，不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
 ## Active Constraints
 
@@ -63,6 +63,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **R03 HR通过 / 集成（2026-10-18）**：用户确认拖线复测“通过”，保留首次HR其他项目通过结论，F1 Closed。4bd723a相关GUI81 / 独立17及最终双平台CI39105765356通过（各1296 passed / 2个既有pandas可选skip）；首版本机全量1289及完整独立复审通过。2600f2a以--no-ff集成，合并树与b2823b9一致，源码 / 测试与4bd723a一致；同步架构 / 进度并收尾，不开始R04。
 
 - **R03实现检查点（2026-10-18，未完成 / 未合并）**：0888297让重复间隔复用源自动准备与独立预览，候选事件 / 曲线 / 单位 / 说明联动；正式Measure仍显式。1289全量及补充31通过；[PR #35](https://github.com/KYLeonis/ai-physics-tracker/pull/35)，独立Approve / 最终双平台CI39103525201通过；本轮HR待用户。架构总览、进度表、AGENTS入口及独立HR副本已准备，不能写成产品已完成。
 

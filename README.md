@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
-Last Delivered:   计算配方统一解释内部整理；全量1276 / 独立复审 / 双平台CI通过，2026-10-18集成main
-Current Subphase: Phase 6.3.1及自动时序 / 公式拟合联动维护增量已完成并集成main；6.4 / 6.5未开始
+Last Delivered:   重复间隔源联动与交点预览；独立复审 / 双平台CI / 全部HR通过，2026-10-18以2600f2a集成main
+Current Subphase: Phase 6.3.1及自动时序 / 公式拟合 / 重复间隔联动维护增量已完成并集成main；6.4 / 6.5未开始
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -136,6 +136,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
 - ✅ Phase 6.1 角运动基础 / 6.2 图表与相空间 / 6.3 显式函数拟合及重复间隔已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
+- ✅ R01–R03架构维护已完成：公式拟合联动、计算设置统一、重复间隔联动；当前架构与完成进度有统一接手入口
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
 
 ## 文档索引
@@ -154,7 +155,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 
 ### 主线口径与已交付增量（2026-10-13）
 
-后续分析采用**用户提供方程 / 公式，通用平台完成计算与分析**；论文分支固定 ODE 是复现参考，Phase 6 旧草案须重规划（[ADR-0017](docs/decisions/0017-user-defined-equation-analysis-platform.md)）。
+后续分析采用**用户提供方程 / 公式，通用平台完成计算与分析**；论文分支固定 ODE 是复现参考，Phase 6.3已按此口径完成规划与交付（[ADR-0017](docs/decisions/0017-user-defined-equation-analysis-platform.md)）。
 
 main 已交付 Analysis 视频只读、建议帧批量连续标注 / 修正与完成后的训练推荐、教师 DLC 模型受管导入 / 实际帧自检 / 单关键点候选轨迹。模型自检不会证明科学准确性，候选仍需显式采用。自动化 / Independent Review 已通过，用户于 2026-10-13 确认 [Human Review A/B/C](docs/notes/main-guided-refinement-model-import-human-review.md) 全部通过；已按序集成。其余回移候选在 [后续档案](docs/status/main-backport-backlog.md) 按相关阶段触发核对。
 
@@ -176,4 +177,6 @@ P6.3范围为用户显式函数编辑 / 数学预览、单标量拟合、参数�
 
 2026-10-18：[公式拟合联动增量](docs/status/fit-linked-source-plan.md)全量1271 / 独立复审 / 双平台CI及本轮HR通过，已以aa86d79集成main：拟合页自动补齐当前轨迹缺失 / 过期的源曲线，再同步预览、单位和说明；沿用所选轨迹自身设置，冲突定义保留并提示。正式Fit仍显式，原始观测保持不变。契约见[ADR-0025](docs/decisions/0025-automatic-fit-source-preparation.md)。
 
-2026-10-18：[计算配方统一解释](docs/status/source-recipe-plan.md)内部整理已以26af812集成main，全量1276 / 独立复审 / 双平台CI通过。图表、拟合准备、后台校验和同步生成共用实际计算设置定义；图例不再从摘要文字判断来源。原操作 / 数值算法 / 工程格式保持，重复间隔联动尚未开始。
+2026-10-18：[计算配方统一解释](docs/status/source-recipe-plan.md)内部整理已以26af812集成main，全量1276 / 独立复审 / 双平台CI通过。图表、拟合准备、后台校验和同步生成共用实际计算设置定义；图例不再从摘要文字判断来源。原操作 / 数值算法 / 工程格式保持。
+
+2026-10-18：[重复间隔联动](docs/status/recurrence-linked-plan.md)已以2600f2a集成main，独立复审 / 双平台CI / 全部HR通过。工具自动准备当前源，改参考线 / 方向 / 区间刷新候选交点、单位和说明；Measure才保存正式结果。拖线后的页面跳顶已修复并通过用户复测，曲线缩放与页面位置保持。架构及完成标记见[进度表](docs/status/architecture-progress.md)。

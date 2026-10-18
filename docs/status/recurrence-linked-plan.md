@@ -24,7 +24,7 @@
 - [x] S1：共用预览 / 源准备支持两个工具；交叉预览纯计算移到application，用已有算法。
 - [x] S2：只显示当前候选事件、不自动Measure；保持参考线操作，正确处理失败 / 取消 / 历史 / 保存忙 / 换上下文。
 - [x] S3自动Gate：定向 / 全量 / 双平台CI / 独立完整复审，处理finding；给出独立试用副本和≤5步操作 → 预期。
-- [ ] S3真人Gate：用户亲自HR通过后才合并main，更新进度为已完成。
+- [x] S3真人Gate：用户亲自HR通过后才合并main，更新进度为已完成。
 
 ## Review Gate
 
@@ -32,7 +32,7 @@ High-risk（后台生命周期 / 科学输入 / 自动触发），Independent Re
 
 ## Verification
 
-产品实现0888297；定向源 / 交叉预览 / 数值59 passed（31.81s）。全量1289及补充31通过，独立完整复审Approve（独立50 / 先前51项）；完整证据见[Review](../reviews/recurrence-linked-review.md)。最终[CI39103525201](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39103525201) macOS / Windows Python3.11通过；HR待用户，未合并main。
+产品实现0888297；定向源 / 交叉预览 / 数值59 passed（31.81s）。全量1289及补充31通过，独立完整复审Approve（独立50 / 先前51项）；完整证据见[Review](../reviews/recurrence-linked-review.md)。最终[CI39103525201](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39103525201) macOS / Windows Python3.11通过；本轮全部HR已通过，2600f2a已集成main。
 
 ## Human Review（自动Gate通过后执行）
 
@@ -56,4 +56,8 @@ zsh /Users/leonis/Documents/ai-physics-tracker/experiment/recurrence-linked-huma
 
 2026-10-18用户反馈：其他项目通过；拖参考橙线松手后工具页滚回顶部未通过（Review F1）。4bd723a改为被动更新预览提示，不发显式反馈定位事件。保留原副本，不覆盖用户试用内容。
 
-本次只复测：关闭旧试用窗口，用上述同一命令重开，滚动到参考线及控件可见处，连续上下拖线并松手 → 页面保持原滚动位置，交点仍自动更新，曲线缩放保持。回复“稳定，通过 / 仍会跳顶”。修复定向81 passed / 独立增量Approve（17项）通过；最新双平台CI39105765356通过。只要求本项HR；通过后再集成main。
+本次只复测：关闭旧试用窗口，用上述同一命令重开，滚动到参考线及控件可见处，连续上下拖线并松手 → 页面保持原滚动位置，交点仍自动更新，曲线缩放保持。回复“稳定，通过 / 仍会跳顶”。修复定向81 passed / 独立增量Approve（17项）通过；最新双平台CI39105765356通过。用户随后回复“通过”，本项HR完成，F1 Closed；2600f2a已集成main。
+
+## Result
+
+2026-10-18全部AC / 自动Gate / Independent / 本轮HR通过，2600f2a以--no-ff集成main。合并树与b2823b9一致，源码 / 测试与最终CI及HR验证的4bd723a一致。原工程 / 试用副本 / 论文线未改，R04与6.4 / 6.5未开始。

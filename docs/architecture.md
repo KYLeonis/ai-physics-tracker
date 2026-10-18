@@ -4,7 +4,7 @@
 
 ## 当前架构总览（接手先读）
 
-2026-10-18核对，main产品基线0afe9f9：6.1 / 6.2 / 6.3 / 6.3.1、自动Near-CFR、公式拟合联动、配方统一解释均已集成。重复间隔自动联动为R03进行中，不能提前当作main已完成。
+2026-10-18核对，main集成2600f2a：6.1 / 6.2 / 6.3 / 6.3.1、自动Near-CFR、公式拟合联动、配方统一解释均已集成。R03重复间隔自动联动及拖线滚动修复亦已通过全部HR并集成main，R01–R03已完成。
 
 ```mermaid
 flowchart TD
@@ -17,7 +17,8 @@ flowchart TD
     JOBS --> VALID[输入 / 源 / 目标版本校验]
     VALID --> SESSION
     CHART --> PREVIEW[SignalPreview / 独立预览执行器]
-    PREVIEW --> DOMAIN
+    PREVIEW --> SIGNALPREVIEW[preview_signal_analysis / 冻结输入纯预览]
+    SIGNALPREVIEW --> DOMAIN
     RECIPE[source_recipe / 配方事实与读写] --> JOBS
     RECIPE --> SESSION
     RECIPE --> DISPLAY[chart_recipe / 比较与披露策略]
@@ -269,17 +270,17 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 
 ### 公式拟合源自动补齐（2026-10-18已验收 / 集成main）
 
-`prepare_signal_source`集中判断当前量的源是否可复用或需要准备，只返回既有线性 / 角运动job；未知配方和重复源拒绝自动覆盖。ChartActions复用原执行器、输入 / 目标版本校验和Session事务，成功后由SignalPreview同一入口刷新当前预览。只读历史、保存和无关结果不触发源计算；正式Fit仍显式，普通Charts / 重复间隔仍保留原触发方式。见[ADR-0025](decisions/0025-automatic-fit-source-preparation.md)。
+`prepare_signal_source`集中判断当前量的源是否可复用或需要准备，只返回既有线性 / 角运动job；未知配方和重复源拒绝自动覆盖。ChartActions复用原执行器、输入 / 目标版本校验和Session事务，成功后由SignalPreview同一入口刷新当前预览。只读历史、保存和无关结果不触发源计算；正式Fit仍显式，普通Charts仍保留原触发方式；重复间隔按ADR-0026共用自动源准备与候选交点预览。见[ADR-0025](decisions/0025-automatic-fit-source-preparation.md)。
 
 ### 计算配方事实收拢（2026-10-18已验收 / 集成main）
 
 `application.source_recipe`承接既有步骤 / SG / 参考 / 时序事实，提供同步构造与记录读取；不导入Session / job / Qt。`chart_recipe`保留图表比较、披露、行读取并兼容旧导入路径；job / signal各自的发布及自动覆盖资格不合并。`ChartSeries.reference_label` / `source_smoothed`由源记录构造，GUI不从摘要文案推断语义。沿用现有ADR与JSON，无迁移 / 新依赖；这是可逆内部整理，范围与Gate见[计划](status/source-recipe-plan.md)。
 
 
-### R03重复间隔联动（实现 / 自动Gate完成，待HR / 集成）
+### R03重复间隔联动（2026-10-18已验收 / 集成main）
 
-`codex/recurrence-linked`的0888297让两个工具共用SignalPreview的请求合并 / 取消 / 后台交付及prepare_signal_source。纯预览入口为application的`preview_signal_analysis`：Fit返回初值曲线，Recurrence返回既有measure_recurrence的候选事件；GUI只绘制候选线，不创建DerivedData或日志。Measure继续使用正式执行器及Session提交。
+2600f2a集成已验证产品，让两个工具共用SignalPreview的请求合并 / 取消 / 后台交付及prepare_signal_source。纯预览入口为application的`preview_signal_analysis`：Fit返回初值曲线，Recurrence返回既有measure_recurrence的候选事件；GUI只绘制候选线，不创建DerivedData或日志。Measure继续使用正式执行器及Session提交。
 
-同一源改参考线只换候选线；源曲线及view保留。源任务同时捕获工具 / 轨迹 / 输入版本，历史、换页及工程代际使旧交付失效。此处说明开发分支现状，main产品仍以上述已集成快照为准；验收后更新本节及[进度](status/architecture-progress.md)，不要新建第二套预览调度。
+同一源改参考线只换候选线；源曲线及view保留。源任务同时捕获工具 / 轨迹 / 输入版本，历史、换页及工程代际使旧交付失效。此处为main当前架构；完成证据见[进度](status/architecture-progress.md)，不要新建第二套预览调度。
 
-R03首次HR发现的页面跳顶由4bd723a修复：自动预览只更新提示，不能调用会发出feedbackRequested的显式操作反馈入口；后者会把工具页滚到顶部。新回归同时检查外层页面scrollbar与既有plot view，两者不是同一状态。实现待本项复测，其他HR项目已通过。
+R03首次HR发现的页面跳顶由4bd723a修复：自动预览只更新提示，不能调用会发出feedbackRequested的显式操作反馈入口；后者会把工具页滚到顶部。新回归同时检查外层页面scrollbar与既有plot view，两者不是同一状态。本项用户复测及其他HR均通过，F1 Closed。

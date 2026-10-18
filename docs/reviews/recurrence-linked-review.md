@@ -16,16 +16,18 @@
 
 ## Findings / Result
 
-独立完整复审已Approve，无待处置finding；最终双平台CI通过，自动Gate完成。首次Human Review除拖线跳顶外，其余项目已由用户确认通过；4bd723a修复跳顶，定向81 / 独立17通过，最新双平台CI通过，仅待本项真人复测，产品未合并main。PR [#35](https://github.com/KYLeonis/ai-physics-tracker/pull/35)为diff与CI容器。
+独立完整复审已Approve，无待处置finding；最终双平台CI通过，自动Gate完成。首次Human Review除拖线跳顶外，其余项目已由用户确认通过；4bd723a修复跳顶，定向81 / 独立17通过，最新双平台CI通过，用户随后回复“通过”，本项HR完成且F1 Closed；全部Gate通过，2600f2a已集成main。PR [#35](https://github.com/KYLeonis/ai-physics-tracker/pull/35)为diff与CI容器。
 
 ## Human Review
 
 [计划中的启动命令与5条操作 → 预期](../status/recurrence-linked-plan.md#human-review自动gate通过后执行)；提供独立工程副本，不替代原工程。用户2026-10-18反馈“其他通过”，仅拖线松手后页面跳到顶部未通过。
 
-### F1 — 自动交叉预览把页面滚回顶部（代码已修复，待本项复测）
+### F1 — 自动交叉预览把页面滚回顶部（Closed：修复 / 自动Gate / 真人复测通过）
 
 - 用户两张截图显示外层工具页滚动位置重置，曲线本身范围未改；旧回归只检查plot view，未检查页面scrollbar。
 - 根因：SignalPreview.renderRecurrence调用showFeedback，feedbackRequested由MainWindow接到外层scrollbar.setValue(0)。
 - 4bd723a仅把被动预览提示改为jobLabel.setText，与Fit预览一致；显式查看预览 / Measure仍保留原定位。没有新增保存 / 算法 / 任务生命周期改动。
 - 新增reference（含松手信号）/ direction / separation三种页面滚动回归；旧代码全部复现失败（0 != 250），修复后相关GUI回归81 passed（80.61s，593 warnings）。独立Reviewer增量Approve，定向17 passed，确认显式Preview / Measure定位仍保留；diff检查 / compileall通过。4bd723a的最新[CI39105765356](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39105765356) macOS / Windows Python3.11均success；既有可选pandas测试的2个skip不变。
 - 本轮仅要求拖线稳定性复测；其余已通过项不重开。原试用工程副本保留用户操作 / 保存状态，不重新复制覆盖。
+
+2026-10-18用户明确回复“通过”，拖线稳定性复测完成；此前“其他通过”覆盖其余HR项目。F1 Closed，无未关闭finding；2600f2a集成main，合并树与b2823b9一致，源码 / 测试与4bd723a一致。收尾只同步文档，不再修改产品。
