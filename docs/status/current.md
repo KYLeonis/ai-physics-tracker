@@ -2,23 +2,24 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（R01–R03已完成；下一轮R04整体架构方案已成文，待用户确认，本次仅文档）
+- 最后更新：2026-10-18（用户授权启动R04；S0已冻结，工作分支实施中，产品未合并main）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R03已完成 / 已合并，不能使用旧HTML覆盖当前状态。
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md)全部实现 / 自动Gate / HR完成，F1拖线跳顶已修复且用户复测通过，2600f2a集成main。R01–R03已完成，R04方案待确认 / 未实施，6.4 / 6.5未开始。
-- **Worktree / Branch**：主工作区 `/Users/leonis/Documents/ai-physics-tracker` / `main`；已集成`codex/recurrence-linked`，合并树与b2823b9一致，源码 / 测试与已验证4bd723a一致。试用worktree保留以兼容既有启动器；论文线及用户实验未改。
+- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md)全部实现 / 自动Gate / HR完成，F1拖线跳顶已修复且用户复测通过，2600f2a集成main。R01–R03已完成，R04已授权实施，S0完成，A–D及Gate进行中，6.4 / 6.5未开始。
+- **Worktree / Branch**：R04 `/Users/leonis/.codex/worktrees/analysis-workflow/ai-physics-tracker` / `codex/analysis-workflow`（基线2edf0b9）；main本轮仅同步计划 / 交接文档。上一轮主工作区 `/Users/leonis/Documents/ai-physics-tracker` / `main`；已集成`codex/recurrence-linked`，合并树与b2823b9一致，源码 / 测试与已验证4bd723a一致。试用worktree保留以兼容既有启动器；论文线及用户实验未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
 - **最近产品交付**：重复间隔工具复用源自动准备和独立预览；改参考线 / 方向 / 区间自动更新候选交点与说明，Measure仍显式。2026-10-18用户先确认其他项目通过，再确认拖线稳定性修复“通过”，所有Gate完成，2600f2a集成main。
 
-1. **审阅下一轮整体方案**：[architecture-next-round-plan.md](architecture-next-round-plan.md)。目标贯通计算、核对、工程写回及界面更新，A–D分批覆盖完整分析主干；与AI、视频及保存保留明确协作关系。方案已形成，尚未授权实施；不把目标图当成已落地架构。
-2. **用户确认范围后再实施R04**：据方案冻结可执行mini-plan / ADR及Review Gate。R01–R03不要重做；R05 / R06继续后置，当前产品代码保持已验收版本。
+1. **执行已授权R04**：按[实施计划](analysis-workflow-plan.md)推进A计算脱离会话 / B统一受控发布 / C应用事实与GUI / D整体Gate。S0及ADR0027已冻结；不得把方案图或代码实现提前标为已合并。
+2. **完成必要Gate后收尾**：数值 / 事务 / 联动定向、全量、只读独立复审、双平台CI；涉及GUI连接 / 反馈变化时发起≤5步独立副本HR，用户通过前不合并产品。R01–R03不重做，R05 / R06和6.4 / 6.5不启动。
+
 3. 架构完成状态同步进度表、对应计划 / Review及architecture.md；全局任务 / Undo仍后置，不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
 ## Active Constraints

@@ -16,7 +16,7 @@
 | R01 公式拟合源自动补齐与预览联动 | **已完成 / 已合并** | 当前拟合页复用prepare_signal_source及既有job；不再要求缺源时切Charts；Fit仍显式 | [计划](fit-linked-source-plan.md) / [Review](../reviews/fit-linked-source-review.md)；aa86d79；全量1271 / 独立 / 双平台 / HR通过 |
 | R02 计算配方统一解释 | **已完成 / 已合并** | source_recipe拥有共同事实与构造，chart_recipe保留图表策略。删除重复导数阶表、角参考恢复、图例摘要反解析、线性job时序覆写 | [计划](source-recipe-plan.md) / [Review](../reviews/source-recipe-review.md)；26af812；全量1276 / 独立134 / 双平台通过，无新增交互 |
 | R03 重复间隔源联动与交叉预览 | **已完成 / 已合并** | 两个工具共用prepare_signal_source / SignalPreview；改线 / 方向 / 区间自动更新候选点，Measure仍显式。自动预览不滚回顶部，保留曲线及页面位置 | [计划](recurrence-linked-plan.md) / [Review](../reviews/recurrence-linked-review.md) / [PR #35](https://github.com/KYLeonis/ai-physics-tracker/pull/35) / [ADR-0026](../decisions/0026-live-recurrence-preview.md)；2600f2a；独立 / 双平台CI / 全部HR通过，F1 Closed |
-| R04 分析主干职责重构（含计算 / 写入分离） | **方案已形成，待确认 / 未实施** | 拟贯通输入准备、无会话写入计算、核对 / 发布、界面事实；A–D完整链路迁移。现有worker仍调用detached Session；目标架构未落地，Undo保留 | [下一轮整体方案](architecture-next-round-plan.md) / [依据](../notes/architecture-followup-2026-10-18.md) |
+| R04 分析主干职责重构（含计算 / 写入分离） | **已授权 / 实施中，未合并** | 用户已授权A–D，S0 / ADR0027冻结；工作分支codex/analysis-workflow。实现与Gate进行中，main产品仍为R03，Undo保留 | [实施计划](analysis-workflow-plan.md) / [整体方案](architecture-next-round-plan.md) / [依据](../notes/architecture-followup-2026-10-18.md) |
 | R05 全局JobSupervisor / WorldSnapshot | **后置，未实施** | 现有runner及各任务专属校验继续有效；没有通用hash替代科学条件 | [首次复核](../notes/architecture-review-assessment-2026-10-17.md) / [后续复核](../notes/architecture-followup-2026-10-18.md) |
 | R06 Undo拆分 / 通用图表渲染器 | **后置，未实施** | Session拥有事务；ChartPlot / AnalysisPlot保留不同交互；不按文件大小重写 | 同上；不与R03 / R04捆绑 |
 
