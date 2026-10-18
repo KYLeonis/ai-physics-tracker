@@ -81,7 +81,7 @@ AI 训练 / 微调
 
 ```text
 Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
-Last Delivered:   公式拟合源自动补齐及预览 / 单位 / 说明联动；2026-10-18 HR通过并集成main
+Last Delivered:   计算配方统一解释内部整理；全量1276 / 独立复审 / 双平台CI通过，2026-10-18集成main
 Current Subphase: Phase 6.3.1及自动时序 / 公式拟合联动维护增量已完成并集成main；6.4 / 6.5未开始
 ```
 
@@ -174,3 +174,5 @@ P6.3范围为用户显式函数编辑 / 数学预览、单标量拟合、参数�
 2026-10-16：[P6.3.1英文分析体验](docs/status/phase-6.3.1-plan.md)已在[PR #32](https://github.com/KYLeonis/ai-physics-tracker/pull/32)实现；第三轮HR反馈后，保存结果与底部尝试整页同步只读配方，Return恢复原草稿，Use显式复用；原源严格匹配时重建尝试曲线，失败 / 缺源清旧图并就地反馈。2026-10-17用户HR通过，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过，不设固定响应或新手完成时限，翻译后续。
 
 2026-10-18：[公式拟合联动增量](docs/status/fit-linked-source-plan.md)全量1271 / 独立复审 / 双平台CI及本轮HR通过，已以aa86d79集成main：拟合页自动补齐当前轨迹缺失 / 过期的源曲线，再同步预览、单位和说明；沿用所选轨迹自身设置，冲突定义保留并提示。正式Fit仍显式，原始观测保持不变。契约见[ADR-0025](docs/decisions/0025-automatic-fit-source-preparation.md)。
+
+2026-10-18：[计算配方统一解释](docs/status/source-recipe-plan.md)内部整理已以26af812集成main，全量1276 / 独立复审 / 双平台CI通过。图表、拟合准备、后台校验和同步生成共用实际计算设置定义；图例不再从摘要文字判断来源。原操作 / 数值算法 / 工程格式保持，重复间隔联动尚未开始。

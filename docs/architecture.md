@@ -225,6 +225,6 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 
 `prepare_signal_source`集中判断当前量的源是否可复用或需要准备，只返回既有线性 / 角运动job；未知配方和重复源拒绝自动覆盖。ChartActions复用原执行器、输入 / 目标版本校验和Session事务，成功后由SignalPreview同一入口刷新当前预览。只读历史、保存和无关结果不触发源计算；正式Fit仍显式，普通Charts / 重复间隔仍保留原触发方式。见[ADR-0025](decisions/0025-automatic-fit-source-preparation.md)。
 
-### 计算配方事实收拢（维护分支，待完整Gate）
+### 计算配方事实收拢（2026-10-18已验收 / 集成main）
 
 `application.source_recipe`承接既有步骤 / SG / 参考 / 时序事实，提供同步构造与记录读取；不导入Session / job / Qt。`chart_recipe`保留图表比较、披露、行读取并兼容旧导入路径；job / signal各自的发布及自动覆盖资格不合并。`ChartSeries.reference_label` / `source_smoothed`由源记录构造，GUI不从摘要文案推断语义。沿用现有ADR与JSON，无迁移 / 新依赖；这是可逆内部整理，范围与Gate见[计划](status/source-recipe-plan.md)。

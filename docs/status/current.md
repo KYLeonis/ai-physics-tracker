@@ -2,20 +2,20 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（计算配方统一解释S0–S3完成，产品cdc2be3全量1276 / 独立Approve / 双平台CI通过，待集成）
+- 最后更新：2026-10-18（计算配方统一解释全Gate通过，以26af812集成main，已验证产品树保持不变）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[计算配方统一解释](source-recipe-plan.md) S0–S3完成；产品cdc2be3全量1276 / 独立Approve / 双平台CI通过，待集成。公式拟合联动已完成并集成。6.4 / 6.5未开始。
-- **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/source-recipe/ai-physics-tracker` / `codex/source-recipe`，基线main362ac85；主线与论文worktree暂不改。
+- **Subphase / Slice**：[计算配方统一解释](source-recipe-plan.md) S0–S3完成；产品cdc2be3全量1276 / 独立Approve / 双平台CI通过，以26af812集成main。公式拟合联动已完成并集成。6.4 / 6.5未开始。
+- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`，集成26af812；`codex/source-recipe`已集成，论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
 - **本轮已交付**：用户通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。本轮[联动计划](fit-linked-source-plan.md)自动Gate / HR均通过并已集成，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。不扩大为重复间隔或后续阶段已完成。
 
-1. **完成已授权内部整理的完整Gate**：用户明确选择“是，先统一计算设置”。按[source-recipe计划](source-recipe-plan.md)完成全量 / 独立复审 / 双平台CI，处置findings后`--no-ff`集成与文档同步。保持既有结果 / 操作 / 资格策略，无新交互则不新增HR关卡；不得将重复间隔联动或纯计算提取混入本批。
+1. **本轮收尾后停止，等待下一条指令**：用户选择的[source-recipe内部整理](source-recipe-plan.md)已通过全量 / 独立复审 / 双平台CI并以26af812集成，PR [#34](https://github.com/KYLeonis/ai-physics-tracker/pull/34)。下一次按已确认方向先梳理重复间隔工具的联动范围，再形成mini-plan；不自动混入纯计算提取或全局重构。
 2. [第一次复核](../notes/architecture-review-assessment-2026-10-17.md)保留为历史输入。拟合联动已经完成，不再按旧文的“6.3.1未开始”安排工作。推荐次序为设置解释收拢→重复间隔联动→计算与结果装配分离；最终先后以用户当前选择为准。
 3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
@@ -61,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **计算配方统一解释 / 集成（2026-10-18）**：用户明确选择先统一计算设置。source_recipe收拢原步骤 / SG / 参考 / 时序事实，Session生成、后台校验、源准备与GUI恢复共用；图例读取明确来源字段，删除英文摘要反解析与线性后台时序覆写。产品cdc2be3全量1276 / 独立Approve（134项）/ 双平台CI39101339745通过，以26af812集成；合并树与分支b24c374一致，源码 / 测试与已验证产品一致。无新交互，不新增HR；用户实验 / JSON / 资格策略 / Undo未改。
 
 - **架构再复核（2026-10-18）**：按用户要求重读GLM原HTML与第一次评估，对照main b57b237；配方解释 / 设置恢复 / 图例语义仍分散，建议先做③及⑤的结构化来源事实。独立只读走查确认数值算法已有domain复用，②应拆计算 / 记录装配与Session发布，不带Undo。定向99 passed（3.17s）；本轮只更新建议 / HTML报告与状态，不改产品代码，下一批范围待选择。
 

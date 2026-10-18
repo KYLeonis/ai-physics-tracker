@@ -21,7 +21,7 @@
 - [x] S0：记录范围、现有语义和测试基线。
 - [x] S1：单一事实定义；同步写入 / job校验 / 源准备 / 控件恢复复用，保留导入兼容。
 - [x] S2：ChartSeries携带明确来源事实，图例不解析摘要；来源显示与旧实现一致。
-- [x] S3：既有行为回归、同步 / 后台数值与配方一致、旧 / 损坏 / 未知记录拒绝条件不放宽、未知扩展不丢、独立复审与双平台CI通过；待集成。
+- [x] S3：既有行为回归、同步 / 后台数值与配方一致、旧 / 损坏 / 未知记录拒绝条件不放宽、未知扩展不丢、独立复审与双平台CI通过；以26af812集成main。
 
 验收：SG导数对应表只一份；参考编解码只一份；去除手写SG配方与线性job时序覆盖；GUI不重建参考dict、不通过英文文案猜语义。旧入口的正常结果 / 错误策略、标定 / 时序 / 参考 / 组内冲突、取消 / 迟到 / 历史行为继续成立。UUID / 时间戳外的相同输入数值和配方保持一致。
 
@@ -31,4 +31,8 @@ High-risk（科学配方解释 / 后台提交校验）。Independent Review只�
 
 ## Verification
 
-基线定向99 passed（3.17s）；实现后142 passed（35.92s），新增同步 / 后台与图例回归所在文件30 passed（20.24s）。最终产品cdc2be3本机全量1276 passed（181.77s，1613 warnings）；独立复审Approve / 134项通过，20个迁移函数 / 类型与基线AST完全一致。[双平台CI39101339745](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39101339745) macOS / Windows Python3.11均success。全部Gate通过，待集成。详见[review](../reviews/source-recipe-review.md)。
+基线定向99 passed（3.17s）；实现后142 passed（35.92s），新增同步 / 后台与图例回归所在文件30 passed（20.24s）。最终产品cdc2be3本机全量1276 passed（181.77s，1613 warnings）；独立复审Approve / 134项通过，20个迁移函数 / 类型与基线AST完全一致。[双平台CI39101339745](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39101339745) macOS / Windows Python3.11均success。全部Gate通过，以26af812集成main。详见[review](../reviews/source-recipe-review.md)。
+
+## Result
+
+2026-10-18以`26af812` `--no-ff`集成main。合并树与分支b24c374一致，源码 / 测试与已复审、全量及双平台验证的cdc2be3一致；后续仅同步文档。无新交互 / 视觉设计，不新增Human Review。正常启动命令：`PYTHONPATH=src .venv/bin/python -m ai_physics_tracker`；现有图表 / 拟合操作照旧。重复间隔自动联动和计算 / 写入分离未开始，收尾后等待下一条指令。
