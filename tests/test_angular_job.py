@@ -72,7 +72,7 @@ def test_angular_batch_computes_four_kinds_and_is_one_undo(tmp_path: Path) -> No
 
     result = run_angular_job(job, Event())
 
-    # worker 只写 detached snapshot；活动会话提交前无部分结果
+    # worker不持有Session；活动会话提交前无部分结果
     assert session.project.derived == ()
     assert {(r.track_id, r.kind) for r in result.records} == {
         (track_a, kind) for kind in ANGULAR_KINDS
@@ -154,22 +154,18 @@ def test_cancelling_between_specs_discards_partial_records(
         AngularSpec(track_b, PendulumReference(pivot_px=(100.0, 1000.0))),
     )
     job = prepare_angular_job(session, video_id, specs, SmoothingParameters())
-    original_compute = job.snapshot.compute_angular
+    import ai_physics_tracker.application.angular_job as jobs
+    original_compute = jobs.compute_angular_records
     cancel = Event()
     calls: list[UUID] = []
 
-    def cancel_after_first(track_id: UUID, *, reference, window_length: int, polyorder: int):
+    def cancel_after_first(inputs, track_id: UUID, reference, parameters):
         calls.append(track_id)
-        result = original_compute(
-            track_id,
-            reference=reference,
-            window_length=window_length,
-            polyorder=polyorder,
-        )
+        result = original_compute(inputs, track_id, reference, parameters)
         cancel.set()
         return result
 
-    monkeypatch.setattr(job.snapshot, "compute_angular", cancel_after_first)
+    monkeypatch.setattr(jobs, "compute_angular_records", cancel_after_first)
 
     with pytest.raises(CancelledError):
         run_angular_job(job, cancel)

@@ -1,32 +1,17 @@
 """应用层运动学批次：独立快照计算，输入未变化时才允许原子提交。"""
 
 from concurrent.futures import CancelledError
+from copy import deepcopy
 from dataclasses import dataclass
 from threading import Event
 from uuid import UUID
 
+from ai_physics_tracker.application.motion_computation import AnalysisInputs, compute_kinematics_records
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.application.source_recipe import (
     SmoothingParameters, smoothing_derivative_order, smoothing_step,
 )
-from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.derived import DerivedData, KINEMATICS_KINDS, preserve_derived_extensions
-from ai_physics_tracker.domain.timeline import Timeline
-from ai_physics_tracker.domain.track import Track, TrackPoint
-from ai_physics_tracker.domain.video import Video
-
-
-@dataclass(frozen=True)
-class AnalysisInputs:
-    """只包含会影响目标计算的输入，不包含视图、保存时间或其他轨迹的数据。"""
-
-    project_id: UUID
-    video: Video
-    timeline: Timeline
-    calibration: Calibration | None
-    tracks: tuple[Track, ...]
-    points: tuple[TrackPoint, ...]
-    timing_detail: str | None
 
 
 def analysis_inputs(session: ProjectSession, video_id: UUID,
@@ -51,9 +36,8 @@ def analysis_inputs(session: ProjectSession, video_id: UUID,
 
 @dataclass(frozen=True)
 class KinematicsJob:
-    """snapshot 在创建后移交 worker 独占，GUI 只读取 inputs/parameters。"""
+    """worker只持有必要冻结输入，不持有会话或写入能力。"""
 
-    snapshot: ProjectSession
     inputs: AnalysisInputs
     parameters: SmoothingParameters
     previous_derived_ids: tuple[UUID, ...] = ()
@@ -69,10 +53,9 @@ class KinematicsResult:
 
 def prepare_kinematics_job(session: ProjectSession, video_id: UUID,
                            track_ids: tuple[UUID, ...], parameters: SmoothingParameters) -> KinematicsJob:
-    snapshot = session.detached()
-    inputs = analysis_inputs(snapshot, video_id, track_ids)
+    inputs = deepcopy(analysis_inputs(session, video_id, track_ids))
     expected = {(track_id, kind) for track_id in track_ids for kind in KINEMATICS_KINDS}
-    return KinematicsJob(snapshot, inputs, parameters, derived_result_ids(snapshot, expected))
+    return KinematicsJob(inputs, parameters, derived_result_ids(session, expected))
 
 
 def run_kinematics_job(job: KinematicsJob, cancel: Event) -> KinematicsResult:
@@ -82,8 +65,10 @@ def run_kinematics_job(job: KinematicsJob, cancel: Event) -> KinematicsResult:
     for track in job.inputs.tracks:
         if cancel.is_set():
             raise CancelledError()
-        computed = job.snapshot.compute_kinematics(track.track_id,
-            window_length=job.parameters.window_length, polyorder=job.parameters.polyorder)
+        try:
+            computed = compute_kinematics_records(job.inputs, track.track_id, job.parameters)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
         records.extend(computed)
     if cancel.is_set():
         raise CancelledError()

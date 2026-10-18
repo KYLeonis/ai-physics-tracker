@@ -92,18 +92,15 @@ def test_failed_batch_never_commits_partial_records(
         tuple(track.track_id for track in tracks),
         SmoothingParameters(),
     )
-    original_compute = job.snapshot.compute_kinematics
+    import ai_physics_tracker.application.kinematics_job as jobs
+    original_compute = jobs.compute_kinematics_records
 
-    def fail_on_second_track(track_id: UUID, *, window_length: int, polyorder: int):
+    def fail_on_second_track(inputs, track_id: UUID, parameters):
         if track_id == tracks[1].track_id:
             raise RuntimeError("synthetic second-track failure")
-        return original_compute(
-            track_id,
-            window_length=window_length,
-            polyorder=polyorder,
-        )
+        return original_compute(inputs, track_id, parameters)
 
-    monkeypatch.setattr(job.snapshot, "compute_kinematics", fail_on_second_track)
+    monkeypatch.setattr(jobs, "compute_kinematics_records", fail_on_second_track)
 
     with pytest.raises(RuntimeError, match="second-track"):
         run_kinematics_job(job, Event())
@@ -122,22 +119,19 @@ def test_cancelling_between_tracks_discards_first_track_result(
         tuple(track.track_id for track in tracks),
         SmoothingParameters(),
     )
-    original_compute = job.snapshot.compute_kinematics
+    import ai_physics_tracker.application.kinematics_job as jobs
+    original_compute = jobs.compute_kinematics_records
     cancel = Event()
     calls = 0
 
-    def cancel_after_first(track_id: UUID, *, window_length: int, polyorder: int):
+    def cancel_after_first(inputs, track_id: UUID, parameters):
         nonlocal calls
         calls += 1
-        result = original_compute(
-            track_id,
-            window_length=window_length,
-            polyorder=polyorder,
-        )
+        result = original_compute(inputs, track_id, parameters)
         cancel.set()
         return result
 
-    monkeypatch.setattr(job.snapshot, "compute_kinematics", cancel_after_first)
+    monkeypatch.setattr(jobs, "compute_kinematics_records", cancel_after_first)
 
     with pytest.raises(CancelledError):
         run_kinematics_job(job, cancel)

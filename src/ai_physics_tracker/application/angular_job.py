@@ -1,10 +1,11 @@
 """应用层角运动批次：独立快照计算，输入（含参考轨迹）未变化时才允许原子提交。
 
-事务骨架复用 kinematics_job 的 AnalysisInputs / detached 快照 / validated_batch
+事务骨架复用 kinematics_job 的 AnalysisInputs冻结值 / validated_batch
 （ADR-0019 第 5 节）；批次期望集为 ANGULAR_KINDS × 目标轨迹。
 """
 
 from concurrent.futures import CancelledError
+from copy import deepcopy
 from dataclasses import dataclass
 from threading import Event
 from uuid import UUID
@@ -17,6 +18,7 @@ from ai_physics_tracker.application.kinematics_job import (
     derived_result_ids,
     validate_smoothing_recipe,
 )
+from ai_physics_tracker.application.motion_computation import compute_angular_records
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.application.source_recipe import reference_parameters
 from ai_physics_tracker.domain.angular import AngularReference, TwoPointReference
@@ -33,9 +35,8 @@ class AngularSpec:
 
 @dataclass(frozen=True)
 class AngularJob:
-    """snapshot 在创建后移交 worker 独占，GUI 只读取 inputs/parameters/specs。"""
+    """worker只持有必要冻结输入，不持有会话或写入能力。"""
 
-    snapshot: ProjectSession
     inputs: AnalysisInputs
     parameters: SmoothingParameters
     specs: tuple[AngularSpec, ...]
@@ -88,22 +89,28 @@ def prepare_angular_job(
             raise ProjectSessionError(
                 "angular two-point reference must differ from the target track"
             )
-    snapshot = session.detached()
+    for spec in specs:
+        reference_id = _reference_track_id(spec.reference)
+        if reference_id is not None:
+            reference_track = next((track for track in session.tracks if track.track_id == reference_id), None)
+            if reference_track is None:
+                raise ProjectSessionError(f"unknown reference track_id: {reference_id}")
+            if reference_track.video_id != video_id:
+                raise ProjectSessionError("angular reference track must belong to the same video")
     # phase6-requirements R1 首版要求有效标定；在 prepare 阶段 fail fast，
     # 避免多规格批次在 worker 内逐规格计算后才失败。
     job_track_ids = _job_track_ids(specs)
-    video_ids = {spec_track.video_id for spec_track in snapshot.tracks
+    video_ids = {spec_track.video_id for spec_track in session.tracks
                  if spec_track.track_id in job_track_ids}
-    if any(snapshot.active_calibration(video_id) is None for video_id in video_ids):
+    if any(session.active_calibration(video_id) is None for video_id in video_ids):
         raise ProjectSessionError(
             "angular analysis requires an active calibration (phase6-requirements R1)"
         )
     return AngularJob(
-        snapshot,
-        analysis_inputs(snapshot, video_id, _job_track_ids(specs)),
+        deepcopy(analysis_inputs(session, video_id, _job_track_ids(specs))),
         parameters,
         tuple(specs),
-        derived_result_ids(snapshot, {(track_id, kind) for track_id in target_ids for kind in ANGULAR_KINDS}),
+        derived_result_ids(session, {(track_id, kind) for track_id in target_ids for kind in ANGULAR_KINDS}),
     )
 
 
@@ -114,12 +121,10 @@ def run_angular_job(job: AngularJob, cancel: Event) -> AngularResult:
     for spec in job.specs:
         if cancel.is_set():
             raise CancelledError()
-        computed = job.snapshot.compute_angular(
-            spec.track_id,
-            reference=spec.reference,
-            window_length=job.parameters.window_length,
-            polyorder=job.parameters.polyorder,
-        )
+        try:
+            computed = compute_angular_records(job.inputs, spec.track_id, spec.reference, job.parameters)
+        except ValueError as error:
+            raise ProjectSessionError(str(error)) from error
         records.extend(computed)
     if cancel.is_set():
         raise CancelledError()
