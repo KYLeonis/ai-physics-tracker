@@ -281,3 +281,5 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 `codex/recurrence-linked`的0888297让两个工具共用SignalPreview的请求合并 / 取消 / 后台交付及prepare_signal_source。纯预览入口为application的`preview_signal_analysis`：Fit返回初值曲线，Recurrence返回既有measure_recurrence的候选事件；GUI只绘制候选线，不创建DerivedData或日志。Measure继续使用正式执行器及Session提交。
 
 同一源改参考线只换候选线；源曲线及view保留。源任务同时捕获工具 / 轨迹 / 输入版本，历史、换页及工程代际使旧交付失效。此处说明开发分支现状，main产品仍以上述已集成快照为准；验收后更新本节及[进度](status/architecture-progress.md)，不要新建第二套预览调度。
+
+R03首次HR发现的页面跳顶由4bd723a修复：自动预览只更新提示，不能调用会发出feedbackRequested的显式操作反馈入口；后者会把工具页滚到顶部。新回归同时检查外层页面scrollbar与既有plot view，两者不是同一状态。实现待本项复测，其他HR项目已通过。
