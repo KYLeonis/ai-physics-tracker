@@ -31,6 +31,8 @@ from ai_physics_tracker.application.chart_recipe import (
     pipeline_summary,
     prepare_derived_rows,
     reference_reject_reason,
+    reference_summary,
+    has_step,
     smoothing_readable_reject_reason,
     timing_identity_reject_reason,
     unreadable_step_reason,
@@ -114,6 +116,8 @@ class ChartSeries:
     unit: str
     status: str
     pipeline_summary: str
+    reference_label: str = ""
+    source_smoothed: bool = False
 
 
 @dataclass(frozen=True)
@@ -410,6 +414,8 @@ def _angular_time_series(
         unit=display_unit,
         status=status,
         pipeline_summary=angular_pipeline_summary(record, tracks_by_id),
+        reference_label=reference_summary(record, tracks_by_id),
+        source_smoothed=has_step(record, "savitzky_golay"),
     )
 
 
@@ -437,6 +443,7 @@ def _linear_time_series(
             unit=record.unit,
             status=status,
             pipeline_summary=pipeline_summary(record),
+            source_smoothed=has_step(record, "savitzky_golay"),
         )
         for component, y_values in components
     )
@@ -673,6 +680,8 @@ def _phase_track_series(
             if spec.angular
             else pipeline_summary(primary)
         ),
+        reference_label=reference_summary(primary, tracks_by_id) if spec.angular else "",
+        source_smoothed=has_step(primary, "savitzky_golay"),
     )
 
 

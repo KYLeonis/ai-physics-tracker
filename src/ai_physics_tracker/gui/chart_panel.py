@@ -149,13 +149,10 @@ class ChartPlot(pg.PlotWidget):
 
     def _legendName(self, series: ChartSeries) -> str:
         name = f"{series.name} · {series.component}" + (" [stale]" if series.status == "stale" else "")
-        if self.kind in _LEGEND_REFERENCE_KINDS and series.pipeline_summary:
-            # 角运动图例披露实际参考（实际支点或 A→B）；S1 的管线摘要以
-            # "参考 · SG · 时序" 组成，参考段本身不含分隔符，取首段即可。
-            name += " · " + series.pipeline_summary.split(" · ")[0]
+        if self.kind in _LEGEND_REFERENCE_KINDS and series.reference_label:
+            name += " · " + series.reference_label
         if self.kind == "theta_t":
-            name += " · " + ("smoothed unwrapped" if "Savitzky-Golay" in series.pipeline_summary
-                              else "raw wrapped")
+            name += " · " + ("smoothed unwrapped" if series.source_smoothed else "raw wrapped")
         return name
 
     def fitData(self) -> None:
