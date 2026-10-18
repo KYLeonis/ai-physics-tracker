@@ -25,3 +25,5 @@
 两项较低优先级观察一并处理：源未就绪时Fit禁用并说明原因；导数量尝试 / 历史使用实际SG derivative语义。新增多轨迹 / 导数历史GUI回归及六种stale损坏输入拒绝回归。
 
 最终自动Gate与本轮HR均通过，2026-10-18以`aa86d79` `--no-ff`集成main。合并树与分支262da6a一致，源码 / 测试与已验证8ea1f1b一致；本轮收尾未再改产品。PR [#33](https://github.com/KYLeonis/ai-physics-tracker/pull/33)记录完整diff；论文线及用户实验未改。
+
+收尾提交`0b80008`的[主分支CI39099618728](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39099618728) macOS / Windows Python3.11均success；之后只补此文档回执，源码 / 测试树保持不变。
