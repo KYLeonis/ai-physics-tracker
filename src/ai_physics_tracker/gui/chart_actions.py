@@ -436,7 +436,7 @@ class ChartActions(QObject):
             self.signalPanel.showFeedback("Calculation cancelled — saved result retained")
         elif self._source_selection is not None:
             self.preview.invalidate()
-            self.signalPanel.showFeedback("Source update cancelled — edit inputs or click Preview to retry")
+            self.signalPanel.jobLabel.setText("Source update cancelled — edit inputs or click Preview to retry")
 
     def _poll(self) -> None:
         if self.attempts.active and not self._cancel.is_set():
@@ -498,7 +498,7 @@ class ChartActions(QObject):
                 self.signalPanel.showFeedback("Calculation cancelled — saved result retained; edit settings or retry.")
                 self._finishAttempt("cancelled", "Calculation cancelled; late result discarded")
             elif source_selection is not None:
-                self.signalPanel.showFeedback("Source update cancelled — no result applied. Edit inputs or click Preview to retry.")
+                self.signalPanel.jobLabel.setText("Source update cancelled — no result applied. Edit inputs or click Preview to retry.")
         except Exception as error:
             from ai_physics_tracker.application.user_messages import charts_not_updated
             self.panel.jobLabel.setText(charts_not_updated(str(error)).full_text())
@@ -506,7 +506,7 @@ class ChartActions(QObject):
                 self.signalPanel.showFeedback(str(error) + " — saved result retained. Check source charts / settings, then retry.")
                 self._finishAttempt("rejected" if isinstance(error, ProjectSessionError) else "failed", str(error))
             elif source_selection is not None:
-                self.signalPanel.showFeedback(f"Source update failed: {error}. Check the source settings, then retry Preview.")
+                self.signalPanel.jobLabel.setText(f"Source update failed: {error}. Check the source settings, then retry Preview.")
         else:
             applied = True
             if source_selection is None:
@@ -658,7 +658,8 @@ class ChartActions(QObject):
             self._source_method = None
             self._job_inputs = None
             raise
-        self.signalPanel.showFeedback(f"Updating source data for {selection.quantity}… Preview will follow automatically. Cancel is available.")
+        # 源准备可由自动刷新启动；定位只由显式Preview等操作发出。
+        self.signalPanel.jobLabel.setText(f"Updating source data for {selection.quantity}… Preview will follow automatically. Cancel is available.")
         self._timer.start(30)
         self.refresh()
         return True
