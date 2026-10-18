@@ -21,9 +21,9 @@
 ## Slices / Acceptance
 
 - [x] S0：记录已确认行为、当前架构与进度入口、ADR-0026。
-- [ ] S1：共用预览 / 源准备支持两个工具；交叉预览纯计算移到application，用已有算法。
-- [ ] S2：只显示当前候选事件、不自动Measure；保持参考线操作，正确处理失败 / 取消 / 历史 / 保存忙 / 换上下文。
-- [ ] S3自动Gate：定向 / 全量 / 双平台CI / 独立完整复审，处理finding；给出独立试用副本和≤5步操作 → 预期。
+- [x] S1：共用预览 / 源准备支持两个工具；交叉预览纯计算移到application，用已有算法。
+- [x] S2：只显示当前候选事件、不自动Measure；保持参考线操作，正确处理失败 / 取消 / 历史 / 保存忙 / 换上下文。
+- [x] S3自动Gate：定向 / 全量 / 双平台CI / 独立完整复审，处理finding；给出独立试用副本和≤5步操作 → 预期。
 - [ ] S3真人Gate：用户亲自HR通过后才合并main，更新进度为已完成。
 
 ## Review Gate
@@ -32,4 +32,22 @@ High-risk（后台生命周期 / 科学输入 / 自动触发），Independent Re
 
 ## Verification
 
-待实现。证据写入`docs/reviews/recurrence-linked-review.md`；进度统一写architecture-progress.md，代码完成与合并完成分开。
+产品实现0888297；定向源 / 交叉预览 / 数值59 passed（31.81s）。全量1289及补充31通过，独立完整复审Approve（独立50 / 先前51项）；完整证据见[Review](../reviews/recurrence-linked-review.md)。最终[CI39103525201](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39103525201) macOS / Windows Python3.11通过；HR待用户，未合并main。
+
+## Human Review（自动Gate通过后执行）
+
+独立试用副本：主worktree下`experiment/recurrence-linked-human-review/project`。从原fit-linked HR工程复制，仅本副本可保存；原文件SHA256为`6e740b82a6bd9b1f87af9be464a78d440fc20e7c3cbe5890161d8e2cd01482fb`，副本共用外部视频，不改原工程或视频。
+
+从零启动（macOS已有.venv）：
+
+```bash
+zsh /Users/leonis/Documents/ai-physics-tracker/experiment/recurrence-linked-human-review/start.command
+```
+
+1. 启动后直接进入Measure repeat intervals：自动出现x源曲线、单位与区间说明，无需切Charts；尚未点击Measure时显示Crossing preview，不能冒称正式测量。
+2. 点击Center reference，再拖橙色参考线或改Direction：候选竖线随之刷新，源曲线 / 缩放不跳动；图旁仍提示预览和显式Measure。
+3. 改起止帧、切x/y或Source：曲线、单位、说明、交点随选择更新，没有旧交点残留；切回x并Center reference。
+4. 点击Measure：看到正式事件及间隔；再改参考线：回到候选预览；Latest applied result仍可查看刚才的正式测量，Return to my draft回到可编辑预览。
+5. 快速改几次参考线后切Fit a formula，再切回来：显示当前工具及当前设置，没有迟到旧图覆盖；窗口仍可正常操作。
+
+封闭式反馈：上述5项是否全部通过（通过 / 第N项未通过）？本轮HR独立于上一批拟合及自动时序HR。
