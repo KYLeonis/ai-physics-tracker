@@ -48,4 +48,4 @@ Reviewer复核10f6887..bd848f1：**Approve，F1 Closed，完整R04通过独立�
 
 ## Integration
 
-085219e合并树与53c2886一致，源码 / 测试与bd848f1一致，保留此前完整验证，不重复无变化的本机全量。主分支集成CI39127491849另记回执；产品之后仅文档收尾。
+085219e合并树与53c2886一致，源码 / 测试与bd848f1一致，保留此前完整验证，不重复无变化的本机全量。[主分支集成CI39127491849](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39127491849) macOS / Windows Python3.11均success；产品之后仅文档收尾。
