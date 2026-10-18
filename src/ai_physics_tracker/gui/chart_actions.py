@@ -18,6 +18,7 @@ from PySide6.QtCore import QObject, QSignalBlocker, QTimer, Qt
 from ai_physics_tracker.application.angular_job import (
     AngularJob, AngularResult, AngularSpec, prepare_angular_job, run_angular_job,
 )
+from ai_physics_tracker.application.analysis_readiness import SignalSourceState, assess_signal_source
 from ai_physics_tracker.application.chart_data import ChartData, build_chart_data
 from ai_physics_tracker.application.source_recipe import reference_recipe, smoothing_recipe, recorded_reference
 from ai_physics_tracker.application.project_media import workflow_state
@@ -33,7 +34,6 @@ from ai_physics_tracker.gui.chart_panel import ChartPanel
 from ai_physics_tracker.gui.signal_analysis_panel import SignalAnalysisPanel
 from ai_physics_tracker.application.signal_analysis_job import (
     SignalAnalysisJob, SignalAnalysisResult, prepare_signal_analysis, run_signal_analysis,
-    prepare_signal_source,
 )
 from ai_physics_tracker.domain.expression import parse_expression
 from ai_physics_tracker.domain.analysis import source_fingerprint
@@ -72,6 +72,7 @@ class ChartActions(QObject):
         self._signal_job: SignalAnalysisJob | None = None
         self._source_selection = None
         self._source_method = None
+        self._source_facts = None
         self._job_workspace = window.currentWorkspace
         self._context_generation = window.deliveryGeneration
         self._render_key = None
@@ -162,6 +163,7 @@ class ChartActions(QObject):
         self._signal_job = None
         self._source_selection = None
         self._source_method = None
+        self._source_facts = None
         self._timer.stop()
         self._context_generation = self.window.deliveryGeneration
         self._render_key = None
@@ -265,11 +267,7 @@ class ChartActions(QObject):
                 or self.window.currentWorkspace != "analysis" or not hasattr(self.window, "analysisTabs")
                 or self.window.analysisTabs.currentIndex() != 1):
             return
-        try:
-            reason = ("Source data need updating — Preview prepares them; retry Preview if cancelled."
-                      if self._prepareSignalSource() is not None else "")
-        except (ValueError, ProjectSessionError) as error:
-            reason = str(error)
+        reason = self.signalSourceState().reason
         fitting = self.signalPanel.methods.currentIndex() == 0
         button = self.signalPanel.fitButton if fitting else self.signalPanel.recurrenceButton
         label = self.signalPanel.fitReadinessLabel if fitting else self.signalPanel.crossingReadinessLabel
@@ -438,7 +436,7 @@ class ChartActions(QObject):
             self.signalPanel.showFeedback("Calculation cancelled — saved result retained")
         elif self._source_selection is not None:
             self.preview.invalidate()
-            self.signalPanel.showFeedback("Source update cancelled — edit inputs or click Preview to retry")
+            self.signalPanel.jobLabel.setText("Source update cancelled — edit inputs or click Preview to retry")
 
     def _poll(self) -> None:
         if self.attempts.active and not self._cancel.is_set():
@@ -500,7 +498,7 @@ class ChartActions(QObject):
                 self.signalPanel.showFeedback("Calculation cancelled — saved result retained; edit settings or retry.")
                 self._finishAttempt("cancelled", "Calculation cancelled; late result discarded")
             elif source_selection is not None:
-                self.signalPanel.showFeedback("Source update cancelled — no result applied. Edit inputs or click Preview to retry.")
+                self.signalPanel.jobLabel.setText("Source update cancelled — no result applied. Edit inputs or click Preview to retry.")
         except Exception as error:
             from ai_physics_tracker.application.user_messages import charts_not_updated
             self.panel.jobLabel.setText(charts_not_updated(str(error)).full_text())
@@ -508,7 +506,7 @@ class ChartActions(QObject):
                 self.signalPanel.showFeedback(str(error) + " — saved result retained. Check source charts / settings, then retry.")
                 self._finishAttempt("rejected" if isinstance(error, ProjectSessionError) else "failed", str(error))
             elif source_selection is not None:
-                self.signalPanel.showFeedback(f"Source update failed: {error}. Check the source settings, then retry Preview.")
+                self.signalPanel.jobLabel.setText(f"Source update failed: {error}. Check the source settings, then retry Preview.")
         else:
             applied = True
             if source_selection is None:
@@ -660,20 +658,39 @@ class ChartActions(QObject):
             self._source_method = None
             self._job_inputs = None
             raise
-        self.signalPanel.showFeedback(f"Updating source data for {selection.quantity}… Preview will follow automatically. Cancel is available.")
+        # 源准备可由自动刷新启动；定位只由显式Preview等操作发出。
+        self.signalPanel.jobLabel.setText(f"Updating source data for {selection.quantity}… Preview will follow automatically. Cancel is available.")
         self._timer.start(30)
         self.refresh()
         return True
 
-    def _prepareSignalSource(self):
+    def signalSourceState(self) -> SignalSourceState:
+        """同一应用上下文共用准备事实；缓存不替代发布时的输入 / 目标核对。"""
         session = self.window.analysisSession
-        if session is None:
-            raise ProjectSessionError("Open a project first")
-        selection = self.signalPanel.selection()
-        owns_controls = selection.track_id in self.panel.checkedTracks()
-        return prepare_signal_source(session, selection,
-                                     self.panel.parameters() if owns_controls else None,
-                                     self.panel.angularControls.appliedReference() if owns_controls else None)
+        video_id = self.window.activeVideoId
+        try:
+            selection = self.signalPanel.selection() if self.signalPanel.trackChoice.currentData() else None
+            owns_controls = selection is not None and selection.track_id in self.panel.checkedTracks()
+            parameters = self.panel.parameters() if owns_controls else None
+            reference = self.panel.angularControls.appliedReference() if owns_controls else None
+        except (ValueError, ProjectSessionError) as error:
+            return SignalSourceState(source_issue=str(error))
+        project = session.project if session is not None else None
+        context = (video_id, selection, parameters, reference,
+                   session.can_measure(video_id) if session is not None and video_id else False,
+                   session.measurement_timing_detail(video_id) if session is not None and video_id else None)
+        cached = self._source_facts
+        if cached is not None and cached[0] is session and cached[1] is project and cached[2] == context:
+            return cached[3]
+        state = assess_signal_source(session, video_id, selection, parameters, reference)
+        self._source_facts = (session, project, context, state)
+        return state
+
+    def _prepareSignalSource(self):
+        state = self.signalSourceState()
+        if state.availability_issue or state.source_issue:
+            raise ProjectSessionError(state.reason)
+        return state.preparation
 
     def _showSignalSourceControls(self) -> None:
         panel = self.signalPanel

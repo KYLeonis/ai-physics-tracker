@@ -143,6 +143,7 @@ class TrackingActions(QObject):
             getattr(chart_actions.panel, "currentFamily", "linear")
             if chart_actions is not None and self.window.currentWorkspace == "analysis"
             else "linear")
+        execution = self._execution_input()
         key = (id(session.project) if session else None, video_id, track_id, self.pending,
                self.panel.selectedTrainingRunId(),
                session.can_measure(video_id) if session and video_id else False,
@@ -156,7 +157,7 @@ class TrackingActions(QObject):
                if hasattr(self.window, "reviewActions") else None,
                chart_family,
                getattr(self.window, "analysisNavigationKey", lambda: ())(),
-               self._execution_input())
+               execution)
         if key == self._context_key:
             return
         self._context_key = key
@@ -220,7 +221,7 @@ class TrackingActions(QObject):
         self.panel.setContext(video.display_name if video else "No video", track.name if track else "No track",
                               train_reason, infer_reason, self.pending,
                               project_busy=self.window.projectActions.busy)
-        self._refresh_workflow_ui(session, track_id, runs, video, track)
+        self._refresh_workflow_ui(session, track_id, runs, video, track, execution)
         if session and track_id:
             recommendation = self._advisor_recommendation(session, track_id, runs)
             if recommendation is None:
@@ -296,12 +297,12 @@ class TrackingActions(QObject):
             kind=EXEC_IDLE, correcting=correcting,
             paused_review_run_id=paused_run_id, **review_facts)
 
-    def _workflow_state(self, session, track_id, runs):
+    def _workflow_state(self, session, track_id, runs, execution=None):
         from ai_physics_tracker.application.workflow_projection import (
             project_workflow_state,
         )
         return project_workflow_state(
-            session, track_id, runs, self._execution_input(),
+            session, track_id, runs, execution if execution is not None else self._execution_input(),
             analysis_family=self._current_chart_family())
 
     def _current_chart_family(self) -> str:
@@ -312,12 +313,12 @@ class TrackingActions(QObject):
             return "linear"
         return getattr(chart_actions.panel, "currentFamily", "linear")
 
-    def _refresh_workflow_ui(self, session, track_id, runs, video, track) -> None:
+    def _refresh_workflow_ui(self, session, track_id, runs, video, track, execution=None) -> None:
         """把投影结果推到任务卡与常驻状态头；决策失败不阻塞面板。"""
         from ai_physics_tracker.application.workflow_projection import select_task_card
 
         try:
-            state = self._workflow_state(session, track_id, runs)
+            state = self._workflow_state(session, track_id, runs, execution)
             if session is None:
                 self.panel.setTaskCard(None)
                 self.window.workflowHeader.setTaskCard(

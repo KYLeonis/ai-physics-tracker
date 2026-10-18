@@ -577,6 +577,11 @@ class MainWindow(QMainWindow):
         tabs = getattr(self, "analysisTabs", None)
         signal_panel = getattr(getattr(self, "chartActions", None), "signalPanel", None)
         methods = getattr(signal_panel, "methods", None)
+        history_active = bool(signal_panel and signal_panel.history.active)
+        source_reason = None
+        if (self._workspace == WORKSPACE_ANALYSIS and tabs is not None
+                and tabs.currentIndex() == 1 and not history_active):
+            source_reason = self.chartActions.signalSourceState().reason
         return (
             self._workspace,
             tabs.currentIndex() if tabs is not None else None,
@@ -585,6 +590,7 @@ class MainWindow(QMainWindow):
             signal_panel.trackChoice.currentData() if signal_panel else None,
             signal_panel.quantityChoice.currentText() if signal_panel else None,
             signal_panel.sourceChoice.currentIndex() if signal_panel else None,
+            history_active, source_reason,
         )
 
     def setWorkspace(self, workspace: str) -> None:
@@ -842,7 +848,6 @@ class MainWindow(QMainWindow):
         if self.currentWorkspace != WORKSPACE_ANALYSIS:
             return None
         from ai_physics_tracker.application.workflow_projection import ActionSpec, TaskCard
-        from ai_physics_tracker.application.signal_analysis_job import signal_source
 
         if self.analysisTabs.currentIndex() == 0:
             ready = self.analysisSession is not None and bool(self.analysisSession.tracks)
@@ -875,8 +880,9 @@ class MainWindow(QMainWindow):
             "crossing times and repeat intervals"
             if purpose == "measure" else "fitted parameters, an overlaid curve, and residuals"
         )
-        readiness = self._analysisSourceReadiness(panel, signal_source)
-        has_source = readiness is None
+        source_state = self.chartActions.signalSourceState()
+        readiness = source_state.reason or None
+        has_source = source_state.ready
         if has_source:
             next_action = (
                 "Show source" if purpose == "measure" else "Preview initial curve"
@@ -893,9 +899,13 @@ class MainWindow(QMainWindow):
             primary = ActionSpec("analysis_retry_timing", "Detecting timing…" if pending_timing else "Retry timing detection",
                                  enabled=not pending_timing and not self.timingButton.isHidden(), reason=reason)
             next_text = "Timing is detected automatically. " + reason
+        elif source_state.preparation is not None:
+            primary = ActionSpec("analysis_prepare_source", "Prepare source / preview")
+            next_text = "Source update and preview happen here. Fit / Measure still require an explicit click."
         elif self.analysisSession is not None and panel.trackChoice.currentData() is not None:
-            primary = ActionSpec("analysis_prepare_source", "Prepare source charts")
-            next_text = "Update the source charts, then return here; no result is published by navigation."
+            primary = ActionSpec(preview_action, "Check source / preview",
+                                 enabled=source_state.availability_issue is None, reason=readiness)
+            next_text = "Review the source message and preparation controls below, then retry the preview."
         else:
             primary = ActionSpec(purpose_action, label)
             next_text = "Open a project and select a track before using this tool."
@@ -915,28 +925,6 @@ class MainWindow(QMainWindow):
             secondary=(ActionSpec(other_action, other_label),
                        ActionSpec("analysis_explore_motion", "Explore motion")),
         )
-
-    def _analysisSourceReadiness(self, panel, signal_source) -> str | None:
-        session = self.analysisSession
-        if session is None or self.activeVideoId is None:
-            return "Open a project and select a video."
-        if panel.trackChoice.currentData() is None:
-            return "Add or select a track."
-        if not session.can_measure(self.activeVideoId):
-            return "Timing detection is incomplete or unavailable; see the video timing status."
-        quantity = panel.quantityChoice.currentText()
-        if not quantity:
-            return "Select a signal."
-        try:
-            kind, _component = signal_source(quantity, panel.sourceChoice.currentIndex() == 1)
-        except ValueError:
-            return "Select a supported signal."
-        source = session.derived_data(UUID(panel.trackChoice.currentData()), kind)
-        if source is None:
-            return f"No {quantity}(t) source chart is available; update source charts first."
-        if source.status != "valid":
-            return "The selected source chart is stale; update source charts first."
-        return None
 
     def setPlaybackRate(self, rate: float) -> None:
         """设置播放倍速并即时生效；非正值忽略。"""

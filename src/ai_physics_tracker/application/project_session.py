@@ -10,7 +10,7 @@ import logging
 import json
 from copy import deepcopy
 from dataclasses import replace
-from math import isfinite, pi
+from math import isfinite
 from pathlib import Path
 from typing import Any, Iterable, Protocol, TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -40,29 +40,10 @@ from ai_physics_tracker.application.suggested_frame_review import (
     compute_batch_summary,
     extract_review_state,
 )
-from ai_physics_tracker.application.source_recipe import (
-    smoothing_step, reference_parameters, timing_parameters,
-)
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
-from ai_physics_tracker.domain.angular import (
-    AngularReference,
-    PendulumReference,
-    TwoPointReference,
-    dense_to_sparse_scalar_records,
-    direction_theta_world,
-    pendulum_theta_world,
-    unwrap_per_segment,
-)
-from ai_physics_tracker.domain.calibration import Calibration, CalibrationTransform
-from ai_physics_tracker.domain.kinematics import (
-    batch_pixel_to_world,
-    dense_to_sparse_records,
-    derive_unit,
-    differentiate_savgol,
-    expand_to_dense_grid,
-    smooth_savgol,
-)
+from ai_physics_tracker.domain.angular import AngularReference
+from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.project import (
     Project,
     add_calibration as add_domain_calibration,
@@ -76,11 +57,8 @@ from ai_physics_tracker.domain.project import (
     set_active_calibration as set_domain_active_calibration,
 )
 from ai_physics_tracker.domain.derived import (
-    ANGULAR_KINDS,
     DerivedData,
-    DerivedInput,
     mark_tracks_stale,
-    preserve_derived_extensions,
 )
 from ai_physics_tracker.domain.timeline import (
     TIME_COMPARISON_TOLERANCE_S,
@@ -782,450 +760,45 @@ class ProjectSession:
 
     replace_calibration = update_calibration
 
-    def compute_kinematics(
-        self,
-        track_id: UUID,
-        *,
-        window_length: int = 7,
-        polyorder: int = 2,
-    ) -> tuple[DerivedData, ...]:
-        """对指定 Track 执行运动学计算管线（坐标变换、SG 平滑与一/二阶微分）。
+    def compute_kinematics(self, track_id: UUID, *, window_length: int = 7,
+                           polyorder: int = 2) -> tuple[DerivedData, ...]:
+        """同步准备、计算并核对发布；数值实现与后台共用，写入仍是一次事务。"""
+        from threading import Event
+        from ai_physics_tracker.application.source_recipe import SmoothingParameters
+        from ai_physics_tracker.application.kinematics_job import prepare_kinematics_job, run_kinematics_job
 
-        重算触发方式为应用层暴露 `recompute_kinematics`/`compute_kinematics` 接口，
-        由上层 GUI 层按需调用。
-
-        Args:
-            track_id: 目标 Track 的 UUID。
-            window_length: Savitzky-Golay 滤波窗口长度（必须为正奇数，默认 7）。
-            polyorder: Savitzky-Golay 多项式拟合阶数（默认 2）。
-
-        Returns:
-            生成的 (world_position, smoothed_position, velocity, acceleration)
-            四条 DerivedData 元组。
-        """
-        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        track = next((item for item in self.tracks if item.track_id == track_id), None)
         if track is None:
             raise ProjectSessionError(f"unknown track_id: {track_id}")
-        if not self.can_measure(track.video_id):
-            raise ProjectSessionError("Video timing is not authorized; cached results are read-only")
-
-        timeline = next(
-            (item for item in self._project.timelines if item.video_id == track.video_id),
-            None,
-        )
-        if timeline is None:
-            raise ProjectSessionError(f"no timeline registered for video of track {track.name}")
-
-        video = next(
-            (item for item in self._project.videos if item.video_id == track.video_id),
-            None,
-        )
-        if video is None:
-            raise ProjectSessionError(f"no video registered for track {track.name}")
-
-        delta = 1.0 / timeline.fps_nominal
-        points = self.effective_points(track_id)
-
         try:
-            frames, px_x, px_y = expand_to_dense_grid(
-                points, frame_range=timeline.working_zone
-            )
-
-            active_cal = self.active_calibration(track.video_id)
-            if active_cal is not None:
-                transform = CalibrationTransform(
-                    calibration=active_cal, height_px=video.height_px
-                )
-                pos_x, pos_y = batch_pixel_to_world(px_x, px_y, transform)
-                pos_unit = active_cal.unit
-                cal_ref = active_cal.calibration_id
-                cal_step = [
-                    {
-                        "step": "calibration_transform",
-                        "params": {"calibration_id": str(active_cal.calibration_id)},
-                    }
-                ]
-            else:
-                pos_x, pos_y = px_x.copy(), px_y.copy()
-                pos_unit = "px"
-                cal_ref = None
-                cal_step = []
-
-            smooth_x = smooth_savgol(
-                pos_x, window_length=window_length, polyorder=polyorder
-            )
-            smooth_y = smooth_savgol(
-                pos_y, window_length=window_length, polyorder=polyorder
-            )
-            vx = differentiate_savgol(
-                pos_x,
-                window_length=window_length,
-                polyorder=polyorder,
-                deriv=1,
-                delta=delta,
-            )
-            vy = differentiate_savgol(
-                pos_y,
-                window_length=window_length,
-                polyorder=polyorder,
-                deriv=1,
-                delta=delta,
-            )
-            ax = differentiate_savgol(
-                pos_x,
-                window_length=window_length,
-                polyorder=polyorder,
-                deriv=2,
-                delta=delta,
-            )
-            ay = differentiate_savgol(
-                pos_y,
-                window_length=window_length,
-                polyorder=polyorder,
-                deriv=2,
-                delta=delta,
-            )
+            parameters = SmoothingParameters(window_length, polyorder)
+            job = prepare_kinematics_job(self, track.video_id, (track_id,), parameters)
+            result = run_kinematics_job(job, Event())
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
-
-        now = utc_now()
-        derived_input = DerivedInput(
-            track_id=track_id,
-            source_filter=None,
-            include_superseded=False,
-            extra_fields={"observation_selection": "effective"},
-        )
-        produced_by = "ai_physics_tracker.kinematics.v1"
-
-        pos_frames, pos_values = dense_to_sparse_records(frames, pos_x, pos_y)
-        smooth_frames, smooth_values = dense_to_sparse_records(frames, smooth_x, smooth_y)
-        vel_frames, vel_values = dense_to_sparse_records(frames, vx, vy)
-        acc_frames, acc_values = dense_to_sparse_records(frames, ax, ay)
-
-        d_pos = DerivedData(
-            derived_id=uuid4(),
-            track_id=track_id,
-            kind="world_position",
-            input=derived_input,
-            pipeline=tuple(cal_step),
-            frames=pos_frames,
-            values=pos_values,
-            payload_ref=None,
-            unit=pos_unit,
-            produced_by=produced_by,
-            created_at=now,
-            status="valid",
-            calibration_ref=cal_ref,
-        )
-
-        d_smooth = DerivedData(
-            derived_id=uuid4(),
-            track_id=track_id,
-            kind="smoothed_position",
-            input=derived_input,
-            pipeline=(*cal_step,
-                      smoothing_step("smoothed_position", window_length, polyorder, timeline.fps_nominal)),
-            frames=smooth_frames,
-            values=smooth_values,
-            payload_ref=None,
-            unit=pos_unit,
-            produced_by=produced_by,
-            created_at=now,
-            status="valid",
-            calibration_ref=cal_ref,
-        )
-
-        d_vel = DerivedData(
-            derived_id=uuid4(),
-            track_id=track_id,
-            kind="velocity",
-            input=derived_input,
-            pipeline=(*cal_step,
-                      smoothing_step("velocity", window_length, polyorder, timeline.fps_nominal)),
-            frames=vel_frames,
-            values=vel_values,
-            payload_ref=None,
-            unit=derive_unit(pos_unit, 1),
-            produced_by=produced_by,
-            created_at=now,
-            status="valid",
-            calibration_ref=cal_ref,
-        )
-
-        d_acc = DerivedData(
-            derived_id=uuid4(),
-            track_id=track_id,
-            kind="acceleration",
-            input=derived_input,
-            pipeline=(*cal_step,
-                      smoothing_step("acceleration", window_length, polyorder, timeline.fps_nominal)),
-            frames=acc_frames,
-            values=acc_values,
-            payload_ref=None,
-            unit=derive_unit(pos_unit, 2),
-            produced_by=produced_by,
-            created_at=now,
-            status="valid",
-            calibration_ref=cal_ref,
-        )
-
-        new_items = (d_pos, d_smooth, d_vel, d_acc)
-        # 线性批次与角运动批次共用时序来源口径（ADR-0020）：fps / 区间 /
-        # 近似授权记入既有可扩展字段，不改 schema；相空间配对依赖完整来源。
-        timing_context: JsonObject = timing_parameters(timeline, self.measurement_timing_detail(track.video_id))
-        new_items = tuple(preserve_derived_extensions(
-            replace(item, extra_fields={"timing_context": deepcopy(timing_context)}),
-            self.derived_data(item.track_id, item.kind)) for item in new_items)
-        new_kinds = {item.kind for item in new_items}
-        kept_derived = [
-            d
-            for d in self._project.derived
-            if not (d.track_id == track_id and d.kind in new_kinds)
-        ]
-        updated_derived = tuple(kept_derived) + new_items
-
-        self._commit_store(self._store, updated_derived)
-        logger.info(
-            "computed kinematics for track=%s (cal=%s, valid_points=%d)",
-            track.name,
-            cal_ref,
-            len(pos_frames),
-        )
-        return new_items
+        self.apply_kinematics_result(result)
+        return tuple(self.derived_data(track_id, record.kind) for record in result.records)
 
     recompute_kinematics = compute_kinematics
 
-    def compute_angular(
-        self,
-        track_id: UUID,
-        *,
-        reference: AngularReference,
-        window_length: int = 7,
-        polyorder: int = 2,
-    ) -> tuple[DerivedData, ...]:
-        """对指定 Track 按给定角度参考计算角运动管线。
+    def compute_angular(self, track_id: UUID, *, reference: AngularReference,
+                        window_length: int = 7, polyorder: int = 2) -> tuple[DerivedData, ...]:
+        """同步准备、计算并核对发布；数值实现与后台共用，写入仍是一次事务。"""
+        from threading import Event
+        from ai_physics_tracker.application.source_recipe import SmoothingParameters
+        from ai_physics_tracker.application.angular_job import AngularSpec, prepare_angular_job, run_angular_job
 
-        角度定义与数值规则见 phase6-requirements.md R1 与 ADR-0019：
-        原始 wrapped θ → 段内 unwrap → SG(deriv=0/1/2)。首版要求有效标定，
-        不提供像素角度模式；重算即整组替换本轨迹全部角运动结果（含更换
-        参考模式，ADR-0019 第 1 节）。
-
-        Args:
-            track_id: 目标轨迹（单摆摆球 / 两点方向中的 A 点）。
-            reference: PendulumReference（固定支点，像素）或 TwoPointReference（B 轨迹）。
-            window_length: Savitzky-Golay 滤波窗口长度（正奇数，默认 7）。
-            polyorder: Savitzky-Golay 多项式拟合阶数（默认 2）。
-
-        Returns:
-            (angular_position, smoothed_angular_position, angular_velocity,
-             angular_acceleration) 四条 DerivedData。
-        """
-
-        track = next((t for t in self._store.tracks if t.track_id == track_id), None)
+        track = next((item for item in self.tracks if item.track_id == track_id), None)
         if track is None:
             raise ProjectSessionError(f"unknown track_id: {track_id}")
-        if not self.can_measure(track.video_id):
-            raise ProjectSessionError("Video timing is not authorized; cached results are read-only")
-
-        timeline = next(
-            (item for item in self._project.timelines if item.video_id == track.video_id),
-            None,
-        )
-        if timeline is None:
-            raise ProjectSessionError(f"no timeline registered for video of track {track.name}")
-
-        video = next(
-            (item for item in self._project.videos if item.video_id == track.video_id),
-            None,
-        )
-        if video is None:
-            raise ProjectSessionError(f"no video registered for track {track.name}")
-
-        active_cal = self.active_calibration(track.video_id)
-        if active_cal is None:
-            raise ProjectSessionError(
-                "angular analysis requires an active calibration (phase6 R1)"
-            )
-
-        delta = 1.0 / timeline.fps_nominal
-        transform = CalibrationTransform(calibration=active_cal, height_px=video.height_px)
-        points_a = self.effective_points(track_id)
-
         try:
-            frames, px_ax, px_ay = expand_to_dense_grid(
-                points_a, frame_range=timeline.working_zone
-            )
-            world_ax, world_ay = batch_pixel_to_world(px_ax, px_ay, transform)
-
-            if isinstance(reference, PendulumReference):
-                reference_track_id: UUID | None = None
-                pivot_wx, pivot_wy = transform.pixel_to_world(reference.pivot_px)
-                theta = pendulum_theta_world(world_ax, world_ay, pivot_wx, pivot_wy)
-                angle_params: JsonObject = reference_parameters(reference)
-            elif isinstance(reference, TwoPointReference):
-                if reference.reference_track_id == track_id:
-                    raise ProjectSessionError(
-                        "angular two-point reference must differ from the target track"
-                    )
-                ref_track = next(
-                    (t for t in self._store.tracks
-                     if t.track_id == reference.reference_track_id),
-                    None,
-                )
-                if ref_track is None:
-                    raise ProjectSessionError(
-                        f"unknown reference track_id: {reference.reference_track_id}"
-                    )
-                if ref_track.video_id != track.video_id:
-                    raise ProjectSessionError(
-                        "angular reference track must belong to the same video"
-                    )
-                reference_track_id = reference.reference_track_id
-                points_b = self.effective_points(reference.reference_track_id)
-                _, px_bx, px_by = expand_to_dense_grid(
-                    points_b, frame_range=timeline.working_zone
-                )
-                world_bx, world_by = batch_pixel_to_world(px_bx, px_by, transform)
-                theta = direction_theta_world(world_ax, world_ay, world_bx, world_by)
-                angle_params = reference_parameters(reference)
-            else:
-                raise ProjectSessionError(
-                    f"unsupported angular reference: {type(reference).__name__}"
-                )
-
-            unwrapped = unwrap_per_segment(theta)
-            smooth_theta = smooth_savgol(
-                unwrapped, window_length=window_length, polyorder=polyorder
-            )
-            omega = differentiate_savgol(
-                unwrapped,
-                window_length=window_length,
-                polyorder=polyorder,
-                deriv=1,
-                delta=delta,
-            )
-            alpha = differentiate_savgol(
-                unwrapped,
-                window_length=window_length,
-                polyorder=polyorder,
-                deriv=2,
-                delta=delta,
-            )
+            parameters = SmoothingParameters(window_length, polyorder)
+            job = prepare_angular_job(self, track.video_id, (AngularSpec(track_id, reference),), parameters)
+            result = run_angular_job(job, Event())
         except ValueError as error:
             raise ProjectSessionError(str(error)) from error
-
-        now = utc_now()
-        derived_input = DerivedInput(
-            track_id=track_id,
-            source_filter=None,
-            include_superseded=False,
-            reference_track_id=reference_track_id,
-            extra_fields={"observation_selection": "effective"},
-        )
-        produced_by = "ai_physics_tracker.angular.v1"
-        cal_step = {
-            "step": "calibration_transform",
-            "params": {"calibration_id": str(active_cal.calibration_id)},
-        }
-        angle_step = {"step": "angular_reference", "params": angle_params}
-        unwrap_step = {"step": "angular_unwrap", "params": {"discont": pi}}
-        cal_ref = active_cal.calibration_id
-
-        theta_frames, theta_values = dense_to_sparse_scalar_records(frames, theta)
-        smooth_frames, smooth_values = dense_to_sparse_scalar_records(frames, smooth_theta)
-        omega_frames, omega_values = dense_to_sparse_scalar_records(frames, omega)
-        alpha_frames, alpha_values = dense_to_sparse_scalar_records(frames, alpha)
-
-        common_pipeline = (cal_step, angle_step)
-
-        d_theta = DerivedData(
-            derived_id=uuid4(),
-            track_id=track_id,
-            kind="angular_position",
-            input=derived_input,
-            pipeline=common_pipeline,
-            frames=theta_frames,
-            values=theta_values,
-            payload_ref=None,
-            unit="rad",
-            produced_by=produced_by,
-            created_at=now,
-            status="valid",
-            calibration_ref=cal_ref,
-        )
-
-        d_smooth = DerivedData(
-            derived_id=uuid4(),
-            track_id=track_id,
-            kind="smoothed_angular_position",
-            input=derived_input,
-            pipeline=(*common_pipeline, unwrap_step,
-                      smoothing_step("smoothed_angular_position", window_length, polyorder, timeline.fps_nominal)),
-            frames=smooth_frames,
-            values=smooth_values,
-            payload_ref=None,
-            unit="rad",
-            produced_by=produced_by,
-            created_at=now,
-            status="valid",
-            calibration_ref=cal_ref,
-        )
-
-        d_omega = DerivedData(
-            derived_id=uuid4(),
-            track_id=track_id,
-            kind="angular_velocity",
-            input=derived_input,
-            pipeline=(*common_pipeline, unwrap_step,
-                      smoothing_step("angular_velocity", window_length, polyorder, timeline.fps_nominal)),
-            frames=omega_frames,
-            values=omega_values,
-            payload_ref=None,
-            unit=derive_unit("rad", 1),
-            produced_by=produced_by,
-            created_at=now,
-            status="valid",
-            calibration_ref=cal_ref,
-        )
-
-        d_alpha = DerivedData(
-            derived_id=uuid4(),
-            track_id=track_id,
-            kind="angular_acceleration",
-            input=derived_input,
-            pipeline=(*common_pipeline, unwrap_step,
-                      smoothing_step("angular_acceleration", window_length, polyorder, timeline.fps_nominal)),
-            frames=alpha_frames,
-            values=alpha_values,
-            payload_ref=None,
-            unit=derive_unit("rad", 2),
-            produced_by=produced_by,
-            created_at=now,
-            status="valid",
-            calibration_ref=cal_ref,
-        )
-
-        timing_context: JsonObject = timing_parameters(timeline, self.measurement_timing_detail(track.video_id))
-        new_items = tuple(preserve_derived_extensions(
-            replace(item, extra_fields={"timing_context": deepcopy(timing_context)}),
-            self.derived_data(item.track_id, item.kind))
-            for item in (d_theta, d_smooth, d_omega, d_alpha))
-        kept_derived = [
-            d
-            for d in self._project.derived
-            if not (d.track_id == track_id and d.kind in ANGULAR_KINDS)
-        ]
-        updated_derived = tuple(kept_derived) + new_items
-
-        self._commit_store(self._store, updated_derived)
-        logger.info(
-            "computed angular analysis for track=%s (mode=%s, cal=%s, valid_points=%d)",
-            track.name,
-            angle_params["mode"],
-            cal_ref,
-            len(theta_frames),
-        )
-        return new_items
+        self.apply_angular_result(result)
+        return tuple(self.derived_data(track_id, record.kind) for record in result.records)
 
     def clear_derived(self, track_id: UUID) -> None:
         """清除指定 Track 的全部 DerivedData。"""
