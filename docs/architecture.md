@@ -221,6 +221,6 @@ MainWindow central 为工作区 QStackedWidget。失败/结束结论统一由
 
 当前应用结果来自`Project.derived`；Last saved result读取`ProjectSession`最近一次成功保存的基线，Latest applied result读取当前槽。回看时表单显示所选记录的只读配方，原编辑草稿保留；Use recorded setup才将其作为可编辑设置，不改变原始观测或激活结果。保存成功才更新磁盘基线。
 
-### 公式拟合源自动补齐（维护分支，待本轮HR）
+### 公式拟合源自动补齐（2026-10-18已验收 / 集成main）
 
 `prepare_signal_source`集中判断当前量的源是否可复用或需要准备，只返回既有线性 / 角运动job；未知配方和重复源拒绝自动覆盖。ChartActions复用原执行器、输入 / 目标版本校验和Session事务，成功后由SignalPreview同一入口刷新当前预览。只读历史、保存和无关结果不触发源计算；正式Fit仍显式，普通Charts / 重复间隔仍保留原触发方式。见[ADR-0025](decisions/0025-automatic-fit-source-preparation.md)。

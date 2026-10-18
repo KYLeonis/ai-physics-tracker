@@ -25,7 +25,7 @@
 - [x] S1：当前轨迹源准备、复用正式批次执行器 / 校验、取消和失败处理。
 - [x] S2：相关数据变化自动刷新当前草稿；来源选择与实际含义一致，初值建议后的说明同步；历史查看隔离。
 - [x] S3自动Gate：定向 / 全量 / 双平台CI / 全新独立复审。
-- [ ] S3真人Gate：本轮Human Review待反馈，通过后才集成。
+- [x] S3真人Gate：2026-10-18用户回复“通过”；以aa86d79集成main。
 
 验收：缺失 / stale线性源和已确认参考的角源自动补齐；不动其他轨迹；旧拟合变stale而不自动Fit。旧任务在换轨迹 / 参数 / 项目 / 工作区 / 进入历史或取消后不提交；未知 / 重复源拒绝、缺标定 / 未确认参考提示，无循环重算。公式、参数、初值估算、区间 / 源及源数据更新后，图 / 单位 / 说明对应同一份当前输入；保存 / 只读历史不引发计算。
 
@@ -35,7 +35,7 @@ High-risk，Independent Review必须；只读Reviewer核对本轮完整diff、�
 
 ## Verification
 
-最终产品`8ea1f1b`本机全量1271 passed（121.19s），末轮定向48 passed（12.15s）；初轮定向93 passed，返工中定向119 passed。最终[双平台CI 39046152498](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39046152498) macOS / Windows Python3.11成功；独立最终复审Approve，F1–F3 Closed，独立30项通过。自动Gate完成，本轮HR待用户亲自反馈，尚未合并。详见[review](../reviews/fit-linked-source-review.md)。
+最终产品`8ea1f1b`本机全量1271 passed（121.19s），末轮定向48 passed（12.15s）；初轮定向93 passed，返工中定向119 passed。最终[双平台CI 39046152498](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39046152498) macOS / Windows Python3.11成功；独立最终复审Approve，F1–F3 Closed，独立30项通过。2026-10-18用户回复“通过”，本轮HR完成；以`aa86d79` `--no-ff`集成main，合并树与分支262da6a一致，源码 / 测试与8ea1f1b一致。详见[review](../reviews/fit-linked-source-review.md)。
 
 ## Human Review delivery
 
@@ -52,3 +52,7 @@ PYTHONPATH=/Users/leonis/.codex/worktrees/fit-linked-source/ai-physics-tracker/s
 4. 将x切为vx再切回x：曲线 / 单位 / 来源说明同步；导数显示SG derivative，不擅自Fit。
 
 自动Gate完成后请用户逐项回答通过 / 不通过；依据AGENTS.md §7停止等待亲自测试，不以截图或自动化代替。
+
+## Result
+
+2026-10-18用户对上述本轮HR回复“通过”；仅记录本轮整体体验验收，不扩大为Windows真机 / CUDA或未覆盖的科研准确性验收。主线已集成，之后只同步记录并push。重复间隔联动及内部整理未实施，等待下一条指令。

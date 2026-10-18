@@ -2,20 +2,20 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-17（公式拟合联动最终8ea1f1b：全量1271 / 独立Approve / 双平台CI通过，本轮HR待反馈，未集成main）
+- 最后更新：2026-10-18（公式拟合联动本轮HR通过，以aa86d79集成main；已验收产品树不变）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[公式拟合联动](fit-linked-source-plan.md) S0–S2及S3自动Gate完成；最终8ea1f1b全量1271 / 独立Approve / 双平台CI通过，S3本轮HR待反馈。用户已认可先体验后内部整理、先公式拟合，并明确“自动补齐”。未集成或宣称本轮HR通过。P6.3.1及自动近似时序补丁已完成 / 集成main，既有Gate不替代本轮。6.4 / 6.5未开始。
-- **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/fit-linked-source/ai-physics-tracker` / `codex/fit-linked-source`；产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main @ d38d15e`保持原验收状态；论文worktree未改。
+- **Subphase / Slice**：[公式拟合联动](fit-linked-source-plan.md) S0–S3完成；最终8ea1f1b全量1271 / 独立Approve / 双平台CI通过，2026-10-18用户回复“通过”，本轮HR完成，以aa86d79集成main。6.4 / 6.5未开始。
+- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`，集成aa86d79；本轮实现分支`codex/fit-linked-source`已集成。论文worktree未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-- **当前授权增量**：用户已通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。从main `d38d15e`在`codex/fit-linked-source` / `/Users/leonis/.codex/worktrees/fit-linked-source/ai-physics-tracker`实施[联动计划](fit-linked-source-plan.md)，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。High-risk，完整Gate / 本轮HR后集成；main与论文线暂不改。
+- **本轮已交付**：用户通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。本轮[联动计划](fit-linked-source-plan.md)自动Gate / HR均通过并已集成，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。不扩大为重复间隔或后续阶段已完成。
 
-1. **等待本轮Human Review反馈**：按[联动计划的启动命令与4步](fit-linked-source-plan.md#human-review-delivery)体验独立副本；自动Gate已通过，F1–F3 Closed，草稿PR [#33](https://github.com/KYLeonis/ai-physics-tracker/pull/33)。用户通过后才`--no-ff`集成main / 同步文档 / push；不把继续工作或旧HR当作本轮通过。
+1. **本轮收尾后停止，等待下一条开发指令**：公式拟合联动HR已通过，F1–F3 Closed，以aa86d79 `--no-ff`集成；PR [#33](https://github.com/KYLeonis/ai-physics-tracker/pull/33)记录完整diff。后续按已确认方向，先梳理重复间隔工具需要哪些联动，再形成小步计划；不要直接启动全局重构。
 2. [架构扫描复核建议](../notes/architecture-review-assessment-2026-10-17.md)保留；按用户选择先体验B后内部A，当前先完成公式拟合，后续重复间隔联动及内部整理另按已确认方向推进，全局任务统一与Undo拆分仍后置。
 3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
@@ -61,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **公式拟合联动HR通过 / 集成（2026-10-18）**：用户回复“通过”。本轮源自动补齐、相关输入变化刷新预览 / 单位 / 说明、各轨迹独立设置与冲突保护通过HR；以aa86d79集成已验证8ea1f1b产品树，本机1271 / 独立Approve（F1–F3 Closed）/ 双平台CI39046152498通过。只同步收尾文档，未改产品或用户实验；不开始重复间隔联动 / 内部整理 / 6.4 / 6.5。
 
 - **自动近似时序 HR通过 / 集成（2026-10-17）**：用户确认本轮免确认流程“通过”。以已复审 / CI验证的4a713bc产品树通过801fda5集成main，集成CI39014441071双平台通过；代码与数值不再改动，保留近似来源 / FPS / 误差及异常重试。同步计划、Review与状态，等待下一条指令；不启动6.4 / 6.5。
 
