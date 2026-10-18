@@ -31,3 +31,5 @@
 - 本轮仅要求拖线稳定性复测；其余已通过项不重开。原试用工程副本保留用户操作 / 保存状态，不重新复制覆盖。
 
 2026-10-18用户明确回复“通过”，拖线稳定性复测完成；此前“其他通过”覆盖其余HR项目。F1 Closed，无未关闭finding；2600f2a集成main，合并树与b2823b9一致，源码 / 测试与4bd723a一致。收尾只同步文档，不再修改产品。
+
+集成收尾ddb5bd3的[主分支CI39107041901](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39107041901) macOS / Windows Python3.11均success；之后仅补文档回执，不再改动源码 / 测试。
