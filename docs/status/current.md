@@ -2,14 +2,14 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（用户授权启动R04；S0已冻结，工作分支实施中，产品未合并main）
+- 最后更新：2026-10-18（R04 A–C已实现；最终本机1316 / 独立Approve / 双平台通过，F1 Closed，待本轮HR，产品未合并main）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R03已完成 / 已合并，不能使用旧HTML覆盖当前状态。
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md)全部实现 / 自动Gate / HR完成，F1拖线跳顶已修复且用户复测通过，2600f2a集成main。R01–R03已完成，R04已授权实施，S0完成，A–D及Gate进行中，6.4 / 6.5未开始。
+- **Subphase / Slice**：[R03重复间隔联动](recurrence-linked-plan.md)全部Gate完成，2600f2a集成main；R04 S0 / A–C已实现，最终产品bd848f1，本机1316 / 独立 / 双平台通过，D自动Gate完成，F1 Closed，本轮HR待用户，未合并。6.4 / 6.5未开始。
 - **Worktree / Branch**：R04 `/Users/leonis/.codex/worktrees/analysis-workflow/ai-physics-tracker` / `codex/analysis-workflow`（基线2edf0b9）；main本轮仅同步计划 / 交接文档。上一轮主工作区 `/Users/leonis/Documents/ai-physics-tracker` / `main`；已集成`codex/recurrence-linked`，合并树与b2823b9一致，源码 / 测试与已验证4bd723a一致。试用worktree保留以兼容既有启动器；论文线及用户实验未改。
 - **Development Mode**：Build Mode
 
@@ -17,8 +17,8 @@
 
 - **最近产品交付**：重复间隔工具复用源自动准备和独立预览；改参考线 / 方向 / 区间自动更新候选交点与说明，Measure仍显式。2026-10-18用户先确认其他项目通过，再确认拖线稳定性修复“通过”，所有Gate完成，2600f2a集成main。
 
-1. **执行已授权R04**：按[实施计划](analysis-workflow-plan.md)推进A计算脱离会话 / B统一受控发布 / C应用事实与GUI / D整体Gate。S0及ADR0027已冻结；不得把方案图或代码实现提前标为已合并。
-2. **完成必要Gate后收尾**：数值 / 事务 / 联动定向、全量、只读独立复审、双平台CI；涉及GUI连接 / 反馈变化时发起≤5步独立副本HR，用户通过前不合并产品。R01–R03不重做，R05 / R06和6.4 / 6.5不启动。
+1. **等待本轮R04 HR反馈**：自动Gate全部完成。产品bd848f1本机1316 passed（142.73s），[最终双平台CI39119607020](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39119607020)各1314 passed / 2个既有可选skip，独立完整复审Approve，自动补源跳顶F1 Closed；[Review](../reviews/analysis-workflow-review.md) / [PR #37](https://github.com/KYLeonis/ai-physics-tracker/pull/37)。C改变指导与缓存连接，按[独立副本5步](analysis-workflow-plan.md#human-review自动gate全部通过后执行)交付，自动化不代替本轮HR。启动器依赖R04 worktree，保留它，不覆盖新旧试用内容。
+2. **用户通过后再集成**：确认产品 / 测试树仍为bd848f1，用--no-ff集成main、处理同一批已cherry-pick的文档、同步架构主图 / 完成标记 / Review / README / roadmap / AGENTS并push，然后停止。若HR失败，在此分支返工并记录finding，不另起R05 / R06或6.4 / 6.5。
 
 3. 架构完成状态同步进度表、对应计划 / Review及architecture.md；全局任务 / Undo仍后置，不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 
@@ -64,6 +64,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **R04实现检查点（2026-10-18，未合并）**：583ce05让计算退出Session，job只携带必要冻结输入，同步 / 后台共用prepare/run/validated/apply；10f6887让顶部指导、按钮与实际源准备共用application事实，同轮执行状态只采集一次。bd848f1另修复自动补源跳顶F1；S0 / A–C及D自动Gate完成，最终本机1316 / 独立Approve / 双平台通过，HR待用户；当前架构区分main事实与branch已实现关系。
 
 - **下一轮整体架构方案（2026-10-18，仅文档）**：新增[方案](architecture-next-round-plan.md)，围绕计算输入 / 无会话写入计算 / 科学核对与原子写回 / 只读状态与交互归属安排A–D完整迁移，明确全产品关系、实际影响、退出旧路径及验收标准。R04为方案待确认，未实施，未改产品代码或验收契约。
 

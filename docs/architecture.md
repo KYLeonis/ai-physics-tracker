@@ -31,7 +31,7 @@ flowchart TD
 | 规则 / 工作 | 唯一owner或既有调用关系 |
 | --- | --- |
 | 领域 / 数值 | domain模型、kinematics / angular / expression / function_fit / recurrence；不依赖Qt / application |
-| 活动工程 / 原子写入 / Undo | ProjectSession / TrackStore；所有后台结果经apply_*与校验后提交。compute仍在Session装配结果，R04尚未提取 |
+| 活动工程 / 原子写入 / Undo | ProjectSession / TrackStore；所有后台结果经apply_*与校验后提交。main的compute仍在Session装配结果，R04提取待HR后集成 |
 | 配方事实 / 读写 | source_recipe；chart_recipe仅保留图表比较 / 披露 / 行读取策略及旧路径再导出；不得新增另一份SG / 参考定义 |
 | 正式分析 | ChartActions单executor→既有job→GUI主线程apply；prepare_signal_source复用此链路，不绕过目标版本检查 |
 | 草稿预览 | SignalPreview独立executor（ADR-0023），只读不可变输入，旧值核对后显示；不发布结果 / 尝试日志 / Undo |
@@ -41,6 +41,33 @@ flowchart TD
 | 保存与时序 | ProjectActions独立保存，文件写入阶段不可取消；TimingActions / ProjectMediaService按ADR-0024自动采用合格Near-CFR |
 
 不存在全局JobSupervisor、WorldSnapshot、通用计算框架或统一图表widget；[进度表](status/architecture-progress.md)标明哪些已做、哪些后置。历史设计若与顶部 / ADR / 代码冲突，应先修正文档，不恢复旧实现。
+
+### R04工作分支已实现关系（bd848f1，自动Gate完成 / 待HR，未合并main）
+
+接手`codex/analysis-workflow`时以下为实际代码；上图仍记录main产品。最终本机1316 / 独立Approve / 双平台CI通过，F1 Closed；集成前仍须完成[计划](status/analysis-workflow-plan.md)的本轮HR，不能混淆已实现与已合并。
+
+```mermaid
+flowchart TD
+    SYNC[Session.compute_*兼容同步入口] --> PREP[prepare_kinematics / angular_job]
+    CHART[ChartActions正式执行器 / 自动源准备] --> PREP
+    PREP --> INPUTS[只复制必要AnalysisInputs / 参数 / 目标版本]
+    INPUTS --> RUN[run_* / motion_computation候选构造]
+    RUN --> CHECK[validated_* / 来源与输入目标核对]
+    CHART --> SIGNALPREP[prepare_signal_analysis / 冻结源与目标]
+    SIGNALPREP --> SIGNALRUN[run_signal_analysis / 拟合或重复间隔]
+    SIGNALRUN --> CHECK
+    CHECK --> APPLY[Session.apply_* / 原子事务与Undo]
+    FACTS[analysis_readiness / 既有prepare_signal_source规则] --> GUIDE[顶部指导 / 按钮 / 实际源准备]
+    APPLY --> FACTS
+    PREVIEW[SignalPreview独立执行器] --> READONLY[只读预览 / GUI保持草稿与页面位置]
+```
+
+- `motion_computation`拥有AnalysisInputs和线性 / 角运动结果构造，复用domain与source_recipe；不依赖Session / Qt / 文件。旧kinematics_job导入路径再导出同一类型。
+- job不再包含snapshot；采集任务时复制必要嵌套值，频繁比较事实的analysis_inputs不深拷贝整个Project。同步 / 后台共用计算及核对，未知扩展在发布时保留。
+- `SignalSourceState`分别保留基础可操作问题、源问题和可准备任务；不替代正式分析的源 / 目标双版本。GUI按当前project身份及选择 / 已应用设置 / 时序复用事实，相关变化后失效。
+- TrackingActions同一refresh的缓存键与投影复用ExecutionInput；真实review状态改变后仍重新采集。交互意图、线程交付、历史与草稿保持GUI所有权，AI / 解码 / 保存协议保持。
+- 已退出：Session内450余行计算 / 记录装配、job.snapshot.compute_*、MainWindow只按源存在判断的旧路径、同轮重复读取执行状态。未拆Undo、未建全局总控制器。
+- bd848f1补齐自动源任务启动 / 取消 / 失败反馈的归属：只更新jobLabel，显式Preview自己发定位信号；与R03候选交叉预览共同保持页面位置。最终Gate见Review，不以首版CI代替修复后验证。
 
 ---
 
