@@ -18,7 +18,8 @@ from ai_physics_tracker.application.kinematics_job import (
     validate_smoothing_recipe,
 )
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
-from ai_physics_tracker.domain.angular import AngularReference, PendulumReference, TwoPointReference
+from ai_physics_tracker.application.source_recipe import reference_parameters
+from ai_physics_tracker.domain.angular import AngularReference, TwoPointReference
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, DerivedData
 
 
@@ -138,12 +139,10 @@ def validated_angular(
         spec = targets.get(record.track_id)
         if spec is None or record.input.reference_track_id != _reference_track_id(spec.reference):
             raise ProjectSessionError("Angular batch reference does not match its spec")
-        if isinstance(spec.reference, PendulumReference):
-            expected_reference = {"mode": "pendulum", "pivot_px": list(spec.reference.pivot_px)}
-        elif isinstance(spec.reference, TwoPointReference):
-            expected_reference = {"mode": "two_point", "reference_track_id": str(spec.reference.reference_track_id)}
-        else:
-            raise ProjectSessionError("Angular batch has an unsupported reference")
+        try:
+            expected_reference = reference_parameters(spec.reference)
+        except ValueError as error:
+            raise ProjectSessionError("Angular batch has an unsupported reference") from error
         steps = [step for step in record.pipeline if isinstance(step, dict)
                  and step.get("step") == "angular_reference"]
         if len(steps) != 1 or steps[0].get("params") != expected_reference:

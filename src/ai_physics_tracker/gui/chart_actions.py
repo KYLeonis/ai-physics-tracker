@@ -19,14 +19,14 @@ from ai_physics_tracker.application.angular_job import (
     AngularJob, AngularResult, AngularSpec, prepare_angular_job, run_angular_job,
 )
 from ai_physics_tracker.application.chart_data import ChartData, build_chart_data
-from ai_physics_tracker.application.chart_recipe import reference_recipe, smoothing_recipe
+from ai_physics_tracker.application.source_recipe import reference_recipe, smoothing_recipe, recorded_reference
 from ai_physics_tracker.application.project_media import workflow_state
 from ai_physics_tracker.application.kinematics_job import (
     AnalysisInputs, KinematicsJob, KinematicsResult, analysis_inputs,
     prepare_kinematics_job, run_kinematics_job,
 )
 from ai_physics_tracker.application.project_session import ProjectSessionError
-from ai_physics_tracker.domain.angular import AngularReference, PendulumReference, TwoPointReference
+from ai_physics_tracker.domain.angular import AngularReference, TwoPointReference
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS
 from ai_physics_tracker.domain.timeline import frame_to_time, time_to_frame, clamp_to_working_zone
 from ai_physics_tracker.gui.chart_panel import ChartPanel
@@ -361,17 +361,10 @@ class ChartActions(QObject):
                 None)
             reference = reference_recipe(angular_record) if angular_record is not None else None
             seeded: AngularReference | None = None
-            if reference is not None and reference.get("mode") == "pendulum":
-                pivot = reference.get("pivot_px")
+            if reference is not None:
                 try:
-                    seeded = PendulumReference(pivot_px=(pivot[0], pivot[1]))
-                except (TypeError, ValueError, IndexError):
-                    seeded = None
-            elif reference is not None and reference.get("mode") == "two_point":
-                try:
-                    seeded = TwoPointReference(
-                        reference_track_id=UUID(str(reference.get("reference_track_id"))))
-                except (TypeError, ValueError):
+                    seeded = recorded_reference(reference)
+                except ValueError:
                     seeded = None
             if seeded is not None:
                 self.panel.angularControls.seedApplied(seeded)

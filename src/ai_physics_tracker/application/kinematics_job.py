@@ -1,30 +1,19 @@
 """应用层运动学批次：独立快照计算，输入未变化时才允许原子提交。"""
 
 from concurrent.futures import CancelledError
-from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from threading import Event
 from uuid import UUID
 
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
+from ai_physics_tracker.application.source_recipe import (
+    SmoothingParameters, smoothing_derivative_order, smoothing_step,
+)
 from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.derived import DerivedData, KINEMATICS_KINDS, preserve_derived_extensions
 from ai_physics_tracker.domain.timeline import Timeline
 from ai_physics_tracker.domain.track import Track, TrackPoint
 from ai_physics_tracker.domain.video import Video
-
-
-@dataclass(frozen=True)
-class SmoothingParameters:
-    """二阶 SG 管线参数；与 ADR-0008 保持相同默认值。"""
-
-    window_length: int = 7
-    polyorder: int = 2
-
-    def __post_init__(self) -> None:
-        if (type(self.window_length) is not int or type(self.polyorder) is not int
-                or self.window_length % 2 != 1 or not 2 <= self.polyorder < self.window_length):
-            raise ValueError("SG window must be odd and satisfy 2 <= polynomial order < window")
 
 
 @dataclass(frozen=True)
@@ -95,16 +84,7 @@ def run_kinematics_job(job: KinematicsJob, cancel: Event) -> KinematicsResult:
             raise CancelledError()
         computed = job.snapshot.compute_kinematics(track.track_id,
             window_length=job.parameters.window_length, polyorder=job.parameters.polyorder)
-        for item in computed:
-            extra_fields = deepcopy(item.extra_fields)
-            # 时序上下文不是滤波步骤，使用既有可扩展字段记录，不改 schema；
-            # 字段口径与同步 compute_kinematics 及角运动批次一致（ADR-0020）。
-            extra_fields["timing_context"] = {
-                "fps_nominal": job.inputs.timeline.fps_nominal,
-                "working_zone": list(job.inputs.timeline.working_zone),
-                "approximation": job.inputs.timing_detail,
-            }
-            records.append(replace(item, extra_fields=extra_fields))
+        records.extend(computed)
     if cancel.is_set():
         raise CancelledError()
     return KinematicsResult(job.inputs, tuple(records), job.parameters, job.previous_derived_ids)
@@ -172,16 +152,11 @@ def derived_result_ids(session: ProjectSession, expected: set[tuple[UUID, str]])
 def validate_smoothing_recipe(records: tuple[DerivedData, ...], parameters: SmoothingParameters,
                               fps_nominal: float) -> None:
     """批次结果须匹配本次请求的 SG 配方，不能把另一窗口的结果登记为当前计算。"""
-    orders = {"smoothed_position": 0, "velocity": 1, "acceleration": 2,
-              "smoothed_angular_position": 0, "angular_velocity": 1, "angular_acceleration": 2}
     for record in records:
-        if record.kind not in orders:
+        if smoothing_derivative_order(record.kind) is None:
             continue  # 原始位置 / 原始角度不使用 SG，kind 完整性由 validated_batch 检查。
-        order = orders[record.kind]
-        expected = {"window_length": parameters.window_length, "polyorder": parameters.polyorder,
-                    "deriv": order, "mode": "interp"}
-        if order:
-            expected["delta"] = 1.0 / fps_nominal
+        expected = smoothing_step(record.kind, parameters.window_length,
+                                  parameters.polyorder, fps_nominal)["params"]
         steps = [step for step in record.pipeline if isinstance(step, dict)
                  and step.get("step") == "savitzky_golay"]
         params = steps[0].get("params") if len(steps) == 1 else None

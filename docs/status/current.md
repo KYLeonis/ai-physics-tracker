@@ -2,20 +2,20 @@
 
 > 2026-10-15：用户授权推进P6.3；Codex负责主要实现与复杂算法，GLM按需局部精修，Luna-max承担边界明确的子任务。
 
-- 最后更新：2026-10-18（公式拟合联动已集成 / 全Gate通过；重读GLM报告及第一次评估，下一批建议先统一计算设置解释，待用户选择范围）
+- 最后更新：2026-10-18（计算配方统一解释S0–S3完成，产品cdc2be3全量1276 / 独立Approve / 双平台CI通过，待集成）
 
 ## Current
 
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1均完成并集成main。
-- **Subphase / Slice**：[公式拟合联动](fit-linked-source-plan.md) S0–S3完成；最终8ea1f1b全量1271 / 独立Approve / 双平台CI通过，2026-10-18用户回复“通过”，本轮HR完成，以aa86d79集成main。6.4 / 6.5未开始。
-- **Worktree / Branch**：产品主线 `/Users/leonis/Documents/ai-physics-tracker` / `main`，集成aa86d79；本轮实现分支`codex/fit-linked-source`已集成。论文worktree未改。
+- **Subphase / Slice**：[计算配方统一解释](source-recipe-plan.md) S0–S3完成；产品cdc2be3全量1276 / 独立Approve / 双平台CI通过，待集成。公式拟合联动已完成并集成。6.4 / 6.5未开始。
+- **Worktree / Branch**：本轮 `/Users/leonis/.codex/worktrees/source-recipe/ai-physics-tracker` / `codex/source-recipe`，基线main362ac85；主线与论文worktree暂不改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
 - **本轮已交付**：用户通过grill-me确认先体验B后内部A，第一批公式拟合，并回复“自动补齐”。本轮[联动计划](fit-linked-source-plan.md)自动Gate / HR均通过并已集成，契约[ADR-0025](../decisions/0025-automatic-fit-source-preparation.md)。不扩大为重复间隔或后续阶段已完成。
 
-1. **等待下一批范围选择**：用户要求继续重构、重读GLM HTML及此前判断；[2026-10-18复核](../notes/architecture-followup-2026-10-18.md)推荐先统一源信号计算设置的解释，消除导数阶 / 角参考重建 / 图例文字反解析等重复，保持现有行为。已提供“先统一设置 / 先重复间隔联动 / 先分开计算与写入”选择；选定后冻结High-risk mini-plan与Review Gate再实现，不自动扩展全局任务 / Undo。
+1. **完成已授权内部整理的完整Gate**：用户明确选择“是，先统一计算设置”。按[source-recipe计划](source-recipe-plan.md)完成全量 / 独立复审 / 双平台CI，处置findings后`--no-ff`集成与文档同步。保持既有结果 / 操作 / 资格策略，无新交互则不新增HR关卡；不得将重复间隔联动或纯计算提取混入本批。
 2. [第一次复核](../notes/architecture-review-assessment-2026-10-17.md)保留为历史输入。拟合联动已经完成，不再按旧文的“6.3.1未开始”安排工作。推荐次序为设置解释收拢→重复间隔联动→计算与结果装配分离；最终先后以用户当前选择为准。
 3. 不自动开始6.4 / 6.5；GLM派工前读[协作记录](../notes/glm-collaboration-playbook.md)。
 

@@ -12,6 +12,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 
 | Subphase | Review Record | 最终 Verdict | 日期 |
 | --- | --- | --- | --- |
+| 计算配方统一解释 | [source-recipe-review.md](source-recipe-review.md) | 全量1276 / 独立Approve（134项）/ 双平台CI通过；待集成 | 2026-10-18 |
 | 公式拟合源自动补齐 | [fit-linked-source-review.md](fit-linked-source-review.md) | 独立Approve / F1–F3 Closed / 全量1271 / 双平台CI / 本轮HR通过；aa86d79集成main | 2026-10-18 |
 | 4.3 | [phase-4.3-plan.md](../status/phase-4.3-plan.md) Result 节（机制建立前的记录） | 修改后通过；3 项 finding 已修复并复审确认 | 2026-08-31 |
 | 4.4 | [phase-4.4-plan.md](../status/phase-4.4-plan.md) Result 节（机制建立前的记录） | 修改后通过；2 项 finding 已修复并复审确认 | 2026-09-01 |

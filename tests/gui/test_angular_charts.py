@@ -41,6 +41,20 @@ def _compute(qtbot, window):
     qtbot.waitUntil(lambda: not window.chartActions.pending, timeout=5000)
 
 
+def test_legend_uses_source_facts_even_when_summary_wording_changes(qtbot, synthetic_video_path):
+    window, _track = _angular_window(qtbot, synthetic_video_path)
+    _compute(qtbot, window)
+    plot = window.chartActions.panel.plots["theta_t"]
+    series = plot.data.series[0]
+    assert series.reference_label == "pendulum pivot px (10, 0)"
+    assert not series.source_smoothed
+    expected = plot._legendName(series)
+    assert plot._legendName(replace(series, pipeline_summary="Savitzky-Golay · rewritten display text")) == expected
+    smoothed = replace(series, source_smoothed=True, pipeline_summary="rewritten display text")
+    assert "smoothed unwrapped" in plot._legendName(smoothed)
+    assert series.reference_label in plot._legendName(smoothed)
+
+
 def test_editing_confirmed_reference_disables_recompute_without_other_ui_actions(qtbot, synthetic_video_path):
     window, _track = _angular_window(qtbot, synthetic_video_path)
     actions = window.chartActions

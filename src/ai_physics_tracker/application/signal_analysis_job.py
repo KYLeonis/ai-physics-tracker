@@ -11,17 +11,18 @@ from uuid import UUID, uuid4
 import numpy as np
 import scipy
 
-from ai_physics_tracker.application.chart_recipe import (
+from ai_physics_tracker.application.chart_recipe import prepare_derived_rows
+from ai_physics_tracker.application.source_recipe import (
     calibration_recipe_reject_reason, reference_reject_reason, smoothing_readable_reject_reason,
-    smoothing_recipe, timing_identity, unreadable_step_reason, prepare_derived_rows,
-    pipeline_step_names, reference_recipe, step_params,
+    smoothing_recipe, timing_identity, unreadable_step_reason, pipeline_step_names, reference_recipe,
+    step_params, KNOWN_STEP_NAMES, recorded_reference, reference_parameters, smoothing_derivative_order,
 )
 from ai_physics_tracker.application.kinematics_job import AnalysisInputs, analysis_inputs, derived_result_ids
 from ai_physics_tracker.application.kinematics_job import SmoothingParameters, prepare_kinematics_job, KinematicsJob
 from ai_physics_tracker.application.angular_job import AngularJob, AngularSpec, prepare_angular_job
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.domain.analysis import QUANTITIES, source_fingerprint, source_snapshot
-from ai_physics_tracker.domain.angular import AngularReference, PendulumReference, TwoPointReference
+from ai_physics_tracker.domain.angular import AngularReference
 from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS, DerivedData, DerivedInput
 from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula, parse_expression
@@ -98,12 +99,7 @@ def _recorded_source_settings(records: list[DerivedData]) -> tuple[SmoothingPara
         if recipe is None:
             continue
         try:
-            if recipe.get("mode") == "pendulum":
-                reference = PendulumReference(tuple(recipe["pivot_px"]))
-            elif recipe.get("mode") == "two_point":
-                reference = TwoPointReference(UUID(str(recipe["reference_track_id"])))
-            else:
-                raise ValueError("Unsupported recorded reference")
+            reference = recorded_reference(recipe)
         except (KeyError, TypeError, ValueError) as error:
             raise ProjectSessionError("Recorded angular reference is unreadable; confirm the intended reference first") from error
         break
@@ -122,7 +118,6 @@ def prepare_signal_source(
     if not inputs.timeline.working_zone[0] <= selection.start_frame <= selection.end_frame <= inputs.timeline.working_zone[1]:
         raise ProjectSessionError("Analysis interval must be inside the working zone")
     kind, _ = signal_source(selection.quantity, selection.smoothed)
-    supported_steps = {"calibration_transform", "angular_reference", "angular_unwrap", "savitzky_golay"}
     sources = [item for item in session.project.derived if item.track_id == track.track_id and item.kind == kind]
     if len(sources) > 1:
         raise ProjectSessionError("Source is ambiguous; inspect the duplicate results before recomputing")
@@ -132,7 +127,7 @@ def prepare_signal_source(
     if sources:
         source = sources[0]
         names = pipeline_step_names(source)
-        if unreadable_step_reason(source) or any(name not in supported_steps for name in names):
+        if unreadable_step_reason(source) or any(name not in KNOWN_STEP_NAMES for name in names):
             raise ProjectSessionError("Source has an unsupported recipe; automatic replacement is unavailable")
         identity = timing_identity(source)
         fresh = (source.status == "valid" and source.calibration_ref == (
@@ -146,16 +141,13 @@ def prepare_signal_source(
             smoothing = smoothing_recipe(source)
             same_smoothing = smoothing is None or (
                 smoothing["window_length"] == parameters.window_length and smoothing["polyorder"] == parameters.polyorder)
-            expected_reference = ({"mode": "pendulum", "pivot_px": list(reference.pivot_px)}
-                                  if isinstance(reference, PendulumReference) else
-                                  {"mode": "two_point", "reference_track_id": str(reference.reference_track_id)}
-                                  if reference is not None else None)
+            expected_reference = reference_parameters(reference) if reference is not None else None
             if same_smoothing and (not angular or reference_recipe(source) == expected_reference):
                 return None
     kinds = ANGULAR_KINDS if angular else KINEMATICS_KINDS
     group = [item for item in session.project.derived if item.track_id == track.track_id and item.kind in kinds]
     if len({item.kind for item in group}) != len(group) or any(
-            unreadable_step_reason(item) or any(name not in supported_steps
+            unreadable_step_reason(item) or any(name not in KNOWN_STEP_NAMES
                 for name in pipeline_step_names(item)) for item in group):
         raise ProjectSessionError("Source group has duplicate or unsupported recipes; inspect it before recomputing")
     for item in group:
@@ -273,7 +265,7 @@ def _validate_source_recipe(source: DerivedData, fps_nominal: float | None, cali
         expected_steps.append("savitzky_golay")
     if names != expected_steps:
         raise ProjectSessionError("Source processing steps do not match its declared kind")
-    derivative_order = 1 if source.kind in ("velocity", "angular_velocity") else 2 if source.kind in ("acceleration", "angular_acceleration") else 0
+    derivative_order = smoothing_derivative_order(source.kind) or 0
     base_units = (("rad",) if angular else (calibration.unit,) if calibration else
                   ("m", "cm", "mm") if source.calibration_ref else ("px",))
     if source.unit not in {derive_unit(base, derivative_order) for base in base_units}:

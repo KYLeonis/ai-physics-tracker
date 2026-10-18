@@ -40,6 +40,9 @@ from ai_physics_tracker.application.suggested_frame_review import (
     compute_batch_summary,
     extract_review_state,
 )
+from ai_physics_tracker.application.source_recipe import (
+    smoothing_step, reference_parameters, timing_parameters,
+)
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.application.video_timing import TimingReport, approximation_errors
 from ai_physics_tracker.domain.angular import (
@@ -920,18 +923,8 @@ class ProjectSession:
             track_id=track_id,
             kind="smoothed_position",
             input=derived_input,
-            pipeline=(
-                *cal_step,
-                {
-                    "step": "savitzky_golay",
-                    "params": {
-                        "window_length": window_length,
-                        "polyorder": polyorder,
-                        "deriv": 0,
-                        "mode": "interp",
-                    },
-                },
-            ),
+            pipeline=(*cal_step,
+                      smoothing_step("smoothed_position", window_length, polyorder, timeline.fps_nominal)),
             frames=smooth_frames,
             values=smooth_values,
             payload_ref=None,
@@ -947,19 +940,8 @@ class ProjectSession:
             track_id=track_id,
             kind="velocity",
             input=derived_input,
-            pipeline=(
-                *cal_step,
-                {
-                    "step": "savitzky_golay",
-                    "params": {
-                        "window_length": window_length,
-                        "polyorder": polyorder,
-                        "deriv": 1,
-                        "delta": delta,
-                        "mode": "interp",
-                    },
-                },
-            ),
+            pipeline=(*cal_step,
+                      smoothing_step("velocity", window_length, polyorder, timeline.fps_nominal)),
             frames=vel_frames,
             values=vel_values,
             payload_ref=None,
@@ -975,19 +957,8 @@ class ProjectSession:
             track_id=track_id,
             kind="acceleration",
             input=derived_input,
-            pipeline=(
-                *cal_step,
-                {
-                    "step": "savitzky_golay",
-                    "params": {
-                        "window_length": window_length,
-                        "polyorder": polyorder,
-                        "deriv": 2,
-                        "delta": delta,
-                        "mode": "interp",
-                    },
-                },
-            ),
+            pipeline=(*cal_step,
+                      smoothing_step("acceleration", window_length, polyorder, timeline.fps_nominal)),
             frames=acc_frames,
             values=acc_values,
             payload_ref=None,
@@ -1001,11 +972,7 @@ class ProjectSession:
         new_items = (d_pos, d_smooth, d_vel, d_acc)
         # 线性批次与角运动批次共用时序来源口径（ADR-0020）：fps / 区间 /
         # 近似授权记入既有可扩展字段，不改 schema；相空间配对依赖完整来源。
-        timing_context: JsonObject = {
-            "fps_nominal": timeline.fps_nominal,
-            "working_zone": list(timeline.working_zone),
-            "approximation": self.measurement_timing_detail(track.video_id),
-        }
+        timing_context: JsonObject = timing_parameters(timeline, self.measurement_timing_detail(track.video_id))
         new_items = tuple(preserve_derived_extensions(
             replace(item, extra_fields={"timing_context": deepcopy(timing_context)}),
             self.derived_data(item.track_id, item.kind)) for item in new_items)
@@ -1094,10 +1061,7 @@ class ProjectSession:
                 reference_track_id: UUID | None = None
                 pivot_wx, pivot_wy = transform.pixel_to_world(reference.pivot_px)
                 theta = pendulum_theta_world(world_ax, world_ay, pivot_wx, pivot_wy)
-                angle_params: JsonObject = {
-                    "mode": "pendulum",
-                    "pivot_px": [reference.pivot_px[0], reference.pivot_px[1]],
-                }
+                angle_params: JsonObject = reference_parameters(reference)
             elif isinstance(reference, TwoPointReference):
                 if reference.reference_track_id == track_id:
                     raise ProjectSessionError(
@@ -1123,10 +1087,7 @@ class ProjectSession:
                 )
                 world_bx, world_by = batch_pixel_to_world(px_bx, px_by, transform)
                 theta = direction_theta_world(world_ax, world_ay, world_bx, world_by)
-                angle_params = {
-                    "mode": "two_point",
-                    "reference_track_id": str(reference_track_id),
-                }
+                angle_params = reference_parameters(reference)
             else:
                 raise ProjectSessionError(
                     f"unsupported angular reference: {type(reference).__name__}"
@@ -1175,17 +1136,6 @@ class ProjectSession:
         omega_frames, omega_values = dense_to_sparse_scalar_records(frames, omega)
         alpha_frames, alpha_values = dense_to_sparse_scalar_records(frames, alpha)
 
-        def _sg_step(deriv: int) -> JsonObject:
-            params: JsonObject = {
-                "window_length": window_length,
-                "polyorder": polyorder,
-                "deriv": deriv,
-                "mode": "interp",
-            }
-            if deriv > 0:
-                params["delta"] = delta
-            return {"step": "savitzky_golay", "params": params}
-
         common_pipeline = (cal_step, angle_step)
 
         d_theta = DerivedData(
@@ -1209,7 +1159,8 @@ class ProjectSession:
             track_id=track_id,
             kind="smoothed_angular_position",
             input=derived_input,
-            pipeline=(*common_pipeline, unwrap_step, _sg_step(0)),
+            pipeline=(*common_pipeline, unwrap_step,
+                      smoothing_step("smoothed_angular_position", window_length, polyorder, timeline.fps_nominal)),
             frames=smooth_frames,
             values=smooth_values,
             payload_ref=None,
@@ -1225,7 +1176,8 @@ class ProjectSession:
             track_id=track_id,
             kind="angular_velocity",
             input=derived_input,
-            pipeline=(*common_pipeline, unwrap_step, _sg_step(1)),
+            pipeline=(*common_pipeline, unwrap_step,
+                      smoothing_step("angular_velocity", window_length, polyorder, timeline.fps_nominal)),
             frames=omega_frames,
             values=omega_values,
             payload_ref=None,
@@ -1241,7 +1193,8 @@ class ProjectSession:
             track_id=track_id,
             kind="angular_acceleration",
             input=derived_input,
-            pipeline=(*common_pipeline, unwrap_step, _sg_step(2)),
+            pipeline=(*common_pipeline, unwrap_step,
+                      smoothing_step("angular_acceleration", window_length, polyorder, timeline.fps_nominal)),
             frames=alpha_frames,
             values=alpha_values,
             payload_ref=None,
@@ -1252,11 +1205,7 @@ class ProjectSession:
             calibration_ref=cal_ref,
         )
 
-        timing_context: JsonObject = {
-            "fps_nominal": timeline.fps_nominal,
-            "working_zone": list(timeline.working_zone),
-            "approximation": self.measurement_timing_detail(track.video_id),
-        }
+        timing_context: JsonObject = timing_parameters(timeline, self.measurement_timing_detail(track.video_id))
         new_items = tuple(preserve_derived_extensions(
             replace(item, extra_fields={"timing_context": deepcopy(timing_context)}),
             self.derived_data(item.track_id, item.kind))
