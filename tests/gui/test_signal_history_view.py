@@ -239,7 +239,7 @@ def test_leaving_analysis_returns_to_draft_before_acquire_can_change_source(qtbo
     assert panel.editor.text() == 'c'
 
 
-def test_adopted_crossing_setup_shows_source_without_old_event_markers(qtbot, synthetic_video_path):
+def test_adopted_crossing_setup_previews_current_events_without_measuring(qtbot, synthetic_video_path):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
     panel.methods.setCurrentIndex(1); panel.level.setValue(13)
@@ -251,11 +251,15 @@ def test_adopted_crossing_setup_shows_source_without_old_event_markers(qtbot, sy
 
     panel.restoreButton.click()
 
-    assert 'not recalculated' in panel.draftLabel.text()
+    assert 'no measured result published' in panel.draftLabel.text()
     assert not panel._eventLines
     assert not panel._eventSamplesMatch
     panel.showSourceButton.click()
     panel.level.setValue(12); panel.level.setValue(13)
     assert not panel._eventLines
+    qtbot.waitUntil(lambda: panel._eventPreview)
+    assert panel._eventLines
+    assert session.derived_data(track, 'signal_recurrence_x') == record
     panel.recurrenceButton.click(); qtbot.waitUntil(lambda: not actions.pending)
     assert panel._eventLines
+    assert not panel._eventPreview

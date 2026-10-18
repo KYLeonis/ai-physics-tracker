@@ -71,6 +71,7 @@ class ChartActions(QObject):
         self._job_inputs: AnalysisInputs | None = None
         self._signal_job: SignalAnalysisJob | None = None
         self._source_selection = None
+        self._source_method = None
         self._job_workspace = window.currentWorkspace
         self._context_generation = window.deliveryGeneration
         self._render_key = None
@@ -160,6 +161,7 @@ class ChartActions(QObject):
         self._job_inputs = None
         self._signal_job = None
         self._source_selection = None
+        self._source_method = None
         self._timer.stop()
         self._context_generation = self.window.deliveryGeneration
         self._render_key = None
@@ -256,10 +258,10 @@ class ChartActions(QObject):
         self.presentFrame(self.window.presentedFrameIndex)
         self.panel.updateStatus()
         self.preview.syncContext()
-        self.refreshFitReadiness()
+        self.refreshSignalReadiness()
 
-    def refreshFitReadiness(self) -> None:
-        if (self.pending or self.signalPanel.history.active or self.signalPanel.methods.currentIndex() != 0
+    def refreshSignalReadiness(self) -> None:
+        if (self.pending or self.signalPanel.history.active
                 or self.window.currentWorkspace != "analysis" or not hasattr(self.window, "analysisTabs")
                 or self.window.analysisTabs.currentIndex() != 1):
             return
@@ -268,10 +270,13 @@ class ChartActions(QObject):
                       if self._prepareSignalSource() is not None else "")
         except (ValueError, ProjectSessionError) as error:
             reason = str(error)
-        self.signalPanel.fitButton.setEnabled(not reason)
-        self.signalPanel.fitButton.setToolTip(reason)
-        self.signalPanel.fitReadinessLabel.setText(reason)
-        self.signalPanel.fitReadinessLabel.setVisible(bool(reason))
+        fitting = self.signalPanel.methods.currentIndex() == 0
+        button = self.signalPanel.fitButton if fitting else self.signalPanel.recurrenceButton
+        label = self.signalPanel.fitReadinessLabel if fitting else self.signalPanel.crossingReadinessLabel
+        button.setEnabled(not reason)
+        button.setToolTip(reason)
+        label.setText(reason)
+        label.setVisible(bool(reason))
 
     def presentFrame(self, frame_index: int | None) -> None:
         if self._closed or self._context_generation != self.window.deliveryGeneration:
@@ -447,6 +452,7 @@ class ChartActions(QObject):
         signal_job = self._signal_job
         self._signal_job = None
         source_selection, self._source_selection = self._source_selection, None
+        source_method, self._source_method = self._source_method, None
         result = None
         applied = False
         try:
@@ -457,7 +463,8 @@ class ChartActions(QObject):
             if session is None:
                 raise CancelledError()
             if source_selection is not None and (
-                    self.signalPanel.history.active or self.signalPanel.methods.currentIndex() != 0
+                    self.signalPanel.history.active or self.signalPanel.methods.currentIndex() != source_method
+                    or self.window.analysisTabs.currentIndex() != 1
                     or self.signalPanel.selection() != source_selection
                     or self.window.currentWorkspace != self._job_workspace):
                 raise CancelledError()
@@ -527,14 +534,15 @@ class ChartActions(QObject):
             self.window.refreshAnalysisSourceBar()
         if self._signal_job is not None:
             self.cancel()
-        elif self._source_selection is not None and self.signalPanel.selection() != self._source_selection:
+        elif self._source_selection is not None and (
+                self.signalPanel.selection() != self._source_selection
+                or self.signalPanel.methods.currentIndex() != self._source_method):
             self.cancel()
         self.signalPanel.refreshDraftDisplay()
         tracking = getattr(self.window, "trackingActions", None)
         if tracking is not None:
             tracking.refresh()
-        if self.signalPanel.methods.currentIndex() == 0:
-            self.preview.request()
+        self.preview.request()
 
     def analysisHistory(self, redo: bool) -> None:
         if self.signalPanel.history.active or self.pending or self.window.projectActions.busy or self._closed:
@@ -571,19 +579,8 @@ class ChartActions(QObject):
                                        panel.resultFormulas() if fitting else ())
 
     def previewRecurrence(self) -> None:
-        """只展示实际源样本，不计算或发布事件；调线后显式Measure才产生结果。"""
-        if self.pending or self.signalPanel.history.active:
-            return
-        try:
-            job = self._prepareSignal(False)
-            self.signalPanel.renderSamples(job.samples, job.source.unit,
-                                           wrapped=job.source.kind == "angular_position")
-            self.signalPanel.refreshDraftDisplay()
-            self.signalPanel.showFeedback("Source preview — adjust reference, then Measure crossing intervals")
-        except (ValueError, ProjectSessionError) as error:
-            self.signalPanel.signalPlot.clear()
-            self.signalPanel._valueRange = None
-            self.signalPanel.showFeedback(str(error))
+        """与公式共用合并预览；候选交叉点不发布正式结果。"""
+        self.preview.request(immediate=True)
 
     def previewSignal(self) -> None:
         self.preview.request(immediate=True)
@@ -637,11 +634,8 @@ class ChartActions(QObject):
         self.refresh()
 
     def prepareSignalSource(self) -> None:
-        """在原页面重试当前公式预览；所需源由同一准备路径补齐。"""
-        if self.signalPanel.methods.currentIndex() == 0:
-            self.preview.request(immediate=True)
-        else:
-            self._showSignalSourceControls()
+        """在当前工具页重试源准备与草稿预览。"""
+        self.preview.request(immediate=True)
 
     def ensureSignalSource(self) -> bool:
         """复用正式批次执行器补齐源；只启动当前轨迹的已知分析组。"""
@@ -658,10 +652,12 @@ class ChartActions(QObject):
         self._job_inputs = job.inputs
         self._job_workspace = self.window.currentWorkspace
         self._source_selection = selection
+        self._source_method = self.signalPanel.methods.currentIndex()
         try:
             self._future = self._executor.submit(_run_chart_job, job, self._cancel)
         except Exception:
             self._source_selection = None
+            self._source_method = None
             self._job_inputs = None
             raise
         self.signalPanel.showFeedback(f"Updating source data for {selection.quantity}… Preview will follow automatically. Cancel is available.")
@@ -698,7 +694,7 @@ class ChartActions(QObject):
         if (self.signalPanel.quantityChoice.currentText() in ("theta", "omega", "alpha")
                 and session is not None and session.active_calibration(self.window.activeVideoId) is not None):
             self._showSignalSourceControls()
-            self.panel.jobLabel.setText("Set the intended angular reference and click Apply reference. Return to Fit a formula for automatic source preparation.")
+            self.panel.jobLabel.setText("Set the intended angular reference and click Apply reference. Return to your analysis tool for automatic source preparation.")
         else:
             self.window.setWorkspace("setup")
 

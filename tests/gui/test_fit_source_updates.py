@@ -4,12 +4,15 @@ from concurrent.futures import Future
 from dataclasses import replace
 from threading import Event
 
+import pytest
+
 from tests.gui.test_signal_analysis import _window
 from ai_physics_tracker.domain.angular import PendulumReference
 
 
 def _ready(qtbot, panel):
-    qtbot.waitUntil(lambda: "Initial curve only" in panel.jobLabel.text(), timeout=8000)
+    expected = "Initial curve only" if panel.methods.currentIndex() == 0 else "Crossing preview only"
+    qtbot.waitUntil(lambda: expected in panel.jobLabel.text(), timeout=8000)
 
 
 def test_missing_source_is_prepared_in_place_without_fitting_or_touching_other_tracks(qtbot, synthetic_video_path):
@@ -61,9 +64,11 @@ def test_source_edit_updates_preview_and_stales_previous_fit_without_automatic_f
     assert panel.signalPlot.listDataItems()[0].getData()[1][2] == 50
 
 
-def test_cancelled_source_does_not_publish_or_restart_on_refresh(qtbot, synthetic_video_path, monkeypatch):
+@pytest.mark.parametrize('method', [0, 1])
+def test_cancelled_source_does_not_publish_or_restart_on_refresh(qtbot, synthetic_video_path, monkeypatch, method):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(method)
     actions.preview.invalidate()
     session.clear_derived(track)
     captured = []
@@ -118,9 +123,11 @@ def test_changed_selection_discards_late_source_group(qtbot, synthetic_video_pat
     assert session.derived_data(track, "function_fit_x") is None
 
 
-def test_unknown_source_recipe_is_not_automatically_replaced(qtbot, synthetic_video_path):
+@pytest.mark.parametrize('method', [0, 1])
+def test_unknown_source_recipe_is_not_automatically_replaced(qtbot, synthetic_video_path, method):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(method)
     actions.preview.invalidate()
     source = session.derived_data(track, "world_position")
     unknown = replace(source, status="stale", pipeline=source.pipeline + ({"step": "future_method", "params": {}},))
@@ -134,9 +141,11 @@ def test_unknown_source_recipe_is_not_automatically_replaced(qtbot, synthetic_vi
     assert not actions.preview._debounce.isActive()
 
 
-def test_angular_source_does_not_guess_calibration_or_reference(qtbot, synthetic_video_path):
+@pytest.mark.parametrize('method', [0, 1])
+def test_angular_source_does_not_guess_calibration_or_reference(qtbot, synthetic_video_path, method):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(method)
     before = session.project
     panel.quantityChoice.setCurrentText("theta")
     actions.preview.launch()
@@ -158,9 +167,11 @@ def test_derivative_choice_reports_the_actual_source_and_restores_position_optio
     assert panel.sourceChoice.isEnabled() and panel.sourceChoice.currentText() == "Smoothed"
 
 
-def test_confirmed_angular_reference_updates_source_preview_and_units_together(qtbot, synthetic_video_path):
+@pytest.mark.parametrize('method', [0, 1])
+def test_confirmed_angular_reference_updates_source_preview_and_units_together(qtbot, synthetic_video_path, method):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(method)
     session.add_calibration(window.activeVideoId, scale_end_1_px=(0., 0.),
                             scale_end_2_px=(10., 0.), known_length=1., unit="m")
     controls = actions.panel.angularControls
@@ -186,11 +197,13 @@ def test_confirmed_angular_reference_updates_source_preview_and_units_together(q
     assert session.derived_data(track, "function_fit_theta") is None
 
 
-def test_history_and_save_refresh_do_not_start_automatic_computation(qtbot, synthetic_video_path, tmp_path, monkeypatch):
+@pytest.mark.parametrize('method', [0, 1])
+def test_history_and_save_refresh_do_not_start_automatic_computation(qtbot, synthetic_video_path, tmp_path, monkeypatch, method):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(method)
     _ready(qtbot, panel)
-    panel.fitButton.click()
+    (panel.fitButton if method == 0 else panel.recurrenceButton).click()
     qtbot.waitUntil(lambda: not actions.pending)
 
     def unexpected(*args):
@@ -210,9 +223,11 @@ def test_history_and_save_refresh_do_not_start_automatic_computation(qtbot, synt
     assert not actions.pending and not actions.preview._debounce.isActive()
 
 
-def test_failed_source_update_is_visible_without_automatic_retry(qtbot, synthetic_video_path, monkeypatch):
+@pytest.mark.parametrize('method', [0, 1])
+def test_failed_source_update_is_visible_without_automatic_retry(qtbot, synthetic_video_path, monkeypatch, method):
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
+    panel.methods.setCurrentIndex(method)
     actions.preview.invalidate()
     session.clear_derived(track)
     future = Future()

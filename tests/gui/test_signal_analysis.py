@@ -230,12 +230,12 @@ def test_wheel_scrolls_page_and_only_control_wheel_zooms(qtbot, synthetic_video_
     assert panel.startFrame.value() == old_frame
 
 
-def test_reference_controls_keep_curve_and_hide_old_events_until_measure(qtbot, synthetic_video_path):
+def test_reference_controls_keep_curve_and_preview_current_events(qtbot, synthetic_video_path):
     import numpy as np
     window, session, track = _window(qtbot, synthetic_video_path)
     panel = window.chartActions.signalPanel
     panel.methods.setCurrentIndex(1)
-    assert panel.signalPlot.listDataItems()
+    qtbot.waitUntil(lambda: panel._eventPreview)
     panel.centerReferenceButton.click()
     assert panel.level.value() == 14
     assert panel.levelSlider.value() == 500
@@ -250,7 +250,10 @@ def test_reference_controls_keep_curve_and_hide_old_events_until_measure(qtbot, 
     assert panel.level.value() == 15
     assert panel.levelSlider.value() == 625
     assert panel.signalPlot.listDataItems()[0] is curve
-    assert not panel._eventLines[0].isVisible()
+    assert not panel._eventLines
+    qtbot.waitUntil(lambda: panel._eventPreview)
+    assert abs(panel._eventLines[0].value() - .25) < 1e-9
+    assert panel.signalPlot.listDataItems()[0] is curve
     np.testing.assert_allclose(panel.signalPlot.viewRange(), before)
     assert session.derived_data(track, 'signal_recurrence_x') == record
     panel.level.setValue(250)
@@ -261,6 +264,7 @@ def test_reference_controls_keep_curve_and_hide_old_events_until_measure(qtbot, 
     assert panel.level.value() == 14
     np.testing.assert_allclose(panel.signalPlot.viewRange(), before)
     panel.level.setValue(13)
+    qtbot.waitUntil(lambda: panel._eventPreview)
     assert panel._eventLines[0].isVisible()
     assert not panel.summary.isVisible()
     panel.detailsGroup.setChecked(True)
@@ -269,6 +273,7 @@ def test_reference_controls_keep_curve_and_hide_old_events_until_measure(qtbot, 
     assert not panel._eventLines
     assert session.derived_data(track, 'signal_recurrence_x') == record
     panel.sourceChoice.setCurrentIndex(0)
+    qtbot.waitUntil(lambda: panel._eventPreview)
     assert len(panel._eventLines) == 1 and panel._eventLines[0].isVisible()
     panel.renderSamples([(0, 0., 0., 0., 0), (1, .1, .1, 1e-20, 0)], 'px')
     assert panel.signalPlot.viewRange()[1][1] - panel.signalPlot.viewRange()[1][0] < 1e-19
@@ -306,6 +311,7 @@ def test_live_reference_edit_cancels_pending_measurement_without_publishing(qtbo
     window, session, track = _window(qtbot, synthetic_video_path)
     actions, panel = window.chartActions, window.chartActions.signalPanel
     panel.methods.setCurrentIndex(1)
+    qtbot.waitUntil(lambda: panel._eventPreview)
     panel.centerReferenceButton.click()
     pending, captured = Future(), []
     def submit(run, job, cancel):

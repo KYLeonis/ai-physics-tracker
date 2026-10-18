@@ -8,7 +8,7 @@ import pytest
 
 from ai_physics_tracker.application.project_session import ProjectSession, ProjectSessionError
 from ai_physics_tracker.application.signal_analysis_job import (
-    SignalSelection, prepare_signal_analysis, run_signal_analysis,
+    SignalSelection, prepare_signal_analysis, run_signal_analysis, preview_signal_analysis,
 )
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.domain.angular import TwoPointReference
@@ -72,6 +72,30 @@ def test_fit_and_recurrence_replace_independent_slots_and_unknown_extensions(sig
     assert session.derived_data(track, 'function_fit_x').extra_fields['future'] == 7
     assert session.derived_data(track, 'signal_recurrence_x') == recurrence.record
     assert len(session.project.derived) == 6
+
+
+def test_recurrence_preview_matches_formal_crossings_with_gap_and_absolute_time(signal_session):
+    from concurrent.futures import CancelledError
+    from dataclasses import asdict
+    session, _, track = signal_session
+    for frame in range(20, 71):
+        if frame != 40:
+            session.mark_point(track, frame, pixel_x=2 if frame % 4 < 2 else 8, pixel_y=20)
+    session.compute_kinematics(track)
+    job = _job(session, track, RecurrenceSpec(5))
+    before, undo = session.project, tuple(session._undo_stack)
+    preview = preview_signal_analysis(job)
+    summary = run_signal_analysis(job, Event()).record.extra_fields['analysis']['summary']
+    assert preview.events and preview.intervals_s
+    assert [asdict(event) for event in preview.events] == summary['events']
+    assert list(preview.intervals_s) == pytest.approx(summary['intervals_s'], abs=1e-9)
+    assert all(event.time_s >= 2 for event in preview.events)
+    assert not any(event.lower_frame_index < 40 < event.upper_frame_index for event in preview.events)
+    assert session.project == before and tuple(session._undo_stack) == undo
+    cancel = Event()
+    cancel.set()
+    with pytest.raises(CancelledError):
+        preview_signal_analysis(job, cancel=cancel)
 
 
 @pytest.mark.parametrize('change', ['source_recompute', 'raw', 'target_recompute'])

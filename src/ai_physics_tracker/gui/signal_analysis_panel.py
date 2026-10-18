@@ -16,7 +16,7 @@ from ai_physics_tracker.domain.analysis import QUANTITIES
 from ai_physics_tracker.domain.derived import DerivedData
 from ai_physics_tracker.domain.function_fit import FitParameter, FitSpec
 from ai_physics_tracker.domain.expression import parse_expression
-from ai_physics_tracker.domain.recurrence import RecurrenceSpec
+from ai_physics_tracker.domain.recurrence import RecurrenceSpec, CrossingEvent
 from ai_physics_tracker.gui.formula_editor import FormulaEditor
 from ai_physics_tracker.gui.fit_explanation import explain_fit
 from ai_physics_tracker.gui.analysis_plot import AnalysisPlot, AnalysisScrollArea
@@ -69,6 +69,7 @@ class SignalAnalysisPanel(QWidget):
         self._cache = None
         self._valueRange = None
         self._eventLines = []
+        self._eventPreview = False
         self._eventSamplesMatch = False
         self._allowCachedEvents = True
         self.trackChoice, self.quantityChoice, self.sourceChoice = QComboBox(), QComboBox(), QComboBox()
@@ -146,11 +147,11 @@ class SignalAnalysisPanel(QWidget):
         self.methods.addTab(fit, "Function fit")
         recurrence = QWidget()
         recurrenceLayout = QFormLayout(recurrence)
-        note = QLabel("Show source → set the orange reference → Measure intervals.\nRepeat intervals are a period only with one crossing per cycle.")
+        note = QLabel("Source and crossing preview update automatically.\nSet the orange reference → Measure intervals.\nRepeat intervals are a period only with one crossing per cycle.")
         note.setWordWrap(True)
         note.setToolTip("Interpret intervals as a period only when each cycle has one same-direction crossing. Gaps and wrapped-angle jumps are never bridged.")
         recurrenceLayout.addRow(note)
-        self.showSourceButton = QPushButton("Show source")
+        self.showSourceButton = QPushButton("Preview source / crossings")
         recurrenceLayout.addRow(self.showSourceButton)
         self.levelSlider = QSlider(Qt.Orientation.Horizontal)
         self.levelSlider.setRange(0, 1000)
@@ -433,7 +434,7 @@ class SignalAnalysisPanel(QWidget):
 
     def _methodVisibility(self) -> None:
         fitting = self.methods.currentIndex() == 0
-        self.prepareSourceButton.setText("Retry source / preview" if fitting else "Prepare source charts")
+        self.prepareSourceButton.setText("Retry source / preview")
         for widget in (self.previewButton, self.fitButton, self.fitReadinessLabel, self.estimateButton, self.estimateLabel):
             widget.setVisible(fitting)
         self.recurrenceButton.setVisible(not fitting)
@@ -529,10 +530,29 @@ class SignalAnalysisPanel(QWidget):
             self.level.setValue((low+high)/2)
             self.signalPlot.resetView()
 
+    def clearCrossingEvents(self) -> None:
+        for line in self._eventLines:
+            self.signalPlot.removeItem(line)
+        self._eventLines = []
+        self._eventPreview = False
+        self._eventSamplesMatch = False
+
+    def renderCrossingPreview(self, events: tuple[CrossingEvent, ...], origin: float) -> None:
+        """只绘制当前草稿候选事件，不改保存结果或参考线。"""
+        self.clearCrossingEvents()
+        for event in events:
+            line = pg.InfiniteLine(pos=event.time_s-origin, angle=90,
+                                   pen=pg.mkPen("#7661aa", width=2, style=Qt.PenStyle.DotLine))
+            self.signalPlot.addItem(line, ignoreBounds=True)
+            self._eventLines.append(line)
+        self._eventPreview = True
+
     def refreshDraftDisplay(self) -> None:
         """参考线编辑不重建图表，避免拖动中失去把手；旧事件只对应原配方。"""
         if self.methods.currentIndex() == 0:
             return
+        if self._eventPreview:
+            self.clearCrossingEvents()
         record = self.savedRecord()
         metadata = record.extra_fields.get("analysis") if record else None
         matches = False
@@ -643,7 +663,7 @@ class SignalAnalysisPanel(QWidget):
             self.initialProtected = False
             self.jobLabel.clear()
             self.draftLabel.setText("Draft — no analysis applied")
-        if timeline and self._previewRange is None:
+        if timeline and self._valueRange is None:
             self.contextLabel.setToolTip(session.measurement_timing_detail(video_id) or "Nominal video time is retained with every sample.")
             self.contextLabel.setText("Source charts required · t = 0 at interval start · angles: rad · derivatives: recorded SG. "
                                       + ("Timing not authorized; cached results only." if not session.can_measure(video_id)
@@ -682,6 +702,7 @@ class SignalAnalysisPanel(QWidget):
         self.signalPlot.clear()
         self.residualPlot.clear()
         self._eventLines = []
+        self._eventPreview = False
         self._eventSamplesMatch = False
         record = self.savedRecord()
         metadata = record.extra_fields.get("analysis") if record else None
