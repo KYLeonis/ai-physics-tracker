@@ -1,8 +1,9 @@
 # R08 历史查看流程归属 — 方案与待办
 
 - 日期：2026-10-20；基线：main `3eb6efb`。
-- 状态：**2026-10-20用户明确“好，那执行”，已授权整份方案；S0 / S1 / S2实现与定向检查完成，S3验证 / 独立复审进行中，HR待执行。**
+- 状态：**2026-10-20用户明确“好，那执行”，已授权整份方案；S0–S3实现 / 自动Gate / 独立复审完成；HR待用户，未合并main。**
 - 用户原话：“是，两个入口一起整理，按以上三条验收”。此前仅确认范围；后续用户明确“好，那执行”，现已启动，仍不得记作实现完成。
+- Issue：[38](https://github.com/KYLeonis/ai-physics-tracker/issues/38)；PR：[39](https://github.com/KYLeonis/ai-physics-tracker/pull/39)。
 - 风险：High-risk（迁移后台查看任务的取消、迟到交付及关闭职责；不更改拟合算法）。
 - 实施分支：`codex/signal-history`；worktree：`/Users/leonis/.codex/worktrees/signal-history/ai-physics-tracker`；实际启动基线main `5fff1fc`。
 
@@ -77,11 +78,11 @@ SignalHistory拥有自己请求的Future、轮询、当前记录身份、上下�
 
 ## 待办 / Slices
 
-- [x] P0 讨论与事实核对：用户确认目标、两个入口和三条验收；形成方案。此勾选只表示规划工作已做，不表示方案已获最终启动确认。
+- [x] P0 讨论与事实核对：用户确认目标、两个入口和三条验收；形成方案。P0仅记录规划完成，后续S0记录启动授权。
 - [x] S0 已获启动授权：记录授权、核对工作区 / 基线，建立工作分支；列齐当前全部历史进入 / 退出 / 关闭调用及测试控制点。
 - [x] S1 完整迁移：在SignalHistory收拢两个入口的流程、后台请求和交付；同步面板 / ChartActions / MainWindow接线与共享资源关闭顺序，移除上述旧路径。
 - [x] S2 行为验证：迁移现有回归，按实际缺口补充迟到 / 切换 / 关闭与只读测试；验证采用重复间隔设置后仍仅预览、正式Measure需显式触发。
-- [ ] S3 自动Gate与独立复审：相关测试 → 本机全量 → macOS / Windows CI；独立只读review完整diff，finding由实施方修复闭环。
+- [x] S3 自动Gate与独立复审：相关测试 → 本机全量 → macOS / Windows CI；独立只读review完整diff，finding由实施方修复闭环。
 - [ ] S4 真人验收与收尾：用户验证两类入口的三条验收；通过后更新架构 / 进度 / Review等，标明实现完成、HR通过和已合并，按`--no-ff`集成 / push后停止。
 
 ## Verification / Review Gate
@@ -105,6 +106,29 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest tests/gui/test_signal_histo
 3. 查看旧拟合，点击Use recorded setup：设置变为可编辑，尚未新增正式结果；点击Fit后才重新计算。
 4. 对重复间隔执行查看 / 返回 / 采用设置：参考值恢复对应状态，候选预览与正式测量区分，点击Measure才发布；自动更新保持页面位置。
 
+## Human Review启动准备
+
+独立副本：主工作区`experiment/signal-history-human-review/project`，从既有R04试用副本复制3个文件；复制前后原文件hash一致，副本逐文件hash一致。原manifest SHA256：`1bf4a281564131689a44ee28bba7c06c6be26db1907ee3a61f6ef018517282fe`。复用原外部视频，不覆盖旧副本。启动后默认vx，已有已保存拟合与多条拟合尝试；源不可重建的旧记录仍应明确说明原因。
+
+自动Gate通过后正式请用户执行：
+
+```bash
+zsh /Users/leonis/Documents/ai-physics-tracker/experiment/signal-history-human-review/start.command
+```
+
+现有验收第2步须同时尝试切到Charts或Explore motion再回工具，确认草稿已恢复。本阶段不因准备了启动器就标HR通过。
+
 ## Result / Handoff
 
-分支已实现，未合并。SignalHistory现持有两个入口的流程与历史Future / 轮询 / 上下文；SignalPreview显式提供共享只读提交能力，执行资源仍为原来的两个。历史及Near-CFR定向23项通过；综合首轮103项通过、2项teardown错误，主分支相同顺序复现同样错误（时序测试mock把合法关闭保存询问也拒绝）。本轮只收窄该测试mock，不改全局fixture或产品保存行为；最终全量 / 双平台 / 独立复审 / HR待补回执。新增11个受控Future场景验证跨入口、采用、退出、reset、关闭、视频 / 工程代际 / 源变化、未知版本以及保存busy。无新ADR，尚未把任何AC或最终Gate标成通过。
+**实现 / 自动Gate完成；HR待用户，未合并main。** 最终产品`703ac81`（首版`adce32c`）；后续提交仅同步文档，源码 / 测试保持该产品树。
+
+- 本机最终定向：9个模块121 passed（75.65s）；全量1329 passed（166.45s）。
+- Independent：[R2完整复审Approve](../reviews/signal-history-review.md)，8个模块117 passed（72.03s）；F1 Closed，无待处置Blocker。
+- [最终双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39400901956)：macOS / Windows Python3.11各1327 passed / 2个既有pandas可选skip，全部步骤success。首版全量1327 / 双平台CI39400125466亦通过，不替代最终证据。
+- F1：离开工具切Charts / Explore仍在隐藏页交付历史；两条受控Future回归先2 failed，703ac81统一调用history.leave后通过。该出口属于本轮已冻结范围。
+- 测试隔离：原近CFR测试mock误拒绝合法Unsaved changes关闭询问，未改main按同顺序同样103 passed / 2 errors复现。本轮仅允许该精确标题 / 正文，其他询问仍拒绝；未改产品保存行为或全局fixture，最终定向 / 全量 / 双平台均通过。
+- 新增13个受控Future场景覆盖跨入口、采用、离开工作区 / 工具页、reset、关闭、视频 / 工程代际 / 源变化、未知版本和保存busy。
+- AC1–3自动证据齐全，勾选留待本轮真人验收；S4仍未完成。HR未通过前不得合并、关闭Issue或启动其他阶段。
+- 已准备上述独立副本与启动器，原3个文件及副本hash一致；原试用工程 / 论文线不改。
+
+既有延期项：Review F2（version类型宽松）来自基线，本轮只迁移读取守卫；未来统一GUI / application / Session版本类型校验再处理，不在本轮局部更改数据兼容范围。

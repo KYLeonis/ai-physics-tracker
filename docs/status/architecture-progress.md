@@ -20,7 +20,7 @@
 | R05 全局JobSupervisor / WorldSnapshot | **后置，未实施** | 现有runner及各任务专属校验继续有效；没有通用hash替代科学条件 | [首次复核](../notes/architecture-review-assessment-2026-10-17.md) / [后续复核](../notes/architecture-followup-2026-10-18.md) |
 | R06 Undo拆分 / 通用图表渲染器 | **后置，未实施** | Session拥有事务；ChartPlot / AnalysisPlot保留不同交互；不按文件大小重写 | 同上；不与R03 / R04捆绑 |
 | R07 工程变更与界面更新链路 | **用户已搁置，未实施** | 用户认为使用上没有必要继续；不启动T01–T08，转为重新核对GLM剩余建议 | [保留原方案](change-notification-proposal.md) / [剩余项复核](../notes/glm-remaining-review-2026-10-18.md) |
-| R08 历史查看流程归属 | **目标 / 范围 / 三条验收已确认；实施方案待最终确认，未实施** | 两个入口共用SignalHistory流程；草稿恢复、迟到拒收、查看不发布；计划保留现有两个执行器及ADR-0023所有权 | [方案与待办](signal-history-plan.md)；产品 / 测试未改，无实现Gate完成证据 |
+| R08 历史查看流程归属 | **分支实现 / 自动Gate / 独立复审完成；HR待用户；未合并** | SignalHistory拥有两个入口及Future / 轮询 / 取消 / 上下文；删除preview私有执行器借用，仍共两个执行器。703ac81修复切Charts / Explore未退出F1（Closed） | [计划](signal-history-plan.md) / [Review](../reviews/signal-history-review.md) / [PR #39](https://github.com/KYLeonis/ai-physics-tracker/pull/39)；最终定向121 / 全量1329 / 独立R2 Approve / 双平台通过，待HR |
 
 ## 不要恢复的旧做法
 
@@ -33,4 +33,6 @@
 7. 不把“生命周期Normal-risk”“Undo / recipe无测试”“6.3.1未实施”等旧报告陈述当现状。
 8. R04已集成：计算已退出Session；不恢复job.snapshot或在worker临时会话写Undo。兼容compute_*协调prepare/run/apply，事务仍归Session。
 
-最后核对：2026-10-20，R01–R04已完成 / 已合并；R07继续搁置；R08仅规划，等待最终确认与启动；下一步以[current.md](current.md)为准。
+9. R08工作分支的历史生命周期归SignalHistory，不恢复ChartActions的`_historyFuture` / `_historyTimer`或历史直接借用`preview._executor`；main集成状态仍以本表为准。
+
+最后核对：2026-10-20，R01–R04已完成 / 已合并；R07继续搁置；R08工作分支已实现 / 自动Gate通过，HR待用户，未合并；下一步以[current.md](current.md)为准。
