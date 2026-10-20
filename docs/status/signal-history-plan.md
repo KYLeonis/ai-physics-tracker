@@ -132,3 +132,6 @@ zsh /Users/leonis/Documents/ai-physics-tracker/experiment/signal-history-human-r
 - 已准备上述独立副本与启动器，原3个文件及副本hash一致；原试用工程 / 论文线不改。
 
 既有延期项：Review F2（version类型宽松）来自基线，本轮只迁移读取守卫；未来统一GUI / application / Session版本类型校验再处理，不在本轮局部更改数据兼容范围。
+
+
+集成回执（2026-10-20）：[main CI39420292037](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39420292037)在0f3e841上macOS / Windows均success；源码 / 测试与已验收703ac81一致。回执之后仅改文档，不重跑产品测试。
