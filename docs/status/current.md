@@ -14,7 +14,7 @@
 
 ## Next Recommended Action
 
-1. **本轮R08已完成，停止并等待用户下一条指令**：全部Gate及本轮HR已通过，f34d3b8集成main；不再次请求HR或重跑同一产品全量。后续仅需记录集成CI回执，不因此修改已验收产品。
+1. **本轮R08已完成，停止并等待用户下一条指令**：全部Gate及本轮HR已通过，f34d3b8集成main；不再次请求HR或重跑同一产品全量。集成CI[39420292037](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39420292037)已触发，最后核对macOS / Windows均运行中；后续会话只需读取完成回执，不因此修改或重跑已验收产品。
 2. **下一轮先重新讨论具体目标**：用户尚未选择后续实现范围。训练评估解释仅为条件候选；R07仍搁置，R05 / R06继续后置，6.4 / 6.5须另行冻结，不能自动启动。
 3. **保持当前架构**：两个历史入口、Future / 轮询 / 取消 / 上下文归SignalHistory；ChartActions保留日志和正式分析。只读执行器仍归SignalPreview，经submitReadOnly提供能力，共两个执行器；关闭先历史后共享资源。Charts / Explore退出工具走同一history.leave，不恢复旧借用或ChartActions历史状态。
 4. **已延期项**：Review F2旧version类型宽松已Deferred，未来统一GUI / application / Session版本类型检查时处理，不局部改兼容范围。未关闭的Phase6比较 / 误差及整体单摆验收不因本轮维护被勾选。
@@ -61,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **R08远端收尾（2026-10-20）**：main已推送至0f3e841，PR #39远端MERGED（merge commit f34d3b8），Issue #38已Closed，工作分支本地快进main以保留启动器。集成CI39420292037最后核对仍在运行，尚无完成回执；验收产品703ac81此前本机 / 独立 / 双平台 / HR均通过，合并后源码 / 测试一致。本轮不等待额外集成回执而再次改动产品，不自动启动其他开发。
 
 - **R08 HR通过 / 集成（2026-10-20）**：用户回复本轮4项真人验收“通过”。f34d3b8以--no-ff集成main，合并树与8dacc45一致，源码 / 测试与703ac81一致；本机全量1329 / 定向121、完整独立R2 Approve（117项）、最终双平台CI39400901956各1327 passed / 2个既有可选skip通过，F1 Closed，F2基线版本类型校验Deferred。AC1–3 / S0–S4全部完成，架构 / 进度 / 计划 / Review / README / roadmap / AGENTS同步为已完成 / 已合并；不修改产品 / 用户试用工程，不开始下一轮。
 
