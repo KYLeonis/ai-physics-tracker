@@ -1,6 +1,6 @@
 # Architecture — AI Physics Tracker
 
-本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04均已完成 / 已合并，[R07工程变更与界面更新方案](status/change-notification-proposal.md)已由用户搁置、未实施；2026-10-20用户选择历史查看候选并确认目标 / 范围 / 三条验收，[R08方案](status/signal-history-plan.md)待最终确认与启动，未实施；下图仍为当前架构。
+本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04均已完成 / 已合并，[R07工程变更与界面更新方案](status/change-notification-proposal.md)已由用户搁置、未实施；2026-10-20用户授权[R08](status/signal-history-plan.md)，工作分支已实现 / 自动Gate通过，HR待用户，未合并；下图仍表示main已落地关系，R08分支差异另列。
 
 ## 当前架构总览（接手先读）
 
@@ -56,6 +56,25 @@ flowchart TD
 当前GUI仍通过analysisChanged等通知协调多个页面，保存 / 导航也会触发此通知，消费方自行核对是否需要更新；[R07方案](status/change-notification-proposal.md)曾拟梳理这条链路，用户现已搁置，未实施。已有失效传播与迟到拒绝保护有效，不能以方案中的目标替换当前事实。
 
 不存在全局JobSupervisor、WorldSnapshot、通用计算框架或统一图表widget；R05 / R06继续后置。历史设计若与顶部 / ADR / 代码冲突，应修正文档，不恢复旧实现。当前设计依据为[ADR-0027](decisions/0027-analysis-computation-and-publication.md)。
+
+
+## R08 工作分支关系（已实现 / 自动Gate通过，HR待用户；未合并main）
+
+`codex/signal-history`产品703ac81；[计划](status/signal-history-plan.md) / [Review](reviews/signal-history-review.md)。最终本机1329 / 独立R2 Approve / 双平台通过，F1 Closed，HR待用户；不可用本节替换main状态。
+
+```mermaid
+flowchart LR
+    SAVED[面板 / 已应用与已保存结果] --> HISTORY[SignalHistory / 草稿与历史查看生命周期]
+    ATTEMPT[ChartActions / 尝试列表] --> HISTORY
+    HISTORY -->|显式提交能力| READONLY[SignalPreview拥有的只读单线程执行器]
+    READONLY --> REBUILD[fit_attempt_view / 严格源匹配与只读重建]
+    HISTORY --> DISPLAY[面板渲染 / 字段锁定与恢复]
+    EXIT[返回 / 采用 / 切Charts或工作区 / 换上下文] --> HISTORY
+```
+
+SignalHistory拥有历史请求Future / QTimer、记录身份和工程 / 代际 / 视频 / 时序核对；`changing`只协调旧预览 / 自动源失效，`historyChanged`只更新上下文显示，避免新请求被回调误取消。退出先拒收旧请求再恢复草稿；关闭先历史shutdown再预览资源shutdown。执行器仍为正式与只读各一个；ChartActions保留正式计算和FitAttempts日志协调，面板保留记录渲染，application重建及Session发布不改。
+
+已退出分支旧路径：`ChartActions._viewAttempt` / `_pollHistory` / `_cancelHistory`及`_history*`状态，历史代码直接读`preview._executor`，主窗口退出历史后重复失效预览。已有`displaySaved` / `restoreSaved`面板入口为兼容委托，不是第二份查看流程。
 
 ---
 
