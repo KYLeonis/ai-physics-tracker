@@ -615,7 +615,6 @@ class MainWindow(QMainWindow):
             if self._workspace == WORKSPACE_ANALYSIS:
                 if self.chartActions.signalPanel.history.active:
                     self.chartActions.signalPanel.history.leave()
-                    self.chartActions.preview.invalidate()
                 self._leaveAnalysis()
         self._workspace = workspace
         if workspace == WORKSPACE_ACQUIRE:
@@ -778,6 +777,7 @@ class MainWindow(QMainWindow):
 
     def _analysisTabsChanged(self, index: int) -> None:
         if index == 0:
+            self.chartActions.signalPanel.history.leave()
             self._analysis_purpose = "explore"
         else:
             self._analysis_purpose = "measure" if self.chartActions.signalPanel.methods.currentIndex() == 1 else "fit"
