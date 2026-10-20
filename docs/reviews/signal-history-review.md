@@ -79,4 +79,9 @@
 
 ## 自动Gate回执（实施方补充，不替代Reviewer结论或HR）
 
-最终产品703ac81；本机定向121 passed（75.65s）、全量1329 passed（166.45s）；[最终双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39400901956) macOS / Windows Python3.11各1327 passed / 2个既有pandas可选skip，全部步骤success。R2完整独立Approve、F1 Closed，F2按Decision延期。Human Review待用户，分支尚未合并。
+最终产品703ac81；本机定向121 passed（75.65s）、全量1329 passed（166.45s）；[最终双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39400901956) macOS / Windows Python3.11各1327 passed / 2个既有pandas可选skip，全部步骤success。R2完整独立Approve、F1 Closed，F2按Decision延期。2026-10-20用户本轮4项HR明确“通过”；f34d3b8集成main，合并树与8dacc45一致，源码 / 测试与703ac81一致。
+
+
+## Human Review与集成（实施方记录）
+
+2026-10-20用户对本轮4项验收回复“通过”，覆盖两个入口、未完成草稿恢复、切Charts后返回、采用设置后显式计算及重复间隔稳定性。AC1–3 / S4全部关闭；f34d3b8以--no-ff集成main。未改验收后产品或用户试用工程；保留F2既有延期决定。

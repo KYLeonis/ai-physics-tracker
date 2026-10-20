@@ -1,23 +1,23 @@
 # Current Status
 
-> 用户当前需求：2026-10-20明确“好，那执行”，R08实现 / 自动Gate / 独立复审已完成，现等待本轮真人验收。最终产品703ac81；两个历史入口已集中，切Charts / Explore出口F1已修并Closed；未合并main。用户反馈HR通过后继续收尾，不再询问是否开工。
+> 用户当前需求：2026-10-20回复本轮HR“通过”。R08全部实现 / 自动Gate / 独立复审 / 真人验收完成，以f34d3b8集成main；源码 / 测试与703ac81一致。已同步完成标记和当前架构，本轮收尾后停止，不自行开始下一项。
 
-- 最后更新：2026-10-20（R08本机1329 / 独立R2 Approve / 最终双平台通过；HR待用户，未合并）
+- 最后更新：2026-10-20（R08已完成 / 已合并：本机1329 / 独立R2 Approve / 最终双平台 / 本轮HR通过，F1 Closed）
 
 ## Current
 
-- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04已完成 / 已合并，不能使用旧HTML覆盖当前状态。
-- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04维护重构均完成并集成main，6.4 / 6.5未开始。
-- **Subphase / Slice**：R08 S0–S3实现 / 自动Gate完成；S4 HR / 合并未完成。[计划](signal-history-plan.md) / [Review](../reviews/signal-history-review.md) / [PR #39](https://github.com/KYLeonis/ai-physics-tracker/pull/39)。R01–R04已完成 / 已合并，R07仍搁置。
-- **Worktree / Branch**：主工作区`/Users/leonis/Documents/ai-physics-tracker` / `main`保持已验收产品；R08工作区`/Users/leonis/.codex/worktrees/signal-history/ai-physics-tracker` / `codex/signal-history`，最终产品703ac81。旧试用工作区保留；新HR副本`experiment/signal-history-human-review/project`，不覆盖旧副本；论文线未改。
+- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04 / R08已完成 / 已合并，不能使用旧HTML覆盖当前状态。
+- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08维护重构均完成并集成main，6.4 / 6.5未开始。
+- **Subphase / Slice**：R08 S0–S4及全部Gate完成，用户本轮HR明确“通过”，f34d3b8集成main。[计划](signal-history-plan.md) / [Review](../reviews/signal-history-review.md) / [PR #39](https://github.com/KYLeonis/ai-physics-tracker/pull/39)。R07仍搁置。
+- **Worktree / Branch**：主工作区`/Users/leonis/Documents/ai-physics-tracker` / `main`；R08工作分支`codex/signal-history`已集成，其工作区`/Users/leonis/.codex/worktrees/signal-history/ai-physics-tracker`保留并快进同步main，兼容`experiment/signal-history-human-review/start.command`启动器，不覆盖用户试用副本。旧试用工作区及论文线未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **等待R08本轮Human Review反馈**：自动Gate全部通过；用`zsh /Users/leonis/Documents/ai-physics-tracker/experiment/signal-history-human-review/start.command`启动独立副本（默认vx，已有保存拟合 / 尝试），按[计划](signal-history-plan.md)≤4步检查两个入口、切Charts / Explore、返回草稿及采用设置。HR发起后停止并等用户，不替用户判定通过。
-2. **HR通过后收尾**：关闭AC1–3 / S4，PR转ready，按`--no-ff`集成main，同步架构 / 进度 / 计划 / Review / README / roadmap / AGENTS并push，关闭Issue #38后停止。当前未授权跳过HR，不能把代码实现当作本轮完成。
-3. **旧路径不得恢复**：历史Future / 轮询 / 取消 / 上下文已归SignalHistory；ChartActions只协调日志和正式分析。只读执行器仍归SignalPreview，通过显式submitReadOnly提供能力；共两个执行器，关闭先历史后共享资源。Charts标签与Explore用途离开工具时走同一history.leave。
-4. **其他项后置**：R07、R05 / R06及训练评估解释不启动；6.4 / 6.5另行冻结。Review F2旧version类型宽松已Deferred，未来统一处理，不局部改兼容范围。
+1. **本轮R08已完成，停止并等待用户下一条指令**：全部Gate及本轮HR已通过，f34d3b8集成main；不再次请求HR或重跑同一产品全量。后续仅需记录集成CI回执，不因此修改已验收产品。
+2. **下一轮先重新讨论具体目标**：用户尚未选择后续实现范围。训练评估解释仅为条件候选；R07仍搁置，R05 / R06继续后置，6.4 / 6.5须另行冻结，不能自动启动。
+3. **保持当前架构**：两个历史入口、Future / 轮询 / 取消 / 上下文归SignalHistory；ChartActions保留日志和正式分析。只读执行器仍归SignalPreview，经submitReadOnly提供能力，共两个执行器；关闭先历史后共享资源。Charts / Explore退出工具走同一history.leave，不恢复旧借用或ChartActions历史状态。
+4. **已延期项**：Review F2旧version类型宽松已Deferred，未来统一GUI / application / Session版本类型检查时处理，不局部改兼容范围。未关闭的Phase6比较 / 误差及整体单摆验收不因本轮维护被勾选。
 
 ## Active Constraints
 
@@ -62,9 +62,9 @@
 
 ## Recently Completed
 
-- **R08实现 / 自动Gate通过（2026-10-20，未合并）**：adce32c集中两类历史入口及后台查看，703ac81闭环F1离开工具出口；最新定向121 / 全量1329通过，独立R2 Approve（117项），[最终双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39400901956)各1327 passed / 2个既有可选skip，全部success。F1 Closed，F2基线版本类型检查Deferred。架构 / 进度 / 计划 / Review标明分支已实现、HR待用户、未合并。独立HR副本及启动器准备完毕，原3个文件及副本hash一致；等待用户真人验收。
+- **R08 HR通过 / 集成（2026-10-20）**：用户回复本轮4项真人验收“通过”。f34d3b8以--no-ff集成main，合并树与8dacc45一致，源码 / 测试与703ac81一致；本机全量1329 / 定向121、完整独立R2 Approve（117项）、最终双平台CI39400901956各1327 passed / 2个既有可选skip通过，F1 Closed，F2基线版本类型校验Deferred。AC1–3 / S0–S4全部完成，架构 / 进度 / 计划 / Review / README / roadmap / AGENTS同步为已完成 / 已合并；不修改产品 / 用户试用工程，不开始下一轮。
 
-- **R08讨论与方案（2026-10-20）**：用户确认两个入口一起整理及三条验收；[方案与待办](signal-history-plan.md)明确SignalHistory流程归属、共享只读资源 / 关闭顺序、信号顺序风险、旧路径退出及Review Gate。GLOSSARY补充当前草稿 / 历史查看的已确认含义；架构图仍代表现有实现。仅规划，整份方案待最终确认与启动，产品 / 测试未改。
+- **R08规划历史记录（2026-10-20）**：用户确认两个入口一起整理及三条验收；[方案与待办](signal-history-plan.md)明确SignalHistory流程归属、共享只读资源 / 关闭顺序、信号顺序风险、旧路径退出及Review Gate。GLOSSARY补充当前草稿 / 历史查看的已确认含义；架构图仍代表现有实现。当时仅规划、产品 / 测试未改；后续已实施 / HR通过并集成，见顶部。
 
 - **新一轮架构只读扫描（2026-10-20）**：以d85986f为基线，按最近80个涉及src的非合并提交定位热点，两路独立走查分析历史与训练推荐 / 执行链路；保留2项Worth exploring，无Strong。已生成含前后图 / 删除检验 / ADR与测试证据的临时HTML。未改产品、未设计新interface、未冻结或开始重构；等待用户选择。
 

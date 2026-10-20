@@ -81,8 +81,8 @@ AI 训练 / 微调
 
 ```text
 Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
-Last Delivered:   R04分析主干职责重构；本机1316 / 独立 / 双平台 / 本轮HR通过，2026-10-18以085219e集成main
-Current Subphase: R01–R04已完成并集成main；R07由用户搁置，GLM剩余项讨论中；6.4 / 6.5未开始
+Last Delivered:   R08历史查看流程归属；本机1329 / 独立 / 双平台 / 本轮HR通过，2026-10-20以f34d3b8集成main
+Current Subphase: R01–R04 / R08已完成并集成main；R07由用户搁置；6.4 / 6.5未开始，等待下一条指令
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -137,6 +137,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
 - ✅ Phase 6.1 角运动基础 / 6.2 图表与相空间 / 6.3 显式函数拟合及重复间隔已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
 - ✅ R01–R04架构维护已完成：公式拟合联动、计算设置统一、重复间隔联动、分析计算与写回分离；当前架构与完成进度有统一接手入口
+- ✅ [R08历史查看流程归属](docs/status/signal-history-plan.md)：两个历史入口共用草稿恢复 / 取消 / 迟到检查，切Charts / Explore退出历史；全量1329 / 独立 / 双平台 / 本轮HR通过，f34d3b8已集成main
 - ✅ [R04分析主干重构](docs/status/analysis-workflow-plan.md)：本机1316 / 独立 / 双平台 / 本轮HR通过，085219e已集成main
 - ⬜ [R07下一轮方案与待办](docs/status/change-notification-proposal.md)：工程变更与界面更新链路，用户已搁置，未实施
 - ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
@@ -145,7 +146,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 
 - [AGENTS.md](AGENTS.md) — 面向 Coding Agent 的项目指南
 - [当前架构总览](docs/architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](docs/status/architecture-progress.md) — Agent接手时先读；完成 / 进行中 / 后置明确区分
-- [下一轮整体架构重构方案](docs/status/architecture-next-round-plan.md) — 贯通计算、结果写回与界面更新；方案待确认，未实施
+- [R04整体架构重构方案](docs/status/architecture-next-round-plan.md) — 已完成并集成；当前架构以顶部接手入口为准
 - [CODE_STANDARD.md](CODE_STANDARD.md) — 代码规范（写代码前必读）
 - [docs/status/current.md](docs/status/current.md) — 当前状态与下一步（不知道做什么先读）
 - [docs/workflow.md](docs/workflow.md) — 开发循环说明书（Phase / Subphase / Slice）
@@ -183,3 +184,6 @@ P6.3范围为用户显式函数编辑 / 数学预览、单标量拟合、参数�
 2026-10-18：[计算配方统一解释](docs/status/source-recipe-plan.md)内部整理已以26af812集成main，全量1276 / 独立复审 / 双平台CI通过。图表、拟合准备、后台校验和同步生成共用实际计算设置定义；图例不再从摘要文字判断来源。原操作 / 数值算法 / 工程格式保持。
 
 2026-10-18：[重复间隔联动](docs/status/recurrence-linked-plan.md)已以2600f2a集成main，独立复审 / 双平台CI / 全部HR通过。工具自动准备当前源，改参考线 / 方向 / 区间刷新候选交点、单位和说明；Measure才保存正式结果。拖线后的页面跳顶已修复并通过用户复测，曲线缩放与页面位置保持。架构及完成标记见[进度表](docs/status/architecture-progress.md)。
+
+
+2026-10-20：[R08历史查看流程归属](docs/status/signal-history-plan.md)本轮HR通过，以f34d3b8集成main。两个历史入口由SignalHistory完整管理进入 / 返回 / 采用、取消和迟到交付；切Charts / Explore返回当前草稿，历史查看不发布结果，Fit / Measure仍显式。全量1329 / 独立R2 Approve / 最终双平台通过；下一步等待用户指令，不自行开始其他阶段。

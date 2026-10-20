@@ -1,10 +1,10 @@
 # Architecture — AI Physics Tracker
 
-本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04均已完成 / 已合并，[R07工程变更与界面更新方案](status/change-notification-proposal.md)已由用户搁置、未实施；2026-10-20用户授权[R08](status/signal-history-plan.md)，工作分支已实现 / 自动Gate通过，HR待用户，未合并；下图仍表示main已落地关系，R08分支差异另列。
+本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04 / R08均已完成 / 已合并，[R07工程变更与界面更新方案](status/change-notification-proposal.md)已由用户搁置、未实施；2026-10-20用户确认[R08](status/signal-history-plan.md)本轮HR“通过”，f34d3b8已集成main；下图及历史查看细图均为当前已落地关系。
 
 ## 当前架构总览（接手先读）
 
-2026-10-18用户确认R04真人验收“通过”，085219e以--no-ff集成main。合并树与53c2886一致，源码 / 测试与最终验收产品bd848f1一致；本机1316 / 独立Approve / 双平台CI / 本轮HR通过，F1 Closed。此前6.1 / 6.2 / 6.3 / 6.3.1、自动Near-CFR及R01–R03均已集成。
+2026-10-20用户确认R08真人验收“通过”，f34d3b8以--no-ff集成main。合并树与8dacc45一致，源码 / 测试与最终验收703ac81一致；本机1329 / 独立R2 Approve / 双平台 / 本轮HR通过，F1 Closed。此前6.1 / 6.2 / 6.3 / 6.3.1、自动Near-CFR及R01–R04均已集成；R04原基线085219e / bd848f1的完成证据保留在对应计划 / Review。
 
 ```mermaid
 flowchart TD
@@ -25,8 +25,12 @@ flowchart TD
     APPLY --> SESSION
     FACTS[analysis_readiness / 既有源准备规则] --> GUIDE[顶部指导 / 按钮 / 实际源准备]
     SESSION --> FACTS
-    CHART --> PREVIEW[SignalPreview独立执行器]
+    CHART --> PREVIEW[SignalPreview拥有的只读执行器]
     PREVIEW --> READONLY[只读预览 / 保持草稿与页面位置]
+    CHART --> HISTORY[SignalHistory / 两个历史入口与查看生命周期]
+    HISTORY -->|显式只读提交能力| PREVIEW
+    PREVIEW --> REBUILD[fit_attempt_view / 严格源匹配的只读重建]
+    HISTORY --> HISTORYUI[面板呈现 / 草稿恢复与字段锁定]
     RECIPE[source_recipe / 配方事实与读写] --> RUN
     RECIPE --> SIGNALPREP
     RECIPE --> DISPLAY[chart_recipe / 比较与披露策略]
@@ -46,7 +50,7 @@ flowchart TD
 | 源可操作事实 | analysis_readiness.assess_signal_source复用prepare_signal_source；SignalSourceState分别保留基础问题 / 源问题 / 可准备任务，供顶部指导、按钮及实际准备共用；不替代正式发布核对 |
 | 正式分析 | ChartActions单executor→既有job→GUI主线程apply；自动补源也使用此链路，Fit / Measure仍显式 |
 | 草稿预览 / 交互 | SignalPreview独立executor（ADR-0023）；只读输入，旧值核对后显示，不发布结果 / 日志 / Undo；页面位置、缩放、焦点、草稿归GUI |
-| 历史与日志 | SignalHistory保留草稿只读查看；fit_attempt_view按严格源身份重建；fit_attempts / FitAttemptJournal管理独立日志 |
+| 历史与日志 | SignalHistory拥有保存结果 / 拟合尝试的进入、返回、采用及Future / QTimer / 迟到核对；经显式提交能力共用SignalPreview拥有的只读池，关闭先历史后资源；fit_attempt_view按严格源身份重建；ChartActions / FitAttempts / FitAttemptJournal协调独立日志 |
 | 工作流与AI | TrackingActions同轮复用ExecutionInput，真实review状态改变后重采集；现有spawn / 取消 / terminate / kill / reap保持，候选显式激活后才改观测 |
 | 解码交付 | MainWindow的SimpleQueue + 无参Qt signal→GUI drain→generation / request_id核对；禁止worker直接发携带Python对象的信号 |
 | 保存与时序 | ProjectActions独立保存，文件写入阶段不可取消；显式Save与autosave的历史语义保持；TimingActions按ADR-0024自动采用合格Near-CFR |
@@ -58,9 +62,9 @@ flowchart TD
 不存在全局JobSupervisor、WorldSnapshot、通用计算框架或统一图表widget；R05 / R06继续后置。历史设计若与顶部 / ADR / 代码冲突，应修正文档，不恢复旧实现。当前设计依据为[ADR-0027](decisions/0027-analysis-computation-and-publication.md)。
 
 
-## R08 工作分支关系（已实现 / 自动Gate通过，HR待用户；未合并main）
+## R08 历史查看关系（已完成 / 已合并main）
 
-`codex/signal-history`产品703ac81；[计划](status/signal-history-plan.md) / [Review](reviews/signal-history-review.md)。最终本机1329 / 独立R2 Approve / 双平台通过，F1 Closed，HR待用户；不可用本节替换main状态。
+f34d3b8已集成验收产品703ac81；[计划](status/signal-history-plan.md) / [Review](reviews/signal-history-review.md)。本机1329 / 独立R2 Approve / 双平台及本轮HR全部通过，F1 Closed。
 
 ```mermaid
 flowchart LR
@@ -74,7 +78,7 @@ flowchart LR
 
 SignalHistory拥有历史请求Future / QTimer、记录身份和工程 / 代际 / 视频 / 时序核对；`changing`只协调旧预览 / 自动源失效，`historyChanged`只更新上下文显示，避免新请求被回调误取消。退出先拒收旧请求再恢复草稿；关闭先历史shutdown再预览资源shutdown。执行器仍为正式与只读各一个；ChartActions保留正式计算和FitAttempts日志协调，面板保留记录渲染，application重建及Session发布不改。
 
-已退出分支旧路径：`ChartActions._viewAttempt` / `_pollHistory` / `_cancelHistory`及`_history*`状态，历史代码直接读`preview._executor`，主窗口退出历史后重复失效预览。已有`displaySaved` / `restoreSaved`面板入口为兼容委托，不是第二份查看流程。
+R08已退出的旧路径：`ChartActions._viewAttempt` / `_pollHistory` / `_cancelHistory`及`_history*`状态，历史代码直接读`preview._executor`，主窗口退出历史后重复失效预览。已有`displaySaved` / `restoreSaved`面板入口为兼容委托，不是第二份查看流程。
 
 ---
 
