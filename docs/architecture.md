@@ -1,6 +1,6 @@
 # Architecture — AI Physics Tracker
 
-本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04均已完成 / 已合并，[R07工程变更与界面更新方案](status/change-notification-proposal.md)已由用户搁置、未实施；当前讨论见[GLM剩余项复核](notes/glm-remaining-review-2026-10-18.md)。
+本文档顶部记录**当前已落地架构**，后文保留高层设计 / 演进依据。实施状态见[重构进度](status/architecture-progress.md)，本轮工作见[current.md](status/current.md)；旧扫描不作为当前实现。R01–R04均已完成 / 已合并，[R07工程变更与界面更新方案](status/change-notification-proposal.md)已由用户搁置、未实施；2026-10-20用户选择历史查看候选并确认目标 / 范围 / 三条验收，[R08方案](status/signal-history-plan.md)待最终确认与启动，未实施；下图仍为当前架构。
 
 ## 当前架构总览（接手先读）
 

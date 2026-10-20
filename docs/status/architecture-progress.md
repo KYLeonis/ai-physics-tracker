@@ -20,6 +20,7 @@
 | R05 全局JobSupervisor / WorldSnapshot | **后置，未实施** | 现有runner及各任务专属校验继续有效；没有通用hash替代科学条件 | [首次复核](../notes/architecture-review-assessment-2026-10-17.md) / [后续复核](../notes/architecture-followup-2026-10-18.md) |
 | R06 Undo拆分 / 通用图表渲染器 | **后置，未实施** | Session拥有事务；ChartPlot / AnalysisPlot保留不同交互；不按文件大小重写 | 同上；不与R03 / R04捆绑 |
 | R07 工程变更与界面更新链路 | **用户已搁置，未实施** | 用户认为使用上没有必要继续；不启动T01–T08，转为重新核对GLM剩余建议 | [保留原方案](change-notification-proposal.md) / [剩余项复核](../notes/glm-remaining-review-2026-10-18.md) |
+| R08 历史查看流程归属 | **目标 / 范围 / 三条验收已确认；实施方案待最终确认，未实施** | 两个入口共用SignalHistory流程；草稿恢复、迟到拒收、查看不发布；计划保留现有两个执行器及ADR-0023所有权 | [方案与待办](signal-history-plan.md)；产品 / 测试未改，无实现Gate完成证据 |
 
 ## 不要恢复的旧做法
 
@@ -32,4 +33,4 @@
 7. 不把“生命周期Normal-risk”“Undo / recipe无测试”“6.3.1未实施”等旧报告陈述当现状。
 8. R04已集成：计算已退出Session；不恢复job.snapshot或在worker临时会话写Undo。兼容compute_*协调prepare/run/apply，事务仍归Session。
 
-最后核对：2026-10-18，main集成085219e，R01–R04已完成 / 已合并；R07用户已搁置、未实施；下一步以[current.md](current.md)为准。
+最后核对：2026-10-20，R01–R04已完成 / 已合并；R07继续搁置；R08仅规划，等待最终确认与启动；下一步以[current.md](current.md)为准。

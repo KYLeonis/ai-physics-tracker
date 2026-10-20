@@ -1,23 +1,23 @@
 # Current Status
 
-> 用户当前需求：2026-10-20显式调用improve-codebase-architecture重新扫描并给建议。已按近期源码提交热点和两路独立只读走查生成临时HTML；0项Strong、2项Worth exploring，等待用户选择讨论方向。R07继续搁置，未授权新实现范围。
+> 用户当前需求：2026-10-20已选择新扫描候选①，并确认两个历史查看入口一起整理，按草稿原样恢复、迟到不覆盖、查看不发布三条验收。已形成[R08方案与待办](signal-history-plan.md)，整份实施方案等待最终确认与启动；产品未改，R07继续搁置。
 
-- 最后更新：2026-10-20（新一轮只读架构扫描；产品代码未改，R01–R04完成状态不变）
+- 最后更新：2026-10-20（R08目标 / 范围 / 三条验收已确认，实施方案待最终确认；R01–R04完成状态不变）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04已完成 / 已合并，不能使用旧HTML覆盖当前状态。
 - **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04维护重构均完成并集成main，6.4 / 6.5未开始。
-- **Subphase / Slice**：R04全部实现 / 自动Gate / Independent / 本轮HR通过，F1自动补源跳顶Closed；085219e集成，源码 / 测试与bd848f1一致，本机1316 / 最终双平台各1314 + 2个既有skip通过。
+- **Subphase / Slice**：当前R08仅规划、待整份方案最终确认与启动；目标 / 两个入口 / 三条验收已确认。上一轮R04全部Gate通过，085219e集成；源码 / 测试与bd848f1一致，本机1316 / 最终双平台各1314 + 2个既有skip通过。
 - **Worktree / Branch**：当前主工作区`/Users/leonis/Documents/ai-physics-tracker` / `main`。R04分支`codex/analysis-workflow`已集成；其worktree及较早试用worktree仍保留以兼容启动器，不覆盖用户试用工程。论文线未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **用户选择后继续讨论，不先实现**：本轮首选候选为历史拟合查看流程归属（`gui/chart_actions.py:789–867`借用`SignalPreview._executor`，草稿恢复 / 取消 / 上下文核对分散）；已有历史查看回归测试，不是无测试或已证实新故障。若选择，先按grilling讨论范围和退出保护，再冻结mini-plan / Gate。
-2. **条件候选**：训练评估解释（`advisor_collection._evaluation_rmse`被`workflow_projection`私有导入，`TaskPanel.setRunDetails`另解原始记录）；适合扩展AI训练评估 / 版本比较时一起处理，不能与物理运动曲线比较混为一项。详情须保留原生指标，比较资格仍独立。
-3. **不启动已搁置方向**：R07 T01–T08、R05全局任务 / 状态、R06整套Undo / 绘图重写继续后置；此前[GLM剩余项复核](../notes/glm-remaining-review-2026-10-18.md)仍作历史证据。6.4 / 6.5须另行冻结。本轮未改源码 / 测试，未重跑测试。
-4. **报告定位**：按Skill写在OS临时目录的`architecture-review-20261020-161322.html`，仅为未批准候选，不覆盖当前架构 / ADR。系统`open`已返回成功；内置浏览器运行时不可用，备用预览又被file协议策略拒绝，因此未完成视觉核验，不绕过策略。
+1. **最终确认R08方案与启动**：[历史查看流程归属方案 / 待办](signal-history-plan.md)。用户已认可内部可靠性目标及两个入口 / 三条验收；先展示整份方案，按grilling规则等待共同理解与启动确认，不把范围确认当作已经实施。
+2. **启动后的具体路径**：核对主工作区 / 基线并建`codex/`分支；集中SignalHistory的进入 / 退出 / 后台请求 / 迟到校验，迁移ChartActions历史状态及相关接线。预览仍拥有原只读执行器，明确提供提交能力，总执行器数保持两个。High-risk：独立review / 定向及全量 / 双平台CI / 本轮HR；具体步骤和旧路径退出清单以R08为准。
+3. **其他方向后置**：训练评估解释候选留待AI训练比较扩展；R07 T01–T08、R05全局任务 / 状态、R06整套Undo / 绘图重写不启动。6.4 / 6.5须另行冻结。本轮只更新方案 / 词汇 / 接手状态，未改源码 / 测试，未重跑产品测试。
+4. **扫描报告为候选证据**：OS临时目录`architecture-review-20261020-161322.html`不覆盖当前架构 / ADR。系统`open`返回成功；内置预览未完成（运行时不可用、备用file协议策略拒绝）。可持久接手依据现已在R08方案中列齐。
 
 ## Active Constraints
 
@@ -61,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **R08讨论与方案（2026-10-20）**：用户确认两个入口一起整理及三条验收；[方案与待办](signal-history-plan.md)明确SignalHistory流程归属、共享只读资源 / 关闭顺序、信号顺序风险、旧路径退出及Review Gate。GLOSSARY补充当前草稿 / 历史查看的已确认含义；架构图仍代表现有实现。仅规划，整份方案待最终确认与启动，产品 / 测试未改。
 
 - **新一轮架构只读扫描（2026-10-20）**：以d85986f为基线，按最近80个涉及src的非合并提交定位热点，两路独立走查分析历史与训练推荐 / 执行链路；保留2项Worth exploring，无Strong。已生成含前后图 / 删除检验 / ADR与测试证据的临时HTML。未改产品、未设计新interface、未冻结或开始重构；等待用户选择。
 
