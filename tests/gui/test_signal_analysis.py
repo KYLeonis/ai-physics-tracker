@@ -334,7 +334,10 @@ def test_reopened_near_cfr_automatically_enables_analysis_without_confirmation(
     qtbot, synthetic_video_path, tmp_path, monkeypatch,
 ):
     from PySide6.QtWidgets import QMessageBox
-    def unexpected_question(*args):
+    def unexpected_question(_parent, title, text, *args):
+        # 混合排序下旧窗口可能延后关闭；合法保存询问不属于本测试禁止的时序确认。
+        if title == 'Unsaved changes' and text == 'Save project changes before closing?':
+            return QMessageBox.StandardButton.Discard
         raise AssertionError('Analysis must not ask for timing confirmation')
     monkeypatch.setattr(QMessageBox, 'question', unexpected_question)
     window, session, _ = _window(qtbot, synthetic_video_path)

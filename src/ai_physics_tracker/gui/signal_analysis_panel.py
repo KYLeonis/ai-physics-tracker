@@ -684,19 +684,7 @@ class SignalAnalysisPanel(QWidget):
         return reader(UUID(self.trackChoice.currentData()), f"{family}_{self.quantityChoice.currentText()}")
 
     def restoreSaved(self) -> None:
-        if not self.history.active:
-            record = self.savedRecord()
-            metadata = record.extra_fields.get("analysis") if record else None
-            if not isinstance(metadata, dict) or metadata.get('version') != 1:
-                self.showFeedback('No readable recorded setup for this target.')
-                return
-            try:
-                self.history.view(metadata, record=record)
-            except (KeyError, TypeError, ValueError) as error:
-                self.history.lock()
-                self.showFeedback(f'History is unreadable: {error}. Return to my draft to continue.')
-                return
-        self.history.leave(adopt=True)
+        self.history.adoptSaved()
 
     def renderSamples(self, samples, unit, predicted=None, residual=None, *, wrapped=False, title="Initial preview") -> None:
         self.signalPlot.clear()
@@ -748,42 +736,10 @@ class SignalAnalysisPanel(QWidget):
         self.frameRequested.emit(frame)
 
     def displaySaved(self, *, previous: bool = False, notify: bool = False) -> None:
-        if self.history.active and not notify:
-            return
-        self._allowCachedEvents = True
-        if notify and self.cancelButton.isEnabled():
-            self.showFeedback('Wait for the current calculation or cancel it before viewing history.')
-            return
-        self._viewingDiskSaved = previous
-        record = self.savedRecord(disk=previous)
-        if notify:
-            if record is None:
-                self.showFeedback('No saved result for this quantity / tool.')
-                return
-            try:
-                metadata = record.extra_fields.get('analysis', {})
-                if not isinstance(metadata, dict) or metadata.get('version') != 1:
-                    raise ValueError('Unsupported recorded result version')
-                self.signalPlot.clear()
-                self.residualPlot.clear()
-                self._previewRange = self._valueRange = None
-                self.history.view(metadata, record=record)
-            except (KeyError, TypeError, ValueError) as error:
-                self.signalPlot.clear()
-                self.residualPlot.clear()
-                self._previewRange = self._valueRange = None
-                self.history.lock()
-                self.showFeedback(f'History is unreadable: {error}. Return to your draft to continue.')
-                return
-        self.previousButton.setEnabled(self.savedRecord(disk=True) is not None)
-        self.latestButton.setEnabled(self.savedRecord(disk=False) is not None)
-        self.conversionActions.hide()
-        self.restoreButton.setEnabled(record is not None)
-        self.draftLabel.setText("Last disk-saved result — most recent Save snapshot" if previous else "Latest applied result — recorded settings; edits require a new Fit")
-        if notify:
-            self.showFeedback(
-                ("Showing the last disk-saved result (most recent Save, not the previous attempt). " if previous else "Showing the latest applied result. ")
-                + "The full form now shows its recorded setup, read-only. Your draft is kept; Return to my draft or Use recorded setup to continue.")
+        self.history.showSaved(previous=previous, notify=notify)
+
+    def renderSaved(self, record: DerivedData | None, *, previous: bool = False) -> None:
+        """呈现既有记录；进入、返回及采用设置由SignalHistory协调。"""
         metadata = record.extra_fields.get("analysis") if record else None
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
             self.signalPlot.clear()

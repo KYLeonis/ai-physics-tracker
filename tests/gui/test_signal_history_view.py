@@ -79,7 +79,7 @@ def test_bottom_selector_changes_formula_curve_and_target_without_fitting(qtbot,
     monkeypatch.setattr(actions._executor, 'submit', forbidden)
 
     _choose(panel, linear)
-    qtbot.waitUntil(lambda: actions._historyFuture is None)
+    qtbot.waitUntil(lambda: not panel.history.pending)
     assert panel.quantityChoice.currentText() == 'x'
     assert panel.editor.text() == 'a*t + b'
     assert 'a=20' in panel.modelLabel.text()
@@ -87,7 +87,7 @@ def test_bottom_selector_changes_formula_curve_and_target_without_fitting(qtbot,
     assert panel.signalPlot.listDataItems()[-1].yData[-1] == pytest.approx(18)
     assert 'current matching source' in panel.jobLabel.text()
     _choose(panel, constant)
-    qtbot.waitUntil(lambda: actions._historyFuture is None)
+    qtbot.waitUntil(lambda: not panel.history.pending)
     assert panel.quantityChoice.currentText() == 'y'
     assert panel.editor.text() == 'c'
     assert panel.signalPlot.listDataItems()[-1].yData[-1] == pytest.approx(20)
@@ -111,7 +111,7 @@ def test_unavailable_attempt_clears_previous_curve_and_explains(qtbot, synthetic
         session.compute_kinematics(track)
         actions.refresh()
     _choose(panel, identity)
-    qtbot.waitUntil(lambda: actions._historyFuture is None)
+    qtbot.waitUntil(lambda: not panel.history.pending)
     assert not panel.signalPlot.listDataItems()
     assert not panel.residualPlot.listDataItems()
     assert panel._previewRange is None
@@ -133,7 +133,7 @@ def test_late_history_delivery_respects_draft_and_current_authorization(qtbot, s
     def submit(run, *args):
         work.append((run, args))
         return future
-    monkeypatch.setattr(actions.preview._executor, 'submit', submit)
+    panel.history.bind(window, submit)
     _choose(panel, attempt['id'])
     if change == 'return_to_draft':
         panel.returnDraftButton.click()
@@ -142,7 +142,7 @@ def test_late_history_delivery_respects_draft_and_current_authorization(qtbot, s
     actions.preview.invalidate()
     run, args = work[0]
     future.set_result(run(*args))
-    actions._pollHistory()
+    panel.history.poll()
     if change == 'return_to_draft':
         assert panel.editor.text() == 'c'
         assert not panel.history.active
@@ -176,7 +176,7 @@ def test_foreign_or_missing_track_cannot_use_current_video_for_history(qtbot, sy
     frames = []
     panel.frameRequested.connect(frames.append)
 
-    actions._viewAttempt(attempt)
+    panel.history.viewAttempt(attempt)
 
     assert 'another video or a missing track' in panel.jobLabel.text()
     assert not panel.signalPlot.listDataItems()
@@ -202,17 +202,17 @@ def test_new_history_selection_discards_late_result_from_previous_selection(qtbo
         future = Future(); future.set_running_or_notify_cancel()
         work.append((future, run, args))
         return future
-    monkeypatch.setattr(actions.preview._executor, 'submit', submit)
-    actions._viewAttempt(first)
-    actions._viewAttempt(second)
+    panel.history.bind(window, submit)
+    panel.history.viewAttempt(first)
+    panel.history.viewAttempt(second)
     future, run, args = work[0]
     future.set_result(run(*args))
-    actions._pollHistory()
+    panel.history.poll()
     assert panel.editor.text() == 'c'
     assert not panel.signalPlot.listDataItems()
     future, run, args = work[1]
     future.set_result(run(*args))
-    actions._pollHistory()
+    panel.history.poll()
     assert len(panel.signalPlot.listDataItems()) == 2
     assert 'x(t) = c' in panel.modelLabel.text()
 
@@ -230,7 +230,7 @@ def test_leaving_analysis_returns_to_draft_before_acquire_can_change_source(qtbo
     assert not panel.history.active
     assert panel.editor.text() == 'c'
     assert panel.editor.isEnabled()
-    assert actions._historyFuture is None
+    assert not panel.history.pending
     assert not panel.signalPlot.listDataItems()
     session.mark_point(track, 0, pixel_x=99, pixel_y=20)
     session.compute_kinematics(track)
@@ -263,3 +263,95 @@ def test_adopted_crossing_setup_previews_current_events_without_measuring(qtbot,
     panel.recurrenceButton.click(); qtbot.waitUntil(lambda: not actions.pending)
     assert panel._eventLines
     assert not panel._eventPreview
+
+
+@pytest.mark.parametrize('change', [
+    'applied', 'saved', 'adopt', 'workspace', 'reset', 'shutdown',
+    'video', 'generation', 'source_changed', 'unreadable_saved',
+])
+def test_history_delivery_after_transition_cannot_replace_display(
+        qtbot, synthetic_video_path, tmp_path, monkeypatch, change):
+    from dataclasses import replace
+
+    window, session, track = _window(qtbot, synthetic_video_path)
+    actions, panel = window.chartActions, window.chartActions.signalPanel
+    _fit(qtbot, actions)
+    session.save_as(tmp_path / 'saved')
+    actions.syncJournal(saved=True)
+    actions.refresh()
+    attempt = deepcopy(actions.attempts.journal.attempts[-1])
+    panel.editor.setText('c')
+    future = Future()
+    future.set_running_or_notify_cancel()
+    work = []
+
+    def submit(run, *args):
+        work.append((run, args))
+        return future
+
+    panel.history.bind(window, submit)
+    original_video = window.activeVideoId
+    _choose(panel, attempt['id'])
+    if change == 'applied':
+        panel.latestButton.click()
+    elif change == 'saved':
+        panel.previousButton.click()
+    elif change == 'adopt':
+        panel.restoreButton.click()
+    elif change == 'workspace':
+        window.setWorkspace('acquire')
+    elif change == 'reset':
+        actions.resetContext()
+    elif change == 'shutdown':
+        actions.shutdown()
+    elif change == 'video':
+        window._annotation_video_id = uuid4()
+    elif change == 'generation':
+        window._delivery_generation += 1
+    elif change == 'source_changed':
+        session.mark_point(track, 0, pixel_x=999, pixel_y=20)
+    else:
+        record = replace(panel.savedRecord(disk=False), extra_fields={'analysis': {'version': 999}})
+        monkeypatch.setattr(panel, 'savedRecord', lambda **kwargs: record)
+        panel.latestButton.click()
+    display = (panel.editor.text(), panel.resultLabel.text(), panel.summary.toPlainText(),
+               tuple(panel.signalPlot.listDataItems()))
+    state = session.project, session.is_dirty, session.can_undo_analysis, deepcopy(actions.attempts.journal.attempts)
+
+    run, args = work[0]
+    future.set_result(run(*args))
+    panel.history.poll()
+    if change == 'video':
+        window._annotation_video_id = original_video
+
+    assert not panel.history.pending
+    assert (panel.editor.text(), panel.resultLabel.text(), panel.summary.toPlainText(),
+            tuple(panel.signalPlot.listDataItems())) == display
+    assert (session.project, session.is_dirty, session.can_undo_analysis, actions.attempts.journal.attempts) == state
+    if change in ('video', 'generation', 'source_changed'):
+        assert 'Project context changed' in panel.jobLabel.text()
+
+
+def test_history_delivery_waits_for_save_before_display(qtbot, synthetic_video_path):
+    window, _, _ = _window(qtbot, synthetic_video_path)
+    actions, panel = window.chartActions, window.chartActions.signalPanel
+    _fit(qtbot, actions)
+    attempt = deepcopy(actions.attempts.journal.attempts[-1])
+    future = Future()
+
+    def submit(run, *args):
+        future.set_result(run(*args))
+        return future
+
+    panel.history.bind(window, submit)
+    _choose(panel, attempt['id'])
+    window.projectActions.busy = True
+    try:
+        panel.history.poll()
+        assert panel.history.pending
+        assert not panel.signalPlot.listDataItems()
+    finally:
+        window.projectActions.busy = False
+    panel.history.poll()
+    assert not panel.history.pending
+    assert len(panel.signalPlot.listDataItems()) == 2

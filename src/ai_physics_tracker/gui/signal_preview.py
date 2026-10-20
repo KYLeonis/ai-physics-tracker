@@ -1,7 +1,9 @@
 """GUI层：合并草稿预览请求，后台纯计算，主线程核对身份后显示。"""
 
 from dataclasses import replace
-from concurrent.futures import ThreadPoolExecutor, CancelledError
+from concurrent.futures import ThreadPoolExecutor, CancelledError, Future
+from collections.abc import Callable
+from typing import TypeVar
 from threading import Event
 
 import numpy as np
@@ -13,6 +15,9 @@ from ai_physics_tracker.application.signal_analysis_job import signal_source, pr
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec, RecurrenceOutcome
 from ai_physics_tracker.application.project_session import ProjectSessionError
 from ai_physics_tracker.application.chart_recipe import smoothing_recipe, reference_summary
+
+
+_T = TypeVar("_T")
 
 
 class SignalPreview(QObject):
@@ -36,6 +41,10 @@ class SignalPreview(QObject):
         self._pollTimer.timeout.connect(self.poll)
         self.panel.estimateRequested.connect(lambda: self.request(estimate=True, immediate=True))
         self.panel.editor.exampleSelected.connect(self.example)
+
+    def submitReadOnly(self, compute: Callable[..., _T], *args: object) -> Future[_T]:
+        """提交只读计算；调用方拥有其请求的取消和GUI交付，关闭资源仍归本对象。"""
+        return self._executor.submit(compute, *args)
 
     def invalidate(self):
         self._revision += 1
@@ -163,7 +172,7 @@ class SignalPreview(QObject):
         self._request_revision = self._revision
         try:
             self._cancel = Event()
-            self._future = self._executor.submit(_preview, job, self._estimate, self._cancel)
+            self._future = self.submitReadOnly(_preview, job, self._estimate, self._cancel)
             self._pollTimer.start(30)
         except Exception as error:
             self._future = None

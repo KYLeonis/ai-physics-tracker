@@ -1,35 +1,78 @@
 """GUI层：完整配方的只读回看，保留草稿并显式复用设置。"""
 
+from __future__ import annotations
+
+from collections.abc import Callable
+from concurrent.futures import Future
 from contextlib import ExitStack
 from typing import TYPE_CHECKING
 from uuid import UUID
-from PySide6.QtCore import QSignalBlocker, Qt
+from PySide6.QtCore import QObject, QSignalBlocker, QTimer, Qt, Signal
 from PySide6.QtWidgets import QTableWidgetItem
 
+from ai_physics_tracker.application.fit_attempt_view import AttemptView, rebuild_fit_attempt_view
+from ai_physics_tracker.application.project_session import ProjectSession
+from ai_physics_tracker.gui.fit_explanation import explain_fit
 from ai_physics_tracker.domain.analysis import QUANTITIES
 from ai_physics_tracker.domain.derived import DerivedData
 
 if TYPE_CHECKING:
     from ai_physics_tracker.gui.signal_analysis_panel import SignalAnalysisPanel
+    from ai_physics_tracker.gui.main_window import MainWindow
 
 
-class SignalHistory:
+_Submit = Callable[[Callable[[ProjectSession, dict], AttemptView], ProjectSession, dict], Future[AttemptView]]
+
+
+class SignalHistory(QObject):
     """历史字段与当前草稿分开；切换查看不触发计算或写入工程。"""
+
+    changing = Signal()
 
     _combos = ('trackChoice', 'quantityChoice', 'sourceChoice', 'direction')
     _numbers = ('startFrame', 'endFrame', 'budget', 'level', 'hysteresis', 'separation')
     _texts = ('resultName', 'resultFormula')
 
     def __init__(self, panel: 'SignalAnalysisPanel') -> None:
+        super().__init__(panel)
         self.panel = panel
         self.draft = None
         self.record = None
         self.attempt_id = None
         self.source_text = ''
+        self._window: MainWindow | None = None
+        self._submit: _Submit | None = None
+        self._future: Future[AttemptView] | None = None
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self.poll)
+        self._closed = False
 
     @property
     def active(self) -> bool:
         return self.draft is not None
+
+    @property
+    def pending(self) -> bool:
+        return self._future is not None
+
+    def bind(self, window: MainWindow, submit: _Submit) -> None:
+        """由GUI组合处提供上下文及共享只读提交能力，不接管执行资源。"""
+        self._window, self._submit = window, submit
+
+    def _cancelReading(self) -> None:
+        if self._future is not None:
+            self._future.cancel()
+        self._future = None
+        self._timer.stop()
+
+    def _beginChange(self) -> None:
+        self._cancelReading()
+        self.changing.emit()
+
+    def shutdown(self) -> None:
+        """先拒收并取消历史请求，再由资源所有方关闭共享执行器。"""
+        self._closed = True
+        self._cancelReading()
 
     def capture(self) -> dict:
         p = self.panel
@@ -107,6 +150,7 @@ class SignalHistory:
             raise ValueError('Unreadable recorded result formulas')
         if not self.active:
             self.draft = self.capture()
+        self._beginChange()
         self.record, self.attempt_id = record, attempt_id
         if attempt_id is None:
             with QSignalBlocker(p.attemptChoice):
@@ -172,6 +216,7 @@ class SignalHistory:
 
     def leave(self, *, adopt: bool = False, discard: bool = False) -> None:
         if not self.active:
+            self._cancelReading()
             return
         p = self.panel
         if adopt:
@@ -183,6 +228,7 @@ class SignalHistory:
                     or not timeline.working_zone[0] <= p.startFrame.value() <= p.endFrame.value() <= timeline.working_zone[1]):
                 p.showFeedback('Recorded track / interval is outside this video or working zone. Return to draft and prepare the original context first.')
                 return
+        self._beginChange()
         state = self.draft
         self.draft = self.record = self.attempt_id = None
         if not adopt:
@@ -213,3 +259,144 @@ class SignalHistory:
                 p.sourcePreviewRequested.emit()
             p.showFeedback(('Recorded setup adopted' if adopt else 'Your previous draft restored') +
                            ('. Preview is being prepared; click Fit explicitly.' if p.methods.currentIndex() == 0 else '. Review reference, then click Measure crossing intervals.'))
+
+    def showSaved(self, *, previous: bool = False, notify: bool = False) -> None:
+        p = self.panel
+        if self._closed:
+            return
+        if self.active and not notify:
+            return
+        p._allowCachedEvents = True
+        if notify and p.cancelButton.isEnabled():
+            p.showFeedback('Wait for the current calculation or cancel it before viewing history.')
+            return
+        p._viewingDiskSaved = previous
+        record = p.savedRecord(disk=previous)
+        if notify:
+            if record is None:
+                p.showFeedback('No saved result for this quantity / tool.')
+                return
+            try:
+                metadata = record.extra_fields.get('analysis', {})
+                if not isinstance(metadata, dict) or metadata.get('version') != 1:
+                    raise ValueError('Unsupported recorded result version')
+                p.signalPlot.clear()
+                p.residualPlot.clear()
+                p._previewRange = p._valueRange = None
+                self.view(metadata, record=record)
+            except (KeyError, TypeError, ValueError) as error:
+                self._beginChange()
+                p.signalPlot.clear()
+                p.residualPlot.clear()
+                p._previewRange = p._valueRange = None
+                self.lock()
+                p.showFeedback(f'History is unreadable: {error}. Return to your draft to continue.')
+                return
+        p.previousButton.setEnabled(p.savedRecord(disk=True) is not None)
+        p.latestButton.setEnabled(p.savedRecord(disk=False) is not None)
+        p.conversionActions.hide()
+        p.restoreButton.setEnabled(record is not None)
+        p.draftLabel.setText("Last disk-saved result — most recent Save snapshot" if previous else "Latest applied result — recorded settings; edits require a new Fit")
+        if notify:
+            p.showFeedback(
+                ("Showing the last disk-saved result (most recent Save, not the previous attempt). " if previous else "Showing the latest applied result. ")
+                + "The full form now shows its recorded setup, read-only. Your draft is kept; Return to my draft or Use recorded setup to continue.")
+        p.renderSaved(record, previous=previous)
+
+    def adoptSaved(self) -> None:
+        p = self.panel
+        if not self.active:
+            record = p.savedRecord()
+            metadata = record.extra_fields.get("analysis") if record else None
+            if not isinstance(metadata, dict) or metadata.get('version') != 1:
+                p.showFeedback('No readable recorded setup for this target.')
+                return
+            try:
+                self.view(metadata, record=record)
+            except (KeyError, TypeError, ValueError) as error:
+                self.lock()
+                p.showFeedback(f'History is unreadable: {error}. Return to my draft to continue.')
+                return
+        self.leave(adopt=True)
+
+    def viewAttempt(self, attempt: dict) -> None:
+        window = self._window
+        panel = self.panel
+        if self._closed or window is None or panel.cancelButton.isEnabled() or window.projectActions.busy:
+            return
+        panel.signalPlot.clear()
+        panel.residualPlot.clear()
+        panel._previewRange = panel._valueRange = None
+        panel.modelLabel.clear()
+        panel.meaningLabel.clear()
+        panel.conversionActions.hide()
+        try:
+            interval = attempt.get('interval', [0, 0])
+            spec = attempt.get('spec')
+            if not isinstance(spec, dict):
+                spec = {'expression': attempt.get('formula', ''), 'parameters': [
+                    dict(zip(('name', 'initial', 'lower', 'upper', 'fixed'), row))
+                    for row in attempt.get('initial_fields', [])], 'max_evaluations': attempt.get('max_evaluations', 1000)}
+            summary = dict(attempt.get('summary') or {})
+            summary.setdefault('result_formulas', [dict(zip(('name', 'formula'), item)) for item in attempt.get('result_formulas', [])])
+            metadata = {'quantity': attempt.get('quantity'), 'selection': {
+                'track_id': attempt.get('track_id'), 'smoothed': attempt.get('smoothed', False),
+                'start_frame': interval[0], 'end_frame': interval[1]}, 'spec': spec, 'summary': summary}
+            self.view(metadata, attempt_id=attempt['id'])
+            panel.summary.setPlainText(panel.attemptDetails.toPlainText())
+            panel.restoreButton.setEnabled(True)
+            panel.showFormula(attempt.get('formula', ''), tuple((row[0], str(row[1])) for row in summary.get('parameter_values', [])), fitted=True)
+            panel.draftLabel.setText(f"Viewing attempt — {attempt.get('status')} — read-only")
+            panel.resultLabel.setText(f"Recorded status: {attempt.get('status')}\n{attempt.get('reason', 'No completed result')}")
+            panel.showFeedback('Full recorded setup selected. Preparing a read-only curve when its original source can be matched; your draft is kept.')
+            session = window.analysisSession
+            if session is None:
+                raise ValueError('Open the original project to inspect this attempt.')
+            if not any(str(track.track_id) == attempt.get('track_id') and track.video_id == window.activeVideoId for track in session.tracks):
+                raise ValueError('This attempt belongs to another video or a missing track; open its original video first')
+            self._project = session.project
+            self._generation = window.deliveryGeneration
+            self._video = window.activeVideoId
+            self._timing = session.can_measure(self._video), session.measurement_timing_detail(self._video)
+            self._readingAttempt = self.attempt_id
+            self._future = self._submit(rebuild_fit_attempt_view, session.detached(), attempt)
+            self._timer.start(30)
+        except (KeyError, IndexError, TypeError, ValueError, RuntimeError) as error:
+            self._beginChange()
+            self.lock()
+            panel.signalPlot.clear()
+            panel.residualPlot.clear()
+            panel.resultLabel.setText(f'No historical curve available.\n{error}')
+            panel.showFeedback(f'Attempt view unavailable: {error}. Return to my draft to continue.')
+
+    def poll(self) -> None:
+        window = self._window
+        future = self._future
+        if future is None or not future.done() or window is None or window.projectActions.busy:
+            return
+        self._future = None
+        self._timer.stop()
+        panel = self.panel
+        if not self.active or self.attempt_id != self._readingAttempt or self._closed:
+            return
+        session = window.analysisSession
+        if (session is None or session.project is not self._project
+                or window.deliveryGeneration != self._generation or window.activeVideoId != self._video
+                or (session.can_measure(self._video), session.measurement_timing_detail(self._video)) != self._timing):
+            panel.showFeedback('Project context changed. Select this attempt again to inspect it safely.')
+            return
+        try:
+            view = future.result()
+            if view.metadata is None:
+                panel.resultLabel.setText('No historical curve available.\n' + view.reason)
+            else:
+                panel.renderSamples(view.samples, view.metadata['source_snapshot']['unit'], view.prediction, view.residual,
+                                    title='Historical attempt — reconstructed display')
+                summary = view.metadata['summary']
+                panel.showFormula(view.spec.expression, tuple((name, f'{value:.6g}') for name, value in summary['parameter_values']), fitted=True)
+                panel.resultLabel.setText(explain_fit(view.metadata, view.metadata['source_snapshot']['unit']))
+                panel.summary.setPlainText(panel.attemptDetails.toPlainText() + '\n' + view.reason)
+            panel.showFeedback(view.reason + ' Viewing only; no result was activated and no new Fit was run.')
+        except Exception as error:
+            panel.resultLabel.setText(f'No historical curve available.\n{error}')
+            panel.showFeedback(f'Historical curve unavailable: {error}. Recorded setup remains readable.')

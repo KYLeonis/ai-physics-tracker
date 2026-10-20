@@ -39,8 +39,6 @@ from ai_physics_tracker.domain.expression import parse_expression
 from ai_physics_tracker.domain.analysis import source_fingerprint
 from ai_physics_tracker.gui.signal_preview import SignalPreview
 from ai_physics_tracker.application.fit_attempts import FitAttempts
-from ai_physics_tracker.application.fit_attempt_view import rebuild_fit_attempt_view
-from ai_physics_tracker.gui.fit_explanation import explain_fit
 
 if TYPE_CHECKING:
     from ai_physics_tracker.gui.main_window import MainWindow
@@ -81,12 +79,9 @@ class ChartActions(QObject):
         self._closed = False
         self.attempts = FitAttempts()
         self.preview = SignalPreview(self)
-        self._historyFuture = None
-        self._historyTimer = QTimer(self)
-        self._historyTimer.timeout.connect(self._pollHistory)
+        self.signalPanel.history.bind(window, self.preview.submitReadOnly)
+        self.signalPanel.history.changing.connect(self._historyChanging)
         self.signalPanel.historyChanged.connect(self._historyChanged)
-        self.signalPanel.previousButton.clicked.connect(self.preview.invalidate)
-        self.signalPanel.latestButton.clicked.connect(self.preview.invalidate)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._poll)
         self._refresh_timer = QTimer(self)
@@ -153,7 +148,6 @@ class ChartActions(QObject):
         self.scheduleRefresh()
 
     def resetContext(self) -> None:
-        self._cancelHistory()
         self.signalPanel.history.leave(discard=True)
         self.preview.invalidate()
         self._finishAttempt("interrupted", "Project / video context changed; pending result discarded")
@@ -768,103 +762,18 @@ class ChartActions(QObject):
         if not attempt and self.signalPanel.history.active:
             self.signalPanel.attemptDetails.setPlainText('Viewing a saved result above. Select an attempt to inspect a different recorded Fit.')
         if _args and attempt:
-            self._viewAttempt(attempt)
+            self.signalPanel.history.viewAttempt(attempt)
 
-    def _cancelHistory(self) -> None:
-        if self._historyFuture is not None:
-            self._historyFuture.cancel()
-        self._historyFuture = None
-        self._historyTimer.stop()
-
-    def _historyChanged(self) -> None:
+    def _historyChanging(self) -> None:
         if self._source_selection is not None:
             self.cancel()
         self.preview.invalidate()
-        self._cancelHistory()
+
+    def _historyChanged(self) -> None:
         panel = self.signalPanel
         panel.setContext(self.window.analysisSession, self.window.activeVideoId, pending=self.pending)
         self.window._analysisMethodChanged(panel.methods.currentIndex())
         self.window.refreshAnalysisSourceBar()
-
-    def _viewAttempt(self, attempt: dict) -> None:
-        if self.pending or self.window.projectActions.busy:
-            return
-        panel = self.signalPanel
-        self.preview.invalidate()
-        self._cancelHistory()
-        panel.signalPlot.clear()
-        panel.residualPlot.clear()
-        panel._previewRange = panel._valueRange = None
-        panel.modelLabel.clear()
-        panel.meaningLabel.clear()
-        panel.conversionActions.hide()
-        try:
-            interval = attempt.get('interval', [0, 0])
-            spec = attempt.get('spec')
-            if not isinstance(spec, dict):
-                spec = {'expression': attempt.get('formula', ''), 'parameters': [
-                    dict(zip(('name', 'initial', 'lower', 'upper', 'fixed'), row))
-                    for row in attempt.get('initial_fields', [])], 'max_evaluations': attempt.get('max_evaluations', 1000)}
-            summary = dict(attempt.get('summary') or {})
-            summary.setdefault('result_formulas', [dict(zip(('name', 'formula'), item)) for item in attempt.get('result_formulas', [])])
-            metadata = {'quantity': attempt.get('quantity'), 'selection': {
-                'track_id': attempt.get('track_id'), 'smoothed': attempt.get('smoothed', False),
-                'start_frame': interval[0], 'end_frame': interval[1]}, 'spec': spec, 'summary': summary}
-            panel.history.view(metadata, attempt_id=attempt['id'])
-            panel.summary.setPlainText(panel.attemptDetails.toPlainText())
-            panel.restoreButton.setEnabled(True)
-            panel.showFormula(attempt.get('formula', ''), tuple((row[0], str(row[1])) for row in summary.get('parameter_values', [])), fitted=True)
-            panel.draftLabel.setText(f"Viewing attempt — {attempt.get('status')} — read-only")
-            panel.resultLabel.setText(f"Recorded status: {attempt.get('status')}\n{attempt.get('reason', 'No completed result')}")
-            panel.showFeedback('Full recorded setup selected. Preparing a read-only curve when its original source can be matched; your draft is kept.')
-            session = self.window.analysisSession
-            if session is None:
-                raise ValueError('Open the original project to inspect this attempt.')
-            if not any(str(track.track_id) == attempt.get('track_id') and track.video_id == self.window.activeVideoId for track in session.tracks):
-                raise ValueError('This attempt belongs to another video or a missing track; open its original video first')
-            self._historyProject = session.project
-            self._historyGeneration = self.window.deliveryGeneration
-            self._historyVideo = self.window.activeVideoId
-            self._historyTiming = session.can_measure(self._historyVideo), session.measurement_timing_detail(self._historyVideo)
-            self._historyFuture = self.preview._executor.submit(rebuild_fit_attempt_view, session.detached(), attempt)
-            self._historyTimer.start(30)
-        except (KeyError, IndexError, TypeError, ValueError, RuntimeError) as error:
-            panel.history.lock()
-            panel.signalPlot.clear()
-            panel.residualPlot.clear()
-            panel.resultLabel.setText(f'No historical curve available.\n{error}')
-            panel.showFeedback(f'Attempt view unavailable: {error}. Return to my draft to continue.')
-
-    def _pollHistory(self) -> None:
-        future = self._historyFuture
-        if future is None or not future.done() or self.window.projectActions.busy:
-            return
-        self._historyFuture = None
-        self._historyTimer.stop()
-        panel = self.signalPanel
-        if not panel.history.active or panel.history.attempt_id is None or self._closed:
-            return
-        session = self.window.analysisSession
-        if (session is None or session.project is not self._historyProject
-                or self.window.deliveryGeneration != self._historyGeneration or self.window.activeVideoId != self._historyVideo
-                or (session.can_measure(self._historyVideo), session.measurement_timing_detail(self._historyVideo)) != self._historyTiming):
-            panel.showFeedback('Project context changed. Select this attempt again to inspect it safely.')
-            return
-        try:
-            view = future.result()
-            if view.metadata is None:
-                panel.resultLabel.setText('No historical curve available.\n' + view.reason)
-            else:
-                panel.renderSamples(view.samples, view.metadata['source_snapshot']['unit'], view.prediction, view.residual,
-                                    title='Historical attempt — reconstructed display')
-                summary = view.metadata['summary']
-                panel.showFormula(view.spec.expression, tuple((name, f'{value:.6g}') for name, value in summary['parameter_values']), fitted=True)
-                panel.resultLabel.setText(explain_fit(view.metadata, view.metadata['source_snapshot']['unit']))
-                panel.summary.setPlainText(panel.attemptDetails.toPlainText() + '\n' + view.reason)
-            panel.showFeedback(view.reason + ' Viewing only; no result was activated and no new Fit was run.')
-        except Exception as error:
-            panel.resultLabel.setText(f'No historical curve available.\n{error}')
-            panel.showFeedback(f'Historical curve unavailable: {error}. Recorded setup remains readable.')
 
     def retryJournal(self) -> None:
         if self.attempts.journal:
@@ -872,7 +781,7 @@ class ChartActions(QObject):
             self.showAttempts()
 
     def shutdown(self) -> None:
-        self._cancelHistory()
+        self.signalPanel.history.shutdown()
         self.preview.shutdown()
         self._finishAttempt("interrupted", "Window closed; pending result discarded")
         self._closed = True

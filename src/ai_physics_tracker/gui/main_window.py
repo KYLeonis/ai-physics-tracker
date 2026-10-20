@@ -615,7 +615,6 @@ class MainWindow(QMainWindow):
             if self._workspace == WORKSPACE_ANALYSIS:
                 if self.chartActions.signalPanel.history.active:
                     self.chartActions.signalPanel.history.leave()
-                    self.chartActions.preview.invalidate()
                 self._leaveAnalysis()
         self._workspace = workspace
         if workspace == WORKSPACE_ACQUIRE:
