@@ -777,6 +777,7 @@ class MainWindow(QMainWindow):
 
     def _analysisTabsChanged(self, index: int) -> None:
         if index == 0:
+            self.chartActions.signalPanel.history.leave()
             self._analysis_purpose = "explore"
         else:
             self._analysis_purpose = "measure" if self.chartActions.signalPanel.methods.currentIndex() == 1 else "fit"

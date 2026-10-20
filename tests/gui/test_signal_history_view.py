@@ -266,7 +266,7 @@ def test_adopted_crossing_setup_previews_current_events_without_measuring(qtbot,
 
 
 @pytest.mark.parametrize('change', [
-    'applied', 'saved', 'adopt', 'workspace', 'reset', 'shutdown',
+    'applied', 'saved', 'adopt', 'workspace', 'charts', 'explore', 'reset', 'shutdown',
     'video', 'generation', 'source_changed', 'unreadable_saved',
 ])
 def test_history_delivery_after_transition_cannot_replace_display(
@@ -300,6 +300,10 @@ def test_history_delivery_after_transition_cannot_replace_display(
         panel.restoreButton.click()
     elif change == 'workspace':
         window.setWorkspace('acquire')
+    elif change == 'charts':
+        window.analysisTabs.setCurrentIndex(0)
+    elif change == 'explore':
+        window.openAnalysisPurpose('explore')
     elif change == 'reset':
         actions.resetContext()
     elif change == 'shutdown':
@@ -314,6 +318,9 @@ def test_history_delivery_after_transition_cannot_replace_display(
         record = replace(panel.savedRecord(disk=False), extra_fields={'analysis': {'version': 999}})
         monkeypatch.setattr(panel, 'savedRecord', lambda **kwargs: record)
         panel.latestButton.click()
+    if change in ('workspace', 'charts', 'explore'):
+        assert not panel.history.active
+        assert panel.editor.text() == 'c'
     display = (panel.editor.text(), panel.resultLabel.text(), panel.summary.toPlainText(),
                tuple(panel.signalPlot.listDataItems()))
     state = session.project, session.is_dirty, session.can_undo_analysis, deepcopy(actions.attempts.journal.attempts)
