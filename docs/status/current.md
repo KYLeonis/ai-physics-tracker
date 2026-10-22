@@ -1,20 +1,20 @@
 # Current Status
 
-> 用户当前需求：查询R08合并后CI并讨论后续优化 / 下一阶段。集成CI39420292037已确认macOS / Windows全部success；R08完整收尾。建议结束当前纯架构整理，先讨论6.4比较 / 误差解释，再6.5整体验证；新范围尚未冻结，未开始实施。
+> 用户当前需求：推进P6.4，先检查状态 / 现有计划并提交mini-plan审阅，再讨论实现细节。[6.4 mini-plan v0.1](phase-6.4-plan.md)已形成；建议先拟合参数条件性标准误差，再同视频两轨迹同帧差值，融入现有误差说明。范围 / 科学口径待用户审阅，未授权或开始实现。
 
-- 最后更新：2026-10-20（R08全部Gate / HR / 合并及主分支集成CI均通过；后续方向讨论中）
+- 最后更新：2026-10-22（P6.4 mini-plan草案待审阅；仅规划）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04 / R08已完成 / 已合并，不能使用旧HTML覆盖当前状态。
-- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08维护重构均完成并集成main，6.4 / 6.5未开始。
-- **Subphase / Slice**：R08 S0–S4及全部Gate完成，用户本轮HR明确“通过”，f34d3b8集成main。[计划](signal-history-plan.md) / [Review](../reviews/signal-history-review.md) / [PR #39](https://github.com/KYLeonis/ai-physics-tracker/pull/39)。R07仍搁置。
+- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08维护重构均完成并集成main；6.4进入mini-plan审阅，未实施，6.5未开始。
+- **Subphase / Slice**：P6.4规划草案v0.1，未冻结、未创建Issue / 实现分支、S0未启动。前期R08全部Gate完成，f34d3b8集成main；R07仍搁置。
 - **Worktree / Branch**：主工作区`/Users/leonis/Documents/ai-physics-tracker` / `main`；R08工作分支`codex/signal-history`已集成，其工作区`/Users/leonis/.codex/worktrees/signal-history/ai-physics-tracker`保留并快进同步main，兼容`experiment/signal-history-human-review/start.command`启动器，不覆盖用户试用副本。旧试用工作区及论文线未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **讨论6.4具体用户收益与首批范围**：建议结束当前纯架构整理，进入比较 / 误差解释。当前用户集中使用拟合 / 重复间隔，建议先讨论拟合参数的条件性误差估计，再同视频轨迹的同帧差值；不是重复已有RMSE / 均值 / 样本标准差说明。用户尚未选择或授权新的实施范围，先确认mini-plan / Gate再写代码。
+1. **等待用户审阅[6.4 mini-plan](phase-6.4-plan.md)，再讨论并冻结范围**：优先确认A / B / C与推进顺序、平滑 / 导数源的标准误差支持边界、两轨迹只读比较及角差语义。按反馈修订AC与S0，再经用户授权实施；本轮不写代码、不建实现分支 / Issue、不把候选方法或容差写成已接受契约。
 2. **区分下一子阶段与Phase 7**：Phase 6的6.4比较 / 误差及6.5真实单摆全流程验收仍未完成；按既定路线完成后才进入Phase 7模型库。若用户要求调整顺序，先明确范围 / 验收调整，不能默认为Phase 6已完成。
 3. **保持当前架构**：两个历史入口、Future / 轮询 / 取消 / 上下文归SignalHistory；ChartActions保留日志和正式分析。只读执行器仍归SignalPreview，经submitReadOnly提供能力，共两个执行器；关闭先历史后共享资源。Charts / Explore退出工具走同一history.leave，不恢复旧借用或ChartActions历史状态。
 4. **已延期项**：R07搁置，R05 / R06后置；训练评估解释仅在实际扩展训练 / 模型比较时重新讨论。Review F2旧version类型宽松Deferred，未来统一GUI / application / Session版本类型检查时处理；不为讨论方向重新扫描或重跑已通过产品测试。
@@ -61,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.4规划草案（2026-10-22）**：核对main / 远端同为ca8013d，进入会话时工作区干净；已读Phase需求 / 总计划、当前架构与回移档案并对照代码。确认已有多轨迹叠图、拟合残差 / RMSE / 常数基线及重复间隔样本标准差；缺口为参数标准误差和同帧差值。新增[mini-plan](phase-6.4-plan.md)，列范围 / 非目标、Context Pack、AC、S0–S3、预计改动面及High-risk Gate；三项产品 / 科学口径待讨论。仅文档与链接 / diff核对，产品、测试、用户工程和论文线未改；不重复产品回归。
 
 - **R08主分支CI回执（2026-10-20）**：[集成CI39420292037](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/39420292037)对应0f3e841，macOS / Windows Python3.11均success，全部步骤完成；之后仅文档记录，源码 / 测试仍为703ac81验收产品。当前改为讨论6.4范围，不再等待集成CI、不继续纯架构维护或自行进入Phase 7。
 
