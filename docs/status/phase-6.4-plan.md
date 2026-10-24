@@ -1,10 +1,11 @@
 # Subphase Plan — Phase 6.4 Fit Parameter Error Interpretation
 
 - 日期 / 状态：2026-10-24 · **mini-plan v1.0，用户明确回复“冻结”，Q1–Q6及计划范围 / AC / Gate已冻结；未授权开工、未开始实现。**
-- 规划基线：`main @ ca8013d`，本地与远端main一致，进入会话时工作区干净。
+- 初始规划基线：`main @ ca8013d`（2026-10-22）；范围 / AC / Gate于2026-10-24冻结。
+- 实现接手基线更新（2026-10-24）：`main @ 850df3e`，包含R09草稿上下文集中（`c14c78a`，源码 / 测试与`ad00f9c`一致）。仅同步接手事实 / 复用入口与回归清单，v1.0已冻结的范围 / AC / Gate不变；实际开工时再核对最新HEAD。
 - Issue / 实现分支：尚未创建；计划确认并授权实施后建立。
 - 风险等级：**High-risk**（拟合统计及结果摘要契约）。
-- 上下阶段：6.1–6.3.1及R01–R04 / R08已集成；本期承接Phase 6 AC-6及相关AC-7。用户取消新增两轨迹比较，既有叠图保留；6.5整体验收独立执行。
+- 上下阶段：6.1–6.3.1及R01–R04 / R08 / R09已集成；本期承接Phase 6 AC-6及相关AC-7。用户取消新增两轨迹比较，既有叠图保留；6.5整体验收独立执行。
 
 ## Goal
 
@@ -17,6 +18,7 @@
 
 - [current](current.md)、[Phase master](phase-6-plan.md)、[requirements R4 / R5](../spec/phase6-requirements.md)：当前状态、误差边界及生命周期要求；旧建议门槛不自动成为本期验收。
 - [当前架构](../architecture.md#当前架构总览接手先读)、[已完成重构](architecture-progress.md)：复用source_recipe、prepare/run/validated/apply、独立预览与SignalHistory，不重开R07。
+- [R09计划](draft-context-plan.md)、[R09 Review](../reviews/draft-context-review.md)：analysis_draft_context集中GUI草稿事实与源准备迟到判定；MainWindow.draftContextFacts、ChartActions.prepareSignal / closed / signalJobActive及panel视图状态公开入口已落地，P6.4沿用这些入口。
 - [ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)：用户定义方程，平台不从参数名字推断物理模型。
 - [ADR-0019](../decisions/0019-angular-kinematics-and-multi-input-derived-data.md)、[ADR-0020](../decisions/0020-analysis-batch-result-and-recipe-consistency.md)：参考 / 单位 / 缺测、输入与目标版本、区间与时序。
 - [ADR-0021](../decisions/0021-function-fit-and-recurrence-result-contract.md)、[ADR-0022](../decisions/0022-guided-fit-preparation-and-attempt-journal.md)：既有拟合结果 / 实际样本 / 尝试日志契约；残差不等于测量不确定度。
@@ -28,6 +30,7 @@
 - [6.2 Review F4 / F5 / F7](../reviews/phase-6.2-review.md)：旧缓存缺时序不能当有效源；扩展字段必须保留；输入变化取消、晚到结果拒绝。再次触及这些契约时纳入复审。
 - [R08 Review F1](../reviews/signal-history-review.md)：离开工具要经history.leave；新增展示不能让历史锁定 / 迟到曲线泄入当前草稿。
 - 同Review F2版本类型宽松仍Deferred；新摘要边界严格校验类型，不把本期扩大为全项目版本读取重写。
+- [R09 Review A-F1 / B-F2](../reviews/draft-context-review.md)：源准备迟到核对须保留history / method / tab → 延迟selection → workspace的求值顺序和异常传播；已有Qt-free顺序回归。signal_history六个遗留panel私有访问仍属后续清理，P6.4不新增同类跨模块私有访问。
 
 ### Scientific / Data / Product Invariants
 
@@ -36,6 +39,7 @@
 - 已有拟合保持单初值、等权最小二乘；新增统计不得暗改参数、预测、残差或求解成功语义。统计不可估计时保留合法拟合结果。
 - AI confidence不换算成测量误差；参数标准误差不代表真实测量的完整不确定度。
 - 自动预览不写工程、不改dirty或Undo；正式拟合 / Measure、历史查看及原子结果Undo/Redo维持既有职责。
+- R09的草稿上下文是瞬时GUI事实，不是科学源身份或统计结果；继续保留source指纹 / 目标槽版本 / prepare与validated核对。新增SE随对应正式结果或已记录历史显示；返回草稿 / 预览失败时由panel所属展示路径清除不再对应当前视图的SE，源变化仍按既有stale / 只读策略披露，不能留下旧SE冒充当前结果；不另建上下文键清单或执行器。
 
 ### Known Deferred / Accepted Items / Non-goals
 
@@ -86,15 +90,15 @@
 | --- | --- |
 | domain | function_fit的现有求解与缩放；新增统计纯计算；不改recurrence算法 |
 | application | signal_analysis_job的summary与validated_analysis；source_recipe读取处理来源；fit_attempts / fit_attempt_view不重拟合历史 |
-| GUI | signal_analysis_panel / fit_explanation参数展示及ChartActions结果交付；SignalHistory与SignalPreview维持职责 |
+| GUI | signal_analysis_panel / fit_explanation参数展示及ChartActions结果交付；复用R09草稿事实和公开访问入口，新增SE展示状态归panel；SignalHistory与SignalPreview维持职责 |
 | 数据 / fixtures | 既有analysis summary additive字段、日志摘要、ProjectRepository往返；不做schema迁移 / 新依赖；旧记录与未知扩展fixtures |
-| tests / docs | function_fit、signal_analysis_job、fit_attempt_view / journal、GUI与Session事务相关回归；本计划、current、Phase总计划及实际契约 / 架构文档 |
+| tests / docs | function_fit、signal_analysis_job、fit_attempt_view / journal、GUI与Session事务相关回归；接触R09调用链时保留test_analysis_draft_context与gui/test_analysis_private_access守卫；本计划、current、Phase总计划及实际契约 / 架构文档 |
 
 - 数值：用线性设计矩阵的独立解析解核对SE；非线性已知模型只验证局部估计与边界，不把一次合成拟合当覆盖率证明。
 - 生命周期：新摘要严格有限JSON、字段类型 / 版本、未知扩展、保存重开、原子Undo、历史不回填、源变化与迟到拒绝。
 - GUI：offscreen验证显示状态与只读，真人验证参数解释、不可估计提示及窄窗可达；不以截图 / computer-use替代HR。
 - 产品实现后的全量命令：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest`；最终分支经PR运行现有macOS / Windows CI，保持当前workflow分支触发策略。
-- 本轮仅规划：检查文档链接、git diff与工作区；不重跑已通过的产品测试，不把历史1329项通过当本期验证。
+- 初始规划 / 冻结仅检查文档链接、git diff与工作区，不把历史1329项通过当本期验证；后续R09接手补查见Result，其定向测试不代表P6.4已经实现或验收。
 
 ## Review Gate
 
@@ -117,3 +121,4 @@
 
 - Q1–Q6及计划v1.0已于2026-10-24由用户明确冻结；产品、测试、用户工程与论文线均未修改。
 - 计划冻结已完成；Issue、实现、数值验证、Independent Review、CI和HR均未完成；AC全部未执行，等待开工指令后从S0推进。
+- R09接手补查（2026-10-24，850df3e）：核对94d15ab之后的源码 / 测试diff、公开入口调用方、stamp启动 / 取消 / 交付与既有Review；未发现新增阻塞问题。本机offscreen定向119 passed（117.31s，覆盖草稿事实 / 私有访问守卫、工作流事实、拟合、历史、重复间隔、源联动、只读和分层）。仅补上下文 / 复用入口 / 回归清单；Goal / Scope / AC / Slices / Gate与冻结版逐段一致，无需重新冻结；未实施P6.4，未重跑全量或双平台CI。

@@ -1,8 +1,8 @@
 # Current Status
 
-> 用户当前需求：R09草稿上下文集中已完成 / 集成（2026-10-24，c14c78a）。下一步回到已冻结的[P6.4 mini-plan v1.0](phase-6.4-plan.md)：等待开工指令后建Issue / 分支、从S0推进；本轮R09未改任何用户可感知行为。
+> 用户当前需求：检查新合并的R09修复及其对P6.4计划的影响。补查完成，未发现新增阻塞问题，本机定向119 passed；[P6.4 mini-plan v1.0](phase-6.4-plan.md)仅同步R09接手基线 / 公开入口 / 历史finding与回归清单，冻结的Goal / Scope / AC / Slices / Gate不变，无需重新冻结。P6.4仍待开工。
 
-- 最后更新：2026-10-24（R09草稿上下文集中完成并集成main；P6.4冻结待开工）
+- 最后更新：2026-10-24（R09补查119项通过；P6.4计划接手说明同步，冻结待开工）
 
 ## Current
 
@@ -61,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **R09修复与P6.4计划影响补查（2026-10-24）**：以850df3e检查94d15ab之后的完整源码 / 测试diff及连接调用，确认导航键成员、源准备stamp生命周期 / 求值顺序及公开入口迁移；domain数值、signal_analysis_job和持久化 / 依赖未变，源码 / 测试与ad00f9c一致。未发现新增阻塞问题；本机offscreen定向119 passed（117.31s），覆盖草稿事实 / 私有访问守卫、工作流事实、拟合、历史、重复间隔、源联动、只读和分层。mini-plan仅补R09上下文 / 接手基线 / 复用入口与回归清单，脚本逐段确认冻结Goal / Scope / AC / Slices / Gate未变；无需重新冻结，仍待开工。仅文档改动，不重跑全量 / 双平台CI，不开始P6.4或其他维护。
 
 - **R09草稿上下文集中完成 / 集成（2026-10-24）**：架构扫描（候选C）经grilling Q1–Q8冻结共识后执行。[mini-plan](draft-context-plan.md) / [Review](../reviews/draft-context-review.md) / [PR #41](https://github.com/KYLeonis/ai-physics-tracker/pull/41)；Issue #40已Closed。新增`application/analysis_draft_context.py`（Qt-free事实+迟到判定），导航键 / 预览键共享成员 / `_poll`迟到核对退化为集中调用（求值位次与旧or链一致），`_source_selection` / `_source_method`合并为`_source_stamp`，分析簇枚举的跨模块私有穿越清零（含`applyAnalysisMethod`公开化）。本机全量1337（基线1329+新增8，零回归）、两独立只读Agent均Approve（2项Minor修复闭环，含迟到核对求值顺序恢复）、双平台CI通过；c14c78a以merge commit集成，树与分支tip fcea8d6一致。无用户可感知变化，不设HR；signal_history六个遗留panel私有访问记为后续清理，不新增同类访问（tests/gui/test_analysis_private_access.py守卫）。
 
