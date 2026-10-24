@@ -64,6 +64,8 @@
 
 - **R09草稿上下文集中完成 / 集成（2026-10-24）**：架构扫描（候选C）经grilling Q1–Q8冻结共识后执行。[mini-plan](draft-context-plan.md) / [Review](../reviews/draft-context-review.md) / [PR #41](https://github.com/KYLeonis/ai-physics-tracker/pull/41)；Issue #40已Closed。新增`application/analysis_draft_context.py`（Qt-free事实+迟到判定），导航键 / 预览键共享成员 / `_poll`迟到核对退化为集中调用（求值位次与旧or链一致），`_source_selection` / `_source_method`合并为`_source_stamp`，分析簇枚举的跨模块私有穿越清零（含`applyAnalysisMethod`公开化）。本机全量1337（基线1329+新增8，零回归）、两独立只读Agent均Approve（2项Minor修复闭环，含迟到核对求值顺序恢复）、双平台CI通过；c14c78a以merge commit集成，树与分支tip fcea8d6一致。无用户可感知变化，不设HR；signal_history六个遗留panel私有访问记为后续清理，不新增同类访问（tests/gui/test_analysis_private_access.py守卫）。
 
+  集成收尾提交33f2a0f的[main CI 40058228107](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40058228107)双平台success；源码 / 测试与ad00f9c一致，之后仅文档。
+
 - **P6.4计划冻结（2026-10-24）**：用户明确回复“冻结”，Q1–Q6及mini-plan v1.0范围 / AC / Gate已冻结，相关入口同步为待开工。仅文档与链接 / diff核对；未创建Issue / 实现分支，未启动S0，未改产品 / 用户工程 / 论文线。
 
 - **P6.4 grilling Q5 / Q6与最终汇总（2026-10-24）**：用户接受参数 / 估计值 / 条件性SE三列、明确Fixed / 不可估计原因及可展开方法，重复间隔工具仅补解释。mini-plan v0.3汇总Q1–Q6，移除取消的比较执行项并重排AC / Slices；产品问题回答齐备，等待用户最终确认共同理解 / 冻结。仅文档验证，无产品改动 / 新测试结果。
