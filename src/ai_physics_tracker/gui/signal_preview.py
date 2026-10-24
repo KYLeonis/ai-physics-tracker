@@ -56,7 +56,7 @@ class SignalPreview(QObject):
         self._pollTimer.stop()
         if self.panel.history.active:
             self._recurrence_source = None
-        if self.panel._eventPreview:
+        if self.panel.isEventPreview():
             self.panel.clearCrossingEvents()
 
     def example(self):
@@ -64,7 +64,7 @@ class SignalPreview(QObject):
 
     def active(self) -> bool:
         window = self.actions.window
-        return (not self.actions._closed and not self.panel.history.active
+        return (not self.actions.closed and not self.panel.history.active
                 and getattr(window, "currentWorkspace", None) == "analysis"
                 and hasattr(window, "analysisTabs") and window.analysisTabs.currentIndex() == 1)
 
@@ -77,6 +77,7 @@ class SignalPreview(QObject):
             self.invalidate()
             return
         session = window.analysisSession
+        facts = window.draftContextFacts()
         try:
             selection = self.panel.selection()
             kind, _ = signal_source(selection.quantity, selection.smoothed)
@@ -93,13 +94,13 @@ class SignalPreview(QObject):
                    analysis_inputs(session, window.activeVideoId, tracks),
                    self.actions.panel.parameters() if owns_controls and kind not in ("world_position", "angular_position") else None,
                    reference, owns_controls, related if not owns_controls else (),
-                   self.panel.methods.currentIndex(),
-                   self.panel.recurrenceSpec() if self.panel.methods.currentIndex() == 1 else None)
+                   facts.method,
+                   self.panel.recurrenceSpec() if facts.method == 1 else None)
         except (ValueError, AttributeError, ProjectSessionError) as error:
-            key = (id(session), window.deliveryGeneration, self.panel.trackChoice.currentData(),
-                   self.panel.quantityChoice.currentText(), self.panel.methods.currentIndex(), str(error))
+            key = (id(session), window.deliveryGeneration, facts.track_identity,
+                   facts.quantity, facts.method, str(error))
         if key != self._context:
-            if refresh and self.actions._signal_job is not None:
+            if refresh and self.actions.signalJobActive:
                 return
             self._context = key
             if refresh:
@@ -115,7 +116,7 @@ class SignalPreview(QObject):
         session = self.actions.window.analysisSession
         try:
             same_source = (not fitting and self._recurrence_source is not None
-                           and self.panel._valueRange is not None
+                           and self.panel.hasValueRange()
                            and self.panel.selection() == self._recurrence_source[0]
                            and session is not None and self._recurrence_source[1] in session.project.derived)
         except ValueError:
@@ -123,16 +124,16 @@ class SignalPreview(QObject):
         if not same_source:
             self.panel.signalPlot.clear()
             self.panel.residualPlot.clear()
-            self.panel._valueRange = None
+            self.panel.clearValueRange()
             self._recurrence_source = None
         self.panel.clearCrossingEvents()
-        self.panel._allowCachedEvents = False
-        self.panel._previewRange = None
+        self.panel.setAllowCachedEvents(False)
+        self.panel.clearPreviewRange()
         self.panel.draftLabel.setText("Current draft — initial preview; no fitted result published" if fitting
                                     else "Crossing preview — current settings; no measured result published")
         self.panel.summary.setPlainText("Current draft — no fitted result published. Inspect the initial preview; use Latest applied result / Last saved result to review recorded results." if fitting
                                        else "Crossing preview only — use Measure crossing intervals to publish a result. Recorded measurements remain available in history.")
-        self.panel._viewingDiskSaved = False
+        self.panel.setViewingDiskSaved(False)
         self.panel.conversionActions.hide()
         self.panel.resultLabel.setText("Recorded results: Latest applied result or Last saved result.")
         self.panel.jobLabel.setText("Preparing initial preview…" if fitting else "Preparing crossing preview…")
@@ -162,7 +163,7 @@ class SignalPreview(QObject):
         try:
             if self.actions.ensureSignalSource():
                 return
-            job = self.actions._prepareSignal(self.panel.methods.currentIndex() == 0)
+            job = self.actions.prepareSignal(self.panel.methods.currentIndex() == 0)
         except Exception as error:
             # 准备错误必须当前可见；不让旧曲线冒充新草稿。
             self.panel.jobLabel.setText(f"Preview unavailable: {error}. Use preparation actions below or edit the formula / values.")
@@ -186,7 +187,7 @@ class SignalPreview(QObject):
         if self.actions.pending or not self.active() or self._request_revision != self._revision:
             return
         try:
-            if self._generation != self.actions.window.deliveryGeneration or self.actions._prepareSignal(self.panel.methods.currentIndex() == 0) != self._job:
+            if self._generation != self.actions.window.deliveryGeneration or self.actions.prepareSignal(self.panel.methods.currentIndex() == 0) != self._job:
                 self.panel.jobLabel.setText("Preview discarded because its source / result changed. Preview again to use the current data.")
                 return
             preview = future.result()
@@ -219,7 +220,7 @@ class SignalPreview(QObject):
         except Exception as error:
             self.panel.signalPlot.clear()
             self.panel.residualPlot.clear()
-            self.panel._valueRange = None
+            self.panel.clearValueRange()
             self._recurrence_source = None
             message = ("Initial preview failed: " if self.panel.methods.currentIndex() == 0 else "Crossing preview failed: ")
             self.panel.jobLabel.setText(message + str(error) + ". Check the source and current settings.")
@@ -227,7 +228,7 @@ class SignalPreview(QObject):
     def renderRecurrence(self, outcome: RecurrenceOutcome) -> None:
         job = self._job
         key = (job.selection, job.source)
-        if self._recurrence_source != key or self.panel._valueRange is None:
+        if self._recurrence_source != key or not self.panel.hasValueRange():
             self.panel.renderSamples(job.samples, job.source.unit, wrapped=job.source.kind == "angular_position")
             self._recurrence_source = key
         origin = job.samples[0][1] - job.samples[0][2]

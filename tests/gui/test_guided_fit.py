@@ -98,7 +98,7 @@ def test_unexpected_prepare_error_is_a_failed_attempt(qtbot,synthetic_video_path
     window,_,_ = _window(qtbot,synthetic_video_path)
     actions=window.chartActions
     def broken(_fitting): raise RuntimeError('broken preparation')
-    monkeypatch.setattr(actions,'_prepareSignal',broken)
+    monkeypatch.setattr(actions,'prepareSignal',broken)
     actions.analyzeSignal(True)
     assert not actions.pending
     assert actions.attempts.journal.attempts[-1]['status']=='failed'

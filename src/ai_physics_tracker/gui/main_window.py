@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QTabWidget,
 )
 
+from ai_physics_tracker.application.analysis_draft_context import DraftContextFacts, NavigationFacts
 from ai_physics_tracker.application.playback import AsyncVideoSession, DecodeDelivery
 from ai_physics_tracker.application.project_session import (
     ProjectRepositoryPort,
@@ -571,27 +572,32 @@ class MainWindow(QMainWindow):
 
         return self._analysis_purpose
 
-    def analysisNavigationKey(self) -> tuple:
-        """返回会影响分析入口推荐的瞬时 GUI 状态。"""
+    def draftContextFacts(self) -> DraftContextFacts:
+        """采集当前草稿上下文事实；降级取值与原 analysisNavigationKey 手写清单一致。"""
 
         tabs = getattr(self, "analysisTabs", None)
         signal_panel = getattr(getattr(self, "chartActions", None), "signalPanel", None)
         methods = getattr(signal_panel, "methods", None)
-        history_active = bool(signal_panel and signal_panel.history.active)
-        source_reason = None
-        if (self._workspace == WORKSPACE_ANALYSIS and tabs is not None
-                and tabs.currentIndex() == 1 and not history_active):
-            source_reason = self.chartActions.signalSourceState().reason
-        return (
-            self._workspace,
-            tabs.currentIndex() if tabs is not None else None,
-            methods.currentIndex() if methods is not None else None,
-            self._analysis_purpose,
-            signal_panel.trackChoice.currentData() if signal_panel else None,
-            signal_panel.quantityChoice.currentText() if signal_panel else None,
-            signal_panel.sourceChoice.currentIndex() if signal_panel else None,
-            history_active, source_reason,
+        return DraftContextFacts(
+            workspace=self._workspace,
+            analysis_tab=tabs.currentIndex() if tabs is not None else None,
+            method=methods.currentIndex() if methods is not None else None,
+            purpose=self._analysis_purpose,
+            track_identity=signal_panel.trackChoice.currentData() if signal_panel else None,
+            quantity=signal_panel.quantityChoice.currentText() if signal_panel else None,
+            source_index=signal_panel.sourceChoice.currentIndex() if signal_panel else None,
+            history_active=bool(signal_panel and signal_panel.history.active),
         )
+
+    def analysisNavigationKey(self) -> NavigationFacts:
+        """返回会影响分析入口推荐的瞬时 GUI 状态（草稿上下文 + 源准备原因）。"""
+
+        facts = self.draftContextFacts()
+        source_reason = None
+        if (facts.workspace == WORKSPACE_ANALYSIS and facts.analysis_tab == 1
+                and not facts.history_active):
+            source_reason = self.chartActions.signalSourceState().reason
+        return NavigationFacts(context=facts, source_reason=source_reason)
 
     def setWorkspace(self, workspace: str) -> None:
         """切换工作区；不取消任务、不改变采用结果、不触发计算。"""
@@ -661,7 +667,7 @@ class MainWindow(QMainWindow):
         if session is None or track_id is None:
             self._analysisSourceLabel.setText("No analysis source selected")
             return
-        state = getattr(self.trackingActions, "_current_workflow_state", None)
+        state = self.trackingActions.currentWorkflowState
         traj = state.trajectory if state is not None and not tools else None
         manual_count = traj.manual_count if traj is not None else len(
             session.manual_points(track_id))
@@ -770,7 +776,7 @@ class MainWindow(QMainWindow):
             lambda: scroll.verticalScrollBar().setValue(0))
         self.workflowHeader.analysisToolsRequested.connect(self.openAnalysisTools)
         self.analysisTabs.currentChanged.connect(self._analysisTabsChanged)
-        self.chartActions.signalPanel.methods.currentChanged.connect(self._analysisMethodChanged)
+        self.chartActions.signalPanel.methods.currentChanged.connect(self.applyAnalysisMethod)
         self.analysisTabs.currentChanged.connect(lambda _index: self.chartActions.cancel() if self.chartActions.pending else None)
         host_layout.addWidget(self.analysisTabs)
         self._updateAnalysisPurposeUi()
@@ -785,7 +791,9 @@ class MainWindow(QMainWindow):
         if hasattr(self, "analysisChanged"):
             self.analysisChanged.emit()
 
-    def _analysisMethodChanged(self, index: int) -> None:
+    def applyAnalysisMethod(self, index: int) -> None:
+        """工具页方法切换的用途同步；分析簇内（ChartActions）经此公开入口调用。"""
+
         if self.analysisTabs.currentIndex() == 1:
             self._analysis_purpose = "measure" if index == 1 else "fit"
             self._updateAnalysisPurposeUi()

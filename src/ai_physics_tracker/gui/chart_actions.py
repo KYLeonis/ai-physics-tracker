@@ -18,6 +18,7 @@ from PySide6.QtCore import QObject, QSignalBlocker, QTimer, Qt
 from ai_physics_tracker.application.angular_job import (
     AngularJob, AngularResult, AngularSpec, prepare_angular_job, run_angular_job,
 )
+from ai_physics_tracker.application.analysis_draft_context import SourceDeliveryStamp, source_delivery_stale
 from ai_physics_tracker.application.analysis_readiness import SignalSourceState, assess_signal_source
 from ai_physics_tracker.application.chart_data import ChartData, build_chart_data
 from ai_physics_tracker.application.source_recipe import reference_recipe, smoothing_recipe, recorded_reference
@@ -68,8 +69,7 @@ class ChartActions(QObject):
         self._job_generation = -1
         self._job_inputs: AnalysisInputs | None = None
         self._signal_job: SignalAnalysisJob | None = None
-        self._source_selection = None
-        self._source_method = None
+        self._source_stamp: SourceDeliveryStamp | None = None
         self._source_facts = None
         self._job_workspace = window.currentWorkspace
         self._context_generation = window.deliveryGeneration
@@ -121,6 +121,18 @@ class ChartActions(QObject):
         self.refresh()
 
     @property
+    def closed(self) -> bool:
+        """窗口关闭标记；SignalPreview 等分析簇成员经此公开入口读取。"""
+
+        return self._closed
+
+    @property
+    def signalJobActive(self) -> bool:
+        """正式信号任务（Fit / Measure）是否在途；预览据此让位。"""
+
+        return self._signal_job is not None
+
+    @property
     def pending(self) -> bool:
         return self._future is not None
 
@@ -155,8 +167,7 @@ class ChartActions(QObject):
         self._future = None
         self._job_inputs = None
         self._signal_job = None
-        self._source_selection = None
-        self._source_method = None
+        self._source_stamp = None
         self._source_facts = None
         self._timer.stop()
         self._context_generation = self.window.deliveryGeneration
@@ -428,7 +439,7 @@ class ChartActions(QObject):
         self.panel.jobLabel.setText("Calculation cancelled — pending results will be discarded")
         if self._signal_job is not None:
             self.signalPanel.showFeedback("Calculation cancelled — saved result retained")
-        elif self._source_selection is not None:
+        elif self._source_stamp is not None:
             self.preview.invalidate()
             self.signalPanel.jobLabel.setText("Source update cancelled — edit inputs or click Preview to retry")
 
@@ -443,8 +454,7 @@ class ChartActions(QObject):
         self._job_inputs = None
         signal_job = self._signal_job
         self._signal_job = None
-        source_selection, self._source_selection = self._source_selection, None
-        source_method, self._source_method = self._source_method, None
+        source_stamp, self._source_stamp = self._source_stamp, None
         result = None
         applied = False
         try:
@@ -454,13 +464,10 @@ class ChartActions(QObject):
             session = self.window.analysisSession
             if session is None:
                 raise CancelledError()
-            if source_selection is not None and (
-                    self.signalPanel.history.active or self.signalPanel.methods.currentIndex() != source_method
-                    or self.window.analysisTabs.currentIndex() != 1
-                    or self.signalPanel.selection() != source_selection
-                    or self.window.currentWorkspace != self._job_workspace):
+            if source_stamp is not None and source_delivery_stale(
+                    source_stamp, self.window.draftContextFacts(), self.signalPanel.selection):
                 raise CancelledError()
-            if source_selection is not None:
+            if source_stamp is not None:
                 current = self._prepareSignalSource()
                 if (current is None or current.inputs != result.inputs or current.parameters != result.parameters
                         or (isinstance(result, AngularResult) and current.specs != result.specs)):
@@ -491,7 +498,7 @@ class ChartActions(QObject):
             if signal_job:
                 self.signalPanel.showFeedback("Calculation cancelled — saved result retained; edit settings or retry.")
                 self._finishAttempt("cancelled", "Calculation cancelled; late result discarded")
-            elif source_selection is not None:
+            elif source_stamp is not None:
                 self.signalPanel.jobLabel.setText("Source update cancelled — no result applied. Edit inputs or click Preview to retry.")
         except Exception as error:
             from ai_physics_tracker.application.user_messages import charts_not_updated
@@ -499,11 +506,11 @@ class ChartActions(QObject):
             if signal_job:
                 self.signalPanel.showFeedback(str(error) + " — saved result retained. Check source charts / settings, then retry.")
                 self._finishAttempt("rejected" if isinstance(error, ProjectSessionError) else "failed", str(error))
-            elif source_selection is not None:
+            elif source_stamp is not None:
                 self.signalPanel.jobLabel.setText(f"Source update failed: {error}. Check the source settings, then retry Preview.")
         else:
             applied = True
-            if source_selection is None:
+            if source_stamp is None:
                 self._settings_edited = False
                 self._seeded_controls = None
             self.panel.jobLabel.setText("Computed — save project to keep results")
@@ -526,9 +533,9 @@ class ChartActions(QObject):
             self.window.refreshAnalysisSourceBar()
         if self._signal_job is not None:
             self.cancel()
-        elif self._source_selection is not None and (
-                self.signalPanel.selection() != self._source_selection
-                or self.signalPanel.methods.currentIndex() != self._source_method):
+        elif self._source_stamp is not None and (
+                self.signalPanel.selection() != self._source_stamp.selection
+                or self.signalPanel.methods.currentIndex() != self._source_stamp.facts.method):
             self.cancel()
         self.signalPanel.refreshDraftDisplay()
         tracking = getattr(self.window, "trackingActions", None)
@@ -562,7 +569,7 @@ class ChartActions(QObject):
         else:
             self.preview.request()
 
-    def _prepareSignal(self, fitting: bool):
+    def prepareSignal(self, fitting: bool):
         session = self.window.analysisSession
         if session is None:
             raise ValueError("Open a project first")
@@ -588,7 +595,7 @@ class ChartActions(QObject):
         if fitting:
             self._startAttempt()
         try:
-            job = self._prepareSignal(fitting)
+            job = self.prepareSignal(fitting)
         except (ValueError, ProjectSessionError) as error:
             self.signalPanel.showFeedback(f"Fit blocked: {error}. Check source preparation and current settings.")
             self._finishAttempt("rejected", str(error))
@@ -643,13 +650,11 @@ class ChartActions(QObject):
         self._job_generation = self.window.deliveryGeneration
         self._job_inputs = job.inputs
         self._job_workspace = self.window.currentWorkspace
-        self._source_selection = selection
-        self._source_method = self.signalPanel.methods.currentIndex()
+        self._source_stamp = SourceDeliveryStamp(self.window.draftContextFacts(), selection)
         try:
             self._future = self._executor.submit(_run_chart_job, job, self._cancel)
         except Exception:
-            self._source_selection = None
-            self._source_method = None
+            self._source_stamp = None
             self._job_inputs = None
             raise
         # 源准备可由自动刷新启动；定位只由显式Preview等操作发出。
@@ -765,14 +770,14 @@ class ChartActions(QObject):
             self.signalPanel.history.viewAttempt(attempt)
 
     def _historyChanging(self) -> None:
-        if self._source_selection is not None:
+        if self._source_stamp is not None:
             self.cancel()
         self.preview.invalidate()
 
     def _historyChanged(self) -> None:
         panel = self.signalPanel
         panel.setContext(self.window.analysisSession, self.window.activeVideoId, pending=self.pending)
-        self.window._analysisMethodChanged(panel.methods.currentIndex())
+        self.window.applyAnalysisMethod(panel.methods.currentIndex())
         self.window.refreshAnalysisSourceBar()
 
     def retryJournal(self) -> None:
