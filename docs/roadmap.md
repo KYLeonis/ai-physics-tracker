@@ -7,7 +7,7 @@
 
 - 最近交付：**R08历史查看流程归属（2026-10-20；本机1329 / 独立R2 / 双平台 / 本轮HR通过，f34d3b8已集成main，F1 Closed）**
 - 当前建议：[R07工程变更与界面更新方案 / 待办](status/change-notification-proposal.md)已由用户搁置，未实施；历史复核见[GLM剩余项复核](notes/glm-remaining-review-2026-10-18.md)；R01–R04 / R08均已完成 / 已合并，等待下一条指令，不改变Phase6后续范围。
-- 当前阶段：**Phase 6 进行中（2026-10-20，6.1 / 6.2 完成并集成 main；6.3计划已冻结、S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1 S0–S4已实现，已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；比较 / 误差及整体单摆验收仍未完成）**
+- 当前阶段：**Phase 6 进行中（2026-10-20，6.1 / 6.2 完成并集成 main；6.3计划已冻结、S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1 S0–S4已实现，已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；参数误差解释及整体单摆验收仍未完成；2026-10-24用户取消新增两轨迹比较 / 同帧差值）**
 - 已交付 GUI 增量：首次学习 20 个人工帧、默认 K-means、推荐框自定义算法及沿真实建议帧连续标注；[计划](status/initial-annotation-guidance-plan.md)，Human Review 已通过。
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
 
@@ -189,7 +189,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 **目标**：更丰富的物理分析能力。
 
-**状态**：6.1 / 6.2已完成并集成main（6.2合并 `12b0911`，Issue #27）。科学 / 事务1007全量、独立复审Approve；控件51项GUI、最终双平台1008 passed / 2 skipped及全部Human Review通过。6.3已于2026-10-15完成grilling并获用户认可，见[6.3已冻结计划](status/phase-6.3-plan.md)：显式函数编辑 / 单标量拟合、独立通用信号重复间隔与可选结果公式；S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main。6.3.1英文分析体验S0–S4已实现，已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；整个Phase 6的比较 / 误差及完整单摆验收仍未完成。
+**状态**：6.1 / 6.2已完成并集成main（6.2合并 `12b0911`，Issue #27）。科学 / 事务1007全量、独立复审Approve；控件51项GUI、最终双平台1008 passed / 2 skipped及全部Human Review通过。6.3已于2026-10-15完成grilling并获用户认可，见[6.3已冻结计划](status/phase-6.3-plan.md)：显式函数编辑 / 单标量拟合、独立通用信号重复间隔与可选结果公式；S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main。6.3.1英文分析体验S0–S4已实现，已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；整个Phase 6的参数误差解释及完整单摆验收仍未完成。2026-10-24用户在[6.4 grilling](status/phase-6.4-plan.md)明确取消新增两轨迹比较 / 同帧差值，既有多轨迹叠图保留。
 规划入口：[phase6-requirements.md](spec/phase6-requirements.md)、
 [phase-6-plan.md](status/phase-6-plan.md)、[phase-6.1-plan.md](status/phase-6.1-plan.md)、[phase-6.2-plan.md](status/phase-6.2-plan.md)。
 
