@@ -7,7 +7,7 @@ import pyqtgraph as pg
 from PySide6.QtCore import QEvent, QSize, Qt, Signal, QSignalBlocker
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QPlainTextEdit, QPushButton, QSpinBox,
+    QAbstractItemView, QHeaderView, QLabel, QLineEdit, QPlainTextEdit, QPushButton, QSpinBox,
     QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSlider, QSizePolicy,
 )
 
@@ -18,7 +18,9 @@ from ai_physics_tracker.domain.function_fit import FitParameter, FitSpec
 from ai_physics_tracker.domain.expression import parse_expression
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec, CrossingEvent
 from ai_physics_tracker.gui.formula_editor import FormulaEditor
-from ai_physics_tracker.gui.fit_explanation import explain_fit
+from ai_physics_tracker.gui.fit_explanation import (
+    explain_fit, parameter_error_rows, PARAMETER_ERROR_METHOD, RECURRENCE_ERROR_NOTE,
+)
 from ai_physics_tracker.gui.analysis_plot import AnalysisPlot, AnalysisScrollArea
 from ai_physics_tracker.gui.signal_history import SignalHistory
 
@@ -239,6 +241,22 @@ class SignalAnalysisPanel(QWidget):
         helpLabel = QLabel("Scroll: page · Ctrl+scroll / buttons: zoom · Click a point: source frame")
         helpLabel.setWordWrap(True)
         chartColumn.addWidget(helpLabel)
+        self.parameterResults = QTableWidget(0, 3)
+        self.parameterResults.setHorizontalHeaderLabels(["Parameter", "Estimate", "Conditional\nstandard error"])
+        self.parameterResults.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.parameterResults.verticalHeader().hide()
+        self.parameterResults.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.parameterResults.setMaximumHeight(175)
+        self.parameterResultsLabel = QLabel()
+        self.parameterResultsLabel.setWordWrap(True)
+        self.errorMethodToggle = QCheckBox("Parameter error assumptions / method")
+        self.errorMethod = QLabel(PARAMETER_ERROR_METHOD)
+        self.errorMethod.setWordWrap(True)
+        self.errorMethod.hide()
+        self.errorMethodToggle.toggled.connect(self.errorMethod.setVisible)
+        for widget in (self.parameterResultsLabel, self.parameterResults, self.errorMethodToggle, self.errorMethod):
+            chartColumn.addWidget(widget)
+        self.clearParameterStatistics()
         workspace.addLayout(chartColumn, 3)
         side = QWidget()
         side.setMinimumWidth(300)
@@ -468,6 +486,7 @@ class SignalAnalysisPanel(QWidget):
 
     def _edited(self, *_args) -> None:
         if not self._loading:
+            self.clearParameterStatistics()
             self.draftLabel.setText("Draft changed — saved results use their recorded settings")
             self.settingsChanged.emit()
 
@@ -481,6 +500,7 @@ class SignalAnalysisPanel(QWidget):
     def _targetChanged(self, *_args) -> None:
         if self._loading:
             return
+        self.clearParameterStatistics()
         self.editor.setQuantityLabel(self.quantityChoice.currentText() + "(t)")
         self.refreshSourceChoice()
         self._cache = None
@@ -713,7 +733,34 @@ class SignalAnalysisPanel(QWidget):
     def restoreSaved(self) -> None:
         self.history.adoptSaved()
 
+    def clearParameterStatistics(self) -> None:
+        """面板拥有SE显示生命周期，草稿与旧历史不能留下当前数值。"""
+        self.parameterResults.setRowCount(0)
+        self.parameterResults.hide()
+        self.parameterResultsLabel.hide()
+        self.errorMethodToggle.setChecked(False)
+        self.errorMethodToggle.hide()
+        self.errorMethod.hide()
+
+    def renderParameterStatistics(self, metadata: dict, status: str = "recorded") -> None:
+        """仅呈现正式或历史摘要，不从当前草稿计算SE。"""
+        self.clearParameterStatistics()
+        rows = parameter_error_rows(metadata)
+        self.parameterResults.setRowCount(len(rows))
+        for row, values in enumerate(rows):
+            for column, value in enumerate(values):
+                item = QTableWidgetItem(value)
+                item.setToolTip(value)
+                self.parameterResults.setItem(row, column, item)
+        self.parameterResults.resizeRowsToContents()
+        self.parameterResultsLabel.setText("Recorded fit parameters · " + status +
+                                          (" — historical inputs only" if status == "stale" else ""))
+        self.parameterResultsLabel.show()
+        self.parameterResults.show()
+        self.errorMethodToggle.show()
+
     def renderSamples(self, samples, unit, predicted=None, residual=None, *, wrapped=False, title="Initial preview") -> None:
+        self.clearParameterStatistics()
         self.signalPlot.clear()
         self.residualPlot.clear()
         self._eventLines = []
@@ -767,6 +814,7 @@ class SignalAnalysisPanel(QWidget):
 
     def renderSaved(self, record: DerivedData | None, *, previous: bool = False) -> None:
         """呈现既有记录；进入、返回及采用设置由SignalHistory协调。"""
+        self.clearParameterStatistics()
         metadata = record.extra_fields.get("analysis") if record else None
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
             self.signalPlot.clear()
@@ -787,6 +835,7 @@ class SignalAnalysisPanel(QWidget):
             self.renderSamples(samples, record.unit, predicted, residual, wrapped=source["kind"] == "angular_position", title="Last disk-saved result" if previous else "Latest applied result")
             summary = metadata["summary"]
             if fitting:
+                self.renderParameterStatistics(metadata, record.status)
                 self.showFormula(metadata["spec"]["expression"],
                                  tuple((name, f"{value:.6g}") for name, value in summary["parameter_values"]), fitted=True)
                 self.conversionActions.setVisible(not self.history.active and any(item.get("error") for item in summary.get("result_formulas", [])))
@@ -805,6 +854,7 @@ class SignalAnalysisPanel(QWidget):
                 meanText = f"{mean:.6g} s" if mean is not None else "unavailable"
                 stdText = f"{std:.6g} s" if std is not None else "unavailable"
                 self.resultLabel.setText(f"{'Disk-saved snapshot' if previous else 'Latest applied'} crossings ({record.status}) · {len(summary['events'])} events\nMean interval: {meanText} · sample std: {stdText}\n{summary['message']}")
+                self.resultLabel.setText(self.resultLabel.text() + "\n" + RECURRENCE_ERROR_NOTE)
                 details = (f"{summary['measurement_status']}: {summary['message']}\n"
                            + f"Events: {len(summary['events'])}; intervals: {len(summary['intervals_s'])}; "
                            + f"mean: {mean if mean is not None else 'unavailable'} s; sample std: {std if std is not None else 'unavailable'} s\n"
@@ -826,6 +876,7 @@ class SignalAnalysisPanel(QWidget):
                                      + timing_message
                                      + details)
         except (KeyError, IndexError, TypeError, ValueError) as error:
+            self.clearParameterStatistics()
             self.signalPlot.clear()
             self.residualPlot.clear()
             self._previewRange = self._valueRange = None

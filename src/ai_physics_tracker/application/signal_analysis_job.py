@@ -2,7 +2,7 @@
 
 from concurrent.futures import CancelledError
 from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import json
 import math
 from threading import Event
@@ -28,6 +28,7 @@ from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS, DerivedData, DerivedInput
 from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula, parse_expression
 from ai_physics_tracker.domain.function_fit import FitOutcome, FitSpec, fit_function
+from ai_physics_tracker.domain.fit_uncertainty import REASONS, SUPPORTED_SOURCE_KINDS, read_parameter_uncertainty
 from ai_physics_tracker.domain.fit_initial import InitialEstimate, estimate_initial, adopt_estimate
 from ai_physics_tracker.domain.kinematics import derive_unit
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec, RecurrenceOutcome, measure_recurrence
@@ -244,6 +245,12 @@ def prepare_signal_analysis(
     old = [item for item in session.project.derived if item.track_id == track.track_id and item.kind == target]
     if len(old) > 1 or (old and _analysis_metadata(old[0]) is None):
         raise ProjectSessionError("Target result is ambiguous or has an unsupported version; it is read-only")
+    if old and isinstance(spec, FitSpec):
+        metadata = _analysis_metadata(old[0])
+        try:
+            _read_recorded_uncertainty(metadata)
+        except (KeyError, TypeError, ValueError) as error:
+            raise ProjectSessionError(f"Target parameter uncertainty is read-only: {error}") from error
     names = [name for name, _ in result_formulas]
     if any(not name.strip() for name in names) or len(set(names)) != len(names):
         raise ProjectSessionError("Result names must be nonblank and distinct")
@@ -317,6 +324,12 @@ def run_signal_analysis(job: SignalAnalysisJob, cancel: Event) -> SignalAnalysis
             raise CancelledError()
         if not outcome.is_publishable:
             return SignalAnalysisResult(job, None, outcome)
+        if job.source.kind not in SUPPORTED_SOURCE_KINDS:
+            uncertainty = outcome.parameter_uncertainty
+            entries = tuple(entry if entry.status == "fixed" else replace(
+                entry, status="unsupported_source", standard_error=None, reason=REASONS["unsupported_source"])
+                for entry in uncertainty.parameters)
+            outcome = replace(outcome, parameter_uncertainty=replace(uncertainty, parameters=entries))
         summary = asdict(outcome)
         values = tuple(zip(outcome.prediction, outcome.residual))
         conversions = []
@@ -355,6 +368,17 @@ def run_signal_analysis(job: SignalAnalysisJob, cancel: Event) -> SignalAnalysis
 def _analysis_metadata(record: DerivedData) -> dict | None:
     value = record.extra_fields.get("analysis")
     return value if isinstance(value, dict) and value.get("version") == 1 else None
+
+
+def _read_recorded_uncertainty(metadata: dict) -> None:
+    """嵌套统计拥有独立版本；未来或损坏记录不能被重算覆盖。"""
+    summary = metadata.get("summary")
+    if not isinstance(summary, dict) or "parameter_uncertainty" not in summary:
+        return
+    from ai_physics_tracker.domain.function_fit import FitParameter
+    parameters = tuple(FitParameter(**row) for row in metadata["spec"]["parameters"])
+    read_parameter_uncertainty(summary["parameter_uncertainty"], parameters, len(metadata["samples"]),
+                               metadata["source_snapshot"]["kind"])
 
 
 def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) -> tuple[DerivedData, ...]:
@@ -403,10 +427,11 @@ def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) ->
                     or not np.allclose(measured-predicted, outcome.residual, rtol=1e-10, atol=1e-12)):
                 raise ValueError("Prediction or residual does not match the declared model")
             summary = metadata.get("summary")
-            expected = json.loads(json.dumps(asdict(outcome)))
+            _read_recorded_uncertainty(metadata)
+            expected = json.loads(json.dumps(asdict(outcome), allow_nan=False))
             if not isinstance(summary, dict) or any(summary.get(key) != value for key, value in expected.items()):
                 raise ValueError("Fit summary does not match the solver outcome")
-        except (KeyError, ValueError) as error:
+        except (KeyError, TypeError, ValueError, OverflowError) as error:
             raise ProjectSessionError(str(error)) from error
     else:
         samples = np.asarray(job.samples)
@@ -421,12 +446,17 @@ def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) ->
     if old_metadata:
         owned = {"version", "quantity", "source_id", "source_fingerprint", "source_snapshot", "selection", "interval", "samples", "spec", "syntax_version", "scipy_version", "summary"}
         metadata = {key: deepcopy(value) for key, value in old_metadata.items() if key not in owned} | metadata
-        summary_owned = {"status", "message", "parameter_values", "prediction", "residual", "rmse", "evaluations", "solver_status", "result_formulas"} if isinstance(job.spec, FitSpec) else {
+        summary_owned = {"status", "message", "parameter_values", "prediction", "residual", "rmse", "evaluations", "solver_status", "result_formulas", "parameter_uncertainty", "residual_scale", "parameter_scales"} if isinstance(job.spec, FitSpec) else {
             "events", "intervals_s", "mean_interval_s", "sample_std_s", "measurement_status", "message"}
         old_summary = old_metadata.get("summary")
         if isinstance(old_summary, dict):
+            old_uncertainty = old_summary.get("parameter_uncertainty")
+            new_uncertainty = metadata["summary"].get("parameter_uncertainty")
+            if isinstance(old_uncertainty, dict) and isinstance(new_uncertainty, dict):
+                old_rows = {row["name"]: row for row in old_uncertainty["parameters"]}
+                new_uncertainty["parameters"] = [old_rows.get(row["name"], {}) | row for row in new_uncertainty["parameters"]]
+                metadata["summary"]["parameter_uncertainty"] = old_uncertainty | new_uncertainty
             metadata["summary"] = {key: deepcopy(value) for key, value in old_summary.items() if key not in summary_owned} | metadata["summary"]
-    from dataclasses import replace
     extras.update(record.extra_fields)
     extras["analysis"] = metadata
     input_extras = deepcopy(previous.input.extra_fields) if previous else {}
