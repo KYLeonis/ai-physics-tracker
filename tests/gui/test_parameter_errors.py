@@ -109,3 +109,34 @@ def test_snapshot_and_selection_conflict_cannot_display_a_parameter_error(qtbot,
     metadata = deepcopy(session.derived_data(track, 'function_fit_x').extra_fields['analysis'])
     metadata['selection']['smoothed'] = True
     assert all('conflicts with recorded source' in row[2] for row in parameter_error_rows(metadata))
+
+
+def test_wide_fit_controls_have_reachable_right_edge_and_horizontal_wheel(qtbot, synthetic_video_path):
+    from PySide6.QtCore import QPoint, QPointF, QCoreApplication
+    from PySide6.QtGui import QWheelEvent
+    from PySide6.QtWidgets import QCheckBox, QPushButton
+    window, _, _ = _window(qtbot, synthetic_video_path)
+    panel = window.chartActions.signalPanel
+    font = panel.font()
+    font.setPointSize(18)
+    panel.setFont(font)
+    for box in panel.editor.findChildren(QCheckBox):
+        box.setChecked(True)
+    scroll = panel.controlsScroll
+    qtbot.waitUntil(lambda: scroll.widget().width() > scroll.viewport().width())
+    bar = scroll.horizontalScrollBar()
+    assert bar.isVisible()
+    assert bar.maximum() > 0
+    bar.setValue(0)
+    initial = panel.startFrame.value()
+    wheel = QWheelEvent(QPointF(10, 10), QPointF(10, 10), QPoint(-120, 0), QPoint(),
+                        Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier,
+                        Qt.ScrollPhase.ScrollUpdate, False)
+    QCoreApplication.sendEvent(panel.startFrame, wheel)
+    assert bar.value() > 0
+    assert panel.startFrame.value() == initial
+    bar.setValue(bar.maximum())
+    rightmost = max(panel.editor.findChildren(QPushButton),
+                    key=lambda button: button.mapTo(scroll.widget(), QPoint(button.width()-1, 0)).x())
+    edge = rightmost.mapTo(scroll.viewport(), QPoint(rightmost.width()-1, 0)).x()
+    assert 0 <= edge < scroll.viewport().width()

@@ -345,6 +345,7 @@ class SignalAnalysisPanel(QWidget):
         self.retryJournalButton = QPushButton("Retry saving attempt log")
         controlsLayout.addWidget(self.retryJournalButton)
         self.controlsScroll = AnalysisScrollArea()
+        self.controlsScroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.controlsScroll.setWidget(controls)
         self.controlsScroll.setMinimumHeight(220)
         sideLayout.addWidget(self.controlsScroll, 1)
@@ -385,7 +386,12 @@ class SignalAnalysisPanel(QWidget):
         # 滚动表单时不能因为指针经过数字框 / 下拉框就意外修改测量配方。
         if event.type() == QEvent.Type.Wheel:
             delta = event.pixelDelta().y() or event.angleDelta().y() / 120 * 40
-            self.pageScrollRequested.emit(round(delta))
+            horizontal = event.pixelDelta().x() or event.angleDelta().x() / 120 * 40
+            if abs(horizontal) > abs(delta):
+                bar = self.controlsScroll.horizontalScrollBar()
+                bar.setValue(bar.value() - round(horizontal))
+            else:
+                self.pageScrollRequested.emit(round(delta))
             event.accept()
             return True
         return super().eventFilter(watched, event)
