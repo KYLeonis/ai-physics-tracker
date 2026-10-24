@@ -56,17 +56,17 @@
 ## Acceptance Criteria
 
 - [ ] AC-1 行为不变：本机全量与双平台 CI 通过；定向覆盖导航刷新、预览失效、迟到拒绝、历史进出路径；无任何用户可感知差异。
-- [ ] AC-2 三份手写清单退化为集中判定调用：`analysisNavigationKey` 返回值由 facts 构成；`syncContext` 键 = facts + 预览输入身份；`_poll` 上下文条件走集中判定；各自的键成员与原实现逐项等价（实现中以对照表核验）。
-- [ ] AC-3 分析簇跨模块私有穿越清零：新增源扫描回归（参照 `test_layer_boundaries.py` 精神）禁止 `signal_preview` / `signal_history` / `chart_actions` / `main_window` 对分析簇列名对象的 `_` 属性访问；`trackingActions._current_workflow_state` 改公开属性。
-- [ ] AC-4 判定逻辑直接单测：facts 相等 / 不等、fallback 事实、交付时刻判定的各分支有 Qt-free pytest 覆盖。
+- [x] AC-2 三份手写清单退化为集中判定调用：`analysisNavigationKey` 返回值由 facts 构成；`syncContext` 键 = facts + 预览输入身份；`_poll` 上下文条件走集中判定；各自的键成员与原实现逐项等价（实现中以对照表核验）。
+- [x] AC-3 分析簇跨模块私有穿越清零：新增源扫描回归（参照 `test_layer_boundaries.py` 精神）禁止 `signal_preview` / `signal_history` / `chart_actions` / `main_window` 对分析簇列名对象的 `_` 属性访问；`trackingActions._current_workflow_state` 改公开属性。
+- [x] AC-4 判定逻辑直接单测：facts 相等 / 不等、fallback 事实、交付时刻判定的各分支有 Qt-free pytest 覆盖。
 
 ## Slices
 
-- [ ] S0 基线与分支：建 Issue / 分支；全量测试确认绿色起点（1329）。
-- [ ] S1 module + 单测：`analysis_draft_context` 事实与判定 + Qt-free 测试。
-- [ ] S2 三处消费迁移：导航键 → 预览键共享部分 → `_poll` 迟到条件；逐项对照键成员等价。
-- [ ] S3 私有穿越清零 + 源扫描回归；`_current_workflow_state` 公开化。
-- [ ] S4 自动 Gate：定向 + 本机全量；**两个独立只读 Agent 分别排查**，findings 处置并闭环（记录 `docs/reviews/draft-context-review.md`）。
+- [x] S0 基线与分支：建 Issue / 分支；全量测试确认绿色起点（1329）。
+- [x] S1 module + 单测：`analysis_draft_context` 事实与判定 + Qt-free 测试。
+- [x] S2 三处消费迁移：导航键 → 预览键共享部分 → `_poll` 迟到条件；逐项对照键成员等价（独立Agent A逐项确认）。
+- [x] S3 私有穿越清零 + 源扫描回归；`_current_workflow_state` 公开化；另纳入 `chart_actions` 对 `window._analysisMethodChanged` 的私有调用（`applyAnalysisMethod`）。
+- [x] S4 自动 Gate：定向 124 / 本机全量 1337 passed；两个独立只读 Agent 均 Approve with comments，2 项 Minor 已修复闭环（`ad00f9c`），[Review Record](../reviews/draft-context-review.md)。
 - [ ] S5 集成收尾：PR 触发双平台 CI → `--no-ff` 合并 → 文档同步（architecture / progress / current / 本计划 Result）→ 关 Issue → push。
 
 ## Verification
