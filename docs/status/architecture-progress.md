@@ -21,6 +21,7 @@
 | R06 Undo拆分 / 通用图表渲染器 | **后置，未实施** | Session拥有事务；ChartPlot / AnalysisPlot保留不同交互；不按文件大小重写 | 同上；不与R03 / R04捆绑 |
 | R07 工程变更与界面更新链路 | **用户已搁置，未实施** | 用户认为使用上没有必要继续；不启动T01–T08，转为重新核对GLM剩余建议 | [保留原方案](change-notification-proposal.md) / [剩余项复核](../notes/glm-remaining-review-2026-10-18.md) |
 | R08 历史查看流程归属 | **已完成 / 已合并** | SignalHistory拥有两个入口及Future / 轮询 / 取消 / 上下文；删除preview私有执行器借用，仍共两个执行器。703ac81修复切Charts / Explore未退出F1（Closed） | [计划](signal-history-plan.md) / [Review](../reviews/signal-history-review.md) / [PR #39](https://github.com/KYLeonis/ai-physics-tracker/pull/39)；f34d3b8；定向121 / 全量1329 / 独立R2 Approve / 双平台 / 本轮HR通过 |
+| R09 草稿上下文集中 | **已完成 / 已合并** | analysis_draft_context（Qt-free）拥有草稿导航事实与源准备迟到判定；导航键 / 预览键共享成员 / _poll迟到核对退化为集中调用，求值顺序与旧or链逐位一致；_source_selection+_source_method合并为_source_stamp；分析簇枚举的跨模块私有穿越清零（panel 7个视图状态公开方法、closed / signalJobActive / prepareSignal / currentWorkflowState / applyAnalysisMethod） | [计划](draft-context-plan.md) / [Review](../reviews/draft-context-review.md) / [PR #41](https://github.com/KYLeonis/ai-physics-tracker/pull/41)；c14c78a；定向124 / 全量1337 / 两独立Agent Approve / 双平台通过，无新交互不设HR |
 
 ## 不要恢复的旧做法
 
@@ -34,5 +35,6 @@
 8. R04已集成：计算已退出Session；不恢复job.snapshot或在worker临时会话写Undo。兼容compute_*协调prepare/run/apply，事务仍归Session。
 
 9. R08已集成：历史生命周期归SignalHistory，不恢复ChartActions的`_historyFuture` / `_historyTimer`或历史直接借用`preview._executor`。
+10. R09已集成：草稿导航事实与源准备迟到判定归analysis_draft_context；不恢复MainWindow / SignalPreview / ChartActions各自手写的键清单或`_source_selection` / `_source_method`散字段；迟到核对求值位次（selection在workspace之前）有钉子测试，调整前先核对旧or链。signal_history对panel的六个遗留私有访问（_loading等）待后续清理，不新增同类访问（tests/gui/test_analysis_private_access.py守卫枚举集）。
 
-最后核对：2026-10-20，R01–R04已完成 / 已合并；R07继续搁置；R08全部Gate及本轮HR通过，f34d3b8集成main；下一步以[current.md](current.md)为准。
+最后核对：2026-10-24，R01–R04 / R08 / R09已完成 / 已合并；R07继续搁置；R09（草稿上下文集中）c14c78a集成main；下一步以[current.md](current.md)为准。

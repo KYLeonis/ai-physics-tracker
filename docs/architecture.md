@@ -51,6 +51,7 @@ flowchart TD
 | 正式分析 | ChartActions单executor→既有job→GUI主线程apply；自动补源也使用此链路，Fit / Measure仍显式 |
 | 草稿预览 / 交互 | SignalPreview独立executor（ADR-0023）；只读输入，旧值核对后显示，不发布结果 / 日志 / Undo；页面位置、缩放、焦点、草稿归GUI |
 | 历史与日志 | SignalHistory拥有保存结果 / 拟合尝试的进入、返回、采用及Future / QTimer / 迟到核对；经显式提交能力共用SignalPreview拥有的只读池，关闭先历史后资源；fit_attempt_view按严格源身份重建；ChartActions / FitAttempts / FitAttemptJournal协调独立日志 |
+| 草稿上下文 | analysis_draft_context（Qt-free）拥有工具页导航事实（DraftContextFacts / NavigationFacts）与源准备迟到判定（SourceDeliveryStamp / source_delivery_stale，求值位次与旧手写链一致）；MainWindow采集、导航键 / 预览键共享成员 / _poll迟到核对集中消费；分析簇枚举的跨模块私有访问经公开入口（panel视图状态方法、closed / signalJobActive / prepareSignal / currentWorkflowState / applyAnalysisMethod） |
 | 工作流与AI | TrackingActions同轮复用ExecutionInput，真实review状态改变后重采集；现有spawn / 取消 / terminate / kill / reap保持，候选显式激活后才改观测 |
 | 解码交付 | MainWindow的SimpleQueue + 无参Qt signal→GUI drain→generation / request_id核对；禁止worker直接发携带Python对象的信号 |
 | 保存与时序 | ProjectActions独立保存，文件写入阶段不可取消；显式Save与autosave的历史语义保持；TimingActions按ADR-0024自动采用合格Near-CFR |
@@ -79,6 +80,14 @@ flowchart LR
 SignalHistory拥有历史请求Future / QTimer、记录身份和工程 / 代际 / 视频 / 时序核对；`changing`只协调旧预览 / 自动源失效，`historyChanged`只更新上下文显示，避免新请求被回调误取消。退出先拒收旧请求再恢复草稿；关闭先历史shutdown再预览资源shutdown。执行器仍为正式与只读各一个；ChartActions保留正式计算和FitAttempts日志协调，面板保留记录渲染，application重建及Session发布不改。
 
 R08已退出的旧路径：`ChartActions._viewAttempt` / `_pollHistory` / `_cancelHistory`及`_history*`状态，历史代码直接读`preview._executor`，主窗口退出历史后重复失效预览。已有`displaySaved` / `restoreSaved`面板入口为兼容委托，不是第二份查看流程。
+
+## R09 草稿上下文集中（2026-10-24已集成main）
+
+c14c78a集成已验证产品ad00f9c（首版f769215）；[计划](status/draft-context-plan.md) / [Review](reviews/draft-context-review.md) / [PR #41](https://github.com/KYLeonis/ai-physics-tracker/pull/41)。本机1337 / 两独立Agent Approve（2项Minor已闭环）/ 双平台通过；无用户可感知变化，不设HR。
+
+`application/analysis_draft_context.py`是GLOSSARY「草稿上下文（Draft Context）」的实现载体：`MainWindow.draftContextFacts()`采集8项廉价导航事实，`analysisNavigationKey`附上按需的源准备原因；`SignalPreview.syncContext`键的共享成员与`ChartActions._poll`的源准备迟到核对集中到`source_delivery_stale`（selection延迟求值、保持在workspace判定之前，异常传播路径与旧or链一致）。`_source_selection` / `_source_method`合并为提交时冻结的`_source_stamp`。
+
+R09已退出的旧路径：三处手写键 / 核对清单、`_source_selection` / `_source_method`散字段，及分析簇枚举的跨模块私有读写（SignalPreview / SignalHistory直接触碰panel视图状态私有字段、读`actions._closed` / `_signal_job` / `_prepareSignal`、MainWindow读`trackingActions._current_workflow_state`与`window._analysisMethodChanged`调用）。signal_history对panel的六个遗留私有访问（`_loading`等）不在本轮清单，待后续清理；源扫描回归守卫枚举集。
 
 ---
 

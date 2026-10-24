@@ -1,6 +1,6 @@
 # R09 草稿上下文集中 — 方案与待办
 
-- 日期 / 状态：2026-10-24 · **用户已授权：mini-plan 形成后直接执行（含建 Issue、完整 Gate）。**
+- 日期 / 状态：2026-10-24 · **已完成 / 已合并：c14c78a集成main（树与分支tip fcea8d6一致）。**
 - 用户原话（grilling Q1–Q8 闭合后）："写好mini-plan后你直接执行，记得拉issue，走好我们的流程"。Q1–Q8 决策已冻结，见下方 Goal / Scope / AC / Gate。
 - 规划基线：`main @ 94d15ab`（src/tests 自 703ac81 未变，仅文档前进；6.4 mini-plan v1.0 已冻结待开工，本轮先于 6.4 执行）。
 - Issue：[#40](https://github.com/KYLeonis/ai-physics-tracker/issues/40)；实现分支：`refactor/draft-context`。
@@ -55,7 +55,7 @@
 
 ## Acceptance Criteria
 
-- [ ] AC-1 行为不变：本机全量与双平台 CI 通过；定向覆盖导航刷新、预览失效、迟到拒绝、历史进出路径；无任何用户可感知差异。
+- [x] AC-1 行为不变：本机全量与双平台 CI 通过；定向覆盖导航刷新、预览失效、迟到拒绝、历史进出路径；无任何用户可感知差异。
 - [x] AC-2 三份手写清单退化为集中判定调用：`analysisNavigationKey` 返回值由 facts 构成；`syncContext` 键 = facts + 预览输入身份；`_poll` 上下文条件走集中判定；各自的键成员与原实现逐项等价（实现中以对照表核验）。
 - [x] AC-3 分析簇跨模块私有穿越清零：新增源扫描回归（参照 `test_layer_boundaries.py` 精神）禁止 `signal_preview` / `signal_history` / `chart_actions` / `main_window` 对分析簇列名对象的 `_` 属性访问；`trackingActions._current_workflow_state` 改公开属性。
 - [x] AC-4 判定逻辑直接单测：facts 相等 / 不等、fallback 事实、交付时刻判定的各分支有 Qt-free pytest 覆盖。
@@ -67,7 +67,7 @@
 - [x] S2 三处消费迁移：导航键 → 预览键共享部分 → `_poll` 迟到条件；逐项对照键成员等价（独立Agent A逐项确认）。
 - [x] S3 私有穿越清零 + 源扫描回归；`_current_workflow_state` 公开化；另纳入 `chart_actions` 对 `window._analysisMethodChanged` 的私有调用（`applyAnalysisMethod`）。
 - [x] S4 自动 Gate：定向 124 / 本机全量 1337 passed；两个独立只读 Agent 均 Approve with comments，2 项 Minor 已修复闭环（`ad00f9c`），[Review Record](../reviews/draft-context-review.md)。
-- [ ] S5 集成收尾：PR 触发双平台 CI → `--no-ff` 合并 → 文档同步（architecture / progress / current / 本计划 Result）→ 关 Issue → push。
+- [x] S5 集成收尾：[PR #41](https://github.com/KYLeonis/ai-physics-tracker/pull/41) 双平台 CI 通过（[run 40057676202](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40057676202)），c14c78a以merge commit集成，树与分支tip fcea8d6一致；文档同步 / 关Issue / push随收尾提交完成。
 
 ## Verification
 
@@ -84,6 +84,11 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest   # 全量
 - **PR**：作为完整 diff 与双平台 CI 容器（`refactor/**` 分支不触发 push CI，须经 PR）。
 - **Human Review**：不适用——无用户可感知交互变化；实现中如出现行为差异按 bug 修复，不作为新交互验收。
 
-## Result（收尾时填写）
+## Result
 
-- 待填。
+- 完成日期 / 合并 commit：2026-10-24 · c14c78a（merge commit，树与分支 tip fcea8d6 一致）；产品提交 f769215 + 复审修复 ad00f9c。
+- AC 勾选结果：AC-1–AC-4 全部完成。本机全量 1337 passed（基线 1329 + 新增 8 项，零回归）；双平台 CI（macOS 2m46s / Windows 4m38s）通过。
+- Review Gate 执行结果：两个独立只读 Agent 分别排查，均 Approve with comments；2 项 Minor（迟到核对求值顺序漂移及其 docstring 措辞、短路测试覆盖不足）已修复并加回归，[Review Record](../reviews/draft-context-review.md) 最终 Verdict Approve。HR 不适用（无用户可感知变化）。
+- 偏离计划之处：无范围偏离。实现中把 `chart_actions` 对 `window._analysisMethodChanged` 的私有调用一并纳入清理（`applyAnalysisMethod` 公开方法），属计划 Scope 第 4 条同类枚举对象；`_source_selection`/`_source_method` 合并为单个 `_source_stamp` 是 AC-2 集中判定的自然实现。
+- 遗留问题（后续另行立项，不在本轮清单）：signal_history 对 panel 的六个历史私有访问（`_loading` / `_methodVisibility` / `_video_id` / `_eventLines` / `_eventSamplesMatch` / `_referenceChanged`），已在 `tests/gui/test_analysis_private_access.py` docstring 声明；分析簇之外的跨模块私有穿越（batch_annotation_actions / model_actions / project_actions 等）属候选 D / A 领域。
+- 实现中发现的新 invariant：迟到核对的求值顺序本身是可观察语义（selection 异常传播路径），集中判定须保持旧 or 链的求值位次，已有顺序钉子测试守护。

@@ -95,6 +95,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - 分析主干职责重构R04：`docs/status/analysis-workflow-plan.md`（全部实现 / 自动Gate / 本轮HR完成，085219e集成main；ADR-0027，源码 / 测试与bd848f1一致，本机1316 / 独立Approve / 双平台通过，F1 Closed）。
 - 下一轮架构建议R07：`docs/status/change-notification-proposal.md`（工程变更与界面更新链路，含T01–T08；用户认为使用无必要已搁置，不实施；历史剩余项复核见`docs/notes/glm-remaining-review-2026-10-18.md`；后续R08状态以current.md及专用方案为准）。
 - 历史查看R08：`docs/status/signal-history-plan.md`（2026-10-20用户本轮HR“通过”，f34d3b8集成main；源码 / 测试与703ac81一致，定向121 / 全量1329 / 独立R2 Approve / 双平台 / HR通过，F1 Closed；SignalHistory生命周期集中、两个执行器及ADR-0023保留，试用启动器保留；完成状态以current.md / Review为准）。
+- 草稿上下文R09：`docs/status/draft-context-plan.md`（2026-10-24 c14c78a集成main；源码 / 测试与ad00f9c一致，定向124 / 全量1337 / 两独立Agent Approve / 双平台通过，无新交互不设HR；analysis_draft_context拥有草稿导航事实与迟到判定，分析簇私有穿越清零；signal_history六个遗留panel私有访问待后续清理）。
 - 计算配方统一解释内部整理：`docs/status/source-recipe-plan.md`（2026-10-18以26af812集成main；source_recipe共用事实 / 读写，chart_recipe保留图表策略与兼容导入；旧 / 未知源保护不变）。
 - 公式拟合联动维护增量：`docs/status/fit-linked-source-plan.md`（2026-10-18本轮HR通过，aa86d79已集成main；ADR-0025，所选轨迹源自动补齐 / 预览联动；后续计算配方统一已以26af812集成，重复间隔联动已以2600f2a集成；各项完成证据见architecture-progress.md）。
 - GLM派工前读`docs/notes/glm-collaboration-playbook.md`：项目内协作约束、可复现问题与接管证据；原始运行日志不入库。
