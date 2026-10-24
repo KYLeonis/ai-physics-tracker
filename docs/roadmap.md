@@ -308,3 +308,5 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 - [x] 查看与采用不发布、不改工程事务或尝试日志；正式Fit / Measure仍显式，两个执行器及科学算法保持。
 
 本维护周期已收尾，停止等待用户指令；Phase 6比较 / 误差和整体单摆验收仍保留未完成状态。
+
+2026-10-24：[P6.4](status/phase-6.4-plan.md)获开工授权，Issue #42 / `feat/p6.4-parameter-error`；S0契约及S1统计 / 展示已实现，全量1387 / 独立R2 Approve / 双平台CI通过，待本轮HR，尚未集成main。6.5整体验收不在本轮。

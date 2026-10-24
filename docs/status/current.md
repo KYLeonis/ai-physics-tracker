@@ -1,23 +1,22 @@
 # Current Status
 
-> 用户当前需求：检查新合并的R09修复及其对P6.4计划的影响。补查完成，未发现新增阻塞问题，本机定向119 passed；[P6.4 mini-plan v1.0](phase-6.4-plan.md)仅同步R09接手基线 / 公开入口 / 历史finding与回归清单，冻结的Goal / Scope / AC / Slices / Gate不变，无需重新冻结。P6.4仍待开工。
+> 用户当前需求：执行已冻结P6.4。实现与自动Gate已完成，**等待本轮用户Human Review**；产品`895ecc4`，工作分支`feat/p6.4-parameter-error`，未合并main。本机1387 passed / 全新独立R2 Approve、F1–F3 Closed / [双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40061881700) success。[HR启动与操作](../notes/phase-6.4-human-review.md)。
 
-- 最后更新：2026-10-24（R09补查119项通过；P6.4计划接手说明同步，冻结待开工）
+- 最后更新：2026-10-24（P6.4自动Gate完成，待真人HR）
 
 ## Current
 
-- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04 / R08已完成 / 已合并，不能使用旧HTML覆盖当前状态。
-- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08 / R09维护重构均完成并集成main；6.4 mini-plan已冻结，待开工、未实施，6.5未开始。
-- **Subphase / Slice**：P6.4 mini-plan v1.0，用户已冻结；待开工、未创建Issue / 实现分支、S0未启动。前期R09草稿上下文集中全部Gate完成，c14c78a集成main；R07仍搁置。
-- **Worktree / Branch**：主工作区`/Users/leonis/Documents/ai-physics-tracker` / `main`；R08工作分支`codex/signal-history`已集成，其工作区`/Users/leonis/.codex/worktrees/signal-history/ai-physics-tracker`保留并快进同步main，兼容`experiment/signal-history-human-review/start.command`启动器，不覆盖用户试用副本。旧试用工作区及论文线未改。
+- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04 / R08 / R09已完成并合并；R07继续搁置。
+- **Phase / Subphase**：Phase 6 / P6.4参数误差解释；6.1–6.3.1及既有维护均已集成。6.4已实现 / 自动Gate通过 / 待HR / 未集成；6.5未开始。
+- **Slice / Gate**：S0 / S1完成，S2自动Gate完成、真人HR待用户。[mini-plan](phase-6.4-plan.md)、[ADR-0028](../decisions/0028-fit-parameter-conditional-standard-errors.md)、[Review](../reviews/phase-6.4-review.md)、[Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
+- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main `c265be8`；源码 / 测试最终`895ecc4`，其后仅文档。论文线与旧HR副本未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **等待P6.4开工指令**：[mini-plan v1.0](phase-6.4-plan.md)已由用户明确冻结，不再重复确认Q1–Q6或范围。获实施授权后建立Issue / 工作分支，从S0数值fixture / 判据 / 摘要契约推进；其GUI改动面（signal_analysis_panel / fit_explanation / 尝试日志 / 历史兼容）可直接消费R09集中后的草稿上下文与公开访问入口。后续仍需独立复审 / 双平台CI / 新HR，不能把规划冻结当产品验收。
-2. **区分下一子阶段与Phase 7**：Phase 6的6.4参数误差解释及6.5真实单摆全流程验收仍未完成；新增两轨迹比较已由用户取消；按既定路线完成后才进入Phase 7模型库。若用户要求调整顺序，先明确范围 / 验收调整，不能默认为Phase 6已完成。
-3. **保持当前架构**：两个历史入口、Future / 轮询 / 取消 / 上下文归SignalHistory；ChartActions保留日志和正式分析。只读执行器仍归SignalPreview，经submitReadOnly提供能力，共两个执行器；关闭先历史后共享资源。Charts / Explore退出工具走同一history.leave，不恢复旧借用或ChartActions历史状态。
-4. **已延期项**：R07搁置，R05 / R06后置；训练评估解释仅在实际扩展训练 / 模型比较时重新讨论。Review F2旧version类型宽松Deferred，未来统一GUI / application / Session版本类型检查时处理；不为讨论方向重新扫描或重跑已通过产品测试。
+1. **等待用户亲测HR**：运行`experiment/p64-human-review/start.command`（已独立生成合成噪声 / 旧无SE轨迹副本），按[四组操作](../notes/phase-6.4-human-review.md)检查三列 / 方法、Fixed / 不支持源、历史 / 草稿清除 / 旧记录、间隔解释与保存。用户反馈前不合并，不重复已通过测试。
+2. HR通过后只收尾6.4：勾选最终AC / S2、同步Review / 文档，`--no-ff`集成与push，关闭Issue / PR；6.5真实单摆全流程验收仍独立保留，不自动启动。若HR指出问题，按本期范围修复并运行相关验证 / 必要复审。
+3. 沿用R09公开入口及SignalHistory / SignalPreview职责、源 / 目标双版本；新统计是对应记录的事实，草稿不生成SE，旧历史不回填，未来统计只读保护；不重开R07及其他延期项。
 
 ## Active Constraints
 
@@ -61,6 +60,9 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.4开工 / 实现（2026-10-24）**：用户授权执行冻结v1.0；Issue #42 / `feat/p6.4-parameter-error`，基线c265be8。ADR-0028冻结解析fixture / 容差、SVD尺度恢复、病态 / 边界判据与有版本additive摘要。domain统计贯通正式结果、严格校验 / 未来只读 / 未知扩展、保存 / 结果Undo及尝试历史；GUI三列 / 方法展开、固定 / 不支持 / 旧记录提示及草稿清除；重复间隔仅补解释。首轮定向191 / 修复相关65 passed；最终全量1387 passed（250.59s），全新R2 Approve、F1–F3 Closed；[双平台CI40061881700](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40061881700)各1385 passed / 2个既有可选skip。隔离HR副本实际打开路径通过，真人HR待用户；未合并、不进入6.5。
+
 
 - **R09修复与P6.4计划影响补查（2026-10-24）**：以850df3e检查94d15ab之后的完整源码 / 测试diff及连接调用，确认导航键成员、源准备stamp生命周期 / 求值顺序及公开入口迁移；domain数值、signal_analysis_job和持久化 / 依赖未变，源码 / 测试与ad00f9c一致。未发现新增阻塞问题；本机offscreen定向119 passed（117.31s），覆盖草稿事实 / 私有访问守卫、工作流事实、拟合、历史、重复间隔、源联动、只读和分层。mini-plan仅补R09上下文 / 接手基线 / 复用入口与回归清单，脚本逐段确认冻结Goal / Scope / AC / Slices / Gate未变；无需重新冻结，仍待开工。仅文档改动，不重跑全量 / 双平台CI，不开始P6.4或其他维护。
 

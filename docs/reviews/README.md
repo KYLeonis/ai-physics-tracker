@@ -12,6 +12,7 @@ Independent Review 的长期存档目录。目标是几个月后仍能回答：�
 
 | Subphase | Review Record | 最终 Verdict | 日期 |
 | --- | --- | --- | --- |
+| 6.4参数误差解释 | [phase-6.4-review.md](phase-6.4-review.md) | 全新R2 Approve / F1–F3 Closed；全量1387 / 双平台CI通过；待本轮HR，未集成main | 2026-10-24 |
 | R08历史查看流程归属 | [signal-history-review.md](signal-history-review.md) | R2完整独立Approve / F1 Closed / F2 Deferred；本机1329 / 最终双平台 / 本轮HR通过，f34d3b8集成main | 2026-10-20 |
 | R04分析主干职责重构 | [analysis-workflow-review.md](analysis-workflow-review.md) | 完整独立Approve / F1 Closed / 本机1316 / 最终双平台 / 本轮HR通过，085219e集成main | 2026-10-18 |
 | 计算配方统一解释 | [source-recipe-review.md](source-recipe-review.md) | 全量1276 / 独立Approve（134项）/ 双平台CI通过；26af812集成main | 2026-10-18 |
