@@ -141,3 +141,11 @@
 - 全新独立R2完整复审Approve，R1 F1–F3全部Closed；[Review](../reviews/phase-6.4-review.md)。修复相关65 passed，原定向191 passed；中间因代码修复终止的全量不计Gate，旧提交CI / 重复push CI不作最终验收依据。
 - S0 / S1完成；AC-1 / 2 / 4自动验证通过，AC-3自动化通过仍待真人判断说明与可达性，AC-5待本轮HR / 集成收尾，因此产品AC勾选留待HR之后，S2尚未整体完成。
 - [启动与四组HR步骤](../notes/phase-6.4-human-review.md)已交付；独立合成工程实际打开路径`P64_HR_OPEN_OK`，不覆盖用户工程。**停止等待用户反馈，不合并、不进入6.5**。最终验证之后只同步文档，不修改源码 / 测试。
+
+## HR反馈与范围扩展讨论（2026-10-24）
+
+- 用户反馈右侧表单无法向右滑动；本轮HR未通过。F4布局修复草稿及相关回归见Review；保持未合并。
+- 用户明确选择“增加置信区间：先明确区间水平与方法，再调整计划”。现建议95%双侧局部Student-t区间：estimate ± t(0.975,n-p) × SE，增加残差近似正态假设；保持原始位置 / 角度源、固定 / 不支持 / 不可估计原因、换算不传播及旧历史不回填边界。具体水平 / 方法待用户确认，当前v1.0数值与AC尚未改写，也未实施区间算法。
+- 方法参考：[SciPy Student-t分位数](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.t.html)；[SciPy局部协方差近似局限](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html)。提案不是完整测量不确定度或预测区间。
+
+- F4布局修复`1067312`已实现并推送；大字号宽表单失败回归修复后通过，相关GUI87 passed（75.75s）。数值 / 摘要算法未改，真人可达性待重启复测。
