@@ -89,6 +89,10 @@ c14c78a集成已验证产品ad00f9c（首版f769215）；[计划](status/draft-c
 
 R09已退出的旧路径：三处手写键 / 核对清单、`_source_selection` / `_source_method`散字段，及分析簇枚举的跨模块私有读写（SignalPreview / SignalHistory直接触碰panel视图状态私有字段、读`actions._closed` / `_signal_job` / `_prepareSignal`、MainWindow读`trackingActions._current_workflow_state`与`window._analysisMethodChanged`调用）。signal_history对panel的六个遗留私有访问（`_loading`等）不在本轮清单，待后续清理；源扫描回归守卫枚举集。
 
+## P6.4参数统计（工作分支已实现 / 自动Gate通过 / 待HR，未集成main）
+
+[ADR-0028](decisions/0028-fit-parameter-conditional-standard-errors.md)定义`domain.fit_uncertainty`局部SVD及统计摘要严格读取；[ADR-0029](decisions/0029-local-t-parameter-confidence-intervals.md)追加95%局部Student-t区间，嵌套统计新写v2 / 兼容v1，旧历史不补区间；`function_fit`在既有解处产生统计，`signal_analysis_job`按源种类限制支持并经原发布事务保存。`recorded_parameter_errors`集中读取版本 / 样本 / 选择及源快照，正式验证与GUI共用。新字段位于`analysis.summary.parameter_uncertainty`，同结果Undo / 保存；FitAttempts沿原摘要记录，历史仅展示当时记录。面板拥有参数 / 估计值 / SE / 95%局部区间四列与方法说明及清除，SignalHistory / SignalPreview经公开入口清除旧展示；没有新执行器 / 草稿键 / schema迁移。状态与Gate见[current](status/current.md)。
+
 ---
 
 ## 1. 系统总览

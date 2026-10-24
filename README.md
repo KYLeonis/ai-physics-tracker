@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
 Last Delivered:   R08历史查看流程归属；本机1329 / 独立 / 双平台 / 本轮HR通过，2026-10-20以f34d3b8集成main
-Current Subphase: R01–R04 / R08已完成并集成main；R07由用户搁置；6.4 / 6.5未开始，等待下一条指令
+Current Subphase: P6.4参数误差解释v1.1已实现95%局部区间 / 自动Gate通过 / 新HR待用户（工作分支，未集成main）；R07搁置，6.5未开始
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。

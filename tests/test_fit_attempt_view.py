@@ -185,3 +185,23 @@ def test_missing_spec_is_explicitly_unavailable(signal_session):
     assert view.spec is None
     assert not view.is_available
     assert "FitSpec" in view.reason
+
+
+def test_parameter_errors_are_copied_only_if_recorded_without_fitting(signal_session, monkeypatch):
+    from copy import deepcopy
+    import ai_physics_tracker.domain.function_fit as fitting
+    session, track = signal_session
+    attempt, _, _ = _successful_attempt(session, track)
+    expected = deepcopy(attempt['summary']['parameter_uncertainty'])
+    def unexpected_fit(*_args, **_kwargs):
+        pytest.fail('History must not refit to compute parameter errors')
+    monkeypatch.setattr(fitting, 'fit_function', unexpected_fit)
+    before = session.project
+    view = rebuild_fit_attempt_view(session, attempt)
+    assert view.is_available
+    assert view.metadata['summary']['parameter_uncertainty'] == expected
+    del attempt['summary']['parameter_uncertainty']
+    legacy = rebuild_fit_attempt_view(session, attempt)
+    assert legacy.is_available
+    assert 'parameter_uncertainty' not in legacy.metadata['summary']
+    assert session.project is before
