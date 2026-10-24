@@ -89,7 +89,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - Phase 5 规划入口：`docs/spec/phase5-requirements.md`（需求与边界）、`docs/status/phase-5-plan.md`（Subphase 顺序与验收）
 - Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`、`docs/status/phase-6.2-plan.md`、`docs/status/phase-6.3-plan.md`（6.1 / 6.2已集成main；6.3计划已获用户认可，显式函数拟合 / 通用重复间隔工具，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main。ADR-0019/0020为既有数据契约；ODE / 单位管理 / 参数置信区间后续）
 - Phase 6.3.1 新手分析计划：`docs/status/phase-6.3.1-plan.md`（Q1–16已认可，英文 / 图表优先；自动预览 / 初值建议 / 解释 / 尝试日志及就地准备，S0–S4实现、S5已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；不设固定响应或新手完成时限）。访谈事实见`docs/notes/analysis-onboarding-interview.md`。
-- Phase 6.4 参数误差解释：`docs/status/phase-6.4-plan.md`（2026-10-24 mini-plan v0.2，grilling进行中；Q1认可条件性参数误差目标，Q2取消新增两轨迹比较；其余口径未冻结、未实施；6.5整体验收独立保留）。
+- Phase 6.4 参数误差解释：`docs/status/phase-6.4-plan.md`（2026-10-24 mini-plan v0.3，Q1–Q6已汇总，待用户最终确认 / 冻结；仅未平滑位置 / 角度源支持参数SE，三列展示、换算结果仅数值、重复间隔仅补解释，两轨迹比较取消；未实施；6.5整体验收独立保留）。
 - 后续回移档案：`docs/status/main-backport-backlog.md`（含执行触发点，后续会话必须随相关阶段核对）
 - 当前维护补丁：`docs/status/automatic-timing-plan.md`（2026-10-17用户授权取消Review timing / Yes；ADR-0024将原合格Near-CFR的人工接受改为自动，保留探测与来源；2026-10-17独立review / 双平台CI / 本轮HR均通过，已集成main，详情以current.md为准）。
 - 分析主干职责重构R04：`docs/status/analysis-workflow-plan.md`（全部实现 / 自动Gate / 本轮HR完成，085219e集成main；ADR-0027，源码 / 测试与bd848f1一致，本机1316 / 独立Approve / 双平台通过，F1 Closed）。
