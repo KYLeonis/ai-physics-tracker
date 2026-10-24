@@ -89,10 +89,35 @@ def test_delivery_stale_when_selection_changed():
 
 
 def test_delivery_stale_short_circuits_before_reading_selection():
-    """上下文事实已判迟到时不再触碰控件，与原 or 链短路一致。"""
+    """前三项事实已判迟到时不再触碰控件，与原 or 链前三位短路一致。"""
 
     def forbidden() -> SignalSelection:
         raise AssertionError("selection must not be read when facts already stale")
 
     stamp = SourceDeliveryStamp(facts=_facts(), selection=_selection())
-    assert source_delivery_stale(stamp, _facts(history_active=True), forbidden) is True
+    for member, other in (
+        ("history_active", True),
+        ("method", 1),
+        ("analysis_tab", 0),
+    ):
+        assert source_delivery_stale(stamp, _facts(**{member: other}), forbidden) is True, member
+
+
+def test_delivery_stale_reads_selection_before_workspace_verdict():
+    """selection 求值保持在 workspace 判定之前（旧 or 链第 4 位）。
+
+    workspace 已变但 selection() 抛异常时，异常仍按原路径传播，
+    不得被 workspace 判定吞掉换成迟到结论。
+    """
+
+    def invalid() -> SignalSelection:
+        raise ValueError("Select a track")
+
+    stamp = SourceDeliveryStamp(facts=_facts(), selection=_selection())
+    try:
+        source_delivery_stale(stamp, _facts(workspace="acquire"), invalid)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("selection error must propagate before workspace verdict")
+    assert source_delivery_stale(stamp, _facts(workspace="acquire"), lambda: stamp.selection) is True

@@ -54,14 +54,15 @@ def source_delivery_stale(
     facts: DraftContextFacts,
     current_selection: Callable[[], SignalSelection],
 ) -> bool:
-    """源准备交付的迟到核对；成员与短路顺序与迁移前 ChartActions._poll 的手写条件一致。
+    """源准备交付的迟到核对；成员与求值顺序与迁移前 ChartActions._poll 的手写条件逐位一致。
 
-    current_selection 延迟求值：上下文事实已判迟到时不再触碰控件，
-    保持原 or 链的短路行为（避免无效选择状态把迟到误报为失败）。
+    current_selection 延迟求值并保持在 workspace 判定之前求值（旧 or 链第 4 位）：
+    前三项事实已判迟到时不触碰控件；其抛出的异常仍按原路径传播。
     """
     if (facts.history_active
             or facts.method != stamp.facts.method
-            or facts.analysis_tab != stamp.facts.analysis_tab
-            or facts.workspace != stamp.facts.workspace):
+            or facts.analysis_tab != stamp.facts.analysis_tab):
         return True
-    return current_selection() != stamp.selection
+    if current_selection() != stamp.selection:
+        return True
+    return facts.workspace != stamp.facts.workspace
