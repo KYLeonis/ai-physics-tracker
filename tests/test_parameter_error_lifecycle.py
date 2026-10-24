@@ -110,3 +110,24 @@ def test_source_support_uses_actual_kind_and_keeps_angular_or_derivative_fit(sig
     session.apply_analysis_result(result)
     entry = result.record.extra_fields['analysis']['summary']['parameter_uncertainty']['parameters'][0]
     assert entry['status'] == ('estimated' if supported else 'unsupported_source')
+
+
+@pytest.mark.parametrize('location', ['summary', 'statistics', 'parameter', 'analysis', 'record', 'input'])
+def test_nonfinite_unknown_extensions_cannot_create_unsavable_analysis(signal_session, location):
+    session, _, track = signal_session
+    session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
+    record = session.derived_data(track, 'function_fit_x')
+    extras = deepcopy(record.extra_fields)
+    input_extras = deepcopy(record.input.extra_fields)
+    summary = extras['analysis']['summary']
+    targets = {'summary': summary, 'statistics': summary['parameter_uncertainty'],
+               'parameter': summary['parameter_uncertainty']['parameters'][0],
+               'analysis': extras['analysis'], 'record': extras, 'input': input_extras}
+    targets[location]['future_extension'] = {'bad': float('nan')}
+    corrupted = replace(record, extra_fields=extras, input=replace(record.input, extra_fields=input_extras))
+    session._project = replace(session.project, derived=tuple(corrupted if item.derived_id == record.derived_id else item for item in session.project.derived))
+    before, undo = session.project, session.can_undo_analysis
+    result = run_signal_analysis(_job(session, track), Event())
+    with pytest.raises(ProjectSessionError, match='finite JSON'):
+        session.apply_analysis_result(result)
+    assert session.project is before and session.can_undo_analysis == undo

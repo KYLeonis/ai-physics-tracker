@@ -461,4 +461,8 @@ def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) ->
     extras["analysis"] = metadata
     input_extras = deepcopy(previous.input.extra_fields) if previous else {}
     input_extras.update(record.input.extra_fields)
+    try:
+        json.dumps((extras, input_extras), allow_nan=False)
+    except (TypeError, ValueError) as error:
+        raise ProjectSessionError("Preserved analysis extensions are not finite JSON; result is read-only") from error
     return kept + (replace(record, extra_fields=extras, input=replace(record.input, extra_fields=input_extras)),)
