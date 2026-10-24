@@ -77,8 +77,8 @@
 - [x] 修改后通过（findings 按 Decision 处置完毕，复审确认）
 - [ ] 需要重做（说明理由）
 
-- 最终代码审查结论：**Approve**，F1–F3 Closed，无新可行动问题；自动Gate及真人HR仍独立核对，不由代码Approve代替。
-- 日期 / 依据轮次：2026-10-24 / R2。
+- 最终代码审查结论：**Approve（R3）**，F1–F3 / F5 Closed，无待修代码finding；F4横滑体验仍待真人复测。自动Gate及真人HR独立核对，不由代码Approve代替。
+- 日期 / 依据轮次：2026-10-24 / R3（95%局部区间新增范围；原SE的R2证据保留）。
 
 ### R2 — 2026-10-24 · 全新独立只读复审
 
@@ -99,3 +99,17 @@
 - 用户同时要求新增具体置信区间，已确认是范围扩展；95%双侧局部Student-t的水平 / 方法正在确认，尚未修改算法 / 冻结AC，旧SE的R2 Approve不覆盖新增区间。
 
 - F4实现提交：`1067312`，Normal-risk局部GUI修复，无统计 / 数据契约变更；原数值R2结论不扩大为新增CI审查。
+
+## R3 — 新增95%局部t区间的全新独立审查（2026-10-24）
+
+- 用户已明确采用95%双侧局部t口径，计划v1.1 / ADR-0029。审查基线1a600c7，覆盖新增CI全diff及调用链；审查后仅修原注释措辞，无可执行逻辑差异，最终提交12ea18d。
+- **Verdict：Approve**。独立Reviewer运行`tests/test_parameter_intervals.py tests/test_fit_uncertainty.py tests/test_parameter_error_lifecycle.py tests/gui/test_parameter_errors.py`：**70 passed**。
+- 核对df=2 / 39独立常数、SE原尺度 / 半宽、边界不截断、非有限 / 精度不足保留SE、v1不补区间、v2依据已录estimate / SE / df核对端点、未知扩展 / 有限JSON、不支持源清除SE / CI、保存 / Undo / 历史只读。F1–F3既有保护未退化。
+- **F5 / P3 注释过期**：function_fit可辨识检查处仍称“不输出参数置信区间”。Decision Fix Now，12ea18d已改为“此处只检查拟合可辨识性，统计另行估计”；纯注释，Closed。不改变R3 Approve。
+- 实施方相关129 passed（13.72s），旧GUI / 日志 / 草稿关联110 passed（72.40s）；新隔离工程实际打开自检`P64_CI_HR_OPEN_OK [159.96432, 160.1678]`。
+- 新产品全量 / 双平台CI回执待补；F4横滑及区间UI均待新HR，未合并。原v1 SE的R2记录仅代表其当时范围，最终产品按R3及本轮自动Gate / HR判定。
+
+### R3最终自动Gate回执 / 新HR待用户
+
+- 对应最终源码 / 测试12ea18d：本机**1408 passed（220.57s）**；[CI40077232972](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40077232972) macOS / Windows各**1406 passed / 2个既有可选skip**（141.14s / 261.50s），整run success。
+- R3最终代码Verdict **Approve**。最终验证后只有文档同步，不重复代码Review或测试。F4横向操作与新增区间交互需用户亲测；本轮HR未通过、未合并main，6.5未开始。

@@ -1,22 +1,22 @@
 # Current Status
 
-> 用户当前需求：HR反馈右侧表单无法横向滚动、希望看到具体置信区间。布局修复`1067312`已实现，相关GUI回归87 passed，待用户重启复测；用户已要求扩展置信区间，95%双侧局部Student-t水平 / 方法确认问题待答，**尚未实施区间算法或调整冻结AC**。仍未合并main。旧SE基线`895ecc4`的全量1387 / 独立R2 / 双平台通过证据保留，不代表新增CI已验收。
-- 最后更新：2026-10-24（用户HR反馈横向裁切与区间缺失；滚动修复中，新增置信区间待确认水平 / 方法）
+> 用户当前需求：P6.4首轮HR后新增具体95%置信区间并修复横向滚动。计划v1.1 / ADR-0029已实现，产品12ea18d，**等待新一轮真人HR**。本机1408 passed / 全新独立R3 Approve / [双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40077232972)均success，各1406 passed / 2个既有可选skip。未合并main。
+
+- 最后更新：2026-10-24（v1.1新增区间自动Gate完成，待本轮HR）
 
 ## Current
 
-- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04 / R08 / R09已完成并合并；R07继续搁置。
-- **Phase / Subphase**：Phase 6 / P6.4参数误差解释；6.1–6.3.1及既有维护均已集成。6.4原SE实现及自动Gate已通过；HR反馈布局修复待复测，CI扩展待确认 / 未实施；未集成，6.5未开始。
-- **Slice / Gate**：原v1.0的S0 / S1完成，旧自动Gate通过；HR反馈F4布局已修复，CI扩展待明确方法后更新计划 / Gate。[mini-plan](phase-6.4-plan.md)、[ADR-0028](../decisions/0028-fit-parameter-conditional-standard-errors.md)、[Review](../reviews/phase-6.4-review.md)、[Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
-- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main `c265be8`；当前布局修复`1067312`（数值 / 结果契约仍为`895ecc4`），新增CI口径待确认。论文线与旧HR副本未改。
+- **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。既有重构不重开。
+- **Phase / Subphase**：Phase 6 / P6.4参数误差解释v1.1；SE / 95%双侧局部t区间及F4横向可达性已实现，自动Gate通过 / 新HR待用户 / 未集成；6.5未开始。
+- **Gate**：全新独立R3 Approve / 独立70，实施方129定向 / 110关联 / 最终全量1408；双平台CI40077232972通过。[mini-plan](phase-6.4-plan.md)、[ADR-0029](../decisions/0029-local-t-parameter-confidence-intervals.md)、[Review](../reviews/phase-6.4-review.md)、[Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。F1–F3 / F5 Closed；F4代码修复、待真人复测。
+- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main c265be8；源码 / 测试最终12ea18d（含布局1067312），之后仅文档。论文线、上次试用副本及用户工程未覆盖。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **先处理本轮HR反馈**：右侧表单横向裁切已复现并修复草稿（常驻横向轨道 / 触控板横滑、不更改数值输入），相关GUI回归87 passed（75.75s）。用户要求新增具体置信区间，已明确这是范围扩展；正在确认95%双侧局部Student-t区间口径，未确认前不实施区间算法或更改既有数值契约。原HR未通过、不合并。
-2. **之后重新发起HR**：运行`experiment/p64-human-review/start.command`（已独立生成合成噪声 / 旧无SE轨迹副本），按[四组操作](../notes/phase-6.4-human-review.md)检查三列 / 方法、Fixed / 不支持源、历史 / 草稿清除 / 旧记录、间隔解释与保存。用户反馈前不合并，不重复已通过测试。
-3. HR通过后只收尾6.4：勾选最终AC / S2、同步Review / 文档，`--no-ff`集成与push，关闭Issue / PR；6.5真实单摆全流程验收仍独立保留，不自动启动。若HR指出问题，按本期范围修复并运行相关验证 / 必要复审。
-4. 沿用R09公开入口及SignalHistory / SignalPreview职责、源 / 目标双版本；新统计是对应记录的事实，草稿不生成SE，旧历史不回填，未来统计只读保护；不重开R07及其他延期项。
+1. **等待新HR**：运行`experiment/p64-ci-human-review/start.command`，按[四组步骤](../notes/phase-6.4-human-review.md)检查具体区间 / 方法、右侧横滑、Fixed / Smoothed与Measured切换、历史 / 草稿 / SE-only旧记录及保存。新副本首屏直接展示具体区间；旧试用启动器仍保留，不默认使用其上次保存的Smoothed结果。本轮发起后停止等待用户反馈，不重复已通过验证。
+2. HR通过后只收尾6.4：勾选最终AC / S2、同步Review / 文档，`--no-ff`集成与push，关闭Issue / PR。原HR未通过，Q7方法确认也不等于HR通过；不得提前合并。若用户指出问题则按本期范围修复并验证。
+3. 保持原源支持、换算不传播 / 周期间隔统计及R09上下文 / 两执行器 / 原子Undo职责；不进入6.5或重开其他延期项。
 
 ## Active Constraints
 
@@ -60,6 +60,9 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.4 v1.1区间交付 / 待HR（2026-10-24）**：首轮HR反馈右侧横向裁切及无具体区间；布局1067312经87项GUI回归，用户明确确认95%双侧局部Student-t范围后更新计划v1.1 / AC / ADR-0029。12ea18d追加estimate ± t(0.975,n-p) × SE，原尺度 / 正态与局部假设、边界不截断、无效区间不抹掉SE；嵌套统计新写v2 / 旧v1不回填，四列 / 保存 / Undo / 历史贯通。全新独立R3 Approve并独立70，实施方129 / 110及最终**1408 passed（220.57s）**；[CI40077232972](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40077232972) macOS / Windows各**1406 passed / 2个既有可选skip**（141.14s / 261.50s）。新隔离工程打开自检`P64_CI_HR_OPEN_OK [159.96432, 160.1678]`；未覆盖用户副本，新HR待用户、未合并main、不进入6.5。
+
 
 - **P6.4开工 / 实现（2026-10-24）**：用户授权执行冻结v1.0；Issue #42 / `feat/p6.4-parameter-error`，基线c265be8。ADR-0028冻结解析fixture / 容差、SVD尺度恢复、病态 / 边界判据与有版本additive摘要。domain统计贯通正式结果、严格校验 / 未来只读 / 未知扩展、保存 / 结果Undo及尝试历史；GUI三列 / 方法展开、固定 / 不支持 / 旧记录提示及草稿清除；重复间隔仅补解释。首轮定向191 / 修复相关65 passed；最终全量1387 passed（250.59s），全新R2 Approve、F1–F3 Closed；[双平台CI40061881700](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40061881700)各1385 passed / 2个既有可选skip。隔离HR副本实际打开路径通过，真人HR待用户；未合并、不进入6.5。
 

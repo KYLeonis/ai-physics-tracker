@@ -1,6 +1,6 @@
 # Subphase Plan — Phase 6.4 Fit Parameter Error Interpretation
 
-- 日期 / 状态：2026-10-24 · **mini-plan v1.0，用户明确回复“冻结”，Q1–Q6及计划范围 / AC / Gate已冻结；2026-10-24用户授权开工，S0完成 / S1已实现，S2自动Gate通过、待本轮HR，未集成main。**
+- 日期 / 状态：2026-10-24 · **mini-plan v1.1：2026-10-24用户HR后授权新增95%双侧局部t置信区间，Q7口径已确认；区间已实现 / 自动Gate通过 / 新HR待用户，未集成main。**
 - 初始规划基线：`main @ ca8013d`（2026-10-22）；范围 / AC / Gate于2026-10-24冻结。
 - 实现接手基线更新（2026-10-24）：`main @ 850df3e`，包含R09草稿上下文集中（`c14c78a`，源码 / 测试与`ad00f9c`一致）。仅同步接手事实 / 复用入口与回归清单，v1.0已冻结的范围 / AC / Gate不变；实际开工时再核对最新HEAD。
 - Issue / 实现分支：[#42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / `feat/p6.4-parameter-error`；开工基线`c265be8`；[Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
@@ -43,7 +43,7 @@
 
 ### Known Deferred / Accepted Items / Non-goals
 
-- 不做正式参数置信区间、预测带、Bootstrap、自动残差相关性修正、完整系统误差传播、用户换算结果的不确定度传播。
+- 不做预测带、Bootstrap、自动残差相关性修正、完整系统误差传播、用户换算结果的不确定度传播。
 - **用户已取消两轨迹比较**：不做A−B差值、新比较入口或比较统计；既有叠图不改。也不做跨视频比较、多轨迹联合拟合、模型优劣排名、自动物理判定、ODE、单位编辑 / 自动量纲推导、完整历史库和Phase 8导出。
 - 不以本期补完Phase 6：P011冻结参考 / ≤5%均值对照门槛不变，6.5仍需完整单摆流程与最终HR；Windows/CUDA真机仍按既有决定延期。
 
@@ -51,7 +51,7 @@
 
 ### A. 拟合参数的条件性标准误差
 
-- **Q5已确认**：在现有拟合结果旁显示`Parameter / Estimate / Conditional standard error`三列；有效估计显示数值，固定参数显示`Fixed`，不可估计或源不支持时显示具体原因。假设 / 方法详情可展开，英文界面、图表主位保持。估计值与SE分列，不使用没有解释的±或包装成置信区间；保留残差图和RMSE原有含义。
+- **Q5已确认**：在现有拟合结果旁显示`Parameter / Estimate / Conditional standard error / 95% confidence interval (local)`四列（Q7扩展）；有效估计显示数值，固定参数显示`Fixed`，不可估计或源不支持时显示具体原因。假设 / 方法详情可展开，英文界面、图表主位保持。估计值与SE分列，SE不冒充置信区间；新增CI独立显示[lower, upper]；保留残差图和RMSE原有含义。
 - 实现方案使用最终解处局部Jacobian及残差方差估计，具体数值判据 / 摘要契约在S0冻结；复用现有NumPy / SciPy，不更换求解器。
 - 计划采用口径：实际样本数n、自由参数数p，残差方差为SSE/(n-p)，局部协方差约为该方差乘以(JᵀJ)的逆，标准误差取对角项平方根。实现宜用SVD等稳定分解，不直接求逆；必须恢复现有参数坐标 / 残差缩放后的原数值尺度。
 - 仅解释为给定公式、固定参数、源数据和误差假设下的局部估计。披露零均值、独立同方差残差及局部线性近似假设；它不证明物理模型成立，也不包含比例尺、支点、时间等系统误差。
@@ -62,6 +62,12 @@
 
 科学依据：[SciPy curve_fit文档](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html)说明残差方差缩放及局部线性协方差的局限；[least_squares文档](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html)说明Jacobian与边界语义。本项目继续使用已锁定的SciPy 1.17.1；链接用于方法核对，不意味着升级依赖。以上为计划采用的方法；S0记录具体数值判据、fixture与摘要契约，不改变已冻结的产品范围。
 
+### A2. 95%双侧局部t区间（Q7已确认）
+
+- 用户选择“采用上述95%局部t区间”，即estimate ± t(0.975,n-p) × SE；增加残差近似正态假设，明确非线性为局部近似。四列展示SE与[lower, upper]，不做联合区间或预测带。
+- 源 / 固定 / 不可估计边界、换算不传播保持；区间触及参数边界不截断，独立披露不可估计原因且保留SE。
+- 数值 / 嵌套统计v2兼容契约及独立fixture见[ADR-0029](../decisions/0029-local-t-parameter-confidence-intervals.md)。旧v1不自动补CI；原HR和R2结论不自动覆盖新范围。
+
 ### B. 统一误差说明（融入现有结果，不另建工具）
 
 - 区分四类：拟合残差 / RMSE、逐次重复间隔的样本标准差、参数条件性标准误差、尚未量化的系统误差。
@@ -70,10 +76,10 @@
 
 ## Acceptance Criteria（已冻结；实现验证进行中，HR待做）
 
-- [ ] AC-1 参数统计：已知设计矩阵的线性拟合，条件性标准误差与独立解析计算一致；参数 / 残差尺度变换后保持正确，原拟合参数 / 预测 / RMSE不退化。
-- [ ] AC-2 不可估计：固定 / 全固定、自由度不足、病态 / 秩不足、边界、非有限及不支持的处理源有明确状态 / 原因；没有伪造0或NaN / Infinity写入JSON，也不因统计失败抹掉合法拟合。
-- [ ] AC-3 展示 / 解释：三列参数信息与有效 / Fixed / 不可估计状态正确，原因可见，假设 / 方法可展开；UI可辨认四类误差含义及条件，不将重复间隔标准差当均值误差，或从参数SE推断完整测量精度；换算结果仅数值，重复间隔原数值输出不变。
-- [ ] AC-4 生命周期：新统计保存重开 / 结果Undo/Redo一致，旧 / 未知字段与未来版本受保护；历史无记录不回填；源变化、切项目 / 轨迹 / 视频 / 工作区及晚到结果不能留下冒充当前的数值。
+- [ ] AC-1 参数统计：已知设计矩阵的线性拟合，条件性标准误差及95%双侧局部t区间与独立解析计算一致（含小样本t分位数）；参数 / 残差尺度变换后保持正确，原拟合参数 / 预测 / RMSE不退化。
+- [ ] AC-2 不可估计：固定 / 全固定、自由度不足、病态 / 秩不足、边界、非有限及不支持的处理源有明确状态 / 原因；CI非有限 / 浮点无法表示 / 触及参数边界时独立给出原因且不截断，无区间不抹掉合法SE；没有伪造0或NaN / Infinity写入JSON，也不因统计失败抹掉合法拟合。
+- [ ] AC-3 展示 / 解释：四列参数 / SE / 95%局部CI信息与有效 / Fixed / 不可估计状态正确，原因可见，假设 / 方法可展开；UI可辨认四类误差含义及条件，不将重复间隔标准差当均值误差，或从参数SE推断完整测量精度；换算结果仅数值，重复间隔原数值输出不变。
+- [ ] AC-4 生命周期：新统计保存重开 / 结果Undo/Redo一致，旧SE-only v1仅显示已录SE，CI为Not recorded；v2统计完整往返、未知字段与未来版本受保护；历史无记录不回填；源变化、切项目 / 轨迹 / 视频 / 工作区及晚到结果不能留下冒充当前的数值。
 - [ ] AC-5 Gate：定向 / 全量、macOS+Windows CI、Independent Review / fixes / re-review及新一轮用户HR通过；文档与验收证据同步后集成 / push，只收尾6.4。
 
 解析fixture、病态 / 边界数值判据及容差在S0、实现前明确记录；不新增真实准确率或固定响应时长门槛。现有P011仅用于回归与演示，不据此认定参数SE校准正确。
@@ -135,7 +141,7 @@
 - 首轮定向191 passed；最终读取 / 生命周期等相关65 passed（10.06s）。R1三项读取与有限JSONfinding已修复，待全新R2复审；最终全量与双平台CI40061881700运行中。
 - [本轮HR操作与启动](../notes/phase-6.4-human-review.md)：隔离合成噪声工程及旧无SE轨迹已生成；实际打开路径自检`P64_HR_OPEN_OK`。未进行真人验收、未合并；HR通过后才勾产品AC / 收尾6.4。
 
-## 最终自动Gate / HR交付（2026-10-24）
+## v1.0自动Gate / 首轮HR交付（历史，2026-10-24）
 
 - 产品`895ecc4`：本机全量**1387 passed**（250.59s，1337基线+50新增）；[CI40061881700](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40061881700) macOS / Windows Python3.11均success，各**1385 passed / 2个既有可选skip**（144.27s / 203.64s）。
 - 全新独立R2完整复审Approve，R1 F1–F3全部Closed；[Review](../reviews/phase-6.4-review.md)。修复相关65 passed，原定向191 passed；中间因代码修复终止的全量不计Gate，旧提交CI / 重复push CI不作最终验收依据。
@@ -149,3 +155,20 @@
 - 方法参考：[SciPy Student-t分位数](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.t.html)；[SciPy局部协方差近似局限](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html)。提案不是完整测量不确定度或预测区间。
 
 - F4布局修复`1067312`已实现并推送；大字号宽表单失败回归修复后通过，相关GUI87 passed（75.75s）。数值 / 摘要算法未改，真人可达性待重启复测。
+
+## Q7确认与执行（2026-10-24）
+
+用户明确选择“采用上述95%局部t区间（推荐）”，已授权上述A2、四列、更新AC及ADR-0029；不再等待置信水平 / 方法确认。先完成区间贯通及验证 / 新独立复审，再发起包含滚动修复的新HR。
+
+## v1.1实现检查点（2026-10-24）
+
+- 区间产品12ea18d：原SE纯计算保持，追加固定95%局部t；嵌套统计v2新写 / v1只读，四列 / 方法、源支持 / 不可估计、保存 / 结果Undo / 历史兼容贯通。
+- 实施方129定向 / 110关联通过；全新独立R3 Approve并独立70 passed，F1–F3保护未退化，F5过期注释已修。最终全量 / 双平台CI进行中。
+- 新隔离HR副本`experiment/p64-ci-human-review`实际打开及区间数值自检通过；上次试用副本与用户工程未覆盖。更新后的[四组HR](../notes/phase-6.4-human-review.md)将在自动Gate通过后发起；未合并、不进入6.5。
+
+## v1.1最终自动Gate / 新HR（2026-10-24）
+
+- 产品12ea18d：本机最终全量**1408 passed**（220.57s）；[CI40077232972](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40077232972) macOS / Windows Python3.11均success，各**1406 passed / 2个既有可选skip**（141.14s / 261.50s）。最终验证后源码 / 测试不再变化，仅文档同步。
+- 全新独立R3 **Approve**并独立70 passed；实施方129定向 / 110关联，F1–F3及P3注释F5 Closed。F4横滑修复已入本产品，真人体验待本轮复测；旧R2不代替新增区间审查。
+- v1.1 AC-1 / 2 / 4自动验证完成，AC-3 / 5还需新HR / 集成，保留产品AC未勾状态；S2尚未整体完成。新启动器`experiment/p64-ci-human-review/start.command`及[四组HR](../notes/phase-6.4-human-review.md)已交付，实际打开 / 具体区间自检通过；上次试用副本未覆盖。
+- **停止等待用户HR反馈，不合并、不进入6.5**。用户Q7只确认新增方法，不冒记产品HR通过。
