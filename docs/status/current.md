@@ -1,20 +1,20 @@
 # Current Status
 
-> 用户当前需求：通过grill-me明确P6.4细节。Q1–Q6回答齐备：[6.4 mini-plan v0.3](phase-6.4-plan.md)聚焦未平滑位置 / 角度源的条件性参数SE，三列展示、换算结果仅数值、重复间隔仅补解释，取消新增两轨迹比较。待用户最终确认共同理解 / 冻结计划，未开始实现。
+> 用户当前需求：通过grill-me明确P6.4细节。用户已明确回复“冻结”：[6.4 mini-plan v1.0](phase-6.4-plan.md)聚焦未平滑位置 / 角度源的条件性参数SE，三列展示、换算结果仅数值、重复间隔仅补解释，取消新增两轨迹比较。计划范围 / AC / Gate已冻结，等待开工指令，未开始实现。
 
-- 最后更新：2026-10-24（P6.4 grilling Q1–Q6已记录；v0.3待最终确认，仅规划）
+- 最后更新：2026-10-24（P6.4 mini-plan v1.0已由用户冻结；待开工）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。R01–R04 / R08已完成 / 已合并，不能使用旧HTML覆盖当前状态。
-- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08维护重构均完成并集成main；6.4进入mini-plan审阅，未实施，6.5未开始。
-- **Subphase / Slice**：P6.4 mini-plan v0.3，访谈回答齐备、待最终确认，未冻结、未创建Issue / 实现分支、S0未启动。前期R08全部Gate完成，f34d3b8集成main；R07仍搁置。
+- **Phase**：Phase 6；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08维护重构均完成并集成main；6.4 mini-plan已冻结，待开工、未实施，6.5未开始。
+- **Subphase / Slice**：P6.4 mini-plan v1.0，用户已冻结；待开工、未创建Issue / 实现分支、S0未启动。前期R08全部Gate完成，f34d3b8集成main；R07仍搁置。
 - **Worktree / Branch**：主工作区`/Users/leonis/Documents/ai-physics-tracker` / `main`；R08工作分支`codex/signal-history`已集成，其工作区`/Users/leonis/.codex/worktrees/signal-history/ai-physics-tracker`保留并快进同步main，兼容`experiment/signal-history-human-review/start.command`启动器，不覆盖用户试用副本。旧试用工作区及论文线未改。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **等待用户最终确认[6.4 mini-plan v0.3](phase-6.4-plan.md)达到共同理解**：Q1–Q6已记录，不重复提问已定产品范围。确认后冻结计划；如用户同时明确授权开工，再建立Issue / 实现分支并推进S0，否则等待后续开工指令。当前不写代码、不建实现分支 / Issue，后续实现仍需独立复审 / 双平台CI / 新HR。
+1. **等待P6.4开工指令**：[mini-plan v1.0](phase-6.4-plan.md)已由用户明确冻结，不再重复确认Q1–Q6或范围。获实施授权后建立Issue / 工作分支，从S0数值fixture / 判据 / 摘要契约推进；当前不写代码、不建实现分支 / Issue。后续仍需独立复审 / 双平台CI / 新HR，不能把规划冻结当产品验收。
 2. **区分下一子阶段与Phase 7**：Phase 6的6.4参数误差解释及6.5真实单摆全流程验收仍未完成；新增两轨迹比较已由用户取消；按既定路线完成后才进入Phase 7模型库。若用户要求调整顺序，先明确范围 / 验收调整，不能默认为Phase 6已完成。
 3. **保持当前架构**：两个历史入口、Future / 轮询 / 取消 / 上下文归SignalHistory；ChartActions保留日志和正式分析。只读执行器仍归SignalPreview，经submitReadOnly提供能力，共两个执行器；关闭先历史后共享资源。Charts / Explore退出工具走同一history.leave，不恢复旧借用或ChartActions历史状态。
 4. **已延期项**：R07搁置，R05 / R06后置；训练评估解释仅在实际扩展训练 / 模型比较时重新讨论。Review F2旧version类型宽松Deferred，未来统一GUI / application / Session版本类型检查时处理；不为讨论方向重新扫描或重跑已通过产品测试。
@@ -61,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.4计划冻结（2026-10-24）**：用户明确回复“冻结”，Q1–Q6及mini-plan v1.0范围 / AC / Gate已冻结，相关入口同步为待开工。仅文档与链接 / diff核对；未创建Issue / 实现分支，未启动S0，未改产品 / 用户工程 / 论文线。
 
 - **P6.4 grilling Q5 / Q6与最终汇总（2026-10-24）**：用户接受参数 / 估计值 / 条件性SE三列、明确Fixed / 不可估计原因及可展开方法，重复间隔工具仅补解释。mini-plan v0.3汇总Q1–Q6，移除取消的比较执行项并重排AC / Slices；产品问题回答齐备，等待用户最终确认共同理解 / 冻结。仅文档验证，无产品改动 / 新测试结果。
 
