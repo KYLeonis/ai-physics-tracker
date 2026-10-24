@@ -234,7 +234,7 @@ class SignalHistory(QObject):
         if not adopt:
             self._load(state)
         p.parameterTable.horizontalHeaderItem(1).setText('Initial')
-        p._viewingDiskSaved = False
+        p.setViewingDiskSaved(False)
         self.lock()
         if not discard:
             p.historyChanged.emit()
@@ -247,8 +247,8 @@ class SignalHistory(QObject):
             p.residualPlot.clear()
             p._eventLines = []
             p._eventSamplesMatch = False
-            p._allowCachedEvents = False
-            p._previewRange = p._valueRange = None
+            p.setAllowCachedEvents(False)
+            p.clearViewRanges()
             p.modelLabel.clear()
             p.meaningLabel.clear()
             p.resultLabel.setText('Current draft — click Fit to calculate.' if p.methods.currentIndex() == 0 else 'Current draft — review the reference, then Measure crossing intervals.')
@@ -266,11 +266,11 @@ class SignalHistory(QObject):
             return
         if self.active and not notify:
             return
-        p._allowCachedEvents = True
+        p.setAllowCachedEvents(True)
         if notify and p.cancelButton.isEnabled():
             p.showFeedback('Wait for the current calculation or cancel it before viewing history.')
             return
-        p._viewingDiskSaved = previous
+        p.setViewingDiskSaved(previous)
         record = p.savedRecord(disk=previous)
         if notify:
             if record is None:
@@ -282,13 +282,13 @@ class SignalHistory(QObject):
                     raise ValueError('Unsupported recorded result version')
                 p.signalPlot.clear()
                 p.residualPlot.clear()
-                p._previewRange = p._valueRange = None
+                p.clearViewRanges()
                 self.view(metadata, record=record)
             except (KeyError, TypeError, ValueError) as error:
                 self._beginChange()
                 p.signalPlot.clear()
                 p.residualPlot.clear()
-                p._previewRange = p._valueRange = None
+                p.clearViewRanges()
                 self.lock()
                 p.showFeedback(f'History is unreadable: {error}. Return to your draft to continue.')
                 return
@@ -326,7 +326,7 @@ class SignalHistory(QObject):
             return
         panel.signalPlot.clear()
         panel.residualPlot.clear()
-        panel._previewRange = panel._valueRange = None
+        panel.clearViewRanges()
         panel.modelLabel.clear()
         panel.meaningLabel.clear()
         panel.conversionActions.hide()

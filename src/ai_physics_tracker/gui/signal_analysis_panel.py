@@ -537,6 +537,33 @@ class SignalAnalysisPanel(QWidget):
         self._eventPreview = False
         self._eventSamplesMatch = False
 
+    # ------------------------------------------------------------------
+    # 草稿视图状态公开入口（R09）：SignalPreview / SignalHistory 经此读写，
+    # 不再触碰面板私有字段；面板内部自读自写仍走私有名。
+    # ------------------------------------------------------------------
+
+    def isEventPreview(self) -> bool:
+        return self._eventPreview
+
+    def hasValueRange(self) -> bool:
+        return self._valueRange is not None
+
+    def clearValueRange(self) -> None:
+        self._valueRange = None
+
+    def clearPreviewRange(self) -> None:
+        self._previewRange = None
+
+    def clearViewRanges(self) -> None:
+        self.clearPreviewRange()
+        self.clearValueRange()
+
+    def setAllowCachedEvents(self, enabled: bool) -> None:
+        self._allowCachedEvents = enabled
+
+    def setViewingDiskSaved(self, active: bool) -> None:
+        self._viewingDiskSaved = active
+
     def renderCrossingPreview(self, events: tuple[CrossingEvent, ...], origin: float) -> None:
         """只绘制当前草稿候选事件，不改保存结果或参考线。"""
         self.clearCrossingEvents()

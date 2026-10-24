@@ -132,6 +132,12 @@ class TrackingActions(QObject):
     def cancelling(self) -> bool:
         return self._cancelling or self._recovering_model
 
+    @property
+    def currentWorkflowState(self):
+        """最近一次 refresh 投影的工作流状态；分析来源条等跨模块经此公开入口读取。"""
+
+        return getattr(self, "_current_workflow_state", None)
+
     def refresh(self, *_args) -> None:
         if self._closed:
             return
