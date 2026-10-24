@@ -30,7 +30,7 @@ def test_line_se_matches_independent_closed_form_at_original_scale(scale, initia
         assert errors[name]/scale == pytest.approx(expected[name], rel=2e-5, abs=0)
     assert outcome.rmse/scale < .05
     json.dumps(asdict(outcome), allow_nan=False)
-    read_parameter_uncertainty(asdict(outcome.parameter_uncertainty), spec.parameters, len(time), "world_position")
+    read_parameter_uncertainty(asdict(outcome.parameter_uncertainty), spec.parameters, len(time), "world_position", dict(outcome.parameter_values))
 
 
 def test_fixed_parameters_are_not_zero_errors_and_bounds_do_not_remove_valid_fit():
@@ -79,7 +79,7 @@ def test_summary_boundary_rejects_unreadable_statistics(mutate):
     raw = asdict(result)
     row = raw['parameters'][0]
     if mutate.startswith('version'):
-        raw['version'] = True if mutate == 'version_bool' else 2
+        raw['version'] = True if mutate == 'version_bool' else 99
     elif mutate == 'count_bool':
         raw['free_parameter_count'] = True
     elif mutate == 'nan':

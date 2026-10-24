@@ -1,4 +1,4 @@
-"""P6.4：三列表格 / 方法、旧记录及草稿生命周期。"""
+"""P6.4：四列表格 / 方法、旧记录及草稿生命周期。"""
 
 from copy import deepcopy
 from threading import Event
@@ -18,11 +18,11 @@ def _fit(qtbot, window):
     return panel
 
 
-def test_three_columns_method_and_draft_never_retain_recorded_se(qtbot, synthetic_video_path):
+def test_four_columns_method_and_draft_never_retain_recorded_statistics(qtbot, synthetic_video_path):
     window, session, track = _window(qtbot, synthetic_video_path)
     panel = _fit(qtbot, window)
-    assert [panel.parameterResults.horizontalHeaderItem(i).text().replace('\n', ' ') for i in range(3)] == [
-        'Parameter', 'Estimate', 'Conditional standard error']
+    assert [panel.parameterResults.horizontalHeaderItem(i).text().replace('\n', ' ') for i in range(4)] == [
+        'Parameter', 'Estimate', 'Conditional standard error', '95% confidence interval (local)']
     assert not panel.parameterResults.isHidden()
     assert float(panel.parameterResults.item(0, 2).text()) >= 0
     panel.errorMethodToggle.setChecked(True)
@@ -140,3 +140,27 @@ def test_wide_fit_controls_have_reachable_right_edge_and_horizontal_wheel(qtbot,
                     key=lambda button: button.mapTo(scroll.widget(), QPoint(button.width()-1, 0)).x())
     edge = rightmost.mapTo(scroll.viewport(), QPoint(rightmost.width()-1, 0)).x()
     assert 0 <= edge < scroll.viewport().width()
+
+
+def test_measured_fit_displays_recorded_95_percent_bounds_and_v1_does_not_gain_them(qtbot, synthetic_video_path):
+    window, session, track = _window(qtbot, synthetic_video_path)
+    for frame, noise in enumerate((.1, -.1, -.1, .1, 0.)):
+        session.mark_point(track, frame, pixel_x=10+frame*2+noise, pixel_y=20)
+    session.compute_kinematics(track)
+    window.chartActions.refresh()
+    panel = _fit(qtbot, window)
+    assert panel.parameterResults.columnCount() == 4
+    for row in range(panel.parameterResults.rowCount()):
+        text = panel.parameterResults.item(row, 3).text()
+        assert text.startswith('[') and text.endswith(']')
+        assert len(text.split(',')) == 2
+    assert 'approximately normal residuals' in panel.errorMethod.text()
+    assert 'not a joint region' in panel.errorMethod.text()
+    metadata = deepcopy(session.derived_data(track, 'function_fit_x').extra_fields['analysis'])
+    stats = metadata['summary']['parameter_uncertainty']
+    stats['version'] = 1
+    del stats['confidence_level'], stats['interval_method']
+    for entry in stats['parameters']:
+        del entry['confidence_interval'], entry['interval_reason']
+    rows = parameter_error_rows(metadata)
+    assert all(float(row[2]) > 0 and row[3] == 'Not recorded' for row in rows)

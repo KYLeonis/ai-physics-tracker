@@ -45,8 +45,11 @@ PARAMETER_ERROR_METHOD = (
     'restored to each original parameter scale. Assumes zero-mean, independent, '
     'equal-variance residuals and a locally linear model, conditional on this formula, '
     'fixed parameters and source samples. Unsmoothed data do not guarantee independence. '
-    'This is not a confidence interval or proof of the physical model. '
+    '95% local confidence interval = estimate ± t(0.975, n − p) × SE. '
+    'The interval additionally assumes approximately normal residuals; for nonlinear models it is a local approximation. '
+    'These are individual parameter intervals, not a joint region, prediction band or proof of the physical model. '
     'Scale calibration, pivot / reference and timing systematics are not quantified. '
+    'Only Measured position / angle sources support SE and intervals. '
     'User result formulas show values only; their uncertainty is not propagated.'
 )
 
@@ -57,7 +60,7 @@ RECURRENCE_ERROR_NOTE = (
 )
 
 
-def parameter_error_rows(metadata: dict) -> tuple[tuple[str, str, str], ...]:
+def parameter_error_rows(metadata: dict) -> tuple[tuple[str, str, str, str], ...]:
     """只读已记录SE；旧 / 损坏 / 未来统计不回填且不展示伪数值。"""
     from ai_physics_tracker.application.signal_analysis_job import recorded_parameter_errors
     from ai_physics_tracker.domain.function_fit import FitParameter
@@ -65,13 +68,22 @@ def parameter_error_rows(metadata: dict) -> tuple[tuple[str, str, str], ...]:
     summary = metadata['summary']
     values = dict(summary['parameter_values'])
     if 'parameter_uncertainty' not in summary:
-        descriptions = ['Not recorded'] * len(parameters)
+        descriptions = intervals = ['Not recorded'] * len(parameters)
     else:
         try:
             entries = recorded_parameter_errors(metadata)
             descriptions = [f'{entry.standard_error:.6g}' if entry.status == 'estimated'
                             else 'Fixed' if entry.status == 'fixed' else entry.reason for entry in entries]
+            intervals = [_interval_text(entry.confidence_interval) if entry.confidence_interval is not None
+                         else 'Fixed' if entry.status == 'fixed' else entry.interval_reason for entry in entries]
         except (KeyError, TypeError, ValueError) as error:
-            descriptions = [str(error)] * len(parameters)
-    return tuple((parameter.name, f'{values[parameter.name]:.6g}', text)
-                 for parameter, text in zip(parameters, descriptions))
+            descriptions = intervals = [str(error)] * len(parameters)
+    return tuple((parameter.name, f'{values[parameter.name]:.6g}', text, interval)
+                 for parameter, text, interval in zip(parameters, descriptions, intervals))
+
+
+def _interval_text(bounds: tuple[float, float]) -> str:
+    lower, upper = (f'{value:.8g}' for value in bounds)
+    if lower == upper and bounds[0] < bounds[1]:
+        lower, upper = (f'{value:.17g}' for value in bounds)
+    return f'[{lower}, {upper}]'

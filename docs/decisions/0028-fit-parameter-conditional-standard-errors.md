@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for implementation，2026-10-24。用户授权执行已冻结P6.4计划；Issue [#42](https://github.com/KYLeonis/ai-physics-tracker/issues/42)。实现及Gate见[计划](../status/phase-6.4-plan.md)。
+Accepted for implementation，2026-10-24；置信区间 / 三列与统计v1写入条款由[ADR-0029](0029-local-t-parameter-confidence-intervals.md)替代，其余继续有效。用户授权执行已冻结P6.4计划；Issue [#42](https://github.com/KYLeonis/ai-physics-tracker/issues/42)。实现及Gate见[计划](../status/phase-6.4-plan.md)。
 
 ## Context
 

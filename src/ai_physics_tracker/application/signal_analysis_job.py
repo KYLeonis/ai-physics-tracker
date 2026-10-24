@@ -327,7 +327,8 @@ def run_signal_analysis(job: SignalAnalysisJob, cancel: Event) -> SignalAnalysis
         if job.source.kind not in SUPPORTED_SOURCE_KINDS:
             uncertainty = outcome.parameter_uncertainty
             entries = tuple(entry if entry.status == "fixed" else replace(
-                entry, status="unsupported_source", standard_error=None, reason=REASONS["unsupported_source"])
+                entry, status="unsupported_source", standard_error=None, reason=REASONS["unsupported_source"],
+                confidence_interval=None, interval_reason=REASONS["unsupported_source"])
                 for entry in uncertainty.parameters)
             outcome = replace(outcome, parameter_uncertainty=replace(uncertainty, parameters=entries))
         summary = asdict(outcome)
@@ -385,7 +386,8 @@ def recorded_parameter_errors(metadata: dict) -> tuple[ParameterError, ...]:
     if snapshot is not None and (not isinstance(snapshot, dict) or snapshot.get("kind") != kind):
         raise ValueError("Parameter uncertainty conflicts with recorded source selection (read-only)")
     count = len(metadata["samples"]) if "samples" in metadata else metadata["sample_count"]
-    return read_parameter_uncertainty(summary["parameter_uncertainty"], parameters, count, kind)
+    return read_parameter_uncertainty(summary["parameter_uncertainty"], parameters, count, kind,
+                                      dict(summary["parameter_values"]))
 
 
 def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) -> tuple[DerivedData, ...]:

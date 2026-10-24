@@ -53,7 +53,7 @@ def test_target_compatibility_and_unknown_extensions(signal_session, mutation):
     summary = extras['analysis']['summary']
     statistics = summary['parameter_uncertainty']
     if mutation == 'future':
-        statistics['version'] = 2
+        statistics['version'] = 99
     elif mutation == 'boolean':
         statistics['version'] = True
     elif mutation == 'bad_se':
@@ -78,7 +78,7 @@ def test_target_compatibility_and_unknown_extensions(signal_session, mutation):
     else:
         session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
         new = session.derived_data(track, 'function_fit_x').extra_fields['analysis']['summary']
-        assert new['parameter_uncertainty']['version'] == 1
+        assert new['parameter_uncertainty']['version'] == 2
         if mutation == 'extensions':
             assert new['future_summary'] == {'value': 9}
             assert new['parameter_uncertainty']['future_statistics'] == [7]
