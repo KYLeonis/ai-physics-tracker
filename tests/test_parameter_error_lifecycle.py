@@ -44,7 +44,7 @@ def test_processed_source_keeps_fit_and_fixed_but_does_not_publish_free_se(signa
     assert all(row['standard_error'] is None for row in rows)
 
 
-@pytest.mark.parametrize('mutation', ['future', 'boolean', 'bad_se', 'source_conflict', 'legacy', 'extensions'])
+@pytest.mark.parametrize('mutation', ['future', 'boolean', 'bad_se', 'source_conflict', 'selection_conflict', 'legacy', 'extensions'])
 def test_target_compatibility_and_unknown_extensions(signal_session, mutation):
     session, _, track = signal_session
     session.apply_analysis_result(run_signal_analysis(_job(session, track), Event()))
@@ -60,6 +60,8 @@ def test_target_compatibility_and_unknown_extensions(signal_session, mutation):
         statistics['parameters'][0]['standard_error'] = float('nan')
     elif mutation == 'source_conflict':
         extras['analysis']['source_snapshot']['kind'] = 'smoothed_position'
+    elif mutation == 'selection_conflict':
+        extras['analysis']['selection']['smoothed'] = True
     elif mutation == 'legacy':
         del summary['parameter_uncertainty']
     else:
@@ -69,7 +71,7 @@ def test_target_compatibility_and_unknown_extensions(signal_session, mutation):
     replaced = replace(record, extra_fields=extras)
     session._project = replace(session.project, derived=tuple(replaced if item.derived_id == record.derived_id else item for item in session.project.derived))
     before = session.project
-    if mutation in ('future', 'boolean', 'bad_se', 'source_conflict'):
+    if mutation in ('future', 'boolean', 'bad_se', 'source_conflict', 'selection_conflict'):
         with pytest.raises(ProjectSessionError, match='read-only'):
             _job(session, track)
         assert session.project is before
@@ -127,7 +129,7 @@ def test_nonfinite_unknown_extensions_cannot_create_unsavable_analysis(signal_se
     corrupted = replace(record, extra_fields=extras, input=replace(record.input, extra_fields=input_extras))
     session._project = replace(session.project, derived=tuple(corrupted if item.derived_id == record.derived_id else item for item in session.project.derived))
     before, undo = session.project, session.can_undo_analysis
-    result = run_signal_analysis(_job(session, track), Event())
     with pytest.raises(ProjectSessionError, match='finite JSON'):
+        result = run_signal_analysis(_job(session, track), Event())
         session.apply_analysis_result(result)
     assert session.project is before and session.can_undo_analysis == undo

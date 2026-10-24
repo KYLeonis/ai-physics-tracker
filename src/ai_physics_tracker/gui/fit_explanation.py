@@ -59,27 +59,16 @@ RECURRENCE_ERROR_NOTE = (
 
 def parameter_error_rows(metadata: dict) -> tuple[tuple[str, str, str], ...]:
     """只读已记录SE；旧 / 损坏 / 未来统计不回填且不展示伪数值。"""
-    from ai_physics_tracker.application.signal_analysis_job import signal_source
+    from ai_physics_tracker.application.signal_analysis_job import recorded_parameter_errors
     from ai_physics_tracker.domain.function_fit import FitParameter
-    from ai_physics_tracker.domain.fit_uncertainty import read_parameter_uncertainty
     parameters = tuple(FitParameter(**row) for row in metadata['spec']['parameters'])
     summary = metadata['summary']
     values = dict(summary['parameter_values'])
-    raw = summary.get('parameter_uncertainty')
     if 'parameter_uncertainty' not in summary:
         descriptions = ['Not recorded'] * len(parameters)
     else:
         try:
-            snapshot = metadata.get('source_snapshot')
-            if isinstance(snapshot, dict):
-                kind = snapshot['kind']
-            else:
-                selection = metadata['selection']
-                if type(selection['smoothed']) is not bool:
-                    raise ValueError('Unreadable recorded source processing')
-                kind, _ = signal_source(metadata['quantity'], selection['smoothed'])
-            entries = read_parameter_uncertainty(
-                raw, parameters, len(metadata['samples']) if 'samples' in metadata else metadata['sample_count'], kind)
+            entries = recorded_parameter_errors(metadata)
             descriptions = [f'{entry.standard_error:.6g}' if entry.status == 'estimated'
                             else 'Fixed' if entry.status == 'fixed' else entry.reason for entry in entries]
         except (KeyError, TypeError, ValueError) as error:

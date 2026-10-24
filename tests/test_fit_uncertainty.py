@@ -72,7 +72,7 @@ def test_statistics_failure_is_explicit_and_json_finite(case, status):
     json.dumps(asdict(result), allow_nan=False)
 
 
-@pytest.mark.parametrize('mutate', ['version_bool', 'version_future', 'count_bool', 'nan', 'zero_fixed', 'wrong_name', 'unknown_status'])
+@pytest.mark.parametrize('mutate', ['version_bool', 'version_future', 'count_bool', 'nan', 'zero_fixed', 'wrong_name', 'unknown_status', 'nonfinite_extension'])
 def test_summary_boundary_rejects_unreadable_statistics(mutate):
     parameters = (FitParameter('a'),)
     result = estimate_parameter_uncertainty(parameters, np.ones((4, 1)), np.arange(4.), np.ones(1))
@@ -86,6 +86,8 @@ def test_summary_boundary_rejects_unreadable_statistics(mutate):
         row['standard_error'] = float('nan')
     elif mutate == 'zero_fixed':
         row.update(status='fixed', standard_error=0.)
+    elif mutate == 'nonfinite_extension':
+        raw['future_extension'] = {'bad': float('nan')}
     elif mutate == 'wrong_name':
         row['name'] = 'b'
     else:

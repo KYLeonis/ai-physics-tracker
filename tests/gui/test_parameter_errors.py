@@ -101,3 +101,11 @@ def test_recorded_source_conflict_hides_statistics_in_saved_and_attempt_views(qt
     del metadata['source_snapshot']
     metadata['selection']['smoothed'] = True
     assert all('conflicts with recorded source' in row[2] for row in parameter_error_rows(metadata))
+
+
+def test_snapshot_and_selection_conflict_cannot_display_a_parameter_error(qtbot, synthetic_video_path):
+    window, session, track = _window(qtbot, synthetic_video_path)
+    _fit(qtbot, window)
+    metadata = deepcopy(session.derived_data(track, 'function_fit_x').extra_fields['analysis'])
+    metadata['selection']['smoothed'] = True
+    assert all('conflicts with recorded source' in row[2] for row in parameter_error_rows(metadata))

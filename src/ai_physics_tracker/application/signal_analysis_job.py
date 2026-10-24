@@ -28,7 +28,7 @@ from ai_physics_tracker.domain.calibration import Calibration
 from ai_physics_tracker.domain.derived import ANGULAR_KINDS, KINEMATICS_KINDS, DerivedData, DerivedInput
 from ai_physics_tracker.domain.expression import ExpressionError, evaluate_result_formula, parse_expression
 from ai_physics_tracker.domain.function_fit import FitOutcome, FitSpec, fit_function
-from ai_physics_tracker.domain.fit_uncertainty import REASONS, SUPPORTED_SOURCE_KINDS, read_parameter_uncertainty
+from ai_physics_tracker.domain.fit_uncertainty import REASONS, SUPPORTED_SOURCE_KINDS, ParameterError, read_parameter_uncertainty
 from ai_physics_tracker.domain.fit_initial import InitialEstimate, estimate_initial, adopt_estimate
 from ai_physics_tracker.domain.kinematics import derive_unit
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec, RecurrenceOutcome, measure_recurrence
@@ -248,7 +248,7 @@ def prepare_signal_analysis(
     if old and isinstance(spec, FitSpec):
         metadata = _analysis_metadata(old[0])
         try:
-            _read_recorded_uncertainty(metadata)
+            recorded_parameter_errors(metadata)
         except (KeyError, TypeError, ValueError) as error:
             raise ProjectSessionError(f"Target parameter uncertainty is read-only: {error}") from error
     names = [name for name, _ in result_formulas]
@@ -370,15 +370,22 @@ def _analysis_metadata(record: DerivedData) -> dict | None:
     return value if isinstance(value, dict) and value.get("version") == 1 else None
 
 
-def _read_recorded_uncertainty(metadata: dict) -> None:
-    """嵌套统计拥有独立版本；未来或损坏记录不能被重算覆盖。"""
+def recorded_parameter_errors(metadata: dict) -> tuple[ParameterError, ...]:
+    """读取正式结果或日志的SE；版本 / 样本 / 选择与快照来源共同核对。"""
     summary = metadata.get("summary")
     if not isinstance(summary, dict) or "parameter_uncertainty" not in summary:
-        return
+        return ()
     from ai_physics_tracker.domain.function_fit import FitParameter
     parameters = tuple(FitParameter(**row) for row in metadata["spec"]["parameters"])
-    read_parameter_uncertainty(summary["parameter_uncertainty"], parameters, len(metadata["samples"]),
-                               metadata["source_snapshot"]["kind"])
+    selection = metadata["selection"]
+    if type(selection["smoothed"]) is not bool:
+        raise ValueError("Unreadable recorded source processing")
+    kind, _ = signal_source(metadata["quantity"], selection["smoothed"])
+    snapshot = metadata.get("source_snapshot")
+    if snapshot is not None and (not isinstance(snapshot, dict) or snapshot.get("kind") != kind):
+        raise ValueError("Parameter uncertainty conflicts with recorded source selection (read-only)")
+    count = len(metadata["samples"]) if "samples" in metadata else metadata["sample_count"]
+    return read_parameter_uncertainty(summary["parameter_uncertainty"], parameters, count, kind)
 
 
 def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) -> tuple[DerivedData, ...]:
@@ -427,7 +434,7 @@ def validated_analysis(session: ProjectSession, result: SignalAnalysisResult) ->
                     or not np.allclose(measured-predicted, outcome.residual, rtol=1e-10, atol=1e-12)):
                 raise ValueError("Prediction or residual does not match the declared model")
             summary = metadata.get("summary")
-            _read_recorded_uncertainty(metadata)
+            recorded_parameter_errors(metadata)
             expected = json.loads(json.dumps(asdict(outcome), allow_nan=False))
             if not isinstance(summary, dict) or any(summary.get(key) != value for key, value in expected.items()):
                 raise ValueError("Fit summary does not match the solver outcome")

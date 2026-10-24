@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 import math
+import json
 from collections.abc import Mapping
 
 import numpy as np
@@ -109,6 +110,10 @@ def read_parameter_uncertainty(
     """严格读取v1；旧 / 未来 / 损坏摘要由调用方只读披露，绝不猜测SE。"""
     if not isinstance(value, Mapping) or type(value.get("version")) is not int or value["version"] != 1:
         raise ValueError("Unsupported parameter uncertainty version (read-only)")
+    try:
+        json.dumps(value, allow_nan=False)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Parameter uncertainty is not finite JSON (read-only)") from error
     if type(sample_count) is not int or sample_count < 0:
         raise ValueError("Unreadable parameter uncertainty sample count")
     p = sum(not parameter.fixed for parameter in parameters)
