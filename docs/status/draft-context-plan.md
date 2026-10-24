@@ -3,7 +3,7 @@
 - 日期 / 状态：2026-10-24 · **用户已授权：mini-plan 形成后直接执行（含建 Issue、完整 Gate）。**
 - 用户原话（grilling Q1–Q8 闭合后）："写好mini-plan后你直接执行，记得拉issue，走好我们的流程"。Q1–Q8 决策已冻结，见下方 Goal / Scope / AC / Gate。
 - 规划基线：`main @ 94d15ab`（src/tests 自 703ac81 未变，仅文档前进；6.4 mini-plan v1.0 已冻结待开工，本轮先于 6.4 执行）。
-- Issue：#40；实现分支：`refactor/draft-context`。
+- Issue：[#40](https://github.com/KYLeonis/ai-physics-tracker/issues/40)；实现分支：`refactor/draft-context`。
 - 风险等级：**Normal-risk**（GUI 内部整理，无数据 / 契约 / 算法变化，`docs/workflow.md` §10.2）；因迁移迟到交付守卫代码位置，用户加码 Review：实现完成后由两个独立只读 Agent 分别排查（Q6）。
 
 ## 对使用有什么影响
