@@ -192,7 +192,8 @@ def test_interval_bounds_fit_in_cells_and_header_can_be_dragged(qtbot, synthetic
         bounds = table.item(row, 3).text().split(', ')
         assert len(bounds) == 2
         assert all(table.fontMetrics().horizontalAdvance(bound) + 8 <= table.columnWidth(3) for bound in bounds)
-        assert table.rowHeight(row) >= table.fontMetrics().height()
+        lines = 2 if table.fontMetrics().horizontalAdvance(table.item(row, 3).text()) + 8 > table.columnWidth(3) else 1
+        assert table.rowHeight(row) >= lines * table.fontMetrics().height()
     header = table.horizontalHeader()
     before = table.columnWidth(0)
     divider = QPoint(header.sectionViewportPosition(0) + before - 1, header.height() // 2)
@@ -217,7 +218,12 @@ def test_result_pane_and_controls_resize_by_drag_and_table_fills_width(qtbot, sy
     qtbot.waitUntil(lambda: panel.resultSplitter.isVisible())
     table = panel.parameterResults
     qtbot.waitUntil(lambda: table.horizontalHeader().length() >= table.viewport().width())
-    assert table.columnWidth(3) >= table.fontMetrics().horizontalAdvance(table.item(0, 3).text()) + 8
+    # 长区间在不同平台字体下可自然换行，仍须完整显示每个端点。
+    for row in range(table.rowCount()):
+        text = table.item(row, 3).text()
+        assert all(table.fontMetrics().horizontalAdvance(bound) + 8 <= table.columnWidth(3) for bound in text.split(', '))
+        lines = 2 if table.fontMetrics().horizontalAdvance(text) + 8 > table.columnWidth(3) else 1
+        assert table.rowHeight(row) >= lines * table.fontMetrics().height()
     assert table.height() > 175
     for splitter, delta, dimension in (
             (panel.workspaceSplitter, QPoint(-80, 0), 'width'),
