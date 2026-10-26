@@ -2,7 +2,7 @@
 
 > **P6.4 v1.1已完成并集成main**：2026-10-26用户“HR通过，收尾”，e31a4ac以--no-ff集成并push，F1–F8 Closed；Issue #42 Closed / PR #43 Merged。**6.5未开始，停止等待用户下一条指令。**
 
-- 最后更新：2026-10-26（P6.4完整收尾）
+- 最后更新：2026-10-26（P6.4完整收尾；项目健康度与后续计划评估）
 
 ## Current
 
@@ -17,6 +17,7 @@
 1. **停止，等待用户下一条指令**；不自动开始6.5或其他维护。
 2. 用户授权6.5后，从[Phase 6总计划](phase-6-plan.md)及requirements / roadmap的剩余完整单摆验收进入，先核对范围与mini-plan。P6.4仅完成参数误差解释及相关生命周期，不代替整个Phase 6的最终验收。
 3. 两轨迹新增比较已取消；ODE、其他置信方法、完整系统误差 / 换算传播、论文线同步及Windows/CUDA真机延期保持原边界，不作隐式授权。
+4. 本轮[健康度与计划评估](../notes/project-health-review-2026-10-26.md)建议优先6.5整体验证，再讨论最小导出 / 独立试用 / 运行环境可行性与已测GUI热点；均未冻结或授权实施，原阶段 / AC / R07搁置状态保持。
 
 ## Active Constraints
 
@@ -60,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **项目健康度与后续计划评估（2026-10-26）**：以8940352对照初始roadmap、当前实现及真实验收，结论为工程基础健康、独立有效性 / 新用户 / 交付证据相对不足；记录Phase 5已归档改善缺口、6.5与导出 / 模型库顺序建议。方法级合成探针测得3.6万 / 10万观测的`is_dirty`约54.57 / 174.89ms；定向103 passed（3.42s）。GitHub确认仓库public，与LICENSE的旧private表述矛盾，环境表也有旧版本残留，均列为后续收口事项。本轮只新增评估文档及此状态记录，未改产品、用户工程、已冻结计划或验收门槛；未运行新全量 / 真实AI / 真人HR，不开始6.5或重构。
 
 - **P6.4主干验证最终收口（2026-10-26）**：集成后字体布局测试的两次平台假设已用Qt实际字体 / 内容区 / sizeHint替代，保留完整端点、行高及真实拖动断言；测试修正20153c5以a13b661集成，产品src未改。本机全量1414 passed（256.53s），[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348)双平台success。失败流水线及处置见Review留档，全部HR结论保持，Issue #42 Closed / PR #43 Merged，停止。
 
