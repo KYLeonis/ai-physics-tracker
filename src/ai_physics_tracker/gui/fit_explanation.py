@@ -59,6 +59,43 @@ RECURRENCE_ERROR_NOTE = (
     'Timing, reference and other systematics are not quantified.'
 )
 
+PARAMETER_RESULT_HELP = (
+    'Parameter: a named constant in your formula. Use this row to read its fitted value and precision. '
+    'Its physical meaning and units depend on your formula, not its name.',
+    'Estimate: the value chosen by least squares to fit the selected source samples. '
+    'Use it in your formula or compare it with a reference value. A good fit does not establish physical correctness.',
+    'Conditional standard error (SE): the local uncertainty scale of an estimated parameter, in that parameter\'s units. '
+    'Use it to assess how tightly these samples constrain the parameter. It assumes independent, zero-mean, '
+    'equal-variance residuals and holds the formula, source and fixed parameters given. '
+    'It excludes calibration, timing and other systematic uncertainty. Fixed means the parameter was not estimated; '
+    'Not recorded means this historical result has no saved statistic.',
+    '95% confidence interval (local): [lower, upper] = estimate ± t(0.975, n − p) × SE; '
+    'n is the number of fitted samples and p is the number of free parameters. '
+    'Use the width to assess parameter precision and compare the range with a reference value. '
+    'Under the assumptions, 95% of intervals from repeated datasets would cover the true parameter. '
+    'Residuals must be approximately normal; nonlinear fits use a local approximation. '
+    'This is an individual parameter interval, not a prediction range or complete experimental uncertainty. '
+    'Fixed has no estimated interval; Not recorded is never filled in retrospectively.',
+)
+
+FIXED_PARAMETER_HELP = (
+    'To hold a known parameter value: open Parameter bounds / fixed values, enter the value in Initial, '
+    'check Fixed in that row, then click Fit. Uncheck Fixed to estimate it again. '
+    'While viewing a recorded result, click Use recorded setup first. '
+    'Fixed holds Initial, not the previous fitted Estimate. Its SE and interval show Fixed because it is not estimated; '
+    'uncertainty in the supplied fixed value is not propagated.'
+)
+
+FIT_METRIC_HELP = (
+    'Residual = measured source value − model prediction. Inspect the Residuals plot for patterns the formula misses.\n\n'
+    'RMSE (root mean square error) summarizes residual scatter in the source units; it is not parameter SE. '
+    'Compare RMSE only for the same samples and source.\n\n'
+    'Error reduction vs constant mean compares RMSE with a horizontal line at the mean of those same samples. '
+    'It describes improvement over that baseline, not the probability that the physical model is correct.\n\n'
+    'User result formulas substitute parameter values only; uncertainty is not propagated.\n\n'
+    + RECURRENCE_ERROR_NOTE
+)
+
 
 def parameter_error_rows(metadata: dict) -> tuple[tuple[str, str, str, str], ...]:
     """只读已记录SE；旧 / 损坏 / 未来统计不回填且不展示伪数值。"""

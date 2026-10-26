@@ -164,3 +164,67 @@ def test_measured_fit_displays_recorded_95_percent_bounds_and_v1_does_not_gain_t
         del entry['confidence_interval'], entry['interval_reason']
     rows = parameter_error_rows(metadata)
     assert all(float(row[2]) > 0 and row[3] == 'Not recorded' for row in rows)
+
+
+def test_interval_bounds_fit_in_cells_and_header_can_be_dragged(qtbot, synthetic_video_path):
+    from PySide6.QtCore import QPoint
+    window, session, track = _window(qtbot, synthetic_video_path)
+    for frame, noise in enumerate((.1, -.1, -.1, .1, 0.)):
+        session.mark_point(track, frame, pixel_x=10+frame*2+noise, pixel_y=20)
+    session.compute_kinematics(track)
+    window.chartActions.refresh()
+    panel = window.chartActions.signalPanel
+    font = panel.font()
+    font.setPointSize(18)
+    panel.setFont(font)
+    _fit(qtbot, window)
+    table = panel.parameterResults
+    # 独立窄视口用于真实表头拖动，不依赖外层页面的纵向滚动位置。
+    table.setParent(None)
+    qtbot.addWidget(table)
+    table.resize(500, 175)
+    table.show()
+    qtbot.waitUntil(lambda: table.horizontalScrollBar().maximum() > 0)
+    for row in range(table.rowCount()):
+        bounds = table.item(row, 3).text().splitlines()
+        assert len(bounds) == 2
+        assert all(table.fontMetrics().horizontalAdvance(bound) + 8 <= table.columnWidth(3) for bound in bounds)
+        assert table.rowHeight(row) >= 2 * table.fontMetrics().height()
+    header = table.horizontalHeader()
+    before = table.columnWidth(0)
+    divider = QPoint(header.sectionViewportPosition(0) + before - 1, header.height() // 2)
+    qtbot.mousePress(header.viewport(), Qt.MouseButton.LeftButton, pos=divider)
+    qtbot.mouseMove(header.viewport(), divider + QPoint(40, 0))
+    qtbot.mouseRelease(header.viewport(), Qt.MouseButton.LeftButton, pos=divider + QPoint(40, 0))
+    assert table.columnWidth(0) >= before + 30
+    table.horizontalScrollBar().setValue(table.horizontalScrollBar().maximum())
+    assert table.visualItemRect(table.item(0, 3)).right() < table.viewport().width()
+
+
+def test_fixed_help_leads_from_recorded_setup_to_held_initial_value(qtbot, synthetic_video_path):
+    from PySide6.QtCore import QPoint
+    window, session, track = _window(qtbot, synthetic_video_path)
+    panel = _fit(qtbot, window)
+    panel.restoreButton.click()
+    assert panel.parameterTable.isColumnHidden(4)
+    assert panel.fixedParameterHelp.isHidden()
+    panel.parameterOptions.click()
+    assert not panel.parameterTable.isColumnHidden(4)
+    assert not panel.fixedParameterHelp.isHidden()
+    assert 'Initial' in panel.fixedParameterHelp.text() and 'Fixed' in panel.fixedParameterHelp.text()
+    assert 'not the previous fitted Estimate' in panel.parameterOptions.toolTip()
+    panel.parameterTable.item(1, 1).setText('3')
+    fixed = panel.parameterTable.item(1, 4)
+    panel.parameterTable.scrollToItem(fixed)
+    rect = panel.parameterTable.visualItemRect(fixed)
+    qtbot.mouseClick(panel.parameterTable.viewport(), Qt.MouseButton.LeftButton,
+                     pos=QPoint(rect.left() + 8, rect.center().y()))
+    assert fixed.checkState() == Qt.CheckState.Checked
+    _preview(qtbot, panel)
+    _fit(qtbot, window)
+    assert panel.parameterResults.item(1, 1).text() == '3'
+    assert panel.parameterResults.item(1, 2).text() == 'Fixed'
+    assert panel.parameterResults.item(1, 3).text() == 'Fixed'
+    for column in range(4):
+        assert panel.parameterResults.horizontalHeaderItem(column).toolTip()
+        assert panel.parameterResults.item(0, column).text().replace('\n', ' ') in panel.parameterResults.item(0, column).toolTip()
