@@ -25,7 +25,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 | Phase 3 | Calibration & Physics Engine | 标定、坐标系、运动学计算、基础图表（✅ 已完成，2026-08-31） |
 | Phase 4 | Deep Learning Tracking | 接入 DeepLabCut/PyTorch：标注→训练→跟踪（✅ 已完成，2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | 代表帧、困难帧、人工修正、迭代比较、交互重构（✅ 已完成，2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 / 6.2 完成并集成 main；独立复审 / 双平台 CI / 全部 Human Review 通过，2026-10-15；6.3已按 ADR-0017 完成计划冻结，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；公式拟合联动维护增量于2026-10-18通过HR，以aa86d79集成main（全量1271 / 独立复审 / 双平台CI通过）；计算配方统一解释内部整理于2026-10-18以26af812集成main（全量1276 / 独立复审 / 双平台CI通过）；重复间隔联动R03于2026-10-18通过全部HR并以2600f2a集成main（独立复审 / 双平台CI通过，拖线跳顶F1 Closed）；R04分析主干于2026-10-18本轮HR通过，以085219e集成main（本机1316 / 独立 / 双平台通过，F1 Closed）；R07工程变更与界面更新方案已由用户搁置、未实施，R08历史查看于2026-10-20本轮HR通过，以f34d3b8集成main（本机1329 / 独立R2 / 双平台通过，F1 Closed）；P6.4 v1.1于2026-10-26全部HR通过，以e31a4ac集成main（最终源码9c1aa63 / 独立R3 / 双平台各1412 passed、2个既有可选skip，F1–F8 Closed）；6.5未开始） |
+| Phase 6 | Advanced Physics Analysis | θ/ω/α、相图、周期分析、拟合、误差分析（🔄 6.1 / 6.2 完成并集成 main；独立复审 / 双平台 CI / 全部 Human Review 通过，2026-10-15；6.3已按 ADR-0017 完成计划冻结，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；公式拟合联动维护增量于2026-10-18通过HR，以aa86d79集成main（全量1271 / 独立复审 / 双平台CI通过）；计算配方统一解释内部整理于2026-10-18以26af812集成main（全量1276 / 独立复审 / 双平台CI通过）；重复间隔联动R03于2026-10-18通过全部HR并以2600f2a集成main（独立复审 / 双平台CI通过，拖线跳顶F1 Closed）；R04分析主干于2026-10-18本轮HR通过，以085219e集成main（本机1316 / 独立 / 双平台通过，F1 Closed）；R07工程变更与界面更新方案已由用户搁置、未实施，R08历史查看于2026-10-20本轮HR通过，以f34d3b8集成main（本机1329 / 独立R2 / 双平台通过，F1 Closed）；P6.4 v1.1于2026-10-26全部HR通过，以e31a4ac集成main（最终源码9c1aa63 / 独立R3 / 双平台各1412 passed、2个既有可选skip，F1–F8 Closed）；6.5 mini-plan v1.0已冻结，实施未开始） |
 | Phase 7 | Model Library | 模型保存、版本管理、应用到新视频 |
 | Phase 8 | Export & Scientific Workflow | CSV/Excel/图表/视频导出、项目归档 |
 | Phase 9 | Optimization & Packaging | 性能优化、GPU、Windows 打包发布 |
@@ -33,9 +33,9 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 完整版本（目标、交付物、验收标准、技术风险）见 `docs/roadmap.md`。
 
-**首个可交付目标已冻结（2026-10-26）**：[Mac教学试用目标](docs/spec/first-deliverable-target.md)为跨阶段优先级入口。文档 / MIT收口已完成；随后按6.5→最小科学导出与四类合成核查→Mac试用包 / 教程 / 离线验证→一名独立用户完成真实单摆任务推进，完整模型库随后排。目标冻结不等于已实施，6.5未开始。
+**首个可交付目标已冻结（2026-10-26）**：[Mac教学试用目标](docs/spec/first-deliverable-target.md)为跨阶段优先级入口。文档 / MIT收口已完成；随后按6.5→最小科学导出与四类合成核查→Mac试用包 / 教程 / 离线验证→一名独立用户完成真实单摆任务推进，完整模型库随后排。目标冻结不等于已实施，6.5 mini-plan已冻结、实施未开始。
 
-**P6.5待整体确认（2026-10-26）**：[mini-plan v0.4](docs/status/phase-6.5-plan.md)的Q1–Q10设计分支已闭合，Q11共同理解待答，未冻结 / 实施。双线验收、周期各自≤5%、用户人工标注 / 必要修正、新AI最终轨迹达标、最多两次训练及拟合 / 首训配置均已明确，本期Stabilization Mode；原P011冻结参考保持。
+**P6.5计划已冻结（2026-10-26）**：[mini-plan v1.0](docs/status/phase-6.5-plan.md)经Q11最终确认，规划完成、实施未开始。双线验收、周期各自≤5%、用户人工标注 / 必要修正、新AI最终轨迹达标、最多启动两次训练及拟合 / 首训 / 固定检查帧配置均已冻结，本期Stabilization Mode；原P011冻结参考保持。
 
 ## 3. 预期技术栈
 
@@ -95,6 +95,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - Phase 6 规划入口：`docs/spec/phase6-requirements.md`、`docs/status/phase-6-plan.md`、`docs/status/phase-6.1-plan.md`、`docs/status/phase-6.2-plan.md`、`docs/status/phase-6.3-plan.md`（6.1 / 6.2已集成main；6.3计划已获用户认可，显式函数拟合 / 通用重复间隔工具，S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main。ADR-0019/0020为既有数据契约；ODE / 单位管理 / 参数置信区间后续）
 - Phase 6.3.1 新手分析计划：`docs/status/phase-6.3.1-plan.md`（Q1–16已认可，英文 / 图表优先；自动预览 / 初值建议 / 解释 / 尝试日志及就地准备，S0–S4实现、S5已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；不设固定响应或新手完成时限）。访谈事实见`docs/notes/analysis-onboarding-interview.md`。
 - Phase 6.4 参数误差解释：`docs/status/phase-6.4-plan.md`（v1.1已完成，2026-10-26全部用户HR通过，e31a4ac集成main并push；Issue #42 Closed / PR #43 Merged；独立R3 / 最终产品9c1aa63双平台各1412 passed、2个既有可选skip通过，F1–F8 Closed。仅未平滑位置 / 角度源支持参数SE及95%局部t区间，四列 / 可拖动面板 / hover / Fixed整格及空格交互；换算结果仅数值、重复间隔仅补解释，新增两轨迹比较取消。6.5完整单摆验收仍未开始；证据以current为准）。
+- Phase 6.5 完整单摆验收：`docs/status/phase-6.5-plan.md`（v1.0已于2026-10-26经Q11确认冻结；实施 / 6项AC / S0–S3未开始；双线、周期各自≤5%、最多两次训练、Independent Review / 双平台CI / 最终HR；开工入口以current为准）。
 - 后续回移档案：`docs/status/main-backport-backlog.md`（含执行触发点，后续会话必须随相关阶段核对）
 - 当前维护补丁：`docs/status/automatic-timing-plan.md`（2026-10-17用户授权取消Review timing / Yes；ADR-0024将原合格Near-CFR的人工接受改为自动，保留探测与来源；2026-10-17独立review / 双平台CI / 本轮HR均通过，已集成main，详情以current.md为准）。
 - 分析主干职责重构R04：`docs/status/analysis-workflow-plan.md`（全部实现 / 自动Gate / 本轮HR完成，085219e集成main；ADR-0027，源码 / 测试与bd848f1一致，本机1316 / 独立Approve / 双平台通过，F1 Closed）。
