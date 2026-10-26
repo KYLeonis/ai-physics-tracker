@@ -283,7 +283,7 @@ def test_disclosures_accept_indicator_text_and_keyboard(qtbot,synthetic_video_pa
     window,_,_=_window(qtbot,synthetic_video_path)
     panel=window.chartActions.signalPanel
     boxes=panel.findChildren(QCheckBox)
-    assert len(boxes)==5
+    assert len(boxes)==6
     for box in boxes:
         panel.methods.setCurrentIndex(1 if box.text()=='Noise / separation options' else 0)
         box.setChecked(False)

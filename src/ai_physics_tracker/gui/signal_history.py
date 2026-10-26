@@ -67,6 +67,7 @@ class SignalHistory(QObject):
 
     def _beginChange(self) -> None:
         self._cancelReading()
+        self.panel.clearParameterStatistics()
         self.changing.emit()
 
     def shutdown(self) -> None:
@@ -114,7 +115,8 @@ class SignalHistory(QObject):
                         for col, (text, checked) in enumerate(cells):
                             item = QTableWidgetItem(text)
                             if col in (0, 4):
-                                item.setFlags(Qt.ItemFlag.ItemIsEnabled | (Qt.ItemFlag.ItemIsUserCheckable if col == 4 else Qt.ItemFlag.ItemIsSelectable))
+                                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+                                              | (Qt.ItemFlag.ItemIsUserCheckable if col == 4 else Qt.ItemFlag.NoItemFlags))
                             if col == 4:
                                 item.setCheckState(checked)
                             p.parameterTable.setItem(row, col, item)
@@ -341,8 +343,10 @@ class SignalHistory(QObject):
             summary.setdefault('result_formulas', [dict(zip(('name', 'formula'), item)) for item in attempt.get('result_formulas', [])])
             metadata = {'quantity': attempt.get('quantity'), 'selection': {
                 'track_id': attempt.get('track_id'), 'smoothed': attempt.get('smoothed', False),
-                'start_frame': interval[0], 'end_frame': interval[1]}, 'spec': spec, 'summary': summary}
+                'start_frame': interval[0], 'end_frame': interval[1]}, 'spec': spec, 'summary': summary, 'sample_count': attempt.get('sample_count')}
             self.view(metadata, attempt_id=attempt['id'])
+            if summary.get('parameter_values'):
+                panel.renderParameterStatistics(metadata, 'historical attempt')
             panel.summary.setPlainText(panel.attemptDetails.toPlainText())
             panel.restoreButton.setEnabled(True)
             panel.showFormula(attempt.get('formula', ''), tuple((row[0], str(row[1])) for row in summary.get('parameter_values', [])), fitted=True)
@@ -392,6 +396,7 @@ class SignalHistory(QObject):
             else:
                 panel.renderSamples(view.samples, view.metadata['source_snapshot']['unit'], view.prediction, view.residual,
                                     title='Historical attempt — reconstructed display')
+                panel.renderParameterStatistics(view.metadata, 'historical attempt')
                 summary = view.metadata['summary']
                 panel.showFormula(view.spec.expression, tuple((name, f'{value:.6g}') for name, value in summary['parameter_values']), fitted=True)
                 panel.resultLabel.setText(explain_fit(view.metadata, view.metadata['source_snapshot']['unit']))

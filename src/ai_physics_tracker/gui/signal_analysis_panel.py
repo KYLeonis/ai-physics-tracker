@@ -1,14 +1,16 @@
 """GUI层：单量公式 / 参数编辑与独立重复间隔工具，不执行拟合。"""
 
+from html import escape
 from uuid import UUID
 
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QEvent, QSize, Qt, Signal, QSignalBlocker
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QPlainTextEdit, QPushButton, QSpinBox,
-    QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSlider, QSizePolicy,
+    QAbstractItemView, QHeaderView, QLabel, QLineEdit, QPlainTextEdit, QPushButton, QSpinBox,
+    QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSlider, QSizePolicy, QSplitter, QStyleFactory,
 )
 
 from ai_physics_tracker.application.signal_analysis_job import SignalSelection
@@ -18,7 +20,11 @@ from ai_physics_tracker.domain.function_fit import FitParameter, FitSpec
 from ai_physics_tracker.domain.expression import parse_expression
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec, CrossingEvent
 from ai_physics_tracker.gui.formula_editor import FormulaEditor
-from ai_physics_tracker.gui.fit_explanation import explain_fit
+from ai_physics_tracker.gui.check_state_delegate import CheckStateDelegate
+from ai_physics_tracker.gui.fit_explanation import (
+    explain_fit, parameter_error_rows, PARAMETER_ERROR_METHOD, RECURRENCE_ERROR_NOTE,
+    PARAMETER_RESULT_HELP, FIXED_PARAMETER_HELP, FIT_METRIC_HELP,
+)
 from ai_physics_tracker.gui.analysis_plot import AnalysisPlot, AnalysisScrollArea
 from ai_physics_tracker.gui.signal_history import SignalHistory
 
@@ -75,6 +81,10 @@ class SignalAnalysisPanel(QWidget):
         self.trackChoice, self.quantityChoice, self.sourceChoice = QComboBox(), QComboBox(), QComboBox()
         self.quantityChoice.addItems(QUANTITIES)
         self.sourceChoice.addItems(("Measured (default)", "Smoothed (optional)"))
+        self.sourceChoice.setToolTip("<p>Measured uses the unsmoothed source, which may contain manual or AI observations. "
+                                     "Smoothed applies a local polynomial filter; it can correlate residuals. "
+                                     "Only Measured position / angle sources support the current parameter SE and intervals; "
+                                     "smoothing and derivative sources still support fitting.</p>")
         self.startFrame, self.endFrame = QSpinBox(), QSpinBox()
         self.startFrame.setPrefix("Start frame ")
         self.endFrame.setPrefix("End frame ")
@@ -93,7 +103,21 @@ class SignalAnalysisPanel(QWidget):
         self.modelLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.editor = FormulaEditor()
         self.parameterTable = QTableWidget(0, 5)
+        self.parameterTable.setItemDelegateForColumn(4, CheckStateDelegate(self.parameterTable))
+        self.parameterTable.installEventFilter(self)
+        # 与轨迹列表一致，避免macOS原生样式把未勾选空框画得不可见。
+        checkStyle = QStyleFactory.create("Fusion")
+        if checkStyle is not None:
+            checkStyle.setParent(self.parameterTable)
+            self.parameterTable.setStyle(checkStyle)
         self.parameterTable.setHorizontalHeaderLabels(("Parameter", "Initial", "Lower (optional)", "Upper (optional)", "Fixed"))
+        for column, helpText in enumerate((PARAMETER_RESULT_HELP[0],
+                "Initial: the starting guess for a free parameter, or the held value when Fixed is checked. "
+                "Fit updates Estimate in the result table; it does not replace Initial.",
+                "Lower: an optional minimum allowed parameter value during fitting. This is a constraint you supply, not a confidence bound.",
+                "Upper: an optional maximum allowed parameter value during fitting. This is a constraint you supply, not a confidence bound.",
+                FIXED_PARAMETER_HELP)):
+            self.parameterTable.horizontalHeaderItem(column).setToolTip(f"<p>{helpText}</p>")
         self.parameterTable.setMaximumHeight(170)
         self.budget = QSpinBox()
         self.budget.setRange(1, 10000)
@@ -104,6 +128,8 @@ class SignalAnalysisPanel(QWidget):
         self.previewButton, self.fitButton = QPushButton("Preview initial curve"), QPushButton("Fit")
         self.cancelButton = QPushButton("Cancel calculation")
         self.restoreButton = QPushButton("Use recorded setup")
+        self.restoreButton.setToolTip("<p>Copy the recorded formula and original fitting settings into an editable draft. "
+                                      "This does not run Fit or replace Initial with fitted estimates.</p><p>" + FIXED_PARAMETER_HELP + "</p>")
         self.returnDraftButton = QPushButton("Return to my draft")
         self.returnDraftButton.hide()
         self.returnDraftButton.clicked.connect(lambda: self.history.leave())
@@ -129,6 +155,14 @@ class SignalAnalysisPanel(QWidget):
         for col in (2, 3, 4):
             self.parameterTable.setColumnHidden(col, True)
         fitLayout.addWidget(parameterOptions)
+        parameterOptions.setToolTip(f"<p>{FIXED_PARAMETER_HELP}</p>")
+        self.fixedParameterHelp = QLabel("To fix a parameter: enter its value in Initial → check Fixed in that row → Fit.\n"
+                                        "To estimate it again: uncheck Fixed → Fit. Viewing history? Use recorded setup first.")
+        self.fixedParameterHelp.setWordWrap(True)
+        self.fixedParameterHelp.setToolTip(f"<p>{FIXED_PARAMETER_HELP}</p>")
+        self.fixedParameterHelp.hide()
+        parameterOptions.toggled.connect(self.fixedParameterHelp.setVisible)
+        fitLayout.addWidget(self.fixedParameterHelp)
         advanced = QCheckBox("Optional settings")
         self.optionalGroup = advanced
         advanced.setChecked(False)
@@ -196,6 +230,7 @@ class SignalAnalysisPanel(QWidget):
         self.plotTabs = QTabWidget()
         self.plotTabs.addTab(self.signalPlot, "Signal / model")
         self.plotTabs.addTab(self.residualPlot, "Residuals")
+        self.plotTabs.setTabToolTip(1, "<p>" + FIT_METRIC_HELP.replace("\n\n", "</p><p>") + "</p>")
         self.resetViewButton = QPushButton("Reset view")
         self.zoomInButton, self.zoomOutButton = QPushButton("Zoom +"), QPushButton("Zoom −")
         plotActions = QHBoxLayout()
@@ -227,22 +262,70 @@ class SignalAnalysisPanel(QWidget):
         interval.addWidget(self.endFrame)
         choices.addRow("Interval", interval)
         layout.addWidget(self.contextLabel)
-        workspace = QHBoxLayout()
-        chartColumn = QVBoxLayout()
+        self.workspaceSplitter = QSplitter(Qt.Orientation.Horizontal)
+        self.workspaceSplitter.setChildrenCollapsible(False)
+        self.workspaceSplitter.setHandleWidth(8)
+        self.workspaceSplitter.setStyleSheet("QSplitter::handle { background: palette(midlight); } "
+                                            "QSplitter::handle:hover { background: palette(mid); }")
+        chart = QWidget()
+        chartColumn = QVBoxLayout(chart)
+        chartColumn.setContentsMargins(0, 0, 0, 0)
         chartColumn.addWidget(self.draftLabel)
         chartColumn.addWidget(self.modelLabel)
         chartColumn.addLayout(plotActions)
         self.showModelButton = QPushButton("Show whole model")
         self.showModelButton.clicked.connect(self.showWholeModel)
         chartColumn.addWidget(self.showModelButton)
-        chartColumn.addWidget(self.plotTabs, 1)
+        self.resultSplitter = QSplitter(Qt.Orientation.Vertical)
+        self.resultSplitter.setChildrenCollapsible(False)
+        self.resultSplitter.setHandleWidth(8)
+        plot = QWidget()
+        plotLayout = QVBoxLayout(plot)
+        plotLayout.setContentsMargins(0, 0, 0, 0)
+        plotLayout.addWidget(self.plotTabs, 1)
         helpLabel = QLabel("Scroll: page · Ctrl+scroll / buttons: zoom · Click a point: source frame")
         helpLabel.setWordWrap(True)
-        chartColumn.addWidget(helpLabel)
-        workspace.addLayout(chartColumn, 3)
+        plotLayout.addWidget(helpLabel)
+        self.resultSplitter.addWidget(plot)
+        self.parameterResultsPane = QWidget()
+        resultsLayout = QVBoxLayout(self.parameterResultsPane)
+        resultsLayout.setContentsMargins(0, 0, 0, 0)
+        self.parameterResults = QTableWidget(0, 4)
+        self.parameterResults.setHorizontalHeaderLabels(["Parameter", "Estimate", "Conditional\nstandard error", "95% confidence\ninterval (local)"])
+        self.parameterResults.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.parameterResults.verticalHeader().hide()
+        self.parameterResults.setTextElideMode(Qt.TextElideMode.ElideNone)
+        self.parameterResults.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.parameterResults.horizontalHeader().setStretchLastSection(True)
+        self.parameterResults.horizontalHeader().sectionResized.connect(self.parameterResults.resizeRowsToContents)
+        for column, helpText in enumerate(PARAMETER_RESULT_HELP):
+            self.parameterResults.horizontalHeaderItem(column).setToolTip(f"<p>{helpText}</p>")
+        self.parameterResults.setToolTip("<p>Drag a header divider to resize a column; scroll horizontally in a narrow window. "
+                                        "Hover a heading or cell for its meaning and use.</p>")
+        self.parameterResultsLabel = QLabel()
+        self.parameterResultsLabel.setWordWrap(True)
+        self.parameterResultsLabel.setToolTip("<p>Recorded means these values belong to a saved fit or attempt. "
+                                              "Valid means its recorded inputs are current, not that the physical model is proven. "
+                                              "Stale means inputs have changed; treat the values as historical only.</p>")
+        self.errorMethodToggle = QCheckBox("Parameter error assumptions / method")
+        self.errorMethodToggle.setToolTip(f"<p>{PARAMETER_ERROR_METHOD}</p>")
+        self.errorMethod = QLabel(PARAMETER_ERROR_METHOD)
+        self.errorMethod.setWordWrap(True)
+        self.errorMethod.hide()
+        self.errorMethodToggle.toggled.connect(self.errorMethod.setVisible)
+        for widget in (self.parameterResultsLabel, self.parameterResults, self.errorMethodToggle, self.errorMethod):
+            resultsLayout.addWidget(widget, 1 if widget is self.parameterResults else 0)
+        self.resultSplitter.addWidget(self.parameterResultsPane)
+        self.resultSplitter.setStretchFactor(0, 3)
+        self.resultSplitter.setStretchFactor(1, 2)
+        self.resultSplitter.setSizes([360, 240])
+        self.resultSplitter.handle(1).setToolTip("Drag up / down to resize the chart and parameter results.")
+        self.resultSplitter.handle(1).setAccessibleName("Resize chart and parameter results")
+        chartColumn.addWidget(self.resultSplitter, 1)
+        self.clearParameterStatistics()
+        self.workspaceSplitter.addWidget(chart)
         side = QWidget()
         side.setMinimumWidth(300)
-        side.setMaximumWidth(460)
         sideLayout = QVBoxLayout(side)
         sideLayout.setContentsMargins(0, 0, 0, 0)
         self.meaningLabel = QLabel("Choose data and an editable example, then inspect the initial curve and Fit.")
@@ -251,6 +334,7 @@ class SignalAnalysisPanel(QWidget):
         sideLayout.addWidget(self.meaningLabel)
         self.resultLabel = QLabel("No saved result yet.")
         self.resultLabel.setWordWrap(True)
+        self.resultLabel.setToolTip("<p>" + FIT_METRIC_HELP.replace("\n\n", "</p><p>") + "</p>")
         sideLayout.addWidget(self.resultLabel)
         sideLayout.addWidget(self.returnDraftButton)
         sideLayout.addWidget(self.restoreButton)
@@ -327,11 +411,17 @@ class SignalAnalysisPanel(QWidget):
         self.retryJournalButton = QPushButton("Retry saving attempt log")
         controlsLayout.addWidget(self.retryJournalButton)
         self.controlsScroll = AnalysisScrollArea()
+        self.controlsScroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.controlsScroll.setWidget(controls)
         self.controlsScroll.setMinimumHeight(220)
         sideLayout.addWidget(self.controlsScroll, 1)
-        workspace.addWidget(side, 2)
-        layout.addLayout(workspace, 1)
+        self.workspaceSplitter.addWidget(side)
+        self.workspaceSplitter.setStretchFactor(0, 3)
+        self.workspaceSplitter.setStretchFactor(1, 2)
+        self.workspaceSplitter.setSizes([800, 420])
+        self.workspaceSplitter.handle(1).setToolTip("Drag left / right to resize the chart and fitting controls.")
+        self.workspaceSplitter.handle(1).setAccessibleName("Resize chart and fitting controls")
+        layout.addWidget(self.workspaceSplitter, 1)
         self.setMinimumHeight(540)
         self.pageScrollRequested.connect(self.controlsScroll.scrollPage)
         self.editor.formulaChanged.connect(self._formulaChanged)
@@ -364,10 +454,22 @@ class SignalAnalysisPanel(QWidget):
         self.editor.setQuantityLabel("x(t)")
 
     def eventFilter(self, watched, event) -> bool:
+        if watched is self.parameterTable:
+            if (event.type() == QEvent.Type.ShortcutOverride and isinstance(event, QKeyEvent)
+                    and event.key() == Qt.Key.Key_Space and event.modifiers() == Qt.KeyboardModifier.NoModifier
+                    and self.parameterTable.currentColumn() == 4):
+                event.accept()
+                return True
+            return super().eventFilter(watched, event)
         # 滚动表单时不能因为指针经过数字框 / 下拉框就意外修改测量配方。
         if event.type() == QEvent.Type.Wheel:
             delta = event.pixelDelta().y() or event.angleDelta().y() / 120 * 40
-            self.pageScrollRequested.emit(round(delta))
+            horizontal = event.pixelDelta().x() or event.angleDelta().x() / 120 * 40
+            if abs(horizontal) > abs(delta):
+                bar = self.controlsScroll.horizontalScrollBar()
+                bar.setValue(bar.value() - round(horizontal))
+            else:
+                self.pageScrollRequested.emit(round(delta))
             event.accept()
             return True
         return super().eventFilter(watched, event)
@@ -421,7 +523,7 @@ class SignalAnalysisPanel(QWidget):
                 for col in range(1, 5):
                     item = QTableWidgetItem(old[name][col-1][0] if name in old else ("1" if col == 1 else ""))
                     if col == 4:
-                        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
+                        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable)
                         item.setCheckState(old[name][3][1] if name in old else Qt.CheckState.Unchecked)
                     self.parameterTable.setItem(row, col, item)
         self._edited()
@@ -468,6 +570,7 @@ class SignalAnalysisPanel(QWidget):
 
     def _edited(self, *_args) -> None:
         if not self._loading:
+            self.clearParameterStatistics()
             self.draftLabel.setText("Draft changed — saved results use their recorded settings")
             self.settingsChanged.emit()
 
@@ -481,6 +584,7 @@ class SignalAnalysisPanel(QWidget):
     def _targetChanged(self, *_args) -> None:
         if self._loading:
             return
+        self.clearParameterStatistics()
         self.editor.setQuantityLabel(self.quantityChoice.currentText() + "(t)")
         self.refreshSourceChoice()
         self._cache = None
@@ -713,7 +817,44 @@ class SignalAnalysisPanel(QWidget):
     def restoreSaved(self) -> None:
         self.history.adoptSaved()
 
+    def clearParameterStatistics(self) -> None:
+        """面板拥有SE显示生命周期，草稿与旧历史不能留下当前数值。"""
+        self.parameterResults.setRowCount(0)
+        self.parameterResults.hide()
+        self.parameterResultsPane.hide()
+        self.parameterResultsLabel.hide()
+        self.errorMethodToggle.setChecked(False)
+        self.errorMethodToggle.hide()
+        self.errorMethod.hide()
+
+    def renderParameterStatistics(self, metadata: dict, status: str = "recorded") -> None:
+        """仅呈现正式或历史摘要，不从当前草稿计算SE。"""
+        self.clearParameterStatistics()
+        rows = parameter_error_rows(metadata)
+        self.parameterResults.setRowCount(len(rows))
+        for row, values in enumerate(rows):
+            for column, value in enumerate(values):
+                item = QTableWidgetItem(value)
+                item.setToolTip(f"<p>{escape(value)}</p><p>{PARAMETER_RESULT_HELP[column]}</p>")
+                self.parameterResults.setItem(row, column, item)
+        header = self.parameterResults.horizontalHeader()
+        header.setStretchLastSection(False)
+        self.parameterResults.resizeColumnsToContents()
+        # 长状态说明换行，给含17位有效数字的区间端点保留完整宽度。
+        widthLimit = self.parameterResults.fontMetrics().horizontalAdvance("[-1.2345678901234567e+308,") + 24
+        for column in range(self.parameterResults.columnCount()):
+            self.parameterResults.setColumnWidth(column, min(self.parameterResults.columnWidth(column), widthLimit))
+        header.setStretchLastSection(True)
+        self.parameterResults.resizeRowsToContents()
+        self.parameterResultsLabel.setText("Recorded fit parameters · " + status +
+                                          (" — historical inputs only" if status == "stale" else ""))
+        self.parameterResultsLabel.show()
+        self.parameterResults.show()
+        self.errorMethodToggle.show()
+        self.parameterResultsPane.show()
+
     def renderSamples(self, samples, unit, predicted=None, residual=None, *, wrapped=False, title="Initial preview") -> None:
+        self.clearParameterStatistics()
         self.signalPlot.clear()
         self.residualPlot.clear()
         self._eventLines = []
@@ -767,6 +908,7 @@ class SignalAnalysisPanel(QWidget):
 
     def renderSaved(self, record: DerivedData | None, *, previous: bool = False) -> None:
         """呈现既有记录；进入、返回及采用设置由SignalHistory协调。"""
+        self.clearParameterStatistics()
         metadata = record.extra_fields.get("analysis") if record else None
         if not isinstance(metadata, dict) or metadata.get("version") != 1:
             self.signalPlot.clear()
@@ -787,6 +929,7 @@ class SignalAnalysisPanel(QWidget):
             self.renderSamples(samples, record.unit, predicted, residual, wrapped=source["kind"] == "angular_position", title="Last disk-saved result" if previous else "Latest applied result")
             summary = metadata["summary"]
             if fitting:
+                self.renderParameterStatistics(metadata, record.status)
                 self.showFormula(metadata["spec"]["expression"],
                                  tuple((name, f"{value:.6g}") for name, value in summary["parameter_values"]), fitted=True)
                 self.conversionActions.setVisible(not self.history.active and any(item.get("error") for item in summary.get("result_formulas", [])))
@@ -805,6 +948,7 @@ class SignalAnalysisPanel(QWidget):
                 meanText = f"{mean:.6g} s" if mean is not None else "unavailable"
                 stdText = f"{std:.6g} s" if std is not None else "unavailable"
                 self.resultLabel.setText(f"{'Disk-saved snapshot' if previous else 'Latest applied'} crossings ({record.status}) · {len(summary['events'])} events\nMean interval: {meanText} · sample std: {stdText}\n{summary['message']}")
+                self.resultLabel.setText(self.resultLabel.text() + "\n" + RECURRENCE_ERROR_NOTE)
                 details = (f"{summary['measurement_status']}: {summary['message']}\n"
                            + f"Events: {len(summary['events'])}; intervals: {len(summary['intervals_s'])}; "
                            + f"mean: {mean if mean is not None else 'unavailable'} s; sample std: {std if std is not None else 'unavailable'} s\n"
@@ -826,6 +970,7 @@ class SignalAnalysisPanel(QWidget):
                                      + timing_message
                                      + details)
         except (KeyError, IndexError, TypeError, ValueError) as error:
+            self.clearParameterStatistics()
             self.signalPlot.clear()
             self.residualPlot.clear()
             self._previewRange = self._valueRange = None

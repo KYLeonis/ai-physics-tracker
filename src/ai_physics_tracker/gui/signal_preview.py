@@ -134,6 +134,7 @@ class SignalPreview(QObject):
         self.panel.summary.setPlainText("Current draft — no fitted result published. Inspect the initial preview; use Latest applied result / Last saved result to review recorded results." if fitting
                                        else "Crossing preview only — use Measure crossing intervals to publish a result. Recorded measurements remain available in history.")
         self.panel.setViewingDiskSaved(False)
+        self.panel.clearParameterStatistics()
         self.panel.conversionActions.hide()
         self.panel.resultLabel.setText("Recorded results: Latest applied result or Last saved result.")
         self.panel.jobLabel.setText("Preparing initial preview…" if fitting else "Preparing crossing preview…")

@@ -8,6 +8,9 @@ import numpy as np
 from scipy.optimize import least_squares
 
 from ai_physics_tracker.domain.expression import ExpressionError, parse_expression
+from ai_physics_tracker.domain.fit_uncertainty import (
+    BOUNDARY_RTOL, ParameterUncertainty, estimate_parameter_uncertainty, add_parameter_intervals,
+)
 
 MAX_FIT_EVALUATIONS = 10000
 IDENTIFIABILITY_RTOL = 1e-7
@@ -67,6 +70,7 @@ class FitOutcome:
     solver_status: int | None = None
     residual_scale: float = 1.0
     parameter_scales: tuple[tuple[str, float], ...] = ()
+    parameter_uncertainty: ParameterUncertainty | None = None
 
     @property
     def is_publishable(self) -> bool:
@@ -155,7 +159,7 @@ def fit_function(
             if not result.success:
                 return FitOutcome("not_converged", result.message, evaluations=evaluations,
                                   solver_status=int(result.status))
-            # 列归一化避免仅因参数单位不同误判；检查局部数值秩，不输出参数置信区间。
+            # 列归一化避免仅因参数单位不同误判；此处只检查拟合可辨识性，统计另行估计。
             maxima = np.max(np.abs(result.jac), axis=0)
             if np.any(maxima == 0) or not np.all(np.isfinite(maxima)):
                 return FitOutcome("unidentifiable", "Model is insensitive to a free parameter",
@@ -177,11 +181,17 @@ def fit_function(
         predicted = values + errors
         if not math.isfinite(rmse) or not np.all(np.isfinite(predicted)):
             raise ExpressionError("Fit summary is outside the finite real domain")
+        boundary_limited = bool(free) and (np.any(result.active_mask != 0) or np.any(
+            np.minimum(solution-lower, upper-solution) <= BOUNDARY_RTOL * np.maximum(1, np.abs(solution))))
+        uncertainty = estimate_parameter_uncertainty(
+            spec.parameters, result.jac if free else np.empty((len(time), 0)),
+            result.fun if free else errors / residual_scale, parameter_scales, boundary_limited)
         ordered = parameter_values(solution)
+        uncertainty = add_parameter_intervals(uncertainty, spec.parameters, ordered)
         return FitOutcome("success" if free else "given_parameters", message,
                           tuple((parameter.name, ordered[parameter.name]) for parameter in spec.parameters),
                           tuple(map(float, predicted)), tuple(map(float, -errors)), rmse, evaluations, status, residual_scale,
-                          tuple((parameter.name, float(scale)) for parameter, scale in zip(free, parameter_scales)))
+                          tuple((parameter.name, float(scale)) for parameter, scale in zip(free, parameter_scales)), uncertainty)
     except _FitStopped as exc:
         return FitOutcome(exc.status, exc.message, evaluations=evaluations)
     except (ValueError, FloatingPointError, np.linalg.LinAlgError) as exc:

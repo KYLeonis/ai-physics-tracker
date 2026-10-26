@@ -9,8 +9,8 @@ from uuid import UUID
 from math import isclose
 
 import numpy as np
-from PySide6.QtCore import QAbstractItemModel, QEvent, QModelIndex, QObject, QPoint, Qt, Signal, QSignalBlocker
-from PySide6.QtGui import QKeyEvent, QMouseEvent, QPalette
+from PySide6.QtCore import QEvent, QObject, QPoint, Qt, Signal, QSignalBlocker
+from PySide6.QtGui import QKeyEvent, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -22,8 +22,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QStyleFactory,
-    QStyledItemDelegate,
-    QStyleOptionViewItem,
     QScrollArea,
     QTabWidget,
     QVBoxLayout,
@@ -41,6 +39,7 @@ from ai_physics_tracker.application.chart_data import (
 from ai_physics_tracker.application.kinematics_job import SmoothingParameters
 from ai_physics_tracker.domain.track import Track
 from ai_physics_tracker.gui.angular_chart_controls import AngularReferenceControls
+from ai_physics_tracker.gui.check_state_delegate import CheckStateDelegate
 
 LINEAR_CHART_KINDS: tuple[ChartKind, ...] = ("x_t", "y_t", "v_t", "a_t", "xy")
 ANGULAR_CHART_KINDS: tuple[ChartKind, ...] = (
@@ -59,23 +58,6 @@ _TIME_CHART_KINDS = frozenset(
 _LEGEND_REFERENCE_KINDS = frozenset(
     {"theta_t", "omega_t", "alpha_t", "theta_omega"}
 )
-
-
-class _TrackChoiceDelegate(QStyledItemDelegate):
-    """整行点击切换勾选；键盘仍沿用 Qt 的复选操作。"""
-
-    def editorEvent(self, event: QEvent, model: QAbstractItemModel,
-                    option: QStyleOptionViewItem, index: QModelIndex) -> bool:
-        if (isinstance(event, QMouseEvent)
-                and event.type() == QEvent.Type.MouseButtonRelease
-                and event.button() == Qt.MouseButton.LeftButton
-                and option.rect.contains(event.position().toPoint())
-                and index.flags() & Qt.ItemFlag.ItemIsEnabled
-                and index.flags() & Qt.ItemFlag.ItemIsUserCheckable):
-            checked = index.data(Qt.ItemDataRole.CheckStateRole) == Qt.CheckState.Checked.value
-            state = Qt.CheckState.Unchecked if checked else Qt.CheckState.Checked
-            return model.setData(index, state.value, Qt.ItemDataRole.CheckStateRole)
-        return super().editorEvent(event, model, option, index)
 
 
 class ChartPlot(pg.PlotWidget):
@@ -369,7 +351,7 @@ class ChartPanel(QWidget):
         self.trackChoices = QListWidget()
         self.trackChoices.installEventFilter(self)
         self.trackChoices.setSelectionMode(QListWidget.SelectionMode.NoSelection)
-        self.trackChoices.setItemDelegate(_TrackChoiceDelegate(self.trackChoices))
+        self.trackChoices.setItemDelegate(CheckStateDelegate(self.trackChoices))
         # macOS 原生列表的空框不明显，限定此列表使用清晰的复选框样式。
         style = QStyleFactory.create("Fusion")
         if style is not None:
