@@ -1,9 +1,9 @@
 # Subphase Plan — Phase 6.4 Fit Parameter Error Interpretation
 
-- 日期 / 状态：2026-10-24 · **mini-plan v1.1：2026-10-24用户HR后授权新增95%双侧局部t置信区间，Q7口径已确认；全部实现 / 自动Gate及2026-10-26用户HR通过，集成收尾中。**
+- 日期 / 状态：2026-10-26 · **mini-plan v1.1：2026-10-24用户HR后授权新增95%双侧局部t置信区间，Q7口径已确认；全部实现 / 自动Gate及2026-10-26用户HR通过，已以e31a4ac集成main并push。**
 - 初始规划基线：`main @ ca8013d`（2026-10-22）；范围 / AC / Gate于2026-10-24冻结。
 - 实现接手基线更新（2026-10-24）：`main @ 850df3e`，包含R09草稿上下文集中（`c14c78a`，源码 / 测试与`ad00f9c`一致）。仅同步接手事实 / 复用入口与回归清单，v1.0已冻结的范围 / AC / Gate不变；实际开工时再核对最新HEAD。
-- Issue / 实现分支：[#42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / `feat/p6.4-parameter-error`；开工基线`c265be8`；[Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
+- Issue / 实现分支：[#42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / `feat/p6.4-parameter-error`；开工基线`c265be8`；[PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
 - 风险等级：**High-risk**（拟合统计及结果摘要契约）。
 - 上下阶段：6.1–6.3.1及R01–R04 / R08 / R09已集成；本期承接Phase 6 AC-6及相关AC-7。用户取消新增两轨迹比较，既有叠图保留；6.5整体验收独立执行。
 
@@ -74,13 +74,13 @@
 - **Q6已确认**：重复间隔工具保留现有逐次间隔、均值与样本标准差，仅补清楚“间隔之间的离散”及与参数SE的区别，不新增统计量或检测方法。尤其不新增std/√N，因为相邻间隔可能共享事件误差且可能相关。
 - 沿用当前量 / 源的配方与来源披露：SG窗口 / 导数、端点、缺测、近似时序及角参考。只显示与当前结果相关的短说明和详情，不新建全局诊断面板。
 
-## Acceptance Criteria（已冻结；自动Gate及本轮HR通过，AC-5待完成集成）
+## Acceptance Criteria（已冻结；全部完成 / 已集成main）
 
 - [x] AC-1 参数统计：已知设计矩阵的线性拟合，条件性标准误差及95%双侧局部t区间与独立解析计算一致（含小样本t分位数）；参数 / 残差尺度变换后保持正确，原拟合参数 / 预测 / RMSE不退化。
 - [x] AC-2 不可估计：固定 / 全固定、自由度不足、病态 / 秩不足、边界、非有限及不支持的处理源有明确状态 / 原因；CI非有限 / 浮点无法表示 / 触及参数边界时独立给出原因且不截断，无区间不抹掉合法SE；没有伪造0或NaN / Infinity写入JSON，也不因统计失败抹掉合法拟合。
 - [x] AC-3 展示 / 解释：四列参数 / SE / 95%局部CI信息与有效 / Fixed / 不可估计状态正确，原因可见，假设 / 方法可展开；UI可辨认四类误差含义及条件，不将重复间隔标准差当均值误差，或从参数SE推断完整测量精度；换算结果仅数值，重复间隔原数值输出不变。
 - [x] AC-4 生命周期：新统计保存重开 / 结果Undo/Redo一致，旧SE-only v1仅显示已录SE，CI为Not recorded；v2统计完整往返、未知字段与未来版本受保护；历史无记录不回填；源变化、切项目 / 轨迹 / 视频 / 工作区及晚到结果不能留下冒充当前的数值。
-- [ ] AC-5 Gate：定向 / 全量、macOS+Windows CI、Independent Review / fixes / re-review及新一轮用户HR通过；文档与验收证据同步后集成 / push，只收尾6.4。
+- [x] AC-5 Gate：定向 / 全量、macOS+Windows CI、Independent Review / fixes / re-review及新一轮用户HR通过；文档与验收证据同步后集成 / push，只收尾6.4。
 
 解析fixture、病态 / 边界数值判据及容差在S0、实现前明确记录；不新增真实准确率或固定响应时长门槛。现有P011仅用于回归与演示，不据此认定参数SE校准正确。
 
@@ -88,7 +88,7 @@
 
 - [x] S0 — 用户授权实施后，建立Issue / 实现分支，冻结数值fixture / 容差、不可估计判据及摘要additive契约。重要新契约新增ADR，不改写Accepted旧ADR；不重开已定产品范围。
 - [x] S1 — 拟合统计贯通：domain纯计算 → 应用摘要 / 校验 → 保存 / 尝试日志 / 历史兼容 → 现有拟合页展示；解析与边界回归通过。
-- [ ] S2 — 解释与完整Gate：统一当前结果的误差含义，相关回归 / 全量 / 双平台 / 独立复审；给最短启动命令、操作→预期及封闭问题，停止等待真人HR。通过后集成 / 文档 / push。
+- [x] S2 — 解释与完整Gate：统一当前结果的误差含义，相关回归 / 全量 / 双平台 / 独立复审；给最短启动命令、操作→预期及封闭问题，停止等待真人HR。通过后集成 / 文档 / push。
 
 ## Verification / 预计改动面
 
@@ -191,3 +191,9 @@
 ## 最终Human Review通过（2026-10-26）
 
 用户明确回复“HR通过，收尾”，覆盖本轮最终布局、术语hover、Fixed交互及此前保留通过项。F6 / F7 / F8真人验证关闭；F1–F5既有关闭保留。最终产品9c1aa63，R3科学审查Approve保持，后续GUI局部修复相关56 passed；[CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows各1412 passed / 2个既有可选skip（167.61s / 225.77s）。HEAD之后仅文档，src / tests与该产品一致，复用已完成验证，不重复计算。AC-1–4完成，AC-5 / S2待本次--no-ff集成、文档与push后勾选；只收尾6.4，不进入6.5。
+
+## 最终集成 / 交付（2026-10-26）
+
+e31a4ac以--no-ff合并并push main；与9c1aa63的src / tests完全一致，复用对应R3 / 最终GUI56及双平台全量各1412 passed / 2个既有可选skip，未改实现或重跑已通过验证。用户本轮全部HR通过，F1–F8 Closed；AC-1–5 / S0–S2完成，Issue #42 Closed / PR #43 Merged。上文各轮“待HR / 未合并”为当时历史状态，本节为最终状态。停止，不进入6.5。
+
+运行：已有macOS环境在仓库根目录执行`.venv/bin/python -m ai_physics_tracker`；完整环境准备见development.md。Analysis → Function fit，选择Measured位置 / 角度源后Fit，查看四列SE / 95%局部t区间；hover查看解释，拖分隔条调整面板；Use recorded setup → Parameter bounds / fixed values → Initial填值 → Fixed整格点击或空格 → Fit，固定项保持给定值并显示Fixed。试用启动器及用户副本保留，不再要求重复HR。

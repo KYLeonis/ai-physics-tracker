@@ -4,7 +4,7 @@
 > [6.2 子计划](phase-6.2-plan.md)已形成；6.3 已按 [ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)
 > 的用户方程口径完成规划并由用户确认；旧固定拟合列表只作历史草案。
 
-- 状态：Phase 6进行中；6.1 / 6.2 / 6.3完成并集成main（6.3为92d00a2，2026-10-16）；6.3.1 S0–S4实现，S5已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过。2026-10-24：[6.4 mini-plan v1.0](phase-6.4-plan.md)已冻结并于2026-10-24获开工授权，S0 / S1的SE实现已通过旧自动Gate；HR后新增95%局部t区间v1.1已授权并实现，新自动Gate通过 / 新HR待用户，未集成；6.5未开始。后续维护完成证据见current。
+- 状态：Phase 6进行中；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08 / R09已集成main。P6.4 v1.1于2026-10-26通过最终用户HR，以e31a4ac集成main并push；独立R3 / 最终产品双平台各1412 passed、2个既有可选skip通过，F1–F8 Closed，Issue #42 Closed / PR #43 Merged。6.5未开始，等待用户新指令。详细证据见current。
 - 基线 / 最新证据：[current.md](current.md)、[6.1 review](../reviews/phase-6.1-review.md)。
 - 需求入口：[phase6-requirements.md](../spec/phase6-requirements.md)。
 
@@ -16,7 +16,7 @@
 | 6.2 — Angular Charts & Phase Space（已完成 / 集成） | 角度配置、三种时间曲线、θ–ω 与 x–vx 相图，源帧导航；AC-3 的角运动部分 | 6.1；科学适配/参考配置需 Independent Review，交互需 Human Review |
 | 6.3 — User-defined Function Fitting & Signal Recurrence（S1–S4实现，Issue #29 / PR #30，已完成 / 92d00a2集成main） | 用户显式函数编辑 / 预览 / 单标量拟合、可选结果公式；独立信号重复间隔 / 周期工具；[6.3计划](phase-6.3-plan.md)及通用周期适用条件已获用户最终认可 | 6.2；High-risk，Independent Review + Human Review；P011真实源 / 标定 / 7人工事件已冻结；应用周期均值对照差0.21996%，独立复审 / 双平台CI / 整体HR通过，已集成main；ODE与正式参数置信区间后续 |
 | 6.3.1 — Guided Analysis & Immediate Feedback（已完成 / c0d1461集成main） | 英文用途入口、图表优先 / 旁侧解释、自动预览 / 有限结构初值估算、清楚的本次反馈 / 下一步、尝试留痕与就地准备；[6.3.1计划](phase-6.3.1-plan.md)Q1–16已获用户认可 | 6.3；High-risk，数值 / 日志 / 生命周期Independent Review + 双平台CI + 新Human Review；不设固定响应或新手完成时限 |
-| 6.4 — Fit Parameter Error Interpretation（v1.1置信区间自动Gate通过 / 新HR待用户） | 条件性拟合参数标准误差、既有周期离散及误差局限解释；AC-6及相关AC-7；[mini-plan v1.1](phase-6.4-plan.md)已冻结Q1–Q6：未平滑位置 / 角度源支持SE及95%双侧局部t区间，参数四列展示、换算结果仅数值、重复间隔仅补解释；新增两轨迹比较取消，既有叠图保留 | 6.3及已集成维护；High-risk，Independent Review + Human Review；范围 / AC / Gate已冻结，S0记录具体数值契约；不做完整系统误差传播 |
+| 6.4 — Fit Parameter Error Interpretation（已完成 / e31a4ac集成main） | 条件性拟合参数标准误差、既有周期离散及误差局限解释；AC-6及相关AC-7；[mini-plan v1.1](phase-6.4-plan.md)已冻结Q1–Q6：未平滑位置 / 角度源支持SE及95%双侧局部t区间，参数四列展示、换算结果仅数值、重复间隔仅补解释；新增两轨迹比较取消，既有叠图保留 | 6.3及已集成维护；High-risk，Independent Review + Human Review；范围 / AC / Gate已冻结，S0记录具体数值契约；不做完整系统误差传播 |
 | 6.5 — Integrated Pendulum Acceptance | 冻结真实单摆全流程，AC-1–7 与 roadmap 两项逐条核对，文档/双平台 CI/最终 Human Review；AC-5 | 6.1–6.4；Independent Review + Human Review；完成后停止，不进入 Phase 7 |
 
 每个子阶段按 mini-plan 建分支/Issue、分 Slice 实现、验证、review、`--no-ff` 集成并 push。
@@ -68,3 +68,5 @@ High-risk 建议 PR 作为完整 diff 容器；PR 不承担额外审批。计划
 2026-10-17：自动近似时序补丁用户HR通过，独立Approve / 双平台CI通过，以--no-ff集成main；本轮收尾，不开始6.4 / 6.5。
 
 2026-10-18：R01–R04维护重构均已完成 / 已合并，R04为085219e；用户本轮HR通过。计算退出Session，同步 / 后台共用prepare/run/apply；计算job不再携带detached Session，保存等其他用途保留。当前用户要求下一轮整体方案，R07仅形成建议与待办，未实施；6.4 / 6.5仍未开始。
+
+2026-10-26：用户P6.4最终“HR通过，收尾”，AC / Slices与F1–F8全部关闭；e31a4ac集成main，源码 / 测试与9c1aa63一致，双平台各1412 passed / 2个既有可选skip。参数误差说明交付完成；6.5整体验收保持未开始，停止等待下一条指令。

@@ -1,6 +1,6 @@
 # P6.4 Human Review — 条件性SE与95%局部t置信区间
 
-**最终结果：2026-10-26用户明确“HR通过，收尾”，本轮全部通过，F1–F8 Closed。** 最终产品9c1aa63，双平台各1412 passed / 2个既有可选skip；正在集成收尾。以下操作与历次待测描述作为验收记录留档，不再等待重复反馈。
+**最终结果：2026-10-26用户明确“HR通过，收尾”，本轮全部通过，F1–F8 Closed。** 最终产品9c1aa63，双平台各1412 passed / 2个既有可选skip；已以e31a4ac集成main并push，Issue #42 Closed / PR #43 Merged。以下操作与历次待测描述作为验收记录留档，不再等待重复反馈。
 
 原工作分支`feat/p6.4-parameter-error`。用户在首轮HR反馈横向裁切并要求具体区间后，已确认95%双侧局部t口径（计划v1.1 / ADR-0029）。旧SE的HR与Review不代替本轮。[计划](../status/phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md)。
 

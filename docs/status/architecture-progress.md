@@ -39,6 +39,6 @@
 
 最后核对：2026-10-24，R01–R04 / R08 / R09已完成 / 已合并；R07继续搁置；R09（草稿上下文集中）c14c78a集成main；下一步以[current.md](current.md)为准。
 
-## P6.4工作分支GUI复选交互复用（2026-10-26，未合并）
+## P6.4 GUI复选交互复用（2026-10-26，已完成 / e31a4ac集成main）
 
-9c1aa63将轨迹列表既有_TrackChoiceDelegate原样提取为CheckStateDelegate，供ChartPanel与SignalAnalysisPanel.Fixed列共用；仅GUI复选命中和样式，SignalHistory / capture / fitSpec仍使用原item CheckState，历史锁定不变。相关56 passed / 原体验工程打开自检通过；新双平台CI及F8 HR状态以[current](current.md) / [Review](../reviews/phase-6.4-review.md)为准，不作新架构重构阶段、不进入6.5。
+9c1aa63将轨迹列表既有_TrackChoiceDelegate原样提取为CheckStateDelegate，供ChartPanel与SignalAnalysisPanel.Fixed列共用；仅GUI复选命中和样式，SignalHistory / capture / fitSpec仍使用原item CheckState，历史锁定不变。相关56 passed / 原体验工程打开自检通过；最终双平台各1412 passed / 2个既有可选skip及全部HR通过，F1–F8 Closed，e31a4ac集成并push main；详见[current](current.md) / [Review](../reviews/phase-6.4-review.md)，不作新架构重构阶段、不进入6.5。

@@ -80,9 +80,9 @@ AI 训练 / 微调
 ## 当前开发阶段
 
 ```text
-Current Phase:    Phase 6（6.1 / 6.2 / 6.3 已完成并集成 main）
-Last Delivered:   R08历史查看流程归属；本机1329 / 独立 / 双平台 / 本轮HR通过，2026-10-20以f34d3b8集成main
-Current Subphase: P6.4 v1.1第二轮HR其余通过；面板大小可拖动 / 表格铺满宽度、术语hover及Fixed可见空框 / 整格勾选已修复，待Fixed及原未完成项补测（工作分支，未集成main）；6.5未开始
+Current Phase:    Phase 6（6.1–6.4及6.3.1已完成并集成main）
+Last Delivered:   P6.4条件性参数SE / 95%局部t区间；2026-10-26全部HR通过，e31a4ac集成main
+Current Subphase: P6.4已完成；6.5完整单摆验收未开始，等待下一条指令
 ```
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
@@ -115,7 +115,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | 🔄 6.1 / 6.2 / 6.3 已完成并集成；用户公式驱动的通用分析 |
+| Phase 6 | Advanced Physics Analysis | 🔄 6.1–6.4及6.3.1完成并集成；6.5整体验收未开始 |
 | Phase 7 | Model Library | ⬜ |
 | Phase 8 | Export & Scientific Workflow | ⬜ |
 | Phase 9 | Optimization & Packaging | ⬜ |
@@ -136,6 +136,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ Phase 1–4 已完成；当前训练、评价、推理与 AI 轨迹导入共享统一后台任务管线
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
 - ✅ Phase 6.1 角运动基础 / 6.2 图表与相空间 / 6.3 显式函数拟合及重复间隔已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
+- ✅ [P6.4参数误差解释](docs/status/phase-6.4-plan.md)：条件性SE / 95%局部t区间、可拖动面板 / 术语hover / Fixed交互；独立R3 / 双平台各1412 passed、2个既有可选skip / 全部HR通过，e31a4ac已集成main，F1–F8 Closed
 - ✅ R01–R04架构维护已完成：公式拟合联动、计算设置统一、重复间隔联动、分析计算与写回分离；当前架构与完成进度有统一接手入口
 - ✅ [R08历史查看流程归属](docs/status/signal-history-plan.md)：两个历史入口共用草稿恢复 / 取消 / 迟到检查，切Charts / Explore退出历史；全量1329 / 独立 / 双平台 / 本轮HR通过，f34d3b8已集成main
 - ✅ [R04分析主干重构](docs/status/analysis-workflow-plan.md)：本机1316 / 独立 / 双平台 / 本轮HR通过，085219e已集成main

@@ -3,7 +3,7 @@
 - Subphase / Issue：P6.4 Fit Parameter Error Interpretation / #42
 - Review 范围（commits / 分支 / 文件）：`feat/p6.4-parameter-error`，基线 `c265be8`；首轮检查 `c265be8..3a84d59` 全 diff（domain/application/GUI、测试、ADR及状态文档），并检查了之后工作树中的 F2/F3 修复草稿。修复草稿尚未由本 Reviewer 独立复审。
 - Context（spec / ADR / plan 路径）：`docs/status/phase-6.4-plan.md`、`docs/decisions/0028-fit-parameter-conditional-standard-errors.md`、`AGENTS.md`、`CODE_STANDARD.md`、`docs/workflow.md`。
-- 轮次：R1 / R2，2026-10-24；最终源码 / 测试`895ecc4`。
+- 轮次：R1 / R2 / R3（2026-10-24科学审查）；2026-10-26后续GUI Gate及全部HR通过，最终源码 / 测试`9c1aa63`，F1–F8 Closed。
 
 ## Checklist
 
@@ -78,7 +78,7 @@
 - [ ] 需要重做（说明理由）
 
 - 最终代码审查结论：**Approve（R3）**，F1–F5 Closed；2026-10-26 F6 / F7修复913d4ef后以1082a09追加可拖动布局；2026-10-26用户明确“HR通过，收尾”，F6 / F7 / F8 Closed；F1–F8全部关闭。自动Gate及真人HR独立核对，不由代码Approve代替。
-- 日期 / 依据轮次：2026-10-24 / R3（95%局部区间新增范围；原SE的R2证据保留）。
+- 日期 / 依据轮次：2026-10-26收口；科学R3 Approve及原SE的R2保留，后续Normal-risk GUI自动验证 / 本轮HR通过；F1–F8 Closed。
 
 ### R2 — 2026-10-24 · 全新独立只读复审
 
@@ -141,3 +141,5 @@
 - 用户本轮原文：“HR通过，收尾”。最终布局 / hover / Fixed及此前已通过项全部完成真人验收，**F6 / F7 / F8 Closed**，F1–F8无未处置finding。
 - 最终代码9c1aa63；R3科学代码Approve保持，随后Normal-risk GUI修复经56项相关回归及本轮HR通过。最终[CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows各**1412 passed / 2个既有可选skip**（167.61s / 225.77s），两作业及整run success。先前各轮“待HR / 未合并”段落保留历史事实，当前以本节与current为准。
 - 当前HEAD的src / tests与9c1aa63一致；之后仅文档收尾，复用对应自动验证。准备--no-ff集成与push；不开始6.5，不把本次HR扩大为整个Phase6单摆整体验收。
+
+- 最终集成：**e31a4ac**，--no-ff合并 / push main；源码 / 测试与9c1aa63一致，Issue #42 Closed / PR #43 Merged。全部Gate与本轮HR完成，当前P6.4关闭；6.5未开始。
