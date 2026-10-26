@@ -141,7 +141,9 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ [R08历史查看流程归属](docs/status/signal-history-plan.md)：两个历史入口共用草稿恢复 / 取消 / 迟到检查，切Charts / Explore退出历史；全量1329 / 独立 / 双平台 / 本轮HR通过，f34d3b8已集成main
 - ✅ [R04分析主干重构](docs/status/analysis-workflow-plan.md)：本机1316 / 独立 / 双平台 / 本轮HR通过，085219e已集成main
 - ⬜ [R07下一轮方案与待办](docs/status/change-notification-proposal.md)：工程变更与界面更新链路，用户已搁置，未实施
-- ⬜ License 待定（`TBD`），需在引入 DeepLabCut（AGPL-3.0）等第三方依赖后进行 license review
+- ⬜ 当前main的LICENSE仍为`TBD`；[ADR-0011](docs/decisions/0011-deeplabcut-integration-architecture.md)已有MIT方向，[v0.1.0历史Mac测试发行](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0)亦声明主程序MIT，下一版许可 / 分发口径正在确认。已引入的DeepLabCut 3.0.1为LGPL-3.0-or-later；库、打包二进制和模型权重分别核对，不沿用旧AGPL表述。
+
+历史发行与当前main需分开：[v0.1.0](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0)是2026-10-09基于`54638e4`的未公证Apple Silicon Mac测试版，含独立AI环境安装入口；不是当前通用main的安装包。main已有`Save PNG…`当前图表快照，完整科学数据导出 / 归档仍在Phase 8，详见[ADR-0010](docs/decisions/0010-current-chart-png-snapshots.md)。
 
 ## 文档索引
 

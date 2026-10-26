@@ -8,12 +8,12 @@ not yet have a final license.
 
 IMPORTANT — Pending license review:
 
-The project is expected to depend on the following third-party components
+The project depends on the following third-party components
 (among others), whose licenses MUST be reviewed before choosing and
 publishing a final license for this project:
 
-  - DeepLabCut 3.x ......... AGPL-3.0 (may impose copyleft obligations on
-                             the combined work; requires careful review)
+  - DeepLabCut 3.0.1 ....... LGPL-3.0-or-later (check the exact version and
+                             distribution; model weights are separate)
   - PyTorch ................ BSD-3-Clause
   - PySide6 / Qt 6 ........ LGPL-3.0 / GPL (LGPL compliance required for
                              dynamic linking; Qt licensing reviewed at
@@ -29,9 +29,12 @@ publishing a final license for this project:
 
 A license decision is tracked as a roadmap task (see
 docs/decisions/ and docs/roadmap.md). Until the license review is
-complete, all rights are reserved by the copyright holder, and the
-repository is intended to remain private.
+complete, this main-branch placeholder grants no additional rights.
+The GitHub repository is public. ADR-0011 records an MIT direction, and
+the historical v0.1.0 Mac test release declares MIT for its main program;
+that release remains governed by its own license materials. The current
+main-branch license and next distribution policy are being confirmed.
 
-Do NOT distribute this source code or any derived binaries publicly
+Do NOT initiate a new public distribution of the current main branch
 before the license is finalized and third-party license obligations
-(especially DeepLabCut's AGPL-3.0) are resolved.
+(including libraries, bundled binaries, and model weights) are resolved.

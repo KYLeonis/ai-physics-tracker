@@ -21,7 +21,7 @@
 - 仓库基础结构（docs/、src/、tests/、scripts/、resources/、examples/、packaging/）
 - README.md（项目介绍）、AGENTS.md（Agent 开发指南）、.gitignore、LICENSE（TBD）
 - docs/：roadmap.md、architecture.md、development.md、decisions/（ADR）
-- Git 仓库初始化、GitHub 远程仓库（Private）、首次提交与推送
+- Git 仓库初始化、GitHub 远程仓库（初始化时Private，当前Public）、首次提交与推送
 
 **验收标准**
 - [x] 目录结构合理，无大量预生成的空 Python 文件
@@ -280,7 +280,7 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 - Python 3.11（2026-08 确定）：DeepLabCut 3.x 官方支持 Python 3.10–3.12，PyTorch/PySide6 在 3.11 上轮子最成熟。详见 [development.md](development.md) 与 [decisions/0002](decisions/0002-choose-python-3.11.md)。
 - GUI 框架（PySide6）与交互绘图（PyQtGraph）为"优先评估"项，最终确认分别在 Phase 2 / Phase 3 前完成并记录 ADR。
-- License：TBD，须在发布前完成第三方依赖（DeepLabCut AGPL-3.0、Qt LGPL、FFmpeg 等）license review。
+- License：当前main的LICENSE仍为TBD；ADR-0011已有MIT方向，v0.1.0历史Mac测试发行已声明主程序MIT，下一版口径待确认。DeepLabCut 3.0.1为LGPL-3.0-or-later；发布时按具体库 / 二进制 / 模型权重核对，旧AGPL表述不再作为依据。
 
 2026-10-17维护补丁：[自动采用合格近似时序](status/automatic-timing-plan.md)，取消Review timing / Yes，独立review / 双平台CI / 本轮HR于2026-10-17均通过并集成main；不改变Phase 6.4 / 6.5状态。
 

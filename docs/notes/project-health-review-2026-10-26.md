@@ -4,6 +4,7 @@
 - 性质：产品只读评估与建议；未冻结新范围，未修改 roadmap / AC / ADR，未启动6.5或维护实现。
 - 比较对象：初始提交`cd3ce1b`的README / roadmap、当前需求 / 计划 / Review与主干代码。
 - 假定使用规模：单人本地桌面实验；数百至3.6万条观测为主要检查范围，10万条作为扩展压力点。Windows真机测试不作为本报告重点。
+- 同日事实补查：原评估遗漏了当前图表PNG快照、ADR-0011的MIT方向及v0.1.0历史Mac测试发行，下文已据实修正；通用main与历史发行分别记账。
 
 ## 结论
 
@@ -17,7 +18,7 @@
 | 少量标注→训练→推理→修正→再训练 | 功能闭环已完成，收益证据有限 | Phase 4真实CPU冒烟、Phase 5真实闭环；AC-9改善目标仍明示未达成 |
 | 可用于物理实验的分析 | 大部分能力已交付，整体收口待6.5 | 角量、相图、用户公式、重复间隔及条件性参数区间；P011局部真实对照已通过 |
 | 普通用户容易完成任务 | 本人HR已有证据，独立新用户证据不足 | 6.3.1已修复常数公式 / 初值 / 结果解释等问题；未找到非项目参与者独立完成任务的验收记录 |
-| 无需配置Python、结果可导出分享的桌面产品 | 尚未达到，原计划仍在后续阶段 | Phase 7–9未交付，GUI无科学结果导出入口；packaging仍为规划README |
+| 无需配置Python、结果可导出分享的桌面产品 | 当前main尚未闭合；已有历史Mac测试发行 | main已有当前图表PNG快照，科学数据文件 / 完整报告和Phase 7–9仍未交付；[历史v0.1.0](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0)已有Mac安装器与独立AI环境，不能当作当前main的完成证据 |
 
 通用表达式、只读历史和科学有效性保护比早期固定单摆示例更完整。这是合理演进；原计划没有明确交付日期或工时预算，本报告不据日历跨度判定延期。
 
@@ -41,13 +42,13 @@ P6.4按[ADR-0028](../decisions/0028-fit-parameter-conditional-standard-errors.md
 
 当前[Phase 7 / 8](../roadmap.md)把完整模型库放在科学导出之前。用户已有教师模型导入、真实帧自检、候选推理和run溯源，完整模型库的部分基础已经存在。
 
-建议6.5之后，先抽出最小科学交付：选定结果的CSV、图像和方法 / 来源信息，然后让少量目标用户独立完成一次任务，记录卡在哪一步、理解错了什么。沿用用户已确认的“不设新手完成时限”；不以更多提示文字代替实际试用。完整Excel、视频导出、模型复制 / 评价界面按真实需求继续排。
+main已通过[ADR-0010](../decisions/0010-current-chart-png-snapshots.md)提供`Save PNG…`，它是当前可见图表快照，不含面板外参数或时序说明。建议6.5之后补选定结果的CSV与方法 / 来源信息，并核对已有PNG是否满足目标任务，再让少量目标用户独立完成一次任务，记录卡在哪一步、理解错了什么。沿用用户已确认的“不设新手完成时限”。完整Excel、视频导出、模型复制 / 评价界面按真实需求继续排。
 
 ### 4. 普通用户的安装与AI运行环境需要提前做小范围可行性验证
 
-`pyproject.toml`把DLC列为正式依赖，但CI用`requirements.txt`与`--no-deps`安装轻环境，真实DLC训练测试使用fake模块；这对快速回归合理，却不证明新机器能安装并运行AI。现有spawn已经提供进程隔离，尚无独立AI环境的安装、修复和分发实现。
+`pyproject.toml`把DLC列为正式依赖，但CI用`requirements.txt`与`--no-deps`安装轻环境，真实DLC训练测试使用fake模块；这对快速回归合理，却不证明新机器能安装并运行当前main的AI。main现有spawn提供进程隔离，独立AI环境的安装 / Repair尚未回移；历史v0.1.0发行已经提供该实现和用户验收先例。
 
-[DLC官方安装说明](https://deeplabcut.github.io/DeepLabCut/docs/installation.html)仍要求选择环境、PyTorch与设备组合。建议在完整Phase 7投入前做一次有限交付探针：锁定真实AI环境，验证启动、解码、CPU实际推理及取消 / 重开、依赖或权重缺失的恢复路径。是否拆分GUI宿主与AI运行环境由探针结果决定；保留现有适配器与任务契约。完整安装器仍留在Phase 9，这项建议独立于已知的Windows真机测试。
+[DLC官方安装说明](https://deeplabcut.github.io/DeepLabCut/docs/installation.html)仍要求选择环境、PyTorch与设备组合。建议在完整Phase 7投入前先对照历史发行与main的差异，按[回移档案](../status/main-backport-backlog.md)选择必要复用，再验证当前main的环境安装、启动、解码、CPU推理与恢复路径，避免从零重做。完整安装器仍留在Phase 9，这项建议独立于已知的Windows真机测试。
 
 ### 5. 有一处已测到的GUI只读热点
 
@@ -67,8 +68,9 @@ P6.4按[ADR-0028](../decisions/0028-fit-parameter-conditional-standard-errors.md
 
 ### 6. 文档同步与公开分发目标已有事实漂移
 
-- 通过GitHub连接器`get_repo`确认仓库当前为public；[`LICENSE`](../../LICENSE)仍写TBD、应保持private且暂不公开分发。需要尽早由用户确认对外许可与分发目标并同步文本，本报告不判断法律合规、不选择许可证、不改变仓库可见性。
-- [`development.md`](../development.md)环境表仍写NumPy2.4.6 / OpenCV4.14，末尾P6.3说明和当前锁文件 / 实际环境已经是NumPy1.26.4 / OpenCV-headless4.11.0.86。接手者可能按不同入口安装出不同环境。
+- 初查通过GitHub连接器`get_repo`确认仓库public，LICENSE当时仍写TBD / 应保持private。本轮事实校正已移除private表述并区分历史发行；正式许可仍待用户确认。本报告不判断法律合规、不选择许可证、不改变仓库可见性。
+- 补查发现[ADR-0011](../decisions/0011-deeplabcut-integration-architecture.md)已有MIT方向，v0.1.0发布说明也写主程序MIT；本报告原先只看TBD文件而遗漏这两项。下一版需确认如何衔接既有决策。DeepLabCut实际3.0.1及官方资料为LGPL，不能继续沿用AGPL描述；软件库与ImageNet预训练等模型权重须分别核对，不能据库许可推出模型可商业使用。
+- 初查development环境表仍写NumPy2.4.6 / OpenCV4.14，与末尾P6.3说明和当前锁文件 / 实际环境不一致；本轮已校正为NumPy1.26.4 / OpenCV-headless4.11.0.86，并补齐源码环境安装步骤。
 
 建议当前事实集中维护在状态入口 / 锁文件 / 对应ADR，其他入口简要链接；历史Review保留当时状态并标明证据日期。减少多处粘贴最新提交与测试数，避免新增另一套维护流程。
 

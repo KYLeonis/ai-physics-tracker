@@ -66,20 +66,20 @@
 - H.265 依赖 OpenCV wheel 内置 FFmpeg；macOS 已验证可读。Windows 行为在 Phase 2.4 真机验收时确认（重点：手机 HEVC 录像）。
 - 随机跳帧（scrub 后首次、seek 路径）耗时高于顺序读（关键帧回溯），交互上已由 latest-wins 合并掩盖，无需按帧预算约束。
 
-## 2. 开发环境（2026-08 确定）
+## 2. 开发环境（2026-10-26核对）
 
 | 组件 | 选择 | 说明 |
 | --- | --- | --- |
 | OS（目标） | Windows 10 / 11 64-bit | 发布平台 |
-| Python | **3.11** | 见下方依据；DeepLabCut 3.x 支持 3.10–3.12 |
-| AI Framework | PyTorch（2.x，最新稳定版） | 先装 PyTorch 再装 deeplabcut |
-| Tracking | DeepLabCut 3.x（PyTorch 引擎） | `pip install "deeplabcut[gui]"` 可作为参考安装 |
+| Python | CI **3.11**；本机开发环境 **3.12.13** | 项目声明支持3.11–3.12；初始选择依据见下方 |
+| AI Framework | 本机 PyTorch 2.13.0 | DLC传递依赖；requirements.txt不锁定完整AI环境 |
+| Tracking | 本机 DeepLabCut 3.0.1（PyTorch 引擎） | pyproject.toml声明`deeplabcut>=3.0,<4.0`，不等于锁定本机版本 |
 | GUI | PySide6-Essentials 6.11.2（Qt Widgets） | Phase 2 确认，见 ADR-0005 |
-| Video | opencv-python-headless 4.14.0.94；FFmpeg 边界后续补充 | OpenCV 不提供 GUI，避免与 PySide6 Qt 插件冲突 |
-| Array | NumPy 2.4.6 | 支持项目 Python 3.11–3.12；解码帧的 RGB 数组边界 |
+| Video | opencv-python-headless 4.11.0.86 | 与requirements.txt及本机一致；headless避免与PySide6 Qt插件冲突 |
+| Array | NumPy 1.26.4 | 与requirements.txt及本机一致；P6.3兼容边界见文末 |
 | Sci Comp | NumPy、SciPy、Pandas | |
 | Plotting | PyQtGraph 0.13.7（交互）、Matplotlib 3.8.4（P6.3 MathText预览，Phase 8 导出） | Phase 3.3 / ADR-0009 |
-| 包管理 | venv/conda + pip，`requirements.txt` / `pyproject.toml` | Phase 1 起锁定 |
+| 包管理 | venv/conda + pip，`requirements.txt` / `pyproject.toml` | requirements锁定轻量运行/测试依赖；完整DLC / PyTorch环境尚未在main锁定 |
 
 ### Python 3.11 选择依据（ADR-0002）
 
@@ -97,7 +97,7 @@
 4. 设备探测与计算加速：
    - macOS (Apple Silicon)：自动使用 MPS 加速（降级为 CPU 稳定运行）
    - Windows (NVIDIA GPU)：自动使用 CUDA 加速
-   - CI 环境：不安装真实 DLC，通过 `MockEngineAdapter` 覆盖 100% 协议与任务流程测试
+   - CI 环境：不安装真实 DLC，通过 `MockEngineAdapter` 验证协议与任务流程；真实引擎仍需独立冒烟
 5. 验证设备支持：`python -c "import torch; print('CUDA:', torch.cuda.is_available(), 'MPS:', hasattr(torch.backends, 'mps') and torch.backends.mps.is_available())"`
 
 ### Phase 4 跟踪接口与真实验证
@@ -163,8 +163,9 @@ main（稳定） ← 工作分支 feat/p<phase>.<sub>-<topic> / fix/<topic> / do
 
 `requirements.txt` 锁定 PyQtGraph 0.13.7 / SciPy 1.17.1。在项目虚拟环境运行
 `python -m pip install -r requirements.txt` 对齐依赖，不安装第二套 Qt 绑定。
-本地已验证 Python 3.12.13 + PySide6-Essentials 6.11.2 + NumPy 2.4.6 的
-PlotWidget/InfiniteLine/offscreen smoke；Python 3.11 双平台仍以 Actions 实际结果为准。
+当前本地环境为 Python 3.12.13 + PySide6-Essentials 6.11.2 + NumPy 1.26.4。
+P6.3之前使用NumPy 2.4.6的offscreen smoke是历史记录；最新本机及Python 3.11双平台
+验证以[current](status/current.md)的具体提交 / 结果为准。
 
 图表默认位于窗口底部；关闭后通过 View → Kinematics charts 恢复。
 在图表列表勾选轨迹，点击 Recompute checked tracks 后切换五种图表；
@@ -208,10 +209,14 @@ Windows 在仓库根目录从零启动（PowerShell，无需激活脚本或全�
 ```powershell
 py -3.11 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m pip install -e .
 .venv\Scripts\python scripts/setup_ffprobe.py --directory .tools/ffprobe
 $env:AI_PHYSICS_FFPROBE = (Resolve-Path .tools/ffprobe/ffprobe.exe).Path
 .venv\Scripts\python -m ai_physics_tracker
 ```
+
+`pip install -e .`安装src-layout项目及pyproject声明的DLC等依赖；仅装requirements.txt
+不能完成源码环境安装。完整AI版本未锁定；上述安装步骤不替代真实引擎 / 设备验收。
 
 首次保存：File → Save，选择尚不存在的新项目目录名；重开时选择该目录中的
 `project.json`。Save As 不默认复制外部视频。视频丢失时选 Relink video，不要用
@@ -230,7 +235,7 @@ Open video（新会话）替代重连。Unknown/VFR 的浏览与“已验证可�
 
 ## 7. GitHub
 
-- 远程：`KYLeonis/ai-physics-tracker`（Private），默认分支：`main`
+- 远程：`KYLeonis/ai-physics-tracker`（Public，2026-10-26再次核实），默认分支：`main`；初始化时曾为Private。
 - 认证状态（2026-08-27 已配置）：HTTPS remote + macOS 钥匙串凭据（GitHub OAuth 设备授权获取的 token，scope: `repo`/`workflow`）。`git push` / `pull` 开箱即用，无需再输入密码。
 - 说明：本机网络下 SSH 22/443 端口均被代理拦截不可达，必须使用 HTTPS remote。
 - 凭据失效时：重新走一次 GitHub OAuth 设备授权流程并存入钥匙串；或在 GitHub → Settings → Applications 查看/撤销已有授权。

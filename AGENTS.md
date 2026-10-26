@@ -226,5 +226,5 @@ test: add pendulum synthetic data tests for kinematics
 ## 12. 其他注意事项
 
 - 本仓库刻意**不预生成**未来可能被修改的空 Python 文件；代码文件在需要实现时再创建。
-- License 尚为 TBD：引入 DeepLabCut（AGPL-3.0）等依赖后必须进行 license review（见 `docs/decisions/` 与 `LICENSE`）。
+- 当前main的LICENSE仍为TBD；ADR-0011已有MIT方向，2026-10-09的v0.1.0历史Mac测试发行也声明主程序MIT，但不自动决定下一版许可 / 发行范围。已引入的DeepLabCut 3.0.1为LGPL-3.0-or-later；库、具体打包二进制与模型权重须分别核对。下一版口径正在[首个可交付版本访谈](docs/notes/first-deliverable-interview.md)确认，未冻结。
 - 开发模式是 **macOS (Apple Silicon) 开发 → Windows x64 发布（exe）→ 未来 macOS dmg**：PyInstaller/Nuitka 不支持交叉编译，Windows 构建走 GitHub Actions Windows runner，Windows 真机验收（含 CUDA）在自有的 NVIDIA GPU Windows 笔记本上进行；路径分隔符（`pathlib`）、UTF-8 显式编码、Windows 文件锁/路径长度/保留名、Qt 平台差异等规则见 `docs/development.md` §1.1。
