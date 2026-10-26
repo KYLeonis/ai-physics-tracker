@@ -81,6 +81,7 @@ PARAMETER_RESULT_HELP = (
 FIXED_PARAMETER_HELP = (
     'To hold a known parameter value: open Parameter bounds / fixed values, enter the value in Initial, '
     'check Fixed in that row, then click Fit. Uncheck Fixed to estimate it again. '
+    'Click anywhere in the Fixed cell, or focus it and press Space, to toggle the checkbox. '
     'While viewing a recorded result, click Use recorded setup first. '
     'Fixed holds Initial, not the previous fitted Estimate. Its SE and interval show Fixed because it is not estimated; '
     'uncertainty in the supplied fixed value is not propagated.'

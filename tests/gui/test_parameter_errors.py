@@ -3,6 +3,7 @@
 from copy import deepcopy
 from threading import Event
 
+import pytest
 from PySide6.QtCore import Qt
 
 from tests.gui.test_signal_analysis import _window
@@ -240,8 +241,9 @@ def test_result_pane_and_controls_resize_by_drag_and_table_fills_width(qtbot, sy
     assert before > 0
 
 
-def test_fixed_help_leads_from_recorded_setup_to_held_initial_value(qtbot, synthetic_video_path):
-    from PySide6.QtCore import QPoint
+@pytest.mark.parametrize('target', ('cell', 'indicator', 'keyboard'))
+def test_fixed_help_leads_from_recorded_setup_to_held_initial_value(qtbot, synthetic_video_path, target):
+    from PySide6.QtWidgets import QStyle, QStyleOptionViewItem
     window, session, track = _window(qtbot, synthetic_video_path)
     panel = _fit(qtbot, window)
     panel.restoreButton.click()
@@ -256,9 +258,24 @@ def test_fixed_help_leads_from_recorded_setup_to_held_initial_value(qtbot, synth
     fixed = panel.parameterTable.item(1, 4)
     panel.parameterTable.scrollToItem(fixed)
     rect = panel.parameterTable.visualItemRect(fixed)
-    qtbot.mouseClick(panel.parameterTable.viewport(), Qt.MouseButton.LeftButton,
-                     pos=QPoint(rect.left() + 8, rect.center().y()))
+    if target == 'keyboard':
+        panel.parameterTable.setCurrentItem(fixed)
+        panel.parameterTable.setFocus()
+        playback = window.playButton.text()
+        qtbot.keyClick(panel.parameterTable, Qt.Key.Key_Space)
+        assert window.playButton.text() == playback
+    else:
+        point = rect.center()
+        if target == 'indicator':
+            option = QStyleOptionViewItem()
+            option.initFrom(panel.parameterTable)
+            panel.parameterTable.itemDelegate().initStyleOption(option, panel.parameterTable.indexFromItem(fixed))
+            option.rect = rect
+            point = panel.parameterTable.style().subElementRect(
+                QStyle.SubElement.SE_ItemViewItemCheckIndicator, option, panel.parameterTable).center()
+        qtbot.mouseClick(panel.parameterTable.viewport(), Qt.MouseButton.LeftButton, pos=point)
     assert fixed.checkState() == Qt.CheckState.Checked
+    assert panel.parameterTable.item(0, 4).checkState() == Qt.CheckState.Unchecked
     _preview(qtbot, panel)
     _fit(qtbot, window)
     assert panel.parameterResults.item(1, 1).text() == '3'
@@ -267,3 +284,27 @@ def test_fixed_help_leads_from_recorded_setup_to_held_initial_value(qtbot, synth
     for column in range(4):
         assert panel.parameterResults.horizontalHeaderItem(column).toolTip()
         assert panel.parameterResults.item(0, column).text().replace('\n', ' ') in panel.parameterResults.item(0, column).toolTip()
+
+
+def test_fixed_click_respects_history_lock_and_works_after_adopting_setup(qtbot, synthetic_video_path):
+    window, session, _ = _window(qtbot, synthetic_video_path)
+    panel = _fit(qtbot, window)
+    panel.latestButton.click()
+    panel.parameterOptions.setChecked(True)
+    table = panel.parameterTable
+    assert panel.history.active and not table.isEnabled()
+    before = session.project
+    fixed = table.item(1, 4)
+    table.scrollToItem(fixed)
+    qtbot.mouseClick(table.viewport(), Qt.MouseButton.LeftButton, pos=table.visualItemRect(fixed).center())
+    assert fixed.checkState() == Qt.CheckState.Unchecked
+    panel.restoreButton.click()
+    assert not panel.history.active and table.isEnabled()
+    panel.parameterOptions.setChecked(True)
+    fixed = table.item(1, 4)
+    table.scrollToItem(fixed)
+    for expected in (Qt.CheckState.Checked, Qt.CheckState.Unchecked):
+        qtbot.mouseClick(table.viewport(), Qt.MouseButton.LeftButton, pos=table.visualItemRect(fixed).center())
+        assert fixed.checkState() == expected
+        assert panel.fitSpec().parameters[1].fixed == (expected == Qt.CheckState.Checked)
+    assert session.project == before

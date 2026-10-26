@@ -6,10 +6,11 @@ from uuid import UUID
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QEvent, QSize, Qt, Signal, QSignalBlocker
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout,
     QAbstractItemView, QHeaderView, QLabel, QLineEdit, QPlainTextEdit, QPushButton, QSpinBox,
-    QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSlider, QSizePolicy, QSplitter,
+    QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSlider, QSizePolicy, QSplitter, QStyleFactory,
 )
 
 from ai_physics_tracker.application.signal_analysis_job import SignalSelection
@@ -19,6 +20,7 @@ from ai_physics_tracker.domain.function_fit import FitParameter, FitSpec
 from ai_physics_tracker.domain.expression import parse_expression
 from ai_physics_tracker.domain.recurrence import RecurrenceSpec, CrossingEvent
 from ai_physics_tracker.gui.formula_editor import FormulaEditor
+from ai_physics_tracker.gui.check_state_delegate import CheckStateDelegate
 from ai_physics_tracker.gui.fit_explanation import (
     explain_fit, parameter_error_rows, PARAMETER_ERROR_METHOD, RECURRENCE_ERROR_NOTE,
     PARAMETER_RESULT_HELP, FIXED_PARAMETER_HELP, FIT_METRIC_HELP,
@@ -101,6 +103,13 @@ class SignalAnalysisPanel(QWidget):
         self.modelLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.editor = FormulaEditor()
         self.parameterTable = QTableWidget(0, 5)
+        self.parameterTable.setItemDelegateForColumn(4, CheckStateDelegate(self.parameterTable))
+        self.parameterTable.installEventFilter(self)
+        # 与轨迹列表一致，避免macOS原生样式把未勾选空框画得不可见。
+        checkStyle = QStyleFactory.create("Fusion")
+        if checkStyle is not None:
+            checkStyle.setParent(self.parameterTable)
+            self.parameterTable.setStyle(checkStyle)
         self.parameterTable.setHorizontalHeaderLabels(("Parameter", "Initial", "Lower (optional)", "Upper (optional)", "Fixed"))
         for column, helpText in enumerate((PARAMETER_RESULT_HELP[0],
                 "Initial: the starting guess for a free parameter, or the held value when Fixed is checked. "
@@ -445,6 +454,13 @@ class SignalAnalysisPanel(QWidget):
         self.editor.setQuantityLabel("x(t)")
 
     def eventFilter(self, watched, event) -> bool:
+        if watched is self.parameterTable:
+            if (event.type() == QEvent.Type.ShortcutOverride and isinstance(event, QKeyEvent)
+                    and event.key() == Qt.Key.Key_Space and event.modifiers() == Qt.KeyboardModifier.NoModifier
+                    and self.parameterTable.currentColumn() == 4):
+                event.accept()
+                return True
+            return super().eventFilter(watched, event)
         # 滚动表单时不能因为指针经过数字框 / 下拉框就意外修改测量配方。
         if event.type() == QEvent.Type.Wheel:
             delta = event.pixelDelta().y() or event.angleDelta().y() / 120 * 40
@@ -507,7 +523,7 @@ class SignalAnalysisPanel(QWidget):
                 for col in range(1, 5):
                     item = QTableWidgetItem(old[name][col-1][0] if name in old else ("1" if col == 1 else ""))
                     if col == 4:
-                        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
+                        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable)
                         item.setCheckState(old[name][3][1] if name in old else Qt.CheckState.Unchecked)
                     self.parameterTable.setItem(row, col, item)
         self._edited()

@@ -115,7 +115,8 @@ class SignalHistory(QObject):
                         for col, (text, checked) in enumerate(cells):
                             item = QTableWidgetItem(text)
                             if col in (0, 4):
-                                item.setFlags(Qt.ItemFlag.ItemIsEnabled | (Qt.ItemFlag.ItemIsUserCheckable if col == 4 else Qt.ItemFlag.ItemIsSelectable))
+                                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+                                              | (Qt.ItemFlag.ItemIsUserCheckable if col == 4 else Qt.ItemFlag.NoItemFlags))
                             if col == 4:
                                 item.setCheckState(checked)
                             p.parameterTable.setItem(row, col, item)
