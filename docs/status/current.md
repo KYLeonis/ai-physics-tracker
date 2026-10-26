@@ -1,21 +1,22 @@
 # Current Status
 
-> 用户当前需求：2026-10-26 P6.4第二轮HR“其余都通过”，剩余区间数字裁切 / 列宽拖动、术语hover解释与Fixed操作引导。用户随后要求整个面板可拖动调大小，1082a09已增加左右 / 上下分隔条、表格铺满宽度并移除强制换行，**布局及原未完成项待HR**；原数值12ea18d的R3 / 全量1408 / 双平台通过保留，本次GUI验证见下。未合并main。
+> 用户当前需求：2026-10-26 P6.4第二轮HR“其余都通过”，剩余区间数字裁切 / 列宽拖动、术语hover解释与Fixed操作引导。用户随后要求整个面板可拖动调大小，1082a09已增加左右 / 上下分隔条、表格铺满宽度并移除强制换行，随后用户反馈Fixed列空白且无法勾选，9c1aa63已修复清晰空框 / 整格点击 / 空格切换；**Fixed及原未完成项待HR**；原数值12ea18d的R3 / 全量1408 / 双平台通过保留，本次GUI验证见下。未合并main。
 
-- 最后更新：2026-10-26（面板拖动返工，布局及原未完成项待HR）
+- 最后更新：2026-10-26（Fixed空框 / 勾选缺陷返工，待HR）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。既有重构不重开。
-- **Phase / Subphase**：Phase 6 / P6.4参数误差解释v1.1；SE / 95%双侧局部t区间自动Gate通过，第二轮HR除F6 / F7外其余已测项通过；F4 Closed；F6按最新反馈追加可拖动面板，布局及原未完成项待补测 / 未集成；6.5未开始。
+- **Phase / Subphase**：Phase 6 / P6.4参数误差解释v1.1；SE / 95%双侧局部t区间自动Gate通过，第二轮HR除F6 / F7外其余已测项通过；F4 Closed；F6按最新反馈追加可拖动面板，F8 Fixed复选交互已修；Fixed及原未完成项待补测 / 未集成；6.5未开始。
 - **Gate**：原数值12ea18d全新独立R3 Approve / 独立70，实施方129定向 / 110关联 / 全量1408、双平台CI40077232972通过。[mini-plan](phase-6.4-plan.md)、[ADR-0029](../decisions/0029-local-t-parameter-confidence-intervals.md)、[Review](../reviews/phase-6.4-review.md)、[Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。F1–F5 Closed；本次F6 / F7仅GUI修复，不改统计 / 数据契约，913d4ef关联GUI **114 passed（112.90s）**；新双平台全量CI [40270483866](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40270483866) macOS / Windows均success。
 - **本次布局Gate**：1082a09定向11 / 关联GUI **115 passed（95.70s）**；原体验工程打开自检通过，数值完整。新[双平台全量CI40272503263](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40272503263) macOS / Windows均success；当前布局HR待用户。
-- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main c265be8；数值12ea18d（含布局1067312），2026-10-26 F6 / F7修复913d4ef后，追加可拖动面板1082a09，已push。论文线、上次试用副本及用户工程未覆盖。
+- **本次Fixed Gate**：9c1aa63相关GUI **56 passed（40.09s）**；修复前整格点击 / 空格两条真实输入回归失败，修复后整格 / 标记 / 空格及历史只读 / 采用后切换通过；原体验启动器自检通过。新[双平台全量CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows均success。
+- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main c265be8；数值12ea18d（含布局1067312），2026-10-26 F6 / F7修复913d4ef后，追加可拖动面板1082a09及Fixed交互修复9c1aa63，已push。论文线、上次试用副本及用户工程未覆盖。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **等待布局与原未完成项HR**：关闭旧应用，再运行`experiment/p64-ci-human-review/start.command`，按[当前三项步骤](../notes/phase-6.4-human-review.md)先检查左右区域宽度 / 图表与参数表高度的分隔条拖动、表格铺满可用宽度及区间自适应换行，再检查原未完成的术语hover、Use recorded setup → Parameter bounds / fixed values → Initial填值 → Fixed → Fit。其他已测项目按用户“其余都通过”保留，不重新要求整套HR；Fixed未理解，必须单独完成补测。
+1. **等待Fixed及原未完成项HR**：关闭旧应用，再运行`experiment/p64-ci-human-review/start.command`，按[当前三项步骤](../notes/phase-6.4-human-review.md)先检查Fixed列显示清晰空框，点击整格或选中后按空格能切换；按Use recorded setup → Parameter bounds / fixed values → Initial填值 → Fixed → Fit确认固定值。未完成的布局拖动 / 术语hover仍按原步骤补测，不凭本条问题推断已通过。其他已测项目按用户“其余都通过”保留，不重新要求整套HR；Fixed实际交互缺陷F8已修，必须亲测后才关闭。
 2. HR通过后只收尾6.4：勾选最终AC / S2、同步Review / 文档，`--no-ff`集成与push，关闭Issue / PR。原HR未通过，Q7方法确认也不等于HR通过；不得提前合并。若用户指出问题则按本期范围修复并验证。
 3. 保持原源支持、换算不传播 / 周期间隔统计及R09上下文 / 两执行器 / 原子Undo职责；不进入6.5或重开其他延期项。
 
@@ -61,6 +62,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.4 Fixed交互缺陷返工（2026-10-26）**：用户截图Fixed全列无可见空框，点击无法勾选。沿用轨迹列表既有Fusion空框样式及整格复选交互；原_TrackChoiceDelegate原样提取为GUI共用CheckStateDelegate，Fixed列整格点击 / 标记点击可切换，草稿与历史重建均允许选中单元格，空格在Fixed列内接管以免触发播放。历史只读仍锁定，采用后可改；fitSpec / capture继续以原item CheckState为唯一事实。9c1aa63相关56 passed（40.09s），原体验工程打开自检通过；新[双平台全量CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows均success。F8及原未完成项待用户HR，未合并。
 
 - **P6.4可拖动布局返工（2026-10-26）**：用户指出上次列宽修复仍留下大块空白，要求面板可拖动调大小；F6保持未通过。1082a09用两个原生QSplitter调整左右宽度 / 图表与参数表高度，移除参数结果175高度和右栏460宽度上限；CI列铺满余宽，取消强制分行，窄窗自然换行 / 横滚；草稿隐藏整块结果区。数值 / 统计摘要不变。定向11 passed（10.57s），关联GUI115 passed（95.70s），原体验工程打开自检通过；新[双平台全量CI40272503263](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40272503263) macOS / Windows均success；等待当前布局HR，不合并。
 

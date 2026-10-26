@@ -183,3 +183,7 @@
 
 - 用户进一步指出固定区域 / 右侧空白不符合要求，要求可拖动面板；上次列宽修复不视作布局通过，F6保持打开。1082a09以原生QSplitter替换固定左右布局、增加图表 / 参数结果上下分隔条；移除结果175高度与右栏460宽度上限，CI列铺满余宽、取消强制分行，窄窗自然换行 / 横滚，返回草稿隐藏整块结果区。
 - 仍是Normal-risk GUI返工，不改AC统计口径、数值 / 摘要或持久化。定向11 passed（10.57s）；关联GUI115 passed（95.70s），原体验工程打开自检通过；新[双平台全量CI40272503263](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40272503263) macOS / Windows均success，最终回执见current。当前布局及之前未完成的hover / Fixed仍需HR，已通过项目不重测，不合并、不进入6.5。
+
+## Fixed交互HR返工（2026-10-26）
+
+用户截图显示Fixed空框不可见且无法勾选，新增F8。9c1aa63复用既有轨迹列表的Fusion空框 / 整格复选交互，共用CheckStateDelegate；Fixed项在草稿与历史重建时均可选中，空格仅在Fixed列接管。历史仍只读，采用后可勾选 / 取消。此前左侧小标记点击测试遗漏了整格 / 键盘两条失败路径，本次均有失败前证据与修复后实际Fit验证；相关GUI56 passed（40.09s），原体验启动器自检通过，新[双平台全量CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows均success。纯GUI，不改AC科学口径 / 数值 / 摘要；F8及原未完成项待HR，不合并、不进入6.5。

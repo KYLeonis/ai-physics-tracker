@@ -77,7 +77,7 @@
 - [x] 修改后通过（findings 按 Decision 处置完毕，复审确认）
 - [ ] 需要重做（说明理由）
 
-- 最终代码审查结论：**Approve（R3）**，F1–F5 Closed；2026-10-26 F6 / F7修复913d4ef后以1082a09追加可拖动布局；当前布局及原未完成项待HR。自动Gate及真人HR独立核对，不由代码Approve代替。
+- 最终代码审查结论：**Approve（R3）**，F1–F5 Closed；2026-10-26 F6 / F7修复913d4ef后以1082a09追加可拖动布局；当前布局 / F7及新增F8 Fixed复选交互待HR。自动Gate及真人HR独立核对，不由代码Approve代替。
 - 日期 / 依据轮次：2026-10-24 / R3（95%局部区间新增范围；原SE的R2证据保留）。
 
 ### R2 — 2026-10-24 · 全新独立只读复审
@@ -128,3 +128,10 @@
 - 用户截图指出结果表右侧大量空白、大小仍受限制，要求可拖动式布局；913d4ef的列宽拖动未满足面板调整大小，F6不关闭，F7未收到新增通过反馈。
 - 1082a09改为左右与上下两个原生QSplitter，带可见分隔条和拖动提示；移除结果表175高度 / 右侧460宽度上限；最后一列铺满余宽，CI取消强制换行；宽度缩小时按内容换行 / 横滚，返回草稿时结果区整体收起。保持数值 / 统计摘要、源 / 历史职责与既有R3科学结论。
 - 定向11 passed（10.57s），覆盖实际鼠标拖动两个分隔条、窗口变宽时填满、结果表可超过旧高度上限、草稿收起及既有列宽拖动 / 完整端点。关联GUI115 passed（95.70s），原体验工程打开自检通过；新[双平台全量CI40272503263](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40272503263) macOS / Windows均success，最终回执见current；布局仍须本轮用户亲测。
+
+## F8 — Fixed空框不可见 / 点击无法切换（2026-10-26 HR）
+
+- **Evidence / Cause**：用户截图Fixed列全为空白、无法勾选；原生macOS空框不明显，默认item delegate只在小标记范围响应点击，Fixed项未带Selectable标记。新增真实输入回归修复前整格点击 / 键盘两条失败，标记点击通过，证实此前只测左侧小标记遗漏了常用操作。
+- **Decision / Fix**：Fix Now，Normal-risk局部GUI。9c1aa63复用Phase6.2轨迹列表F9的Fusion清晰空框样式和整格复选交互；原_TrackChoiceDelegate原样移入check_state_delegate.CheckStateDelegate，轨迹列表与Fixed列共用。草稿创建及SignalHistory重建都保留Selectable / Checkable；Fixed列接管空格，避免全局播放快捷键抢占。历史表格仍整体禁用，采用记录设置后恢复可编辑。
+- **Verification**：整格 / 实际标记 / 空格均进入实际Fit并保持Initial，其他参数不受影响；历史只读时不能切换、采用后可连续勾选 / 取消且不写工程，轨迹列表原三种输入及历史回归通过。相关GUI **56 passed（40.09s）**，原体验工程打开自检通过；新[双平台全量CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows均success，最终回执见current。
+- **Scope / Status**：SE / CI算法、参数值、摘要 / 存储和事务均未改；R3科学结论保持。F8代码已修、待当前真人补测；本条反馈不代表F6 / F7通过，不合并main。
