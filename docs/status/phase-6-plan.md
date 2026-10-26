@@ -4,7 +4,7 @@
 > [6.2 子计划](phase-6.2-plan.md)已形成；6.3 已按 [ADR-0017](../decisions/0017-user-defined-equation-analysis-platform.md)
 > 的用户方程口径完成规划并由用户确认；旧固定拟合列表只作历史草案。
 
-- 状态：Phase 6进行中；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08 / R09已集成main。P6.4 v1.1于2026-10-26通过最终用户HR，以e31a4ac集成main并push；独立R3 / 最终产品双平台各1412 passed、2个既有可选skip通过，F1–F8 Closed，Issue #42 Closed / PR #43 Merged。[6.5 mini-plan](phase-6.5-plan.md)v0.1规划访谈中，Q1–Q4待答，未冻结 / 实施。详细证据见current。
+- 状态：Phase 6进行中；6.1 / 6.2 / 6.3 / 6.3.1及R01–R04 / R08 / R09已集成main。P6.4 v1.1于2026-10-26通过最终用户HR，以e31a4ac集成main并push；独立R3 / 最终产品双平台各1412 passed、2个既有可选skip通过，F1–F8 Closed，Issue #42 Closed / PR #43 Merged。[6.5 mini-plan](phase-6.5-plan.md)v0.2规划访谈中，Q1 / Q3 / Q4已确认、Q5–Q8待答，未冻结 / 实施；本期按用户确认采用Stabilization Mode。详细证据见current。
 - 基线 / 最新证据：[current.md](current.md)、[6.1 review](../reviews/phase-6.1-review.md)。
 - 需求入口：[phase6-requirements.md](../spec/phase6-requirements.md)。
 
@@ -17,7 +17,7 @@
 | 6.3 — User-defined Function Fitting & Signal Recurrence（S1–S4实现，Issue #29 / PR #30，已完成 / 92d00a2集成main） | 用户显式函数编辑 / 预览 / 单标量拟合、可选结果公式；独立信号重复间隔 / 周期工具；[6.3计划](phase-6.3-plan.md)及通用周期适用条件已获用户最终认可 | 6.2；High-risk，Independent Review + Human Review；P011真实源 / 标定 / 7人工事件已冻结；应用周期均值对照差0.21996%，独立复审 / 双平台CI / 整体HR通过，已集成main；ODE与正式参数置信区间后续 |
 | 6.3.1 — Guided Analysis & Immediate Feedback（已完成 / c0d1461集成main） | 英文用途入口、图表优先 / 旁侧解释、自动预览 / 有限结构初值估算、清楚的本次反馈 / 下一步、尝试留痕与就地准备；[6.3.1计划](phase-6.3.1-plan.md)Q1–16已获用户认可 | 6.3；High-risk，数值 / 日志 / 生命周期Independent Review + 双平台CI + 新Human Review；不设固定响应或新手完成时限 |
 | 6.4 — Fit Parameter Error Interpretation（已完成 / e31a4ac集成main） | 条件性拟合参数标准误差、既有周期离散及误差局限解释；AC-6及相关AC-7；[mini-plan v1.1](phase-6.4-plan.md)已冻结Q1–Q6：未平滑位置 / 角度源支持SE及95%双侧局部t区间，参数四列展示、换算结果仅数值、重复间隔仅补解释；新增两轨迹比较取消，既有叠图保留 | 6.3及已集成维护；High-risk，Independent Review + Human Review；范围 / AC / Gate已冻结，S0记录具体数值契约；不做完整系统误差传播 |
-| 6.5 — Integrated Pendulum Acceptance（规划中） | 冻结真实单摆全流程，AC-1–7 与 roadmap 两项逐条核对，文档/双平台 CI/最终 Human Review；AC-5；[mini-plan v0.1](phase-6.5-plan.md)未冻结 | 6.1–6.4；Independent Review + Human Review；完整AI起点与拟合周期判据待访谈明确；完成后停止，不进入 Phase 7 |
+| 6.5 — Integrated Pendulum Acceptance（规划中） | 冻结真实单摆全流程，AC-1–7 与 roadmap 两项逐条核对，文档/双平台 CI/最终 Human Review；AC-5；[mini-plan v0.2](phase-6.5-plan.md)未冻结，双线验收已确认 | 6.1–6.4；Stabilization Mode；Independent Review + Human Review；拟合周期判据 / 人工分工 / 训练预算待收敛；完成后停止，不进入 Phase 7 |
 
 每个子阶段按 mini-plan 建分支/Issue、分 Slice 实现、验证、review、`--no-ff` 集成并 push。
 High-risk 建议 PR 作为完整 diff 容器；PR 不承担额外审批。计划见
