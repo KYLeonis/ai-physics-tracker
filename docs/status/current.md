@@ -8,8 +8,8 @@
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度](architecture-progress.md)。
 - **Phase / Subphase**：Phase 6进行中；P6.4参数误差解释v1.1已完成 / 已集成main，6.5完整单摆验收未开始。
-- **Gate**：R3独立科学审查Approve；最终产品9c1aa63相关GUI56 passed；[双平台全量CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows各1412 passed / 2个既有可选skip。2026-10-26用户最终HR通过，F1–F8 Closed；mini-plan全部AC / Slices完成。集成后src / tests与验证产品相同，收尾只改文档，不重复已通过的测试。
-- **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；集成提交e31a4ac，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
+- **Gate**：R3独立科学审查Approve；最终产品9c1aa63相关GUI56 passed；[双平台全量CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows各1412 passed / 2个既有可选skip。2026-10-26用户最终HR通过，F1–F8 Closed；mini-plan全部AC / Slices完成。产品src与9c1aa63相同；main集成后的Windows CI暴露了测试的单行宽度假设，已仅修正自适应换行断言（1d2b1fa，7611770合并），本机2项布局回归通过；正在复核新主干双平台CI。
+- **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；功能集成提交e31a4ac，测试边界修正集成7611770，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
