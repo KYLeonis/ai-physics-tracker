@@ -341,7 +341,7 @@ git status
 
 | Mode | 何时 | 流程特征 |
 | --- | --- | --- |
-| **Build Mode** | Phase 6–8 主要模式（当前） | 快速 Slice、risk-based review、PR optional |
+| **Build Mode** | Phase 6–8 主要开发阶段 | 快速 Slice、risk-based review、PR optional |
 | **Stabilization Mode** | 大 Phase 收尾 / release 前 | regression 优先、不扩大 scope、fresh review |
 | **Release Mode** | Phase 9 / release candidate | CI / 打包 / 迁移更严格；可启用 required PR / required CI；release checklist |
 | **Maintenance Mode** | release 后 | bug / compatibility / hotfix，最小流程 |

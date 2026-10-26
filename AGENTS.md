@@ -35,7 +35,7 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 **首个可交付目标已冻结（2026-10-26）**：[Mac教学试用目标](docs/spec/first-deliverable-target.md)为跨阶段优先级入口。文档 / MIT收口已完成；随后按6.5→最小科学导出与四类合成核查→Mac试用包 / 教程 / 离线验证→一名独立用户完成真实单摆任务推进，完整模型库随后排。目标冻结不等于已实施，6.5未开始。
 
-**P6.5规划中（2026-10-26）**：[mini-plan v0.2](docs/status/phase-6.5-plan.md)未冻结 / 实施；用户已确认双线验收、原AC集中收口及本期Stabilization Mode。Q5–Q8待答，原P011参考与重复间隔≤5%判据保持；拟合周期门槛、人工分工及训练停止条件继续访谈。
+**P6.5规划中（2026-10-26）**：[mini-plan v0.3](docs/status/phase-6.5-plan.md)未冻结 / 实施；Q1–Q8已确认双线验收、周期各自≤5%、用户人工标注 / 必要修正、新AI最终轨迹达标及训练总计最多两次，本期Stabilization Mode。Q9拟合协议 / Q10默认训练与检查帧待答，原P011冻结参考保持。
 
 ## 3. 预期技术栈
 
@@ -129,7 +129,7 @@ Explore → 需要时 Plan（subphase mini-plan：Goal / Context Pack / Scope / 
 → Commit / Integrate → 更新 status → Next
 ```
 
-**不变式**：数据先行（手工/AI 跟踪统一数据体系，Phase 1 核心目标）；代码进 `src/`、测试进 `tests/`、大文件不入库；重大选型记 ADR（§10）；mini-plan 必含 Agent Context Pack 与 Review Gate，流程强度按 Development Mode 调节（`docs/workflow.md` §13，当前为 Build Mode）；独立 review 的 Reviewer 默认只读，findings 由实现方处置并记入 `docs/reviews/`（细则见 `docs/workflow.md` §6）；完成当前 Phase 后暂停等待下一条指令。
+**不变式**：数据先行（手工/AI 跟踪统一数据体系，Phase 1 核心目标）；代码进 `src/`、测试进 `tests/`、大文件不入库；重大选型记 ADR（§10）；mini-plan 必含 Agent Context Pack 与 Review Gate，流程强度按 Development Mode 调节（`docs/workflow.md` §13，当前模式以`docs/status/current.md`为准）；独立 review 的 Reviewer 默认只读，findings 由实现方处置并记入 `docs/reviews/`（细则见 `docs/workflow.md` §6）；完成当前 Phase 后暂停等待下一条指令。
 
 **何时必须暂停并询问用户**：
 

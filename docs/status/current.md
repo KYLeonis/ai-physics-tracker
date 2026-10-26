@@ -2,12 +2,12 @@
 
 > **P6.4 v1.1已完成并集成main**：2026-10-26用户“HR通过，收尾”，e31a4ac以--no-ff集成并push，F1–F8 Closed；Issue #42 Closed / PR #43 Merged。**首个Mac教学试用目标已冻结，文档 / MIT收口完成；6.5规划访谈中、未冻结 / 实施，试用版尚未交付。**
 
-- 最后更新：2026-10-26（P6.5 mini-plan v0.2 / Q1、Q3、Q4确认，Q5–Q8待答）
+- 最后更新：2026-10-26（P6.5 mini-plan v0.3 / Q1–Q8收敛，Q9 / Q10待答）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度](architecture-progress.md)。
-- **Phase / Subphase**：Phase 6进行中；P6.4已完成 / 已集成main；[P6.5 mini-plan](phase-6.5-plan.md)v0.2规划中，Q1 / Q3 / Q4已确认，第二轮Q5–Q8待答，未冻结 / 实施。
+- **Phase / Subphase**：Phase 6进行中；P6.4已完成 / 已集成main；[P6.5 mini-plan](phase-6.5-plan.md)v0.3规划中，Q1–Q8已收敛，Q9 / Q10待答，未冻结 / 实施。
 - **最近已完成Gate（P6.4）**：R3独立科学审查Approve；2026-10-26用户最终HR通过，F1–F8 Closed，mini-plan全部AC / Slices完成。本机最终全量**1414 passed（256.53s）**；[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。产品src与已通过HR的9c1aa63相同；tests仅增加按Qt原生布局测量的可见性检查（20153c5，a13b661集成），不改变界面 / 统计或重开HR。
 - **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；功能集成提交e31a4ac，最终测试边界修正集成a13b661，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
 - **Development Mode**：Stabilization Mode（用户P6.5 Q4确认，仅本期；回归 / 阻断修复 / 验收证据优先，Phase 6收尾后停止）
@@ -15,7 +15,7 @@
 
 ## Next Recommended Action
 
-1. 继续[P6.5 mini-plan](phase-6.5-plan.md)的grilling：Q1已接受旧DLC分析回归＋新工程20帧人工标注起步的真实AI双线，Q3敏感性研究后续，Q4本期Stabilization Mode已生效。Q2“就单独的即可”不自动当作新5%门槛授权；第二轮等待Q5拟合周期≤5%澄清、Q6人工操作分工、Q7最终轨迹达标 / 纯AI报告口径、Q8训练预算 / 失败停止条件。P011原冻结参考 / 重复间隔≤5%保持，后续再明确拟合协议并整体确认冻结；当前不创建实现分支 / Issue或运行新训练。
+1. 继续[P6.5 mini-plan](phase-6.5-plan.md)的grilling：Q1–Q8已确认双线验收、周期各自≤5%、用户人工标注 / 必要修正、新AI最终轨迹达标 / 纯AI单列及训练总计最多两次；本期Stabilization Mode。第三轮等待Q9显式阻尼余弦示例 / 原[0,214]分析区间 / 既有初值及正周期换算、Q10现有首训默认 / 20帧中Keep 4个固定检查帧。随后汇总共同理解并确认冻结；当前不创建实现分支 / Issue或运行新训练，不修改原P011参考。
 2. 6.5后按顺序推进最小科学导出与四类合成核查→Mac试用包 / 教程 / 离线验证→一名独立用户试用与修复。完整模型库随后排；每项实施前准备独立mini-plan和对应Gate，不把目标冻结当作已实现或自动发布授权。
 3. 两轨迹新增比较已取消；ODE、其他置信方法、完整系统误差 / 换算传播、论文线同步及Windows/CUDA真机延期保持原边界，不作隐式授权。
 4. [健康度评估](../notes/project-health-review-2026-10-26.md)的交付优先级已通过Q17收敛为正式目标；整体架构保持，已测`is_dirty`热点按实际卡顿处理，若阻断6.5则提前，否则随相关改动最小修复。原阶段 / AC / R07搁置状态保持。
@@ -62,6 +62,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.5 grilling第二轮确认 / 第三轮提案（2026-10-26）**：用户Q5 / Q6 / Q7“是”，Q8“可以最多训练两次”，分别记录周期≤5%、人工分工、最终轨迹达标及首次＋至多一次再训练。[mini-plan v0.3](phase-6.5-plan.md)补Q9拟合协议及Q10默认训练 / 固定检查帧提案；只读确认现有训练 / 审核 / adopt入口足够、旧P011拟合元数据可作协议起点。同步当前模式入口，未冻结 / 实施，无新训练 / 推理 / 产品测试或用户工程写入。
 
 - **P6.5 grilling第一轮答复 / 第二轮提案（2026-10-26）**：用户Q1 / Q3 / Q4“可以”，接受双线验收、原AC集中收口及本期Stabilization Mode。Q2原答“就单独的即可”，保留分别处理的方向，拟合周期新数值门槛待Q5澄清；[mini-plan v0.2](phase-6.5-plan.md)补Q6人工分工、Q7最终轨迹与纯AI口径、Q8有限再训练 / 失败停止提案。仅规划文档与能力只读核对，未冻结 / 实施，无新产品测试、训练或用户工程写入。
 
