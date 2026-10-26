@@ -197,3 +197,7 @@
 e31a4ac以--no-ff合并并push main；与9c1aa63的src / tests完全一致，复用对应R3 / 最终GUI56及双平台全量各1412 passed / 2个既有可选skip，未改实现或重跑已通过验证。用户本轮全部HR通过，F1–F8 Closed；AC-1–5 / S0–S2完成，Issue #42 Closed / PR #43 Merged。上文各轮“待HR / 未合并”为当时历史状态，本节为最终状态。停止，不进入6.5。
 
 运行：已有macOS环境在仓库根目录执行`.venv/bin/python -m ai_physics_tracker`；完整环境准备见development.md。Analysis → Function fit，选择Measured位置 / 角度源后Fit，查看四列SE / 95%局部t区间；hover查看解释，拖分隔条调整面板；Use recorded setup → Parameter bounds / fixed values → Initial填值 → Fixed整格点击或空格 → Fit，固定项保持给定值并显示Fixed。试用启动器及用户副本保留，不再要求重复HR。
+
+## 集成后测试边界维护 / 最终收口
+
+主干自动CI暴露原布局断言的单行 / 固定8px边距假设；20153c5仅改测试，以Qt原生字体 / 文本内容区 / delegate.sizeHint验证完整端点和行高，a13b661集成main，src保持9c1aa63。最终本机全量1414 passed（256.53s），[主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。失败过程见Review；用户原HR结论有效，无新产品行为，不重复请求HR。全部AC / Slices完成，最终文档同步后停止，6.5未开始。

@@ -8,8 +8,8 @@
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度](architecture-progress.md)。
 - **Phase / Subphase**：Phase 6进行中；P6.4参数误差解释v1.1已完成 / 已集成main，6.5完整单摆验收未开始。
-- **Gate**：R3独立科学审查Approve；最终产品9c1aa63相关GUI56 passed；[双平台全量CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows各1412 passed / 2个既有可选skip。2026-10-26用户最终HR通过，F1–F8 Closed；mini-plan全部AC / Slices完成。产品src与9c1aa63相同；main集成后的Windows CI暴露了测试的单行宽度假设，已仅修正自适应换行断言（1d2b1fa，7611770合并），本机2项布局回归通过；正在复核新主干双平台CI。
-- **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；功能集成提交e31a4ac，测试边界修正集成7611770，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
+- **Gate**：R3独立科学审查Approve；2026-10-26用户最终HR通过，F1–F8 Closed，mini-plan全部AC / Slices完成。本机最终全量**1414 passed（256.53s）**；[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。产品src与已通过HR的9c1aa63相同；tests仅增加按Qt原生布局测量的可见性检查（20153c5，a13b661集成），不改变界面 / 统计或重开HR。
+- **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；功能集成提交e31a4ac，最终测试边界修正集成a13b661，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
@@ -60,6 +60,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.4主干验证最终收口（2026-10-26）**：集成后字体布局测试的两次平台假设已用Qt实际字体 / 内容区 / sizeHint替代，保留完整端点、行高及真实拖动断言；测试修正20153c5以a13b661集成，产品src未改。本机全量1414 passed（256.53s），[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348)双平台success。失败流水线及处置见Review留档，全部HR结论保持，Issue #42 Closed / PR #43 Merged，停止。
 
 - **P6.4 v1.1完成并集成main（2026-10-26）**：用户明确“HR通过，收尾”，布局 / hover / Fixed与此前已通过项统一验收，F1–F8 Closed。e31a4ac以--no-ff集成并push，源码 / 测试与最终产品9c1aa63一致。[CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows各**1412 passed / 2个既有可选skip**（167.61s / 225.77s）；最终GUI相关56 passed，R3科学审查Approve保持。交付条件性参数SE / 95%双侧局部t区间、只读旧历史、不支持源与不可估计解释、可拖动面板、术语hover及Fixed整格 / 空格切换。[mini-plan](phase-6.4-plan.md)全部AC / S0–S2完成，[Review](../reviews/phase-6.4-review.md) / [HR记录](../notes/phase-6.4-human-review.md)归档；[Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) Closed、[PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43) Merged。未同步论文线或改动用户体验工程，不进入6.5。
 

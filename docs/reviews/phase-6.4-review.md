@@ -149,3 +149,9 @@
 main合并e31a4ac的CI40284170331中macOS通过，Windows为1 failed / 1411 passed / 2 skipped。唯一失败是GUI布局测试把“固定窗口宽度下一定单行显示”当作要求；该次拟合区间回退17位有效数字，Windows字体下文本宽480，列宽480，计入内边距后需自然换行。产品本就支持换行，不能据此认定区间必须单行。
 
 1d2b1fa仅修正tests/gui/test_parameter_errors.py：宽窄窗口均验证两个端点完整，内容超宽时行高至少容纳两行；保留表格铺满与分隔条 / 列宽真实拖动断言。2项定向回归通过（4.88s）；7611770以--no-ff集成main。src与9c1aa63完全一致，未改界面、算法或原HR结论；新主干CI回执待补。
+
+第二次CI40285455808暴露了固定8px内边距推算行数仍不成立：macOS某行实际33高，但估算要求2×28。20153c5移除该启发式，统一通过QStyleOptionViewItem / 平台实际文本内容区及delegate.sizeHint验证端点和行高，仍保留真实分隔条 / 列宽拖动与宽度填满断言。14项参数页回归通过（14.22s）；a13b661集成main，本机全量和最新主干CI待回执。全部修正仅tests，src保持9c1aa63，原HR有效；不把失败流水线改写为通过。
+
+### 集成后最终验证回执 / 收口
+
+20153c5 / a13b661的Qt原生度量检查：本机全量**1414 passed（256.53s）**；[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。之前失败的40284170331 / 40285455808保留为真实记录，均未当作通过。当前src与用户HR通过的9c1aa63一致，tests与a13b661一致；后续只同步文档，不重复测试或HR。P6.4全部Gate / HR收口，F1–F8 Closed，不开始6.5。
