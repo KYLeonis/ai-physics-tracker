@@ -77,7 +77,7 @@
 - [x] 修改后通过（findings 按 Decision 处置完毕，复审确认）
 - [ ] 需要重做（说明理由）
 
-- 最终代码审查结论：**Approve（R3）**，F1–F3 / F5 Closed，无待修代码finding；F4横滑体验仍待真人复测。自动Gate及真人HR独立核对，不由代码Approve代替。
+- 最终代码审查结论：**Approve（R3）**，F1–F5 Closed；2026-10-26追加F6 / F7局部GUI修复913d4ef，三项补测待用户。自动Gate及真人HR独立核对，不由代码Approve代替。
 - 日期 / 依据轮次：2026-10-24 / R3（95%局部区间新增范围；原SE的R2证据保留）。
 
 ### R2 — 2026-10-24 · 全新独立只读复审
@@ -113,3 +113,12 @@
 
 - 对应最终源码 / 测试12ea18d：本机**1408 passed（220.57s）**；[CI40077232972](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40077232972) macOS / Windows各**1406 passed / 2个既有可选skip**（141.14s / 261.50s），整run success。
 - R3最终代码Verdict **Approve**。最终验证后只有文档同步，不重复代码Review或测试。F4横向操作与新增区间交互需用户亲测；本轮HR未通过、未合并main，6.5未开始。
+
+## HR反馈 — 2026-10-26（其余通过 / 局部GUI返工）
+
+- 用户确认“其余都通过”，保留已测项目的真人通过；F4右侧表单横滑Closed。本轮不要求重测已通过的历史 / 保存 / 源切换等项目；Fixed因用户未理解操作，保持补测。
+- **F6 / Normal-risk GUI：区间数字省略、不可拖动列宽**。原因：Stretch列宽禁止手动调整，单行区间遇Qt换行布局时被省略。Fix Now：Interactive表头、上下限显式分行、关闭省略、按内容初始化宽度并为长状态限制宽度 / 换行；列宽改变时重算行高，窄窗可横向滚动，tooltip保留完整原值。
+- **F7 / Normal-risk GUI：术语与Fixed引导不足**。Fix Now：结果表头及单元格、状态、源、Residuals / RMSE / 基线比较和误差方法增加悬停说明，解释含义、用途与边界；Initial / Lower / Upper / Fixed表头解释固定值与约束的区别，展开参数选项直接显示操作步骤。Fixed明确持有Initial而非历史Estimate，Fixed自身不估SE / CI，其已知值的不确定度不传播。
+- 数值 / 摘要契约与既有科学假设未变，不重开R3。F6 / F7代码修复后仍须本轮用户亲测，不能用offscreen代替；自动验证及提交以current为准。
+
+- F6 / F7实现提交：**913d4ef**，已push；关联GUI **114 passed（112.90s）**。新增大字号两行端点完整宽度 / 行高、真实表头拖动 / 窄视口滚动及实际展开Fixed / 鼠标勾选 / 拟合保持Initial回归通过；原体验副本打开自检通过，c显示[159.96432, 160.1678]。[双平台全量CI40270483866](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40270483866) macOS / Windows均success，F6 / F7仍待三项真人补测。

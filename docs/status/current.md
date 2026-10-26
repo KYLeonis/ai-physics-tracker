@@ -1,20 +1,20 @@
 # Current Status
 
-> 用户当前需求：P6.4首轮HR后新增具体95%置信区间并修复横向滚动。计划v1.1 / ADR-0029已实现，产品12ea18d，**等待新一轮真人HR**。本机1408 passed / 全新独立R3 Approve / [双平台CI](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40077232972)均success，各1406 passed / 2个既有可选skip。未合并main。
+> 用户当前需求：2026-10-26 P6.4第二轮HR“其余都通过”，剩余区间数字裁切 / 列宽拖动、术语hover解释与Fixed操作引导。局部GUI修复已实现，**待三项补测**；原数值12ea18d的R3 / 全量1408 / 双平台通过保留，本次GUI验证见下。未合并main。
 
-- 最后更新：2026-10-24（v1.1新增区间自动Gate完成，待本轮HR）
+- 最后更新：2026-10-26（第二轮HR局部返工，其余通过）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。既有重构不重开。
-- **Phase / Subphase**：Phase 6 / P6.4参数误差解释v1.1；SE / 95%双侧局部t区间及F4横向可达性已实现，自动Gate通过 / 新HR待用户 / 未集成；6.5未开始。
-- **Gate**：全新独立R3 Approve / 独立70，实施方129定向 / 110关联 / 最终全量1408；双平台CI40077232972通过。[mini-plan](phase-6.4-plan.md)、[ADR-0029](../decisions/0029-local-t-parameter-confidence-intervals.md)、[Review](../reviews/phase-6.4-review.md)、[Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。F1–F3 / F5 Closed；F4代码修复、待真人复测。
-- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main c265be8；源码 / 测试最终12ea18d（含布局1067312），之后仅文档。论文线、上次试用副本及用户工程未覆盖。
+- **Phase / Subphase**：Phase 6 / P6.4参数误差解释v1.1；SE / 95%双侧局部t区间自动Gate通过，第二轮HR除F6 / F7外其余已测项通过；F4 Closed，局部GUI修复待三项补测 / 未集成；6.5未开始。
+- **Gate**：原数值12ea18d全新独立R3 Approve / 独立70，实施方129定向 / 110关联 / 全量1408、双平台CI40077232972通过。[mini-plan](phase-6.4-plan.md)、[ADR-0029](../decisions/0029-local-t-parameter-confidence-intervals.md)、[Review](../reviews/phase-6.4-review.md)、[Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。F1–F5 Closed；本次F6 / F7仅GUI修复，不改统计 / 数据契约，913d4ef关联GUI **114 passed（112.90s）**；新双平台全量CI [40270483866](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40270483866) macOS / Windows均success。
+- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main c265be8；数值12ea18d（含布局1067312），2026-10-26追加F6 / F7局部GUI修复913d4ef，已push。论文线、上次试用副本及用户工程未覆盖。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **等待新HR**：运行`experiment/p64-ci-human-review/start.command`，按[四组步骤](../notes/phase-6.4-human-review.md)检查具体区间 / 方法、右侧横滑、Fixed / Smoothed与Measured切换、历史 / 草稿 / SE-only旧记录及保存。新副本首屏直接展示具体区间；旧试用启动器仍保留，不默认使用其上次保存的Smoothed结果。本轮发起后停止等待用户反馈，不重复已通过验证。
+1. **等待三项补测**：关闭旧应用，再运行`experiment/p64-ci-human-review/start.command`，按[当前三项步骤](../notes/phase-6.4-human-review.md)检查完整区间及表头拖列宽、术语hover、Use recorded setup → Parameter bounds / fixed values → Initial填值 → Fixed → Fit。其他已测项目按用户“其余都通过”保留，不重新要求整套HR；Fixed未理解，必须单独完成补测。
 2. HR通过后只收尾6.4：勾选最终AC / S2、同步Review / 文档，`--no-ff`集成与push，关闭Issue / PR。原HR未通过，Q7方法确认也不等于HR通过；不得提前合并。若用户指出问题则按本期范围修复并验证。
 3. 保持原源支持、换算不传播 / 周期间隔统计及R09上下文 / 两执行器 / 原子Undo职责；不进入6.5或重开其他延期项。
 
@@ -60,6 +60,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.4第二轮HR局部返工（2026-10-26）**：用户指出区间数字省略 / 不能拖动、术语难理解及Fixed操作不清楚，其余通过，F4 Closed。F6结果表改为上下限分行、无省略、Interactive列宽 / 随宽调行高 / 窄窗横向可达；F7新增术语含义 / 用途 / 限制的tooltip和Fixed就地步骤，明确持有Initial而非上次Estimate。新回归覆盖大字号完整端点 / 真实表头拖动及展开隐藏列 / 鼠标勾选 / 实际Fit固定值。仅GUI，不改数值、摘要或存储，关联GUI114 passed（112.90s），原体验副本打开自检通过；[双平台全量CI40270483866](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40270483866) macOS / Windows均success。三项补测待用户，未合并、不进入6.5。
 
 - **P6.4 v1.1区间交付 / 待HR（2026-10-24）**：首轮HR反馈右侧横向裁切及无具体区间；布局1067312经87项GUI回归，用户明确确认95%双侧局部Student-t范围后更新计划v1.1 / AC / ADR-0029。12ea18d追加estimate ± t(0.975,n-p) × SE，原尺度 / 正态与局部假设、边界不截断、无效区间不抹掉SE；嵌套统计新写v2 / 旧v1不回填，四列 / 保存 / Undo / 历史贯通。全新独立R3 Approve并独立70，实施方129 / 110及最终**1408 passed（220.57s）**；[CI40077232972](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40077232972) macOS / Windows各**1406 passed / 2个既有可选skip**（141.14s / 261.50s）。新隔离工程打开自检`P64_CI_HR_OPEN_OK [159.96432, 160.1678]`；未覆盖用户副本，新HR待用户、未合并main、不进入6.5。
 

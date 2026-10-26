@@ -172,3 +172,9 @@
 - 全新独立R3 **Approve**并独立70 passed；实施方129定向 / 110关联，F1–F3及P3注释F5 Closed。F4横滑修复已入本产品，真人体验待本轮复测；旧R2不代替新增区间审查。
 - v1.1 AC-1 / 2 / 4自动验证完成，AC-3 / 5还需新HR / 集成，保留产品AC未勾状态；S2尚未整体完成。新启动器`experiment/p64-ci-human-review/start.command`及[四组HR](../notes/phase-6.4-human-review.md)已交付，实际打开 / 具体区间自检通过；上次试用副本未覆盖。
 - **停止等待用户HR反馈，不合并、不进入6.5**。用户Q7只确认新增方法，不冒记产品HR通过。
+
+## v1.1第二轮HR反馈 / 局部GUI返工（2026-10-26）
+
+- 用户反馈结果区间被省略、不能拖动，要求专业术语悬停解释，并表示固定参数操作不清楚；明确“其余都通过”。原四组HR中其余已测项目保留通过，不重新要求整套验收；Fixed操作仍待理解后补测，S2 / AC-3 / AC-5保持未整体完成。
+- 本次Normal-risk修复仅涉及GUI：区间上下限分行、不省略、可拖动表头列宽及窄窗横向滚动；结果表头 / 单元格和相关控件增加含义、用途与限制的tooltip；展开Parameter bounds / fixed values后直接显示Initial → Fixed → Fit操作说明。统计算法、摘要、存储、执行器均不变，既有R3数值审查继续有效。
+- F4右侧横向可达性按用户本轮反馈Closed；新增F6结果表可读性 / F7术语及Fixed引导由本轮修复并发起三项补测。实现提交913d4ef，关联GUI114 passed（112.90s），原启动器打开自检通过；新[双平台全量CI40270483866](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40270483866) macOS / Windows均success。最终回执以current / Review为准。

@@ -6,7 +6,7 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近交付：**R08历史查看流程归属（2026-10-20；本机1329 / 独立R2 / 双平台 / 本轮HR通过，f34d3b8已集成main，F1 Closed）**
-- 当前建议：[R07工程变更与界面更新方案 / 待办](status/change-notification-proposal.md)已由用户搁置，未实施；历史复核见[GLM剩余项复核](notes/glm-remaining-review-2026-10-18.md)；R01–R04 / R08均已完成 / 已合并，等待下一条指令，不改变Phase6后续范围。
+- 当前建议：P6.4 v1.1第二轮HR其余已测项通过；区间完整显示 / 可调列宽、术语hover与Fixed操作引导已局部修复，待[三项补测](notes/phase-6.4-human-review.md)，未合并，不进入6.5。R07仍搁置，R01–R04 / R08 / R09已合并。
 - 当前阶段：**Phase 6 进行中（2026-10-20，6.1 / 6.2 完成并集成 main；6.3计划已冻结、S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1 S0–S4已实现，已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；参数误差解释及整体单摆验收仍未完成；2026-10-24用户取消新增两轨迹比较 / 同帧差值）**
 - 已交付 GUI 增量：首次学习 20 个人工帧、默认 K-means、推荐框自定义算法及沿真实建议帧连续标注；[计划](status/initial-annotation-guidance-plan.md)，Human Review 已通过。
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
@@ -312,3 +312,5 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 2026-10-24：[P6.4](status/phase-6.4-plan.md)获开工授权，Issue #42 / `feat/p6.4-parameter-error`；S0契约及S1统计 / 展示已实现，全量1387 / 独立R2 Approve / 双平台CI通过，待本轮HR，尚未集成main。6.5整体验收不在本轮。
 
 2026-10-24 HR后扩展：用户确认95%双侧局部t置信区间，P6.4 mini-plan v1.1 / ADR-0029已更新；产品12ea18d已实现，独立R3 Approve / 定向129及关联110通过，最终全量1408 / 双平台CI40077232972通过，新HR待用户。未合并，不进入6.5。
+
+2026-10-26 HR局部返工：用户确认其余通过，F4横滑Closed；F6区间可读性 / 列宽拖动、F7术语hover / Fixed引导已实现，统计算法及摘要契约保持。验证与三项补测见[current](status/current.md) / [Review](reviews/phase-6.4-review.md)，未整体完成HR，不合并、不进入6.5。
