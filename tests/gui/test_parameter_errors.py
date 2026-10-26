@@ -181,15 +181,17 @@ def test_interval_bounds_fit_in_cells_and_header_can_be_dragged(qtbot, synthetic
     table = panel.parameterResults
     # 独立窄视口用于真实表头拖动，不依赖外层页面的纵向滚动位置。
     table.setParent(None)
+    table.setFont(font)
     qtbot.addWidget(table)
-    table.resize(500, 175)
+    table.resize(300, 175)
     table.show()
+    panel.renderParameterStatistics(session.derived_data(track, 'function_fit_x').extra_fields['analysis'])
     qtbot.waitUntil(lambda: table.horizontalScrollBar().maximum() > 0)
     for row in range(table.rowCount()):
-        bounds = table.item(row, 3).text().splitlines()
+        bounds = table.item(row, 3).text().split(', ')
         assert len(bounds) == 2
         assert all(table.fontMetrics().horizontalAdvance(bound) + 8 <= table.columnWidth(3) for bound in bounds)
-        assert table.rowHeight(row) >= 2 * table.fontMetrics().height()
+        assert table.rowHeight(row) >= table.fontMetrics().height()
     header = table.horizontalHeader()
     before = table.columnWidth(0)
     divider = QPoint(header.sectionViewportPosition(0) + before - 1, header.height() // 2)
@@ -199,6 +201,43 @@ def test_interval_bounds_fit_in_cells_and_header_can_be_dragged(qtbot, synthetic
     assert table.columnWidth(0) >= before + 30
     table.horizontalScrollBar().setValue(table.horizontalScrollBar().maximum())
     assert table.visualItemRect(table.item(0, 3)).right() < table.viewport().width()
+
+
+def test_result_pane_and_controls_resize_by_drag_and_table_fills_width(qtbot, synthetic_video_path):
+    from PySide6.QtCore import QPoint
+    from ai_physics_tracker.gui.signal_analysis_panel import SignalAnalysisPanel
+    window, session, track = _window(qtbot, synthetic_video_path)
+    _fit(qtbot, window)
+    panel = SignalAnalysisPanel()
+    qtbot.addWidget(panel)
+    panel.resize(1350, 1050)
+    panel.renderParameterStatistics(session.derived_data(track, 'function_fit_x').extra_fields['analysis'])
+    panel.show()
+    qtbot.waitUntil(lambda: panel.resultSplitter.isVisible())
+    table = panel.parameterResults
+    qtbot.waitUntil(lambda: table.horizontalHeader().length() >= table.viewport().width())
+    assert table.columnWidth(3) >= table.fontMetrics().horizontalAdvance(table.item(0, 3).text()) + 8
+    assert table.height() > 175
+    for splitter, delta, dimension in (
+            (panel.workspaceSplitter, QPoint(-80, 0), 'width'),
+            (panel.resultSplitter, QPoint(0, -80), 'height')):
+        before = splitter.sizes()
+        handle = splitter.handle(1)
+        center = handle.rect().center()
+        qtbot.mousePress(handle, Qt.MouseButton.LeftButton, pos=center)
+        qtbot.mouseMove(handle, center + delta)
+        qtbot.mouseRelease(handle, Qt.MouseButton.LeftButton, pos=center + delta)
+        qtbot.waitUntil(lambda: abs(splitter.sizes()[0] - before[0]) >= 50)
+        assert getattr(splitter.widget(1), dimension)() > before[1]
+    width = table.viewport().width()
+    panel.resize(1550, 1150)
+    qtbot.waitUntil(lambda: table.viewport().width() > width)
+    assert table.horizontalHeader().length() >= table.viewport().width()
+    before = panel.resultSplitter.sizes()[1]
+    panel.editor.setText('a*t + b + c')
+    assert panel.parameterResultsPane.isHidden()
+    qtbot.waitUntil(lambda: panel.resultSplitter.sizes()[1] == 0)
+    assert before > 0
 
 
 def test_fixed_help_leads_from_recorded_setup_to_held_initial_value(qtbot, synthetic_video_path):

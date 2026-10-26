@@ -9,7 +9,7 @@ from PySide6.QtCore import QEvent, QSize, Qt, Signal, QSignalBlocker
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout,
     QAbstractItemView, QHeaderView, QLabel, QLineEdit, QPlainTextEdit, QPushButton, QSpinBox,
-    QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSlider, QSizePolicy,
+    QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSlider, QSizePolicy, QSplitter,
 )
 
 from ai_physics_tracker.application.signal_analysis_job import SignalSelection
@@ -253,30 +253,46 @@ class SignalAnalysisPanel(QWidget):
         interval.addWidget(self.endFrame)
         choices.addRow("Interval", interval)
         layout.addWidget(self.contextLabel)
-        workspace = QHBoxLayout()
-        chartColumn = QVBoxLayout()
+        self.workspaceSplitter = QSplitter(Qt.Orientation.Horizontal)
+        self.workspaceSplitter.setChildrenCollapsible(False)
+        self.workspaceSplitter.setHandleWidth(8)
+        self.workspaceSplitter.setStyleSheet("QSplitter::handle { background: palette(midlight); } "
+                                            "QSplitter::handle:hover { background: palette(mid); }")
+        chart = QWidget()
+        chartColumn = QVBoxLayout(chart)
+        chartColumn.setContentsMargins(0, 0, 0, 0)
         chartColumn.addWidget(self.draftLabel)
         chartColumn.addWidget(self.modelLabel)
         chartColumn.addLayout(plotActions)
         self.showModelButton = QPushButton("Show whole model")
         self.showModelButton.clicked.connect(self.showWholeModel)
         chartColumn.addWidget(self.showModelButton)
-        chartColumn.addWidget(self.plotTabs, 1)
+        self.resultSplitter = QSplitter(Qt.Orientation.Vertical)
+        self.resultSplitter.setChildrenCollapsible(False)
+        self.resultSplitter.setHandleWidth(8)
+        plot = QWidget()
+        plotLayout = QVBoxLayout(plot)
+        plotLayout.setContentsMargins(0, 0, 0, 0)
+        plotLayout.addWidget(self.plotTabs, 1)
         helpLabel = QLabel("Scroll: page · Ctrl+scroll / buttons: zoom · Click a point: source frame")
         helpLabel.setWordWrap(True)
-        chartColumn.addWidget(helpLabel)
+        plotLayout.addWidget(helpLabel)
+        self.resultSplitter.addWidget(plot)
+        self.parameterResultsPane = QWidget()
+        resultsLayout = QVBoxLayout(self.parameterResultsPane)
+        resultsLayout.setContentsMargins(0, 0, 0, 0)
         self.parameterResults = QTableWidget(0, 4)
         self.parameterResults.setHorizontalHeaderLabels(["Parameter", "Estimate", "Conditional\nstandard error", "95% confidence\ninterval (local)"])
         self.parameterResults.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.parameterResults.verticalHeader().hide()
         self.parameterResults.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.parameterResults.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.parameterResults.horizontalHeader().setStretchLastSection(True)
         self.parameterResults.horizontalHeader().sectionResized.connect(self.parameterResults.resizeRowsToContents)
         for column, helpText in enumerate(PARAMETER_RESULT_HELP):
             self.parameterResults.horizontalHeaderItem(column).setToolTip(f"<p>{helpText}</p>")
         self.parameterResults.setToolTip("<p>Drag a header divider to resize a column; scroll horizontally in a narrow window. "
                                         "Hover a heading or cell for its meaning and use.</p>")
-        self.parameterResults.setMaximumHeight(175)
         self.parameterResultsLabel = QLabel()
         self.parameterResultsLabel.setWordWrap(True)
         self.parameterResultsLabel.setToolTip("<p>Recorded means these values belong to a saved fit or attempt. "
@@ -289,12 +305,18 @@ class SignalAnalysisPanel(QWidget):
         self.errorMethod.hide()
         self.errorMethodToggle.toggled.connect(self.errorMethod.setVisible)
         for widget in (self.parameterResultsLabel, self.parameterResults, self.errorMethodToggle, self.errorMethod):
-            chartColumn.addWidget(widget)
+            resultsLayout.addWidget(widget, 1 if widget is self.parameterResults else 0)
+        self.resultSplitter.addWidget(self.parameterResultsPane)
+        self.resultSplitter.setStretchFactor(0, 3)
+        self.resultSplitter.setStretchFactor(1, 2)
+        self.resultSplitter.setSizes([360, 240])
+        self.resultSplitter.handle(1).setToolTip("Drag up / down to resize the chart and parameter results.")
+        self.resultSplitter.handle(1).setAccessibleName("Resize chart and parameter results")
+        chartColumn.addWidget(self.resultSplitter, 1)
         self.clearParameterStatistics()
-        workspace.addLayout(chartColumn, 3)
+        self.workspaceSplitter.addWidget(chart)
         side = QWidget()
         side.setMinimumWidth(300)
-        side.setMaximumWidth(460)
         sideLayout = QVBoxLayout(side)
         sideLayout.setContentsMargins(0, 0, 0, 0)
         self.meaningLabel = QLabel("Choose data and an editable example, then inspect the initial curve and Fit.")
@@ -384,8 +406,13 @@ class SignalAnalysisPanel(QWidget):
         self.controlsScroll.setWidget(controls)
         self.controlsScroll.setMinimumHeight(220)
         sideLayout.addWidget(self.controlsScroll, 1)
-        workspace.addWidget(side, 2)
-        layout.addLayout(workspace, 1)
+        self.workspaceSplitter.addWidget(side)
+        self.workspaceSplitter.setStretchFactor(0, 3)
+        self.workspaceSplitter.setStretchFactor(1, 2)
+        self.workspaceSplitter.setSizes([800, 420])
+        self.workspaceSplitter.handle(1).setToolTip("Drag left / right to resize the chart and fitting controls.")
+        self.workspaceSplitter.handle(1).setAccessibleName("Resize chart and fitting controls")
+        layout.addWidget(self.workspaceSplitter, 1)
         self.setMinimumHeight(540)
         self.pageScrollRequested.connect(self.controlsScroll.scrollPage)
         self.editor.formulaChanged.connect(self._formulaChanged)
@@ -778,6 +805,7 @@ class SignalAnalysisPanel(QWidget):
         """面板拥有SE显示生命周期，草稿与旧历史不能留下当前数值。"""
         self.parameterResults.setRowCount(0)
         self.parameterResults.hide()
+        self.parameterResultsPane.hide()
         self.parameterResultsLabel.hide()
         self.errorMethodToggle.setChecked(False)
         self.errorMethodToggle.hide()
@@ -790,21 +818,24 @@ class SignalAnalysisPanel(QWidget):
         self.parameterResults.setRowCount(len(rows))
         for row, values in enumerate(rows):
             for column, value in enumerate(values):
-                display = value.replace(", ", ",\n") if column == 3 and value.startswith("[") else value
-                item = QTableWidgetItem(display)
+                item = QTableWidgetItem(value)
                 item.setToolTip(f"<p>{escape(value)}</p><p>{PARAMETER_RESULT_HELP[column]}</p>")
                 self.parameterResults.setItem(row, column, item)
+        header = self.parameterResults.horizontalHeader()
+        header.setStretchLastSection(False)
         self.parameterResults.resizeColumnsToContents()
         # 长状态说明换行，给含17位有效数字的区间端点保留完整宽度。
         widthLimit = self.parameterResults.fontMetrics().horizontalAdvance("[-1.2345678901234567e+308,") + 24
         for column in range(self.parameterResults.columnCount()):
             self.parameterResults.setColumnWidth(column, min(self.parameterResults.columnWidth(column), widthLimit))
+        header.setStretchLastSection(True)
         self.parameterResults.resizeRowsToContents()
         self.parameterResultsLabel.setText("Recorded fit parameters · " + status +
                                           (" — historical inputs only" if status == "stale" else ""))
         self.parameterResultsLabel.show()
         self.parameterResults.show()
         self.errorMethodToggle.show()
+        self.parameterResultsPane.show()
 
     def renderSamples(self, samples, unit, predicted=None, residual=None, *, wrapped=False, title="Initial preview") -> None:
         self.clearParameterStatistics()
