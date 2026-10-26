@@ -77,7 +77,7 @@
 - [x] 修改后通过（findings 按 Decision 处置完毕，复审确认）
 - [ ] 需要重做（说明理由）
 
-- 最终代码审查结论：**Approve（R3）**，F1–F5 Closed；2026-10-26 F6 / F7修复913d4ef后以1082a09追加可拖动布局；当前布局 / F7及新增F8 Fixed复选交互待HR。自动Gate及真人HR独立核对，不由代码Approve代替。
+- 最终代码审查结论：**Approve（R3）**，F1–F5 Closed；2026-10-26 F6 / F7修复913d4ef后以1082a09追加可拖动布局；2026-10-26用户明确“HR通过，收尾”，F6 / F7 / F8 Closed；F1–F8全部关闭。自动Gate及真人HR独立核对，不由代码Approve代替。
 - 日期 / 依据轮次：2026-10-24 / R3（95%局部区间新增范围；原SE的R2证据保留）。
 
 ### R2 — 2026-10-24 · 全新独立只读复审
@@ -135,3 +135,9 @@
 - **Decision / Fix**：Fix Now，Normal-risk局部GUI。9c1aa63复用Phase6.2轨迹列表F9的Fusion清晰空框样式和整格复选交互；原_TrackChoiceDelegate原样移入check_state_delegate.CheckStateDelegate，轨迹列表与Fixed列共用。草稿创建及SignalHistory重建都保留Selectable / Checkable；Fixed列接管空格，避免全局播放快捷键抢占。历史表格仍整体禁用，采用记录设置后恢复可编辑。
 - **Verification**：整格 / 实际标记 / 空格均进入实际Fit并保持Initial，其他参数不受影响；历史只读时不能切换、采用后可连续勾选 / 取消且不写工程，轨迹列表原三种输入及历史回归通过。相关GUI **56 passed（40.09s）**，原体验工程打开自检通过；新[双平台全量CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows均success，最终回执见current。
 - **Scope / Status**：SE / CI算法、参数值、摘要 / 存储和事务均未改；R3科学结论保持。F8代码已修、待当前真人补测；本条反馈不代表F6 / F7通过，不合并main。
+
+## 最终HR / Gate收口（2026-10-26）
+
+- 用户本轮原文：“HR通过，收尾”。最终布局 / hover / Fixed及此前已通过项全部完成真人验收，**F6 / F7 / F8 Closed**，F1–F8无未处置finding。
+- 最终代码9c1aa63；R3科学代码Approve保持，随后Normal-risk GUI修复经56项相关回归及本轮HR通过。最终[CI40280942412](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40280942412) macOS / Windows各**1412 passed / 2个既有可选skip**（167.61s / 225.77s），两作业及整run success。先前各轮“待HR / 未合并”段落保留历史事实，当前以本节与current为准。
+- 当前HEAD的src / tests与9c1aa63一致；之后仅文档收尾，复用对应自动验证。准备--no-ff集成与push；不开始6.5，不把本次HR扩大为整个Phase6单摆整体验收。

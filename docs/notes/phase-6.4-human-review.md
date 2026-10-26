@@ -1,8 +1,10 @@
 # P6.4 Human Review — 条件性SE与95%局部t置信区间
 
-当前工作分支`feat/p6.4-parameter-error`，未合并main。用户在首轮HR反馈横向裁切并要求具体区间后，已确认95%双侧局部t口径（计划v1.1 / ADR-0029）。旧SE的HR与Review不代替本轮。[计划](../status/phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md)。
+**最终结果：2026-10-26用户明确“HR通过，收尾”，本轮全部通过，F1–F8 Closed。** 最终产品9c1aa63，双平台各1412 passed / 2个既有可选skip；正在集成收尾。以下操作与历次待测描述作为验收记录留档，不再等待重复反馈。
 
-## 2026-10-26反馈后的补测（当前，含Fixed缺陷修复）
+原工作分支`feat/p6.4-parameter-error`。用户在首轮HR反馈横向裁切并要求具体区间后，已确认95%双侧局部t口径（计划v1.1 / ADR-0029）。旧SE的HR与Review不代替本轮。[计划](../status/phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md)。
+
+## 2026-10-26反馈后的补测步骤（已通过，含Fixed缺陷修复）
 
 用户反馈区间被遮挡、不可拖动，要求术语hover解释、Fixed操作引导，并确认“其余都通过”。保留其他已测项通过。用户随后再次指出固定大小 / 右侧留白不美观，要求整个面板可拖动；1082a09已增加左右 / 上下分隔条，取代上次仅调整列宽及强制分行的方案。之后又反馈Fixed列空白、无法勾选，F8以9c1aa63修复为清晰空框 / 整格点击 / 空格切换。先补测第3项Fixed；布局 / hover若尚未确认，仍保留待测，不能冒记通过。
 
@@ -12,7 +14,7 @@
 2. **术语解释**：hover结果表的`Estimate`、`Conditional standard error`、`95% confidence interval (local)`表头 / 单元格，再hover图旁RMSE结果文字、`Residuals`标签、源选择及误差方法。→ 有可换行的说明，讲清含义、用途和限制；CI不是预测范围，SE不包含完整系统误差。
 3. **固定参数**：点`Use recorded setup` → 勾选`Parameter bounds / fixed values`展开隐藏列及操作说明 → 在c的`Initial`双击填入`160`并按Enter → 必要时把参数表底部横向滚动条拖到右侧，点击同一行`Fixed`单元格任意空白处或复选框（也可选中该格按空格）→ 确认清晰方框出现勾选 → 点`Fit`。→ 结果c的Estimate保持160，SE和CI显示`Fixed`；其余自由参数继续拟合。再点`Use recorded setup`，点击c的`Fixed`单元格或按空格取消勾选（空格不应触发视频播放）并重新Fit，c恢复自由估计。固定的是Initial里的数值，不是上一轮Estimate；固定值自身的不确定度不传播。
 
-请分别回复`1通过 / 2通过 / 3通过`，或说明哪一步仍有问题。当前先确认第3项Fixed；未收到明确通过的布局 / hover也仍需反馈后才能收尾P6.4。
+2026-10-26用户已统一回复“HR通过，收尾”，上述三项及此前通过项均完成；不再重复发起验收。
 
 ## 本机启动
 
