@@ -1,20 +1,21 @@
 # Current Status
 
-> 用户当前需求：2026-10-26 P6.4第二轮HR“其余都通过”，剩余区间数字裁切 / 列宽拖动、术语hover解释与Fixed操作引导。局部GUI修复已实现，**待三项补测**；原数值12ea18d的R3 / 全量1408 / 双平台通过保留，本次GUI验证见下。未合并main。
+> 用户当前需求：2026-10-26 P6.4第二轮HR“其余都通过”，剩余区间数字裁切 / 列宽拖动、术语hover解释与Fixed操作引导。用户随后要求整个面板可拖动调大小，1082a09已增加左右 / 上下分隔条、表格铺满宽度并移除强制换行，**布局及原未完成项待HR**；原数值12ea18d的R3 / 全量1408 / 双平台通过保留，本次GUI验证见下。未合并main。
 
-- 最后更新：2026-10-26（第二轮HR局部返工，其余通过）
+- 最后更新：2026-10-26（面板拖动返工，布局及原未完成项待HR）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度与已淘汰做法](architecture-progress.md)。既有重构不重开。
-- **Phase / Subphase**：Phase 6 / P6.4参数误差解释v1.1；SE / 95%双侧局部t区间自动Gate通过，第二轮HR除F6 / F7外其余已测项通过；F4 Closed，局部GUI修复待三项补测 / 未集成；6.5未开始。
+- **Phase / Subphase**：Phase 6 / P6.4参数误差解释v1.1；SE / 95%双侧局部t区间自动Gate通过，第二轮HR除F6 / F7外其余已测项通过；F4 Closed；F6按最新反馈追加可拖动面板，布局及原未完成项待补测 / 未集成；6.5未开始。
 - **Gate**：原数值12ea18d全新独立R3 Approve / 独立70，实施方129定向 / 110关联 / 全量1408、双平台CI40077232972通过。[mini-plan](phase-6.4-plan.md)、[ADR-0029](../decisions/0029-local-t-parameter-confidence-intervals.md)、[Review](../reviews/phase-6.4-review.md)、[Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [Draft PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。F1–F5 Closed；本次F6 / F7仅GUI修复，不改统计 / 数据契约，913d4ef关联GUI **114 passed（112.90s）**；新双平台全量CI [40270483866](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40270483866) macOS / Windows均success。
-- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main c265be8；数值12ea18d（含布局1067312），2026-10-26追加F6 / F7局部GUI修复913d4ef，已push。论文线、上次试用副本及用户工程未覆盖。
+- **本次布局Gate**：1082a09定向11 / 关联GUI **115 passed（95.70s）**；原体验工程打开自检通过，数值完整。新[双平台全量CI40272503263](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40272503263) macOS / Windows均success；当前布局HR待用户。
+- **Worktree / Branch**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.4-parameter-error`，基线main c265be8；数值12ea18d（含布局1067312），2026-10-26 F6 / F7修复913d4ef后，追加可拖动面板1082a09，已push。论文线、上次试用副本及用户工程未覆盖。
 - **Development Mode**：Build Mode
 
 ## Next Recommended Action
 
-1. **等待三项补测**：关闭旧应用，再运行`experiment/p64-ci-human-review/start.command`，按[当前三项步骤](../notes/phase-6.4-human-review.md)检查完整区间及表头拖列宽、术语hover、Use recorded setup → Parameter bounds / fixed values → Initial填值 → Fixed → Fit。其他已测项目按用户“其余都通过”保留，不重新要求整套HR；Fixed未理解，必须单独完成补测。
+1. **等待布局与原未完成项HR**：关闭旧应用，再运行`experiment/p64-ci-human-review/start.command`，按[当前三项步骤](../notes/phase-6.4-human-review.md)先检查左右区域宽度 / 图表与参数表高度的分隔条拖动、表格铺满可用宽度及区间自适应换行，再检查原未完成的术语hover、Use recorded setup → Parameter bounds / fixed values → Initial填值 → Fixed → Fit。其他已测项目按用户“其余都通过”保留，不重新要求整套HR；Fixed未理解，必须单独完成补测。
 2. HR通过后只收尾6.4：勾选最终AC / S2、同步Review / 文档，`--no-ff`集成与push，关闭Issue / PR。原HR未通过，Q7方法确认也不等于HR通过；不得提前合并。若用户指出问题则按本期范围修复并验证。
 3. 保持原源支持、换算不传播 / 周期间隔统计及R09上下文 / 两执行器 / 原子Undo职责；不进入6.5或重开其他延期项。
 
@@ -60,6 +61,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **P6.4可拖动布局返工（2026-10-26）**：用户指出上次列宽修复仍留下大块空白，要求面板可拖动调大小；F6保持未通过。1082a09用两个原生QSplitter调整左右宽度 / 图表与参数表高度，移除参数结果175高度和右栏460宽度上限；CI列铺满余宽，取消强制分行，窄窗自然换行 / 横滚；草稿隐藏整块结果区。数值 / 统计摘要不变。定向11 passed（10.57s），关联GUI115 passed（95.70s），原体验工程打开自检通过；新[双平台全量CI40272503263](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40272503263) macOS / Windows均success；等待当前布局HR，不合并。
 
 - **P6.4第二轮HR局部返工（2026-10-26）**：用户指出区间数字省略 / 不能拖动、术语难理解及Fixed操作不清楚，其余通过，F4 Closed。F6结果表改为上下限分行、无省略、Interactive列宽 / 随宽调行高 / 窄窗横向可达；F7新增术语含义 / 用途 / 限制的tooltip和Fixed就地步骤，明确持有Initial而非上次Estimate。新回归覆盖大字号完整端点 / 真实表头拖动及展开隐藏列 / 鼠标勾选 / 实际Fit固定值。仅GUI，不改数值、摘要或存储，关联GUI114 passed（112.90s），原体验副本打开自检通过；[双平台全量CI40270483866](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40270483866) macOS / Windows均success。三项补测待用户，未合并、不进入6.5。
 

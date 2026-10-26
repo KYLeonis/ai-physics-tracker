@@ -178,3 +178,8 @@
 - 用户反馈结果区间被省略、不能拖动，要求专业术语悬停解释，并表示固定参数操作不清楚；明确“其余都通过”。原四组HR中其余已测项目保留通过，不重新要求整套验收；Fixed操作仍待理解后补测，S2 / AC-3 / AC-5保持未整体完成。
 - 本次Normal-risk修复仅涉及GUI：区间上下限分行、不省略、可拖动表头列宽及窄窗横向滚动；结果表头 / 单元格和相关控件增加含义、用途与限制的tooltip；展开Parameter bounds / fixed values后直接显示Initial → Fixed → Fit操作说明。统计算法、摘要、存储、执行器均不变，既有R3数值审查继续有效。
 - F4右侧横向可达性按用户本轮反馈Closed；新增F6结果表可读性 / F7术语及Fixed引导由本轮修复并发起三项补测。实现提交913d4ef，关联GUI114 passed（112.90s），原启动器打开自检通过；新[双平台全量CI40270483866](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40270483866) macOS / Windows均success。最终回执以current / Review为准。
+
+## v1.1面板拖动返工（2026-10-26）
+
+- 用户进一步指出固定区域 / 右侧空白不符合要求，要求可拖动面板；上次列宽修复不视作布局通过，F6保持打开。1082a09以原生QSplitter替换固定左右布局、增加图表 / 参数结果上下分隔条；移除结果175高度与右栏460宽度上限，CI列铺满余宽、取消强制分行，窄窗自然换行 / 横滚，返回草稿隐藏整块结果区。
+- 仍是Normal-risk GUI返工，不改AC统计口径、数值 / 摘要或持久化。定向11 passed（10.57s）；关联GUI115 passed（95.70s），原体验工程打开自检通过；新[双平台全量CI40272503263](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40272503263) macOS / Windows均success，最终回执见current。当前布局及之前未完成的hover / Fixed仍需HR，已通过项目不重测，不合并、不进入6.5。
