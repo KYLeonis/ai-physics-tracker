@@ -7,6 +7,8 @@ name = "ai-physics-tracker"
 version = "0.1.0"
 description = "Desktop video tracking and physics analysis foundation"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11,<3.13"
 authors = [{ name = "Leonis" }]
 dependencies = [

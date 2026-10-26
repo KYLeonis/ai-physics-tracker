@@ -7,11 +7,11 @@
 ## 1. 目标与开发平台
 
 - **主要开发环境**：macOS（Apple Silicon, arm64）
-- **首要发布目标**：Windows 10 / 11 64-bit 安装程序（`AIPhysicsTracker-Setup.exe`）
-- **后续发布目标**：macOS Apple Silicon（`.dmg`）
-- 本项目采用"macOS 开发 → Windows 发布"的跨平台模式，策略与注意事项见 §1.1；涉及平台差异的新决策需记 ADR 并同步本文件。
+- **首轮交付目标**：当前main的Mac arm64小范围教学试用包，无需试用者配置Python；范围见[已冻结首发目标](spec/first-deliverable-target.md)。
+- **长期正式发布目标**：Windows 10 / 11 64-bit 安装程序（`AIPhysicsTracker-Setup.exe`）。
+- 先Mac教学试用、后Windows正式交付；策略与注意事项见 §1.1。涉及平台差异的新技术决策需记ADR并同步本文件。
 
-### 1.1 跨平台开发模式与注意事项（macOS 开发 → Windows 发布 → 未来 macOS dmg）
+### 1.1 跨平台开发模式与注意事项（macOS开发 / 教学试用 → Windows正式交付）
 
 #### 基本事实与构建策略
 
@@ -19,9 +19,9 @@
 | --- | --- |
 | 交叉编译 | PyInstaller / Nuitka **均不支持**在 macOS 上产出 Windows exe；Windows 包必须在 Windows (x64) 上构建 |
 | Windows 构建途径 | 首选 GitHub Actions `windows-latest` runner（x64）——仓库已具备 GitHub 远程与 CI 条件；阶段性构建产出 exe artifact 供下载验证 |
-| Windows 真机验收 | CI 构建不能替代真机：GUI 交互、视频解码、安装体验、CUDA 路径均可在**自有的 Windows x64（NVIDIA GPU）笔记本**上验收——真机途径已落实，需保持固定的验收节奏（涉及 GUI/视频/打包的 Phase 收尾必验） |
+| Windows 真机验收 | GUI / 解码 / 安装 / CUDA最终需在自有Windows x64 NVIDIA笔记本上验证，CI不能替代。当前用户已将Windows / CUDA真机延期到Phase 9前，本轮Mac教学试用不扩大为Windows验收通过 |
 | Apple Silicon 上的 Windows VM | UTM/Parallels 中的 Windows 是 **ARM64**：PyTorch/CUDA/DLC 的 Windows **x64** 轮子生态不可用，仅能做纯 GUI 冒烟；本项目已有 Windows 真机，正常流程不依赖 VM |
-| macOS dmg（未来） | PyInstaller 在本机 arm64 可直接产出；正式分发需 codesign + notarization（Apple Developer 账号，年费成本），Phase 9 后决策 |
+| Mac arm64教学试用 | 基于当前main制作安装包，受控复用历史发行的AI环境安装 / Repair；首次联网准备、准备后离线。接受未公证包的单应用手动放行，实际验证新包步骤；正式Developer ID签名 / 公证后续排，见[许可与分发边界](licensing.md) |
 
 #### 代码可移植性规则（Phase 1 起遵守，逐步用 CI 检查固化）
 
@@ -70,7 +70,7 @@
 
 | 组件 | 选择 | 说明 |
 | --- | --- | --- |
-| OS（目标） | Windows 10 / 11 64-bit | 发布平台 |
+| OS（目标） | 首轮Mac arm64；长期Windows 10 / 11 64-bit | 教学试用与正式发布分别验收 |
 | Python | CI **3.11**；本机开发环境 **3.12.13** | 项目声明支持3.11–3.12；初始选择依据见下方 |
 | AI Framework | 本机 PyTorch 2.13.0 | DLC传递依赖；requirements.txt不锁定完整AI环境 |
 | Tracking | 本机 DeepLabCut 3.0.1（PyTorch 引擎） | pyproject.toml声明`deeplabcut>=3.0,<4.0`，不等于锁定本机版本 |
@@ -196,7 +196,7 @@ H.264/HEVC 走完整 packet PTS 快路径，其他媒体回退完整帧扫描。
 CI 通过 `scripts/setup_ffprobe.py` 下载固定 `eugeneware/ffmpeg-static` release
 `b6.1.1` 的平台资产并校验 SHA-256。该 tag 不等于各平台工具的版本号；本地验证的
 darwin-arm64 资产实际报告 FFprobe 6.0。二进制只用作开发/CI，**不进入产品分发**，
-最终打包的许可/安全维护方案留 Phase 9 审核。
+具体产品打包时另行审核许可 / 维护方案，当前开发 / CI二进制不自动成为教学试用分发选择。
 
 macOS 已有环境的最短启动：
 
@@ -245,4 +245,4 @@ Open video（新会话）替代重连。Unknown/VFR 的浏览与“已验证可�
 
 用户已批准Matplotlib，只使用MathText Agg，无外部TeX。显式约束`matplotlib>=3.8,<3.9`匹配DeepLabCut现有上界；锁定3.8.4。此版本二进制与NumPy 1.x配套，CI轻环境原NumPy 2.4.6 / OpenCV 4.14锁改为现有DLC开发环境已使用的NumPy 1.26.4 / OpenCV-headless 4.11.0.86，SciPy 1.17.1兼容。锁文件包含MathText所需传递依赖；已由P6.3最终macOS / Windows Python3.11 CI验证。
 
-Matplotlib及随附字体 / 第三方许可原文保存在`resources/licenses/matplotlib-3.8.4/`；Phase 9打包时连同发行包保留。项目自身License未变。当前pyparsing 3.3.2可运行，但Matplotlib 3.8.4会报告弃用提示；不因此单独升级到与DLC冲突的Matplotlib。
+Matplotlib及随附字体 / 第三方许可原文保存在`resources/licenses/matplotlib-3.8.4/`；产品打包时连同相关组件保留。引入该组件未改变项目自身许可；当前原创软件已按2026-10-26确认采用MIT，见[许可边界](licensing.md)。当前pyparsing 3.3.2可运行，但Matplotlib 3.8.4会报告弃用提示；不因此单独升级到与DLC冲突的Matplotlib。

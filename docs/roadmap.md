@@ -1,4 +1,4 @@
-> 2026-10-11 产品口径确认：main 由用户提供方程 / 公式，通用平台承担后续分析；Phase 6 旧固定模型草案须按 [ADR-0017](decisions/0017-user-defined-equation-analysis-platform.md) 重规划，不直接开工。当前用户授权三项回移增量见 [mini-plan](status/main-guided-refinement-model-import-plan.md)。
+> main由用户提供方程 / 公式，通用平台承担后续分析；Phase 6已按[ADR-0017](decisions/0017-user-defined-equation-analysis-platform.md)完成重规划并交付6.1–6.4，论文固定模型仅作复现参考。
 
 # Roadmap — AI Physics Tracker
 
@@ -6,10 +6,22 @@
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始
 
 - 最近交付：**P6.4条件性参数SE / 95%局部t区间（2026-10-26；独立R3 / 双平台全量 / 全部HR通过，e31a4ac集成main，F1–F8 Closed）**
-- 当前建议：P6.4已收尾，停止等待用户下一条指令；6.5完整单摆验收未开始。R07仍搁置，其他Deferred不作隐式授权。
+- 最近规划：**首个可交付版本的目标 / 范围 / 顺序于2026-10-26冻结**，文档 / MIT收口已完成；6.5完整单摆验收未开始。下一开发轮先准备6.5 mini-plan，R07仍搁置。
 - 当前阶段：**Phase 6 进行中（2026-10-26，6.1 / 6.2 完成并集成 main；6.3计划已冻结、S0–S4已实现，S5自动Gate及整体HR已通过（2026-10-16），已以92d00a2集成main；6.3.1 S0–S4已实现，已完成并于2026-10-17通过用户HR，以c0d1461集成main；本机1232项 / 双平台CI / R6独立复审通过；P6.4参数误差解释已于2026-10-26以e31a4ac集成main；6.5完整单摆验收未开始；2026-10-24用户取消新增两轨迹比较 / 同帧差值）**
 - 已交付 GUI 增量：首次学习 20 个人工帧、默认 K-means、推荐框自定义算法及沿真实建议帧连续标注；[计划](status/initial-annotation-guidance-plan.md)，Human Review 已通过。
 - 各阶段完成后暂停，等待下一条开发指令再进入下一阶段；收尾要求见 `AGENTS.md` 第 11 节。
+
+---
+
+## 首个可交付版本：Mac教学试用（目标已冻结，交付未完成）
+
+[正式目标与完成证据](spec/first-deliverable-target.md)是这次跨阶段交付的范围入口，[许可与分发边界](licensing.md)记录原创代码MIT及第三方 / 权重边界。
+
+面向大学物理实验学生 / 教师，完成单视频 / 单目标二维运动的标注、训练 / 跟踪、修正、标定 / 分析、CSV＋PNG＋方法说明及同机保存重开。提供有分发授权的真实单摆，以及匀速直线 / 匀加速直线 / 二维抛体 / 简谐振动四类合成真值与对照报告；一名独立目标用户完成真实单摆任务。
+
+顺序：**原定6.5验收→最小科学导出与合成核查→Mac试用包 / 教程 / 离线验证→独立用户试用与修复**，完整模型库随后推进。首次准备可联网，准备后支持流程离线；试用者无需配置Python，包不附第三方权重，接受未公证应用的单应用手动放行。
+
+这是Phase 8 / 9部分交付的前置，不表示完整Phase 7 / 8 / 9已开始或完成；原6.5 AC、Phase 5已归档缺口及Windows正式交付边界保持。具体实施仍按独立mini-plan和对应Gate推进。
 
 ---
 
@@ -19,7 +31,7 @@
 
 **Deliverables**
 - 仓库基础结构（docs/、src/、tests/、scripts/、resources/、examples/、packaging/）
-- README.md（项目介绍）、AGENTS.md（Agent 开发指南）、.gitignore、LICENSE（TBD）
+- README.md（项目介绍）、AGENTS.md（Agent 开发指南）、.gitignore、LICENSE（初始化时TBD，现为MIT）
 - docs/：roadmap.md、architecture.md、development.md、decisions/（ADR）
 - Git 仓库初始化、GitHub 远程仓库（初始化时Private，当前Public）、首次提交与推送
 
@@ -214,6 +226,8 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 
 **目标**：完整的模型管理能力。
 
+完整模型库排在首轮Mac教学试用之后，先沿用已有模型 / run基础，见[首发目标](spec/first-deliverable-target.md)。
+
 **Deliverables**
 - 模型保存、命名、版本管理、评价、继续训练、复制、应用到新视频
 - 模型元数据记录：名称、版本、跟踪目标、创建时间、训练数据量、验证结果、来源实验、训练配置
@@ -230,6 +244,8 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 ## Phase 8 — Export & Scientific Workflow ⬜
 
 **目标**：完善科学实验工作流与数据导出。
+
+选定结果CSV＋方法 / 参数说明及现有PNG的交付核对前置到[首轮教学试用](spec/first-deliverable-target.md)；原生Excel、视频导出及通用跨机器归档后续排。以下完整Phase AC保持未完成。
 
 **Deliverables**
 - CSV / Excel 导出（frame、time、object、x、y、confidence 及运动学结果）
@@ -249,6 +265,8 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 ## Phase 9 — Optimization & Packaging ⬜
 
 **目标**：性能优化与 Windows 桌面发布。
+
+Mac arm64小范围教学试用包、独立环境 / Repair复用与离线验证已前置到[首发目标](spec/first-deliverable-target.md)，具体实现尚未开始；本节正式Windows交付目标保持。
 
 **Deliverables**
 - 性能优化：内存、视频处理、AI 推理速度、GPU 支持、模型加载速度
@@ -279,8 +297,8 @@ Human-in-the-loop refinement 闭环；预测永不自动成为 ground truth。
 ## 版本选择记录（摘要）
 
 - Python 3.11（2026-08 确定）：DeepLabCut 3.x 官方支持 Python 3.10–3.12，PyTorch/PySide6 在 3.11 上轮子最成熟。详见 [development.md](development.md) 与 [decisions/0002](decisions/0002-choose-python-3.11.md)。
-- GUI 框架（PySide6）与交互绘图（PyQtGraph）为"优先评估"项，最终确认分别在 Phase 2 / Phase 3 前完成并记录 ADR。
-- License：当前main的LICENSE仍为TBD；ADR-0011已有MIT方向，v0.1.0历史Mac测试发行已声明主程序MIT，下一版口径待确认。DeepLabCut 3.0.1为LGPL-3.0-or-later；发布时按具体库 / 二进制 / 模型权重核对，旧AGPL表述不再作为依据。
+- GUI框架PySide6与交互绘图PyQtGraph已在Phase 2 / 3采用，当前分工见[架构总览](architecture.md#当前架构总览接手先读)。
+- License：2026-10-26用户确认原创软件采用MIT，根LICENSE及包元数据已落实，沿用ADR-0011与历史Mac发行方向；具体第三方 / 权重及分发边界见[licensing](licensing.md)，具体安装包材料尚待准备。
 
 2026-10-17维护补丁：[自动采用合格近似时序](status/automatic-timing-plan.md)，取消Review timing / Yes，独立review / 双平台CI / 本轮HR于2026-10-17均通过并集成main；不改变Phase 6.4 / 6.5状态。
 

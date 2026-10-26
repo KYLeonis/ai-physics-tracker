@@ -33,14 +33,16 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 完整版本（目标、交付物、验收标准、技术风险）见 `docs/roadmap.md`。
 
+**首个可交付目标已冻结（2026-10-26）**：[Mac教学试用目标](docs/spec/first-deliverable-target.md)为跨阶段优先级入口。文档 / MIT收口已完成；随后按6.5→最小科学导出与四类合成核查→Mac试用包 / 教程 / 离线验证→一名独立用户完成真实单摆任务推进，完整模型库随后排。目标冻结不等于已实施，6.5未开始。
+
 ## 3. 预期技术栈
 
 ```text
-OS:          Windows 10/11 64-bit（目标平台）；开发亦可在 macOS/Linux
-Python:      3.11（DeepLabCut 3.x 支持 3.10–3.12）
+OS:          首轮 Mac arm64 教学试用；长期 Windows 10/11 64-bit；开发亦可在 Linux
+Python:      3.11–3.12（CI 3.11，本机开发3.12.13）
 AI:          PyTorch（先装 PyTorch 再装 deeplabcut）
 Tracking:    DeepLabCut 3.x，PyTorch 引擎
-GUI:         PySide6 / Qt（优先评估）
+GUI:         PySide6 / Qt（已采用）
 Video:       OpenCV、FFmpeg
 Sci Comp:    NumPy、SciPy、Pandas
 Plotting:    PyQtGraph（交互）、Matplotlib（导出）
@@ -56,7 +58,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 ├── README.md            # 面向所有人的项目介绍
 ├── AGENTS.md            # 本文件：Agent 开发指南
 ├── CODE_STANDARD.md     # 代码规范（写任何代码前先读）
-├── LICENSE              # 许可证（当前 TBD）
+├── LICENSE              # 原创软件 MIT；第三方边界见 docs/licensing.md
 ├── docs/                # 项目文档
 │   ├── roadmap.md       # 详细路线图（各阶段目标/交付物/验收标准/风险）
 │   ├── architecture.md  # 高层架构设计
@@ -72,7 +74,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 ├── scripts/             # 开发辅助脚本
 ├── resources/           # 应用资源（图标、UI 文件等）
 ├── examples/            # 示例工程/用法（不含大型视频）
-└── packaging/           # Windows 打包相关（Phase 9 起填充）
+└── packaging/           # Mac教学试用 / 后续Windows打包入口
 ```
 
 ## 5. 文档位置
@@ -82,6 +84,7 @@ Packaging:   PyInstaller / Nuitka + Inno Setup / NSIS（Phase 9 决定）
 - **代码规范（写代码前必读）**：`CODE_STANDARD.md` —— 命名（含领域词汇表）、分层、类型、错误处理、数值代码、跨平台、测试风格
 - 开发循环细则（Phase/Subphase/Slice、review、GitHub、Agent 交接）：`docs/workflow.md`
 - 路线图：`docs/roadmap.md`
+- 已冻结首发目标：`docs/spec/first-deliverable-target.md`（Mac教学试用、交付范围 / 顺序 / 完成标准）；许可边界：`docs/licensing.md`；取舍记录：`docs/notes/first-deliverable-interview.md`
 - 架构设计：`docs/architecture.md`
 - 开发环境与工作流：`docs/development.md`
 - Phase 1 数据体系规范（**实现前必读**）：`docs/spec/data-model.md`（领域模型/时间语义/标定/最小接口）、`docs/spec/project-format.md`（持久化与项目目录）、`docs/spec/phase1-requirements.md`（Phase 1 需求与验收标准）
@@ -226,5 +229,5 @@ test: add pendulum synthetic data tests for kinematics
 ## 12. 其他注意事项
 
 - 本仓库刻意**不预生成**未来可能被修改的空 Python 文件；代码文件在需要实现时再创建。
-- 当前main的LICENSE仍为TBD；ADR-0011已有MIT方向，2026-10-09的v0.1.0历史Mac测试发行也声明主程序MIT，但不自动决定下一版许可 / 发行范围。已引入的DeepLabCut 3.0.1为LGPL-3.0-or-later；库、具体打包二进制与模型权重须分别核对。下一版口径正在[首个可交付版本访谈](docs/notes/first-deliverable-interview.md)确认，未冻结。
-- 开发模式是 **macOS (Apple Silicon) 开发 → Windows x64 发布（exe）→ 未来 macOS dmg**：PyInstaller/Nuitka 不支持交叉编译，Windows 构建走 GitHub Actions Windows runner，Windows 真机验收（含 CUDA）在自有的 NVIDIA GPU Windows 笔记本上进行；路径分隔符（`pathlib`）、UTF-8 显式编码、Windows 文件锁/路径长度/保留名、Qt 平台差异等规则见 `docs/development.md` §1.1。
+- 原创软件采用MIT，已落实根LICENSE及包元数据；依赖 / 二进制 / 模型权重与素材各自按原条款核对，见[许可与分发边界](docs/licensing.md)。DeepLabCut 3.0.1为LGPL-3.0-or-later，不沿用旧AGPL说法。试用包不附第三方权重，首次准备下载；具体发行材料尚未完成。
+- 开发与交付顺序是 **macOS (Apple Silicon) 开发 → Mac arm64小范围教学试用 → 后续Windows x64正式交付**。本轮Mac试用接受未公证包的单应用手动放行，不要求关闭全局保护；新安装包仍需验证。PyInstaller/Nuitka 不支持交叉编译，Windows 构建走 GitHub Actions Windows runner，Windows / CUDA真机边界保持；跨平台规则见 `docs/development.md` §1.1。

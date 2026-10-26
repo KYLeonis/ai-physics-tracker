@@ -2,7 +2,7 @@
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 
-AI Physics Tracker 结合现代深度学习视觉跟踪方法与传统运动学视频分析软件的使用方式，让用户能够从实验视频中快速获得准确的物体轨迹和物理数据。软件使用方式上对标 Tracker 等专业物理分析软件的桌面交互体验，技术上以 DeepLabCut 3.x（PyTorch 路线）作为核心跟踪基础。
+AI Physics Tracker 结合现代深度学习视觉跟踪方法与传统运动学视频分析软件的使用方式，旨在帮助用户从实验视频获得可复核的物体轨迹和物理数据。软件使用方式上对标 Tracker 等专业物理分析软件的桌面交互体验，技术上以 DeepLabCut 3.x（PyTorch 路线）作为核心跟踪基础。
 
 ---
 
@@ -38,7 +38,7 @@ AI 训练 / 微调
 保存模型并用于后续相似实验
 ```
 
-核心价值：**用户针对当前实验场景，用少量标注即可获得高准确率的自动跟踪，并直接得到可导出的物理数据。**
+核心价值目标：**用户针对当前实验场景，用少量标注训练跟踪模型，再经复核与修正获得可导出的物理数据。**
 
 ## 主要使用场景
 
@@ -65,25 +65,29 @@ AI 训练 / 微调
 
 | 领域 | 技术选型 |
 | --- | --- |
-| 语言 | Python 3.11（DeepLabCut 3.x 支持范围 3.10–3.12 内的稳定版本） |
+| 语言 | Python 3.11–3.12（CI 3.11，本机开发3.12.13） |
 | AI 框架 | PyTorch |
 | 视觉跟踪 | DeepLabCut 3.x（PyTorch 引擎） |
-| 桌面 GUI | PySide6 / Qt（优先评估） |
+| 桌面 GUI | PySide6 / Qt（已采用） |
 | 视频 | OpenCV、FFmpeg |
 | 科学计算 | NumPy、SciPy、Pandas |
-| 交互式绘图 | PyQtGraph（优先评估） |
+| 交互式绘图 | PyQtGraph（已采用） |
 | 科学图表导出 | Matplotlib |
-| 目标平台 | Windows 10 / 11 64-bit（桌面应用发布） |
+| 目标平台 | 首轮Mac arm64教学试用；长期Windows 10 / 11 64-bit安装程序 |
 
-> 版本选择依据：DeepLabCut 官方要求 Python 3.10–3.12，PyTorch 与 PySide6 在 3.11 上均有最成熟的轮子支持。详见 [docs/development.md](docs/development.md)。
+> 当前环境、CI与完整AI环境的区别，以及最初版本选择依据，见 [docs/development.md](docs/development.md)。
 
 ## 当前开发阶段
 
 ```text
 Current Phase:    Phase 6（6.1–6.4及6.3.1已完成并集成main）
 Last Delivered:   P6.4条件性参数SE / 95%局部t区间；2026-10-26全部HR通过，e31a4ac集成main
-Current Subphase: P6.4已完成；6.5完整单摆验收未开始，等待下一条指令
+Current Subphase: P6.4已完成；首个可交付目标已冻结，文档 / MIT收口完成；6.5未开始
 ```
+
+**首个可交付目标（2026-10-26冻结）**：面向大学物理实验学生 / 教师的Mac arm64小范围教学试用。保证单视频 / 单目标二维运动完整流程，交付CSV＋PNG＋方法说明、真实单摆与四类合成运动核查资料，并由一名独立目标用户完成真实单摆任务。[正式目标与完成标准](docs/spec/first-deliverable-target.md)已冻结，安装包与试用尚未完成。
+
+推进顺序为：原定6.5验收→最小科学导出与合成核查→试用包 / 教程 / 离线验证→独立用户试用与修复；完整模型库随后推进。
 
 Phase 1 已完成：统一领域模型、Timeline、TrackStore、CalibrationTransform、schema v1 JSON 持久化、原子保存/备份、外部视频 relink 与跨平台路径防护均已落地。56 项测试在本地及 GitHub Actions 的 macOS/Windows Python 3.11 环境全部通过。
 
@@ -99,9 +103,8 @@ macOS Human Review、433 项本地测试、真实 CPU GUI 组件闭环及 macOS/
 Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-means 代表帧选取；5.2 完成全帧原始预测、多信号困难帧筛查、时间去重/多样性与真实基准；5.3 完成 Accept/Correct/Skip 审核队列和 prediction provenance；5.4 完成候选隔离、结果激活/替换/清除与固定验证集；5.5 完成确定性 Training Advisor、显式 Restart/Resume 与 lineage；5.6 完成真实单摆 refinement 闭环及三类 delta 归档；5.7 将界面重构为“实验设置 → 获取轨迹 → 分析与图表”三个工作区、常驻状态头与状态驱动任务卡，并通过最终 Human Review。Phase 5.6 的冻结基准改善目标未达到 ≥5%（最佳 −3.3%），已按用户批准如实保留为明示缺口，不影响已完成的工作流与科研可追溯契约。详见
 [Phase 5 requirements](docs/spec/phase5-requirements.md) 与 [PHASE_5_PLAN](docs/status/phase-5-plan.md)。
 
-2026-10-11 主线先交付用户授权的三项增量（只读分析视频 / 连续修正 / 教师模型），见
-[mini-plan](docs/status/main-guided-refinement-model-import-plan.md)。Phase 6 的旧需求 / 总计划 / 6.1 草案
-须先按用户提供方程、通用平台分析的口径重规划，不能直接实施固定模型草案。
+2026-10-11 主线交付用户授权的三项增量（只读分析视频 / 连续修正 / 教师模型），见
+[mini-plan](docs/status/main-guided-refinement-model-import-plan.md)。后续Phase 6已按用户提供方程、通用平台分析的口径重规划并交付6.1–6.4；论文固定模型仅作复现参考。
 
 > **当前进度与下一步动作**：见 [docs/status/current.md](docs/status/current.md)（每个开发会话结束时更新）。开发如何组织（Phase / Subphase / Slice 循环）见 [docs/workflow.md](docs/workflow.md)。
 
@@ -116,9 +119,9 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标明示归档） |
 | Phase 6 | Advanced Physics Analysis | 🔄 6.1–6.4及6.3.1完成并集成；6.5整体验收未开始 |
-| Phase 7 | Model Library | ⬜ |
-| Phase 8 | Export & Scientific Workflow | ⬜ |
-| Phase 9 | Optimization & Packaging | ⬜ |
+| Phase 7 | Model Library | ⬜ 完整模型库排在首轮教学试用后 |
+| Phase 8 | Export & Scientific Workflow | ⬜ 最小CSV / 方法说明前置到教学试用；完整导出 / 归档后续 |
+| Phase 9 | Optimization & Packaging | ⬜ Mac教学试用包前置；正式Windows交付后续 |
 | Phase 10 | Extended Capabilities | ⬜ |
 
 详细的目标、交付物、验收标准和技术风险见 [docs/roadmap.md](docs/roadmap.md)。
@@ -126,6 +129,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 ## 未来如何运行和发布
 
 - **开发阶段**：Python 虚拟环境（conda/venv）+ 源码运行，详见 [docs/development.md](docs/development.md)。
+- **首轮教学试用**：基于当前main提供Mac arm64安装包与独立AI环境准备入口；首次联网准备后离线使用，无需试用者配置Python。安装包不附第三方模型权重，接受未公证包的单应用手动放行。具体目标与尚待完成事项见[首个可交付目标](docs/spec/first-deliverable-target.md)。
 - **最终发布**：面向普通 Windows 用户的安装程序（`AIPhysicsTracker-Setup.exe`），普通用户无需配置 Python 环境。打包方案（PyInstaller / Nuitka + Inno Setup / NSIS，CPU 版与 NVIDIA GPU 加速版）将在 Phase 9 确定并持续记录在 [packaging/](packaging/) 目录。
 
 ## 当前项目状态
@@ -141,9 +145,9 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ [R08历史查看流程归属](docs/status/signal-history-plan.md)：两个历史入口共用草稿恢复 / 取消 / 迟到检查，切Charts / Explore退出历史；全量1329 / 独立 / 双平台 / 本轮HR通过，f34d3b8已集成main
 - ✅ [R04分析主干重构](docs/status/analysis-workflow-plan.md)：本机1316 / 独立 / 双平台 / 本轮HR通过，085219e已集成main
 - ⬜ [R07下一轮方案与待办](docs/status/change-notification-proposal.md)：工程变更与界面更新链路，用户已搁置，未实施
-- ⬜ 当前main的LICENSE仍为`TBD`；[ADR-0011](docs/decisions/0011-deeplabcut-integration-architecture.md)已有MIT方向，[v0.1.0历史Mac测试发行](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0)亦声明主程序MIT，下一版许可 / 分发口径正在确认。已引入的DeepLabCut 3.0.1为LGPL-3.0-or-later；库、打包二进制和模型权重分别核对，不沿用旧AGPL表述。
+- ✅ 原创软件采用[MIT License](LICENSE)，首个Mac教学试用目标已冻结；第三方库 / 二进制 / 模型权重各按原条款处理，具体发行材料仍待准备，见[许可与分发边界](docs/licensing.md)。
 
-历史发行与当前main需分开：[v0.1.0](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0)是2026-10-09基于`54638e4`的未公证Apple Silicon Mac测试版，含独立AI环境安装入口；不是当前通用main的安装包。main已有`Save PNG…`当前图表快照，完整科学数据导出 / 归档仍在Phase 8，详见[ADR-0010](docs/decisions/0010-current-chart-png-snapshots.md)。
+历史发行与当前main需分开：[v0.1.0](https://github.com/KYLeonis/ai-physics-tracker/releases/tag/v0.1.0)是2026-10-09基于`54638e4`的未公证Apple Silicon Mac测试版，含独立AI环境安装入口；不是当前通用main的安装包。main已有`Save PNG…`当前图表快照，详见[ADR-0010](docs/decisions/0010-current-chart-png-snapshots.md)；最小CSV / 方法说明已纳入首轮教学试用目标，完整导出 / 归档仍在Phase 8。
 
 ## 文档索引
 
@@ -154,6 +158,8 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - [docs/status/current.md](docs/status/current.md) — 当前状态与下一步（不知道做什么先读）
 - [docs/workflow.md](docs/workflow.md) — 开发循环说明书（Phase / Subphase / Slice）
 - [docs/roadmap.md](docs/roadmap.md) — 详细路线图
+- [首个可交付版本目标](docs/spec/first-deliverable-target.md) — 已冻结的Mac教学试用范围 / 顺序 / 完成证据
+- [许可与分发边界](docs/licensing.md) — 原创软件MIT、第三方组件 / 权重与试用分发目标
 - [docs/architecture.md](docs/architecture.md) — 高层架构设计
 - [docs/development.md](docs/development.md) — 开发环境与工作流
 - [docs/reviews/](docs/reviews/) — 独立 Review Record 存档（每 subphase 一个文件）

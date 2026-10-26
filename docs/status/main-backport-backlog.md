@@ -14,10 +14,12 @@
 | 通用方程 / ODE / 拟合 / 比较 | Phase 6 方程平台立项时 | 用户提供方程；论文 M0/M1 为示例，E3 30/48、E2 47/48 保留限制 | 2026-10-15：显式函数编辑 / 单标量拟合 / 可选结果公式已纳入6.3已冻结计划，用户最终认可；ODE / 联合拟合 / 模型比较仍Deferred；6.3显式拟合已实现并于2026-10-16以92d00a2集成main |
 | 参数等价教学页 | 通用求解 / 拟合稳定后 | 不将条件目标谷当完整置信区间 | Deferred |
 | 多点实验 / 四角色原子采用 | 后续多关键点模式立项 | 可选模式；不强迫通用单轨四点标注 | Deferred |
-| 科学 CSV / JSON / PNG / PDF、portable copy | Phase 8 导出实施时 | 导出选定结果，保留历史配置 / stale，恢复验证 | Deferred |
-| CSV 推理交付、host / worker 隔离、AI runtime / Repair | Phase 9 普通用户安装实施时 | 来源 / hash / 取消 / 原子激活 / 许可和 native 平台门禁 | Partial：本轮 teacher infer 已用 canonical 单轨 CSV；独立 runtime / Repair / 分发仍 Deferred |
+| 科学 CSV / JSON / PNG / PDF、portable copy | 6.5后首轮教学试用的最小科学导出；其余Phase 8 | 导出选定结果，保留历史配置 / stale，恢复验证 | 首发目标已确认CSV＋方法说明及已有PNG核对，未实施；完整PDF / portable copy仍Deferred |
+| CSV 推理交付、host / worker 隔离、AI runtime / Repair | 首轮Mac教学试用包准备；后续Phase 9 Windows交付 | 来源 / hash / 取消 / 原子激活 / 许可和 native 平台门禁 | Partial：teacher infer已有canonical单轨CSV；独立runtime / Repair已纳入首发复用核对目标，尚未实施 |
 
 每次触发相关工作时：核对本表 → 将必要子项纳入 mini-plan → 完成后在本表写 source / 验证 / 状态。不得把 Deferred 当作隐式批准下一阶段实施。
+
+2026-10-26首发目标冻结：[Mac教学试用](../spec/first-deliverable-target.md)将最小科学导出与独立AI环境安装 / Repair复用前置到完整模型库之前；仅调整以上触发点和目标，不表示已回移，也不扩大其他Deferred或默认合并publication发行线。
 
 2026-10-16核对：P6.3.1新手分析计划已冻结。纳入基础公式含义 / 初值帮助、图旁结果解释及简要尝试日志；不纳入参数等价教学页、完整历史预测 / 模型比较或置信区间，以上Deferred继续保留。
 

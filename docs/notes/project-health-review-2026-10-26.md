@@ -5,6 +5,7 @@
 - 比较对象：初始提交`cd3ce1b`的README / roadmap、当前需求 / 计划 / Review与主干代码。
 - 假定使用规模：单人本地桌面实验；数百至3.6万条观测为主要检查范围，10万条作为扩展压力点。Windows真机测试不作为本报告重点。
 - 同日事实补查：原评估遗漏了当前图表PNG快照、ADR-0011的MIT方向及v0.1.0历史Mac测试发行，下文已据实修正；通用main与历史发行分别记账。
+- 同日后续决定：[首发访谈Q17](first-deliverable-interview.md)已确认[Mac教学试用目标](../spec/first-deliverable-target.md)及顺序，原创软件MIT已落实。下文“待确认建议”保留评估时的提议，当前范围 / 许可与实施状态以正式目标、[licensing](../licensing.md)和[current](../status/current.md)为准。
 
 ## 结论
 

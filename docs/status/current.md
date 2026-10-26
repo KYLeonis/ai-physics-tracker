@@ -1,8 +1,8 @@
 # Current Status
 
-> **P6.4 v1.1已完成并集成main**：2026-10-26用户“HR通过，收尾”，e31a4ac以--no-ff集成并push，F1–F8 Closed；Issue #42 Closed / PR #43 Merged。**6.5未开始；本轮进行首个可交付版本的目标任务与许可 / 分发访谈，尚未冻结。**
+> **P6.4 v1.1已完成并集成main**：2026-10-26用户“HR通过，收尾”，e31a4ac以--no-ff集成并push，F1–F8 Closed；Issue #42 Closed / PR #43 Merged。**首个Mac教学试用目标已于Q17确认冻结，文档 / MIT收口完成；6.5未开始，试用版尚未交付。**
 
-- 最后更新：2026-10-26（首发访谈Q1–Q16收敛，等待Q17整体确认）
+- 最后更新：2026-10-26（首发目标Q17冻结，正式文档 / MIT收口）
 
 ## Current
 
@@ -11,14 +11,14 @@
 - **Gate**：R3独立科学审查Approve；2026-10-26用户最终HR通过，F1–F8 Closed，mini-plan全部AC / Slices完成。本机最终全量**1414 passed（256.53s）**；[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。产品src与已通过HR的9c1aa63相同；tests仅增加按Qt原生布局测量的可见性检查（20153c5，a13b661集成），不改变界面 / 统计或重开HR。
 - **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；功能集成提交e31a4ac，最终测试边界修正集成a13b661，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
 - **Development Mode**：Build Mode
-- **首发访谈**：Q1–Q16范围取舍收敛：大学物理实验学生 / 教师、单视频 / 单目标完整流程、Mac小范围教学试用；原创代码MIT / AI权重分别核实，CSV＋PNG＋方法说明、首次联网准备后离线使用、同机重开复核。真实单摆＋匀速 / 匀加速直线、二维抛体、简谐振动四类合成运动，交付真值 / 参考图 / 对照报告；纯AI与修正后结果分别核查。安装包不带第三方权重，接受单应用放行，首轮一名独立目标用户完成真实单摆任务。[共同理解确认稿](../notes/first-deliverable-interview.md)及建议顺序已整理，等待Q17整体确认；正式许可文本和发行未实施。
+- **首发目标已冻结**：[正式目标](../spec/first-deliverable-target.md)集中维护范围 / 顺序 / 完成证据，[访谈Q17](../notes/first-deliverable-interview.md)已确认。面向大学物理实验学生 / 教师，Mac arm64单视频 / 单目标完整流程；CSV＋PNG＋方法说明、真实单摆及四类合成真值 / 纯AI与修正后对照、一名独立用户完成真实单摆任务。首次联网准备后离线，包不附第三方权重，接受单应用放行。根LICENSE及包元数据已落实MIT，具体发行 / 权重材料按[licensing](../licensing.md)准备；产品交付仍待实施。
 
 ## Next Recommended Action
 
-1. 等待[首个可交付版本共同理解确认稿](../notes/first-deliverable-interview.md)的Q17整体确认：目标 / 交付物 / 完成标准及“文档许可收口→6.5→最小导出与合成核查→试用包准备→一名用户试用”建议顺序。确认后先同步正式目标 / roadmap / MIT与相关许可说明；不自动启动6.5或构建 / 发布新包，不联系试用者。
-2. 用户授权6.5后，从[Phase 6总计划](phase-6-plan.md)及requirements / roadmap的剩余完整单摆验收进入，先核对范围与mini-plan。P6.4仅完成参数误差解释及相关生命周期，不代替整个Phase 6的最终验收。
+1. 本轮目标 / 文档 / MIT收口完成，停止等待下一条开发指令。下一开发轮按[已冻结目标](../spec/first-deliverable-target.md)优先准备6.5 mini-plan：读取[Phase 6总计划](phase-6-plan.md)及requirements / roadmap，保留冻结参考和原AC，明确完整单摆 / 保存重开 / HR证据与Gate；本轮不自动启动。
+2. 6.5后按顺序推进最小科学导出与四类合成核查→Mac试用包 / 教程 / 离线验证→一名独立用户试用与修复。完整模型库随后排；每项实施前准备独立mini-plan和对应Gate，不把目标冻结当作已实现或自动发布授权。
 3. 两轨迹新增比较已取消；ODE、其他置信方法、完整系统误差 / 换算传播、论文线同步及Windows/CUDA真机延期保持原边界，不作隐式授权。
-4. 本轮[健康度与计划评估](../notes/project-health-review-2026-10-26.md)建议优先6.5整体验证，再讨论最小导出 / 独立试用 / 运行环境可行性与已测GUI热点；均未冻结或授权实施，原阶段 / AC / R07搁置状态保持。
+4. [健康度评估](../notes/project-health-review-2026-10-26.md)的交付优先级已通过Q17收敛为正式目标；整体架构保持，已测`is_dirty`热点按实际卡顿处理，若阻断6.5则提前，否则随相关改动最小修复。原阶段 / AC / R07搁置状态保持。
 
 ## Active Constraints
 
@@ -62,6 +62,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **首发目标冻结 / 正式文档与MIT收口（2026-10-26）**：用户Q17“是，准确，按此冻结”，访谈完成。新增正式交付目标与许可 / 分发边界，根LICENSE及包元数据采用MIT，同步README / AGENTS / roadmap / development / packaging / examples与回移触发点。确认6.5→最小导出 / 四类合成核查→Mac试用准备→一名独立用户完成真实单摆的顺序；产品AC仍待实际验收。12份Markdown本地链接 / diff核对通过，临时隔离目录的setuptools元数据验证`License-Expression: MIT`及包含LICENSE，MIT正文与历史发行一致，临时目录已自动清理；src / tests及roadmap Phase 6段保持，未运行新产品测试或构建 / 发布产品包，不联系试用者。
 
 - **首发访谈Q14–Q16确认 / 共同理解汇总（2026-10-26）**：用户认可四类合成运动、先交付独立真值 / 参考图 / 对照报告，并同时核查纯AI与修正后结果。整理完整目标、必需交付 / 后续范围、一名独立用户的真实单摆完成标准及建议推进顺序，等待Q17整体确认；Q1–Q16取舍已闭合。仅文档 / 链接 / diff核对，未运行新产品测试，正式LICENSE / 原AC / 产品 / 发行资产保持，6.5未开始。
 
