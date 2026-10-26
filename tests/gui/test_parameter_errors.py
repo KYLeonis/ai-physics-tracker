@@ -19,6 +19,22 @@ def _fit(qtbot, window):
     return panel
 
 
+def _assert_interval_visible(table, row):
+    from PySide6.QtWidgets import QStyle, QStyleOptionViewItem
+    item = table.item(row, 3)
+    option = QStyleOptionViewItem()
+    option.initFrom(table)
+    option.rect = table.visualItemRect(item)
+    option.features |= QStyleOptionViewItem.ViewItemFeature.WrapText
+    option.textElideMode = table.textElideMode()
+    delegate = table.itemDelegate()
+    delegate.initStyleOption(option, table.indexFromItem(item))
+    # 按平台实际字体和边距检查，不能假设统一的8px边距或固定行数。
+    textRect = table.style().subElementRect(QStyle.SubElement.SE_ItemViewItemText, option, table)
+    assert all(option.fontMetrics.horizontalAdvance(bound) <= textRect.width() for bound in item.text().split(', '))
+    assert table.rowHeight(row) >= delegate.sizeHint(option, table.indexFromItem(item)).height()
+
+
 def test_four_columns_method_and_draft_never_retain_recorded_statistics(qtbot, synthetic_video_path):
     window, session, track = _window(qtbot, synthetic_video_path)
     panel = _fit(qtbot, window)
@@ -191,9 +207,7 @@ def test_interval_bounds_fit_in_cells_and_header_can_be_dragged(qtbot, synthetic
     for row in range(table.rowCount()):
         bounds = table.item(row, 3).text().split(', ')
         assert len(bounds) == 2
-        assert all(table.fontMetrics().horizontalAdvance(bound) + 8 <= table.columnWidth(3) for bound in bounds)
-        lines = 2 if table.fontMetrics().horizontalAdvance(table.item(row, 3).text()) + 8 > table.columnWidth(3) else 1
-        assert table.rowHeight(row) >= lines * table.fontMetrics().height()
+        _assert_interval_visible(table, row)
     header = table.horizontalHeader()
     before = table.columnWidth(0)
     divider = QPoint(header.sectionViewportPosition(0) + before - 1, header.height() // 2)
@@ -218,12 +232,8 @@ def test_result_pane_and_controls_resize_by_drag_and_table_fills_width(qtbot, sy
     qtbot.waitUntil(lambda: panel.resultSplitter.isVisible())
     table = panel.parameterResults
     qtbot.waitUntil(lambda: table.horizontalHeader().length() >= table.viewport().width())
-    # 长区间在不同平台字体下可自然换行，仍须完整显示每个端点。
     for row in range(table.rowCount()):
-        text = table.item(row, 3).text()
-        assert all(table.fontMetrics().horizontalAdvance(bound) + 8 <= table.columnWidth(3) for bound in text.split(', '))
-        lines = 2 if table.fontMetrics().horizontalAdvance(text) + 8 > table.columnWidth(3) else 1
-        assert table.rowHeight(row) >= lines * table.fontMetrics().height()
+        _assert_interval_visible(table, row)
     assert table.height() > 175
     for splitter, delta, dimension in (
             (panel.workspaceSplitter, QPoint(-80, 0), 'width'),
