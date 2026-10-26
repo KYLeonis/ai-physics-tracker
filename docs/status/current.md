@@ -2,7 +2,7 @@
 
 > **P6.4 v1.1已完成并集成main**：2026-10-26用户“HR通过，收尾”，e31a4ac以--no-ff集成并push，F1–F8 Closed；Issue #42 Closed / PR #43 Merged。**6.5未开始；本轮进行首个可交付版本的目标任务与许可 / 分发访谈，尚未冻结。**
 
-- 最后更新：2026-10-26（首发访谈已记录Q1–Q13选择，Q14–Q16待答）
+- 最后更新：2026-10-26（首发访谈Q1–Q16收敛，等待Q17整体确认）
 
 ## Current
 
@@ -11,11 +11,11 @@
 - **Gate**：R3独立科学审查Approve；2026-10-26用户最终HR通过，F1–F8 Closed，mini-plan全部AC / Slices完成。本机最终全量**1414 passed（256.53s）**；[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。产品src与已通过HR的9c1aa63相同；tests仅增加按Qt原生布局测量的可见性检查（20153c5，a13b661集成），不改变界面 / 统计或重开HR。
 - **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；功能集成提交e31a4ac，最终测试边界修正集成a13b661，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
 - **Development Mode**：Build Mode
-- **首发访谈**：已记录Q1–Q13选择：大学物理实验学生 / 教师、单视频 / 单目标完整流程、Mac小范围教学试用；原创代码MIT / AI权重分别核实，CSV＋PNG＋方法说明、首次联网准备后离线使用、同机重开复核。真实单摆＋多种明确标为合成的常规运动，保留生成真值 / 参考曲线；安装包不带第三方权重，接受单应用放行，首轮一名独立目标用户完成任务。Q14运动名单 / Q15核查形式 / Q16结果层次待答；整体未冻结，正式许可文本和发行未实施。
+- **首发访谈**：Q1–Q16范围取舍收敛：大学物理实验学生 / 教师、单视频 / 单目标完整流程、Mac小范围教学试用；原创代码MIT / AI权重分别核实，CSV＋PNG＋方法说明、首次联网准备后离线使用、同机重开复核。真实单摆＋匀速 / 匀加速直线、二维抛体、简谐振动四类合成运动，交付真值 / 参考图 / 对照报告；纯AI与修正后结果分别核查。安装包不带第三方权重，接受单应用放行，首轮一名独立目标用户完成真实单摆任务。[共同理解确认稿](../notes/first-deliverable-interview.md)及建议顺序已整理，等待Q17整体确认；正式许可文本和发行未实施。
 
 ## Next Recommended Action
 
-1. 继续[首个可交付版本访谈](../notes/first-deliverable-interview.md)：已记录Q1–Q13选择，等待Q14合成运动名单、Q15核查材料 / 软件功能边界、Q16对照结果层次。随后汇总交付目标与建议顺序请用户确认共同理解；确认前不实施正式许可文本或新发行，不启动6.5。
+1. 等待[首个可交付版本共同理解确认稿](../notes/first-deliverable-interview.md)的Q17整体确认：目标 / 交付物 / 完成标准及“文档许可收口→6.5→最小导出与合成核查→试用包准备→一名用户试用”建议顺序。确认后先同步正式目标 / roadmap / MIT与相关许可说明；不自动启动6.5或构建 / 发布新包，不联系试用者。
 2. 用户授权6.5后，从[Phase 6总计划](phase-6-plan.md)及requirements / roadmap的剩余完整单摆验收进入，先核对范围与mini-plan。P6.4仅完成参数误差解释及相关生命周期，不代替整个Phase 6的最终验收。
 3. 两轨迹新增比较已取消；ODE、其他置信方法、完整系统误差 / 换算传播、论文线同步及Windows/CUDA真机延期保持原边界，不作隐式授权。
 4. 本轮[健康度与计划评估](../notes/project-health-review-2026-10-26.md)建议优先6.5整体验证，再讨论最小导出 / 独立试用 / 运行环境可行性与已测GUI热点；均未冻结或授权实施，原阶段 / AC / R07搁置状态保持。
@@ -62,6 +62,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **首发访谈Q14–Q16确认 / 共同理解汇总（2026-10-26）**：用户认可四类合成运动、先交付独立真值 / 参考图 / 对照报告，并同时核查纯AI与修正后结果。整理完整目标、必需交付 / 后续范围、一名独立用户的真实单摆完成标准及建议推进顺序，等待Q17整体确认；Q1–Q16取舍已闭合。仅文档 / 链接 / diff核对，未运行新产品测试，正式LICENSE / 原AC / 产品 / 发行资产保持，6.5未开始。
 
 - **首发访谈Q8–Q13选择 / 合成核查扩展（2026-10-26）**：用户认可同机重开＋报告材料复核、真实单摆＋合成其他运动、Mac单应用手动放行、权重首次准备下载；将合成要求扩为多种常规运动及坐标真值 / s–t / v–t等参考图，首轮试用验收改为一名独立目标用户。只读核验既有视频生成脚本 / 解析测试 / 原始预测读取，确认尚无完整真值资料与通用评分界面；提出Q14运动名单、Q15核查形式、Q16结果层次。仅文档 / 链接 / diff核对，无新产品测试，不改原AC、产品、正式LICENSE或发行资产。
 
