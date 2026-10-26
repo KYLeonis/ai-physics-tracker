@@ -2,7 +2,7 @@
 
 > **P6.4 v1.1已完成并集成main**：2026-10-26用户“HR通过，收尾”，e31a4ac以--no-ff集成并push，F1–F8 Closed；Issue #42 Closed / PR #43 Merged。**6.5未开始；本轮进行首个可交付版本的目标任务与许可 / 分发访谈，尚未冻结。**
 
-- 最后更新：2026-10-26（首个可交付版本访谈第一轮与文档事实校正）
+- 最后更新：2026-10-26（首发访谈Q1 / 新版Q2确认，Q3–Q5待答）
 
 ## Current
 
@@ -11,10 +11,11 @@
 - **Gate**：R3独立科学审查Approve；2026-10-26用户最终HR通过，F1–F8 Closed，mini-plan全部AC / Slices完成。本机最终全量**1414 passed（256.53s）**；[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。产品src与已通过HR的9c1aa63相同；tests仅增加按Qt原生布局测量的可见性检查（20153c5，a13b661集成），不改变界面 / 统计或重开HR。
 - **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；功能集成提交e31a4ac，最终测试边界修正集成a13b661，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
 - **Development Mode**：Build Mode
+- **首发访谈**：Q1大学物理实验学生 / 教师及报告数据 / 图任务、Q2原创代码沿用MIT已获用户确认；任务边界 / 交付口径 / 默认AI商业适用性待Q3–Q5，整体未冻结、正式许可文本和发行未实施。
 
 ## Next Recommended Action
 
-1. 继续[首个可交付版本访谈](../notes/first-deliverable-interview.md)：等待Q1目标用户 / 任务、Q2原创代码是否沿用MIT的回答，再展开首发范围 / 验收 / 分发；原Q2已由核实历史MIT方向后的新问题替换。最终共同理解确认前不选择新许可证、授权新发行或启动6.5。
+1. 继续[首个可交付版本访谈](../notes/first-deliverable-interview.md)：Q1 / 新版Q2已确认，等待Q3首发任务边界、Q4首次交付口径、Q5默认AI权重商业适用性；再展开输出 / 验收 / 安装与分发细节。最终共同理解确认前不实施正式许可文本或新发行，不启动6.5。
 2. 用户授权6.5后，从[Phase 6总计划](phase-6-plan.md)及requirements / roadmap的剩余完整单摆验收进入，先核对范围与mini-plan。P6.4仅完成参数误差解释及相关生命周期，不代替整个Phase 6的最终验收。
 3. 两轨迹新增比较已取消；ODE、其他置信方法、完整系统误差 / 换算传播、论文线同步及Windows/CUDA真机延期保持原边界，不作隐式授权。
 4. 本轮[健康度与计划评估](../notes/project-health-review-2026-10-26.md)建议优先6.5整体验证，再讨论最小导出 / 独立试用 / 运行环境可行性与已测GUI热点；均未冻结或授权实施，原阶段 / AC / R07搁置状态保持。
@@ -61,6 +62,8 @@
 - `Closed` finding 只代表当时证据下关闭；再触同一 invariant 时经 mini-plan Context Pack 引用（`docs/workflow.md` §6.3）
 
 ## Recently Completed
+
+- **首发访谈Q1 / 新版Q2确认（2026-10-26）**：用户认可面向大学物理实验学生 / 教师、产出报告数据和图的目标，并在明确替换后的Q2选择MIT / 不强制改版开源。旧Q2的非商业回答不覆盖新版，模型权重使用范围通过Q5独立确认。本轮提出Q3单视频 / 单目标及两类运动样例、Q4Mac小范围教学试用、Q5默认AI商业适用性三个待决策问题；只更新访谈 / 状态记录，未改变产品、AC、正式LICENSE或发布资产，无新产品测试。
 
 - **首个可交付版本访谈第一轮 / 文档事实校正（2026-10-26）**：用户指定grill-me；两路只读核验发现历史v0.1.0 Mac公开测试发行（54638e4，含独立AI环境及MIT说明）、ADR-0011已有MIT方向、main已有PNG快照；修正此前健康度评估的遗漏，并将Q2替换为是否沿用MIT。环境版本、源码安装与Public / DLC LGPL事实同步；LICENSE仍为占位，未形成新许可 / 分发决定。仅文档与事实核对；未运行产品测试 / 训练 / 安装器、不修改用户工程或发布资产；Q1 / Q2待答，6.5未开始。
 
