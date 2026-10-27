@@ -1,21 +1,21 @@
 # Current Status
 
-> **P6.4 v1.1已完成并集成main**：2026-10-26用户“HR通过，收尾”，e31a4ac以--no-ff集成并push，F1–F8 Closed；Issue #42 Closed / PR #43 Merged。**首个Mac教学试用目标已冻结，文档 / MIT收口完成；6.5 mini-plan v1.0已冻结、实施未开始，试用版尚未交付。**
+> **P6.4 v1.1已完成并集成main**；**P6.5 v1.0范围冻结，2026-10-27用户授权Agent部分，S0进行中，训练0 / 2，阶段Gate未完成。** 首个Mac教学试用目标已冻结，试用版尚未交付。
 
-- 最后更新：2026-10-26（P6.5 mini-plan v1.0 / Q11确认冻结，规划收尾）
+- 最后更新：2026-10-27（P6.5 S0开工 / Issue #44 / 准备脚本定向3项通过）
 
 ## Current
 
 - **架构接手入口**：[当前架构总览](../architecture.md#当前架构总览接手先读) / [重构进度](architecture-progress.md)。
-- **Phase / Subphase**：Phase 6进行中；P6.4已完成 / 已集成main；[P6.5 mini-plan](phase-6.5-plan.md)v1.0已于Q11确认冻结，规划收尾完成；实施 / 6项AC / S0–S3尚未开始。
+- **Phase / Subphase**：Phase 6进行中；P6.4已完成 / 已集成main；[P6.5 mini-plan](phase-6.5-plan.md)v1.0 / S0进行中，实施未完成。
 - **最近已完成Gate（P6.4）**：R3独立科学审查Approve；2026-10-26用户最终HR通过，F1–F8 Closed，mini-plan全部AC / Slices完成。本机最终全量**1414 passed（256.53s）**；[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。产品src与已通过HR的9c1aa63相同；tests仅增加按Qt原生布局测量的可见性检查（20153c5，a13b661集成），不改变界面 / 统计或重开HR。
-- **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `main`；功能集成提交e31a4ac，最终测试边界修正集成a13b661，源分支`feat/p6.4-parameter-error`已完成。[mini-plan](phase-6.4-plan.md) / [Review](../reviews/phase-6.4-review.md) / [HR](../notes/phase-6.4-human-review.md) / [Issue #42](https://github.com/KYLeonis/ai-physics-tracker/issues/42) / [PR #43](https://github.com/KYLeonis/ai-physics-tracker/pull/43)。
+- **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.5-pendulum-acceptance`，从`main @ 7abd517`开工；[mini-plan](phase-6.5-plan.md) / [Issue #44](https://github.com/KYLeonis/ai-physics-tracker/issues/44)。原P6.4已完成，记录与最终主干Gate保持。
 - **Development Mode**：Stabilization Mode（用户P6.5 Q4确认，仅本期；回归 / 阻断修复 / 验收证据优先，Phase 6收尾后停止）
 - **首发目标已冻结**：[正式目标](../spec/first-deliverable-target.md)集中维护范围 / 顺序 / 完成证据，[访谈Q17](../notes/first-deliverable-interview.md)已确认。面向大学物理实验学生 / 教师，Mac arm64单视频 / 单目标完整流程；CSV＋PNG＋方法说明、真实单摆及四类合成真值 / 纯AI与修正后对照、一名独立用户完成真实单摆任务。首次联网准备后离线，包不附第三方权重，接受单应用放行。根LICENSE及包元数据已落实MIT，具体发行 / 权重材料按[licensing](../licensing.md)准备；产品交付仍待实施。
 
 ## Next Recommended Action
 
-1. P6.5规划已收尾，等待用户开工指令。开工后按[已冻结mini-plan v1.0](phase-6.5-plan.md)建立Issue及`feat/p6.5-pendulum-acceptance`，从S0开始核对P011原冻结指纹、创建独立运行副本 / 新协议、记录源码 / 环境 / 拟合 / 训练配置，再按S1冻结分析回归→S2新AI任务→S3最终Gate推进。用户负责20帧标注 / 必要Correct及最终HR；总计最多启动两次训练，失败 / 取消也计次，未启动训练的环境检查不计；超预算另请用户决定。不得改原P011参考或把规划冻结当作产品验收通过。
+1. 按[P6.5 v1.0](phase-6.5-plan.md)继续S0 / S1：用已验证的准备脚本先保存真实运行协议，再建立独立新工程及旧DLC分析副本；核对实际拟合 / 重复间隔 / 保存重开与图表数据，随后定向 / 全量 / 双平台及独立review。把新工程交付用户20帧人工标注后再进入真实训练；当前训练0 / 2，总计最多两次，失败 / 取消也计次。不得改原P011参考，当前不合并main / 宣布阶段完成。
 2. 6.5后按顺序推进最小科学导出与四类合成核查→Mac试用包 / 教程 / 离线验证→一名独立用户试用与修复。完整模型库随后排；每项实施前准备独立mini-plan和对应Gate，不把目标冻结当作已实现或自动发布授权。
 3. 两轨迹新增比较已取消；ODE、其他置信方法、完整系统误差 / 换算传播、论文线同步及Windows/CUDA真机延期保持原边界，不作隐式授权。
 4. [健康度评估](../notes/project-health-review-2026-10-26.md)的交付优先级已通过Q17收敛为正式目标；整体架构保持，已测`is_dirty`热点按实际卡顿处理，若阻断6.5则提前，否则随相关改动最小修复。原阶段 / AC / R07搁置状态保持。

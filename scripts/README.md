@@ -8,6 +8,12 @@
 
 脚本应可在仓库根目录以 `python scripts/<name>.py` 运行。
 
+`prepare_p65_acceptance.py --output <不存在的目录>`：按冻结P6.5协议核对本机P011资料，
+先保存本轮协议，再建立零标注 / 零训练的新AI工程并重算旧DLC分析副本。
+输出分别报告拟合周期 / 重复间隔、图表数据及保存重开核对；拒绝覆盖已有目录，
+不修改原参考、不训练。默认参考目录为本地忽略的`experiment/p63-reference/`，
+需要既有完整环境与PATH上的FFprobe；它是本机验收工具，不是可分发教学样例。
+
 `setup_ffprobe.py --directory <目录>`：开发/CI 的可选工具取得脚本。固定 ffmpeg-static
 `b6.1.1` 的 FFprobe 二进制及 SHA-256，校验后才写入指定目录；不修改系统 PATH，不覆盖
 已有的不同内容文件。建议开发目录 `.tools/ffprobe/`（已忽略），CI 使用 runner 临时目录。
