@@ -123,4 +123,5 @@
 - **规划完成日期**：2026-10-26，Q11最终确认，v1.0已冻结；状态入口、需求 / roadmap / README / AGENTS及首发推进表同步。
 - **规划验证**：本地Markdown链接 / diff、AC与Slice正文冻结前后一致性核对通过；无产品 / 测试 / 依赖变化，未运行新训练 / 推理 / 产品回归。
 - **S0 / S1实施（2026-10-27）**：Issue #44 / [Draft PR #45](https://github.com/KYLeonis/ai-physics-tracker/pull/45)，最终准备代码`966eea7`。只读原参考、先保存新协议，再生成独立新AI工程 / 重算分析工程；本地最终产物`experiment/p65-acceptance/2026-10-27-final/`。原9项指纹保持；旧DLC线拟合周期差0.329718%、重复间隔均值差0.219960%，保存重开完整Project相等、四图数据及单位通过；新工程零标签 / 零训练且实际打开链路可用。[分析报告](../benchmarks/phase-6.5-pendulum-report.md) / [Review](../reviews/phase-6.5-review.md) / [用户标注交接](../notes/phase-6.5-annotation-handoff.md)。本机全量1417 passed（171.62s），最终准备 / 推荐标注定向8 passed（5.54s）；独立复审 / 双平台CI回执见current，不扩大为S2或全阶段通过。
+- **S0 / S1验证回执**：独立复审R3阶段性Approve，F1 / F2 Closed；代码966eea7的[CI40447943481](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40447943481)双平台各1415 passed、2个既有可选skip。该checkpoint不代表P65-AC6或S3完成。
 - **下一步**：用户按交接完成新工程20个K-means推荐帧人工标注并保存。Agent核对标签 / 固定检查集后继续S2，训练启动计数当前0 / 2；新AI科学判据、最终重开及全阶段Gate仍待，不合并main。

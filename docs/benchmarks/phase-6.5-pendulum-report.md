@@ -69,6 +69,10 @@ FFprobe重新扫描600帧片段，实测near-CFR；nominal FPS为29.996833667557
 用户需按真实K-means推荐帧标注木块中央黑点；20帧标好后，首次训练前再Keep其中4帧作为固定检查集。
 当前真实训练启动为0 / 2，没有新AI或纯AI结果，不将旧DLC当成这条线的完成证据。
 
+交接时已启动本地GUI；既有后台K-means任务`bf2c88f6-139e-42f4-bdfe-512eb8dc9cad`实际选出20帧，
+范围[0,599]、seed=0、cluster_step=5，结果保存在新工程`data/engines/`。
+选帧只产生帧号，人工坐标仍待用户点击；这不是训练启动或最终Human Review。
+
 | Phase 6原要求 | 本轮证据 / 当前边界 |
 | --- | --- |
 | AC-1 / AC-2 角度、SG与单位 | 既有解析测试继续通过；本轮重算及四图单位核对，不声称真实录像有解析角量真值 |
@@ -83,5 +87,6 @@ FFprobe重新扫描600帧片段，实测near-CFR；nominal FPS为29.996833667557
 
 - 本机全量：1417 passed，171.62s；新增3项准备脚本回归。
 - 导航键 / 完整指纹拒绝测试补齐后，准备与推荐标注定向8 passed，5.54s。
-- S0/S1独立review及最终CI回执见[Review](../reviews/phase-6.5-review.md) / [current](../status/current.md)，不代替S2或全阶段Final Verdict。
+- 最终准备代码966eea7的[CI40447943481](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40447943481)：macOS / Windows均success，各1415 passed、2个既有可选skip。
+- [S0/S1独立复审R3](../reviews/phase-6.5-review.md)阶段性Approve，F1 / F2 Closed；不代替S2或全阶段Final Verdict。
 - 下一步由用户完成[20帧人工标注](../notes/phase-6.5-annotation-handoff.md)；训练启动最多两次，当前0次。未合并main，不进入后续导出 / 试用阶段。

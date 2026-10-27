@@ -2,6 +2,7 @@
 
 - 日期：2026-10-27；[mini-plan](../status/phase-6.5-plan.md) / [分析回归报告](../benchmarks/phase-6.5-pendulum-report.md)。
 - 当前只需完成标注并保存。这不是最终Human Review；新AI训练与科学验收在标注后继续。
+- Agent已启动本地GUI并完成真实K-means选帧，`actual_n=20`；本轮不代做人工标注或启动训练。若窗口关闭，可用下方命令重开。
 
 ## 启动
 

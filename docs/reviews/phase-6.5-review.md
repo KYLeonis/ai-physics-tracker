@@ -3,7 +3,7 @@
 - Subphase / Issue：P6.5 integrated pendulum acceptance / #44
 - Review 范围（commits / 分支 / 文件）：`feat/p6.5-pendulum-acceptance`，基线 `7abd517..844a5cb`；另纳入本轮工作区中 `scripts/prepare_p65_acceptance.py` 与 `tests/test_prepare_p65_acceptance.py` 的未提交差异（仅 workflow 视频状态键及对应断言）。本地忽略目录 `experiment/p65-acceptance/2026-10-27-run1/` 的协议、结果和两个项目作为真实证据核查对象。
 - Context（spec / ADR / plan 路径）：`docs/status/phase-6.5-plan.md`、`docs/notes/phase-6.3-reference-preparation.md`、ADR-0017、ADR-0019、ADR-0020、ADR-0021、ADR-0024、ADR-0028、ADR-0029、`docs/templates/review.md`。
-- 轮次：R1 2026-10-27（首轮、S0/S1 checkpoint）· R2 2026-10-27（修复复审、S0/S1 checkpoint）
+- 轮次：R1 2026-10-27（首轮、S0/S1 checkpoint）· R2 2026-10-27（修复复审、S0/S1 checkpoint）· R3 2026-10-27（F2文档修复复审、S0/S1 checkpoint）
 
 ## Checklist
 
@@ -46,10 +46,10 @@
 - **Impact**：报告会让后续读者误以为用户标注及检查集步骤已完成，与真实工程和交接状态冲突。
 - **Recommendation**：将该句改为待办状态，明确20帧标注和Keep 4个固定检查帧尚未发生；保留0 / 2训练状态。
 - **Decision**：Fix Now — 将报告改为明确的待办状态，说明20帧标注和4个固定检查帧尚未完成，真实训练启动仍为0 / 2；不改科学参数或工程产物。
-- **Fix commit**：—
-- **Verification**：与最终manual工程的零观察 / 零训练run及标注交接、current待办核对；仅文档措辞修正，不重复产品测试。
-- **Re-review**：—
-- **Status**：Open
+- **Fix commit**：`40028c4`
+- **Verification**：最终报告明确20帧标注尚未完成、4个固定检查帧尚未建立，训练启动0 / 2；只读`manual-project/project.json`确认`observations`、`derived`、`tracking_runs`均为空。标注交接要求用户完成并保存20帧，后续再Keep 4个检查帧；`current.md`仍将S2列为等待用户标注。各处状态一致。
+- **Re-review**：R3 — 核对`40028c4`中的报告、交接及当前状态修订；与最终manual工程JSON逐项对应，未运行GUI、训练、推理或重算。
+- **Status**：Closed
 
 ## Review Log
 
@@ -74,11 +74,18 @@
 - **报告准确性**：周期结果、参考均值、相对差、样本数、图表单位 / 点数与保存重开事实符合产物；限制说明符合冻结计划。唯一发现为F2：第65行将用户尚未执行的标注 / 检查集步骤陈述成既成事实，与零标签工程和交接 / 当前状态相矛盾。
 - **验证 / CI**：`QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q tests/test_prepare_p65_acceptance.py tests/gui/test_guided_representative_annotation.py`：8 passed。GitHub Actions run [40447943481](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40447943481) 与 [40447940176](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40447940176) 均对应HEAD `966eea7c4317fad2b5c70a877bc612efd9df2330`，macOS / Windows检查全成功。未重跑报告记载的全量1417项；未启动训练 / 推理、GUI交接或真人标注，也未重算真实科学结果。
 
+### R3 — 2026-10-27 · F2文档修复复审（S0/S1 checkpoint）
+
+- **范围 / 基线**：仅复核F2修复提交`40028c4bbd80319669f58e8273d03fbdddbdc94d`；当前分支`feat/p6.5-pendulum-acceptance`，HEAD与该提交一致，工作区起始时干净。
+- **F2复审**：最终报告已明确20帧人工标注尚未完成、4个固定检查帧尚未建立、真实训练启动0 / 2。只读`experiment/p65-acceptance/2026-10-27-final/manual-project/project.json`，确认`observations: []`、`derived: []`、`tracking_runs: []`；标注交接仍要求用户完成20帧并保存，之后再Keep 4个检查帧；`current.md`仍标记S2等待用户标注。与冻结计划一致，未发现新的文档状态矛盾。
+- **结论**：F2已关闭，无新增finding。**S0/S1技术与产物核查通过；修正文档后的checkpoint状态与实际工程和交接一致。** S2用户人工标注、新AI训练 / 推理 / 科学验收及S3独立复审 / 最终Human Review仍待，不能据此判定完整Phase Gate通过。
+- **操作边界**：仅核对既有文档与JSON；未启动GUI、训练、推理或重算，未修改产品、工程或冻结参考。
+
 ## Final Verdict（待 S3 收口）
 
 - [ ] 通过（无未处置 Blocker）
 - [ ] 修改后通过（findings 按 Decision 处置完毕，复审确认）
 - [ ] 需要重做（说明理由）
 
-- 最终结论：本轮阶段性结论见 R1 / R2；完整 Final Verdict 留待 S3 及 Phase Gate 收口时填写。
+- 最终结论：本轮阶段性结论见 R1 / R2 / R3；完整 Final Verdict 留待 S2 / S3 及 Phase Gate 收口时填写。
 - 日期 / 依据轮次：—

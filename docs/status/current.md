@@ -10,12 +10,13 @@
 - **Phase / Subphase**：Phase 6进行中；P6.4已完成 / 已集成main；[P6.5 mini-plan](phase-6.5-plan.md)v1.0 / S0、S1已实现验证；S2等待用户20帧人工标注，新AI线 / 最终Gate尚未完成。
 - **最近已完成Gate（P6.4）**：R3独立科学审查Approve；2026-10-26用户最终HR通过，F1–F8 Closed，mini-plan全部AC / Slices完成。本机最终全量**1414 passed（256.53s）**；[最终主干CI40286395348](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40286395348) macOS / Windows均success。产品src与已通过HR的9c1aa63相同；tests仅增加按Qt原生布局测量的可见性检查（20153c5，a13b661集成），不改变界面 / 统计或重开HR。
 - **Git / 记录**：`/Users/leonis/Documents/ai-physics-tracker` / `feat/p6.5-pendulum-acceptance`，从`main @ 7abd517`开工；[mini-plan](phase-6.5-plan.md) / [Issue #44](https://github.com/KYLeonis/ai-physics-tracker/issues/44) / [Draft PR #45](https://github.com/KYLeonis/ai-physics-tracker/pull/45) / [报告](../benchmarks/phase-6.5-pendulum-report.md) / [Review](../reviews/phase-6.5-review.md)。最终准备代码966eea7，尚未合并main。
+- **P6.5 S0 / S1验证回执（非全阶段Gate）**：本机全量1417 passed，最终准备 / 推荐标注定向8 passed；源码966eea7的[CI40447943481](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/40447943481) macOS / Windows均success，各1415 passed、2个既有可选skip。[独立复审R3](../reviews/phase-6.5-review.md)阶段性Approve，F1 / F2 Closed；S2新AI及最终HR仍待。
 - **Development Mode**：Stabilization Mode（用户P6.5 Q4确认，仅本期；回归 / 阻断修复 / 验收证据优先，Phase 6收尾后停止）
 - **首发目标已冻结**：[正式目标](../spec/first-deliverable-target.md)集中维护范围 / 顺序 / 完成证据，[访谈Q17](../notes/first-deliverable-interview.md)已确认。面向大学物理实验学生 / 教师，Mac arm64单视频 / 单目标完整流程；CSV＋PNG＋方法说明、真实单摆及四类合成真值 / 纯AI与修正后对照、一名独立用户完成真实单摆任务。首次联网准备后离线，包不附第三方权重，接受单应用放行。根LICENSE及包元数据已落实MIT，具体发行 / 权重材料按[licensing](../licensing.md)准备；产品交付仍待实施。
 
 ## Next Recommended Action
 
-1. 用户按[标注交接](../notes/phase-6.5-annotation-handoff.md)打开`experiment/p65-acceptance/2026-10-27-final/manual-project/`，完成真实K-means推荐的20个人工帧并Save，回复“20帧已标好”，先不点Start learning。Agent接续核对标签 / 首训协议，Keep预选4个固定检查帧、16帧训练后执行S2；最多启动两次训练，当前0 / 2。原P011 / 新协议不改，不把旧DLC通过扩大为新AI达标或全阶段完成。
+1. 新工程`experiment/p65-acceptance/2026-10-27-final/manual-project/`的本地GUI已启动，真实K-means已选出20帧。用户按[标注交接](../notes/phase-6.5-annotation-handoff.md)完成20个人工帧并Save，回复“20帧已标好”，先不点Start learning；窗口关闭时可按交接命令重开。Agent接续核对标签 / 首训协议，Keep预选4个固定检查帧、16帧训练后执行S2；最多启动两次训练，当前0 / 2。原P011 / 新协议不改，不把旧DLC通过扩大为新AI达标或全阶段完成。
 2. 6.5后按顺序推进最小科学导出与四类合成核查→Mac试用包 / 教程 / 离线验证→一名独立用户试用与修复。完整模型库随后排；每项实施前准备独立mini-plan和对应Gate，不把目标冻结当作已实现或自动发布授权。
 3. 两轨迹新增比较已取消；ODE、其他置信方法、完整系统误差 / 换算传播、论文线同步及Windows/CUDA真机延期保持原边界，不作隐式授权。
 4. [健康度评估](../notes/project-health-review-2026-10-26.md)的交付优先级已通过Q17收敛为正式目标；整体架构保持，已测`is_dirty`热点按实际卡顿处理，若阻断6.5则提前，否则随相关改动最小修复。原阶段 / AC / R07搁置状态保持。
@@ -63,7 +64,7 @@
 
 ## Recently Completed
 
-- **P6.5 S0 / S1与人工标注交接（2026-10-27）**：新增非覆盖式准备脚本及3项小回归，源资料9项指纹校验 / 本轮协议先落盘；最终代码966eea7。旧DLC线拟合周期1.042407211461s / 相对差0.329718%，重复间隔1.041266844034s / 差0.219960%，各自≤5%；600点四图单位、完整Project保存重开一致。新工程独立ID / 原标定，零标签 / 零训练，实际打开链路检查通过。本机全量1417（171.62s），最终准备 / 推荐标注定向8（5.54s）；Review与CI按下方本轮Gate回执记录。S2用户20帧标注及新AI、最终HR待；未改src / 依赖 / 原件、未合并main。[报告](../benchmarks/phase-6.5-pendulum-report.md) / [交接](../notes/phase-6.5-annotation-handoff.md)。
+- **P6.5 S0 / S1与人工标注交接（2026-10-27）**：新增非覆盖式准备脚本及3项小回归，源资料9项指纹校验 / 本轮协议先落盘；最终代码966eea7。旧DLC线拟合周期1.042407211461s / 相对差0.329718%，重复间隔1.041266844034s / 差0.219960%，各自≤5%；600点四图单位、完整Project保存重开一致。新工程独立ID / 原标定，零标签 / 零训练，实际打开链路检查通过。本机全量1417（171.62s），最终准备 / 推荐标注定向8（5.54s）；Review与CI按上方S0 / S1验证回执记录。S2用户20帧标注及新AI、最终HR待；未改src / 依赖 / 原件、未合并main。[报告](../benchmarks/phase-6.5-pendulum-report.md) / [交接](../notes/phase-6.5-annotation-handoff.md)。
 
 - **P6.5计划冻结 / 规划收尾（2026-10-26）**：用户Q11回复“是”，完整共同理解及Scope / AC / Slices / Gate冻结为[mini-plan v1.0](phase-6.5-plan.md)，grilling结束。双线验收、拟合周期 / 重复间隔各自≤5%、用户人工分工、新AI最终轨迹达标 / 纯AI单列、最多启动两次训练及失败计次、既有拟合 / 首训与固定检查帧配置均明确；本期Stabilization Mode。同步requirements / roadmap / README / AGENTS / 首发推进表；Markdown链接 / diff及Goal / AC / Slices / Review Gate正文冻结前后一致性通过。只完成规划，无产品 / 依赖 / 用户工程写入，未跑新训练 / 推理 / 产品回归；实施与6项AC / S0–S3 / 新Gate均待后续开工。
 
