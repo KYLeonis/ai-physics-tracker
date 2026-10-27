@@ -185,13 +185,12 @@ def prepare(reference_root: Path, output: Path) -> dict:
         raise ValueError("At least five independently reviewed human intervals are required")
     midpoints = [(event["clip_lower_pts_s"] + event["clip_upper_pts_s"]) / 2 for event in human["events"]]
     human_mean_s = (midpoints[-1] - midpoints[0]) / (len(midpoints) - 1)
-    output.mkdir(parents=True, exist_ok=False)
     frozen = {
         "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPOSITORY, text=True).strip(),
         "preparation_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "inputs": {str(path): expected for path, expected in files.items()},
         "python": platform.python_version(), "platform": platform.platform(),
-        "packages": {name: version(name) for name in ("numpy", "scipy", "PySide6", "torch", "deeplabcut")},
+        "packages": {name: version(name) for name in ("numpy", "scipy", "PySide6-Essentials", "torch", "deeplabcut")},
         "timing_report": asdict(report), "original_protocol": protocol,
         "fit": asdict(FIT), "result_formulas": PERIOD_FORMULAS,
         "human_mean_s": human_mean_s, "relative_difference_limit": .05,
@@ -199,6 +198,7 @@ def prepare(reference_root: Path, output: Path) -> dict:
                      "device": "auto", "manual_frames": 20, "fixed_validation_frames": 4,
                      "failed_or_cancelled_starts_count": True},
     }
+    output.mkdir(parents=True, exist_ok=False)
     write_json(output / "protocol.json", frozen)
     manual = prepare_manual_project(reference, report, output / "manual-project")
     summary = run_reference_analysis(reference, report, output / "reference-project", protocol, human_mean_s)
