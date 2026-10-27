@@ -1,6 +1,5 @@
 """P6.5 preparation must isolate manual work and preserve frozen observations."""
 
-import hashlib
 import math
 from pathlib import Path
 import runpy
@@ -37,6 +36,8 @@ def test_new_manual_project_has_new_ids_but_no_inherited_labels_runs_or_results(
     assert project.videos[0].video_id != reference.videos[0].video_id
     assert project.tracks[0].track_id != reference.tracks[0].track_id
     assert not project.observations and not project.derived and not project.tracking_runs
+    assert project.ui_state["workflow"]["video_id"] == str(project.videos[0].video_id)
+    assert project.ui_state["workflow"]["selected_track_id"] == str(project.tracks[0].track_id)
     assert project.calibrations[0].known_length == reference.calibrations[0].known_length
     assert ProjectRepository().load(tmp_path / "manual") == project
     assert reference == original and len(reference.observations) == 600
@@ -62,5 +63,11 @@ def test_prepare_refuses_existing_output_and_modified_reference(preparation, tmp
     with pytest.raises(FileExistsError):
         preparation["prepare"](tmp_path / "missing-reference", tmp_path)
     assert sentinel.read_text(encoding="utf-8") == "original"
+    reference_root = tmp_path / "reference"
+    reference_root.mkdir()
+    protocol = reference_root / "benchmark-protocol.json"
+    protocol.write_text("{}", encoding="utf-8")
+    output = tmp_path / "new-output"
     with pytest.raises(ValueError, match="fingerprint mismatch"):
-        preparation["verified_file"](sentinel, hashlib.sha256(b"different").hexdigest())
+        preparation["prepare"](reference_root, output)
+    assert not output.exists() and protocol.read_text(encoding="utf-8") == "{}"

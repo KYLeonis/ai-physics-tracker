@@ -102,7 +102,7 @@ def prepare_manual_project(reference: Project, report: TimingReport, destination
                        if c.calibration_id == reference.active_calibration_by_video[source.video_id])
     session.add_calibration(replace(calibration, calibration_id=uuid4(), video_id=video.video_id))
     project = replace(session.project, ui_state={"workflow": {
-        "selected_video_id": str(video.video_id), "selected_track_id": str(track.track_id),
+        "video_id": str(video.video_id), "selected_track_id": str(track.track_id),
     }})
     saved = repository.create_from_project(destination, project)
     if saved.observations or saved.derived or saved.tracking_runs:
