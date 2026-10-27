@@ -4,6 +4,9 @@
 约定依据 `docs/status/phase-5.2-plan.md`（Proposed Defaults / Slice 4）与
 `docs/spec/phase5-requirements.md` R2、Phase 5 AC-10。
 
+后续整体验收：[P6.5单摆报告](phase-6.5-pendulum-report.md)记录冻结旧DLC分析回归、
+新AI线与原AC映射；真实媒体 / 工程 / 原始预测及本机运行协议仍保留在忽略目录，不入Git。
+
 ## 文件命名
 
 | 文件 | 用途 | 入 Git |
