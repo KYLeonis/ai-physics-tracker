@@ -82,7 +82,7 @@ AI 训练 / 微调
 ```text
 Current Phase:    Phase 6（6.1–6.4及6.3.1已完成并集成main）
 Last Delivered:   P6.4条件性参数SE / 95%局部t区间；2026-10-26全部HR通过，e31a4ac集成main
-Current Subphase: P6.5 mini-plan v1.0已冻结，实施未开始；首个Mac教学试用目标已冻结，交付未完成
+Current Subphase: P6.5 S0 / S1完成，S2等待20帧人工标注；首个Mac教学试用目标已冻结，交付未完成
 ```
 
 **首个可交付目标（2026-10-26冻结）**：面向大学物理实验学生 / 教师的Mac arm64小范围教学试用。保证单视频 / 单目标二维运动完整流程，交付CSV＋PNG＋方法说明、真实单摆与四类合成运动核查资料，并由一名独立目标用户完成真实单摆任务。[正式目标与完成标准](docs/spec/first-deliverable-target.md)已冻结，安装包与试用尚未完成。
@@ -118,7 +118,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 | Phase 3 | Calibration & Physics Engine | ✅ 已完成（2026-08-31） |
 | Phase 4 | Deep Learning Tracking | ✅ 已完成（2026-09-01；Windows/CUDA 延期至 Phase 9 前） |
 | Phase 5 | AI-assisted Annotation & Refinement | ✅ 已完成（2026-09-18；AC-9 改善目标明示归档） |
-| Phase 6 | Advanced Physics Analysis | 🔄 6.1–6.4及6.3.1完成并集成；6.5计划v1.0已冻结、实施未开始 |
+| Phase 6 | Advanced Physics Analysis | 🔄 6.1–6.4及6.3.1完成并集成；6.5 S0 / S1完成，S2待用户人工标注 |
 | Phase 7 | Model Library | ⬜ 完整模型库排在首轮教学试用后 |
 | Phase 8 | Export & Scientific Workflow | ⬜ 最小CSV / 方法说明前置到教学试用；完整导出 / 归档后续 |
 | Phase 9 | Optimization & Packaging | ⬜ Mac教学试用包前置；正式Windows交付后续 |
@@ -141,7 +141,7 @@ Phase 5 已完成。5.0 收敛统一任务管道；5.1 完成 DLC uniform/K-mean
 - ✅ Phase 5 已完成：5.0–5.7 全部交付，AI-assisted tracking 到可分析轨迹的主流程通过最终 Human Review
 - ✅ Phase 6.1 角运动基础 / 6.2 图表与相空间 / 6.3 显式函数拟合及重复间隔已集成 main；独立复审 / 用户 Human Review 已按各自范围完成
 - ✅ [P6.4参数误差解释](docs/status/phase-6.4-plan.md)：条件性SE / 95%局部t区间、可拖动面板 / 术语hover / Fixed交互；独立R3 / 双平台各1412 passed、2个既有可选skip / 全部HR通过，e31a4ac已集成main，F1–F8 Closed
-- ⬜ [P6.5完整单摆验收](docs/status/phase-6.5-plan.md)：v1.0已确认冻结；双线、周期分别≤5%、最多两次训练及保存重开 / 最终Gate已明确，实施与验收未开始
+- ⬜ [P6.5完整单摆验收](docs/status/phase-6.5-plan.md)：v1.0已冻结，S0 / S1完成；[旧DLC分析回归](docs/benchmarks/phase-6.5-pendulum-report.md)分别通过，新AI线[待20帧人工标注](docs/notes/phase-6.5-annotation-handoff.md)，训练0 / 2，最终Gate待
 - ✅ R01–R04架构维护已完成：公式拟合联动、计算设置统一、重复间隔联动、分析计算与写回分离；当前架构与完成进度有统一接手入口
 - ✅ [R08历史查看流程归属](docs/status/signal-history-plan.md)：两个历史入口共用草稿恢复 / 取消 / 迟到检查，切Charts / Explore退出历史；全量1329 / 独立 / 双平台 / 本轮HR通过，f34d3b8已集成main
 - ✅ [R04分析主干重构](docs/status/analysis-workflow-plan.md)：本机1316 / 独立 / 双平台 / 本轮HR通过，085219e已集成main
