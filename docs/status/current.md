@@ -1,6 +1,6 @@
 > P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。 权威进度见publication/STATUS.md。
 
-> 2026-10-31：第二作者开发/Windows测试交接包已整理至 `~/Documents/APT_Coauthor_20261031/`；素材与校验详见[交接记录](../../publication/coauthor-handoff.md)。下一步由第二作者按包内任务单完成CPU/教师导入/跨平台重开，再补CUDA与干净机器证据。实机门禁状态不变，通用main历史停点不变。
+> 2026-10-31：第二作者开发/Windows测试交接包已按用户追加要求精简至约2.53GB，仅附5段约65°代表原片和3短片，位于 `~/Documents/APT_Coauthor_20261031/`；素材与校验详见[交接记录](../../publication/coauthor-handoff.md)。下一步由第二作者按包内任务单完成CPU/教师导入/跨平台重开，再补CUDA与干净机器证据。实机门禁状态不变，通用main历史停点不变。
 
 # Current Status
 

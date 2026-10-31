@@ -18,19 +18,19 @@
 
 文件夹在仓库外；原视频、模型和训练数据没有加入 Git。原始来源保留，只在交接副本中规范命名。
 
-最终为 420 个文件、8650016759 bytes（约 8.65 GB / 8.06 GiB）；清单覆盖其中
-419 个交付文件，不对自身递归取 hash。`file_manifest.csv` SHA256 为
-`88e7a825dcccf2fd7355fe882bbc95f8c44692f4f623e19fc1236b18ca5d77ab`。
-完整 Python 校验结果：419 files checked / 0 failures。以 `C:\APT\` 为根的最长路径为 208 字符。
+按用户后续指令精简为 376 个文件、2526269288 bytes（约 2.53 GB / 2.35 GiB）；清单覆盖其中
+375 个交付文件，不对自身递归取 hash。`file_manifest.csv` SHA256 为
+`8207f3e59c35c9bd2fd1c8a3e394ce68abe8a7e37e98c1c5ecf3dbf570c5896a`。
+完整 Python 校验结果：375 files checked / 0 failures。以 `C:\APT\` 为根的最长路径为 208 字符。
 
 ## 包含的素材
 
 | 目录 | 内容 |
 | --- | --- |
-| `01_videos` | 24 段 P 系列正式原片、5 段 V 系列光照压力原片，另有 T001 合成 36 帧、T002 实拍 148 帧、T003 P011 既有 600 帧裁剪 |
+| `01_videos` | 5 段约65°代表原片：P011/P013/P015覆盖245/320/165mm摆长，V001/V002覆盖暗光/眩光，另有 T001 合成 36 帧、T002 实拍 148 帧、T003 P011 既有 600 帧裁剪 |
 | `02_experiment_data` | 29 套 DLC best055 预测、effective-release TOML、参考帧；采集清单/矩阵/装置照片；后续平台 P012 人工标注 |
 | `03_reference_results` | 24 条 effective-release 轨迹、48 行正式 M0/M1、冻结 golden/source-map、历史 SQLite、论文训练拆分及配置元数据 |
-| `04_projects` | P011/P014 参考工程与 T001 已训练工程；均含托管视频 |
+| `04_projects` | P011 参考工程与 T001 已训练工程；均含托管视频 |
 | `05_teacher_models` | P012 best020、T001 best010 两套实际已训练 ResNet50 教师包 |
 | `06_development` | `154f262` 的离线 Git bundle 与上下文摘录 |
 | `07_windows_build` | 源码 `54638e4` 的 Windows 测试便携 ZIP 与下载来源 |
@@ -42,6 +42,13 @@ Windows 来源：packaging run `37735873042`，artifact `11531871823`，源码
 外层与内层 CRC 均通过，交接包只保留可直接解压使用的内层 ZIP。
 开发快照 `154f262` 的 `src/` 与 `tests/` 和二进制源码一致，之后有发行文档与许可材料差异。
 本次不切换/集成分支，不将通用 main 的后续开发混入论文线测试基线。
+
+## 大角度代表素材精简（同日用户追加要求）
+
+交接副本仅保留P011、P013、P015、V001、V002五段名义约65°原片，删除其余24段原片及含小角度原片的P014预制工程；原始素材目录未动。
+全部29套小型实验数据、24条历史轨迹及48行正式结果保留，`calibration_index.csv` 新增 `video_included` 和筛选说明，未附视频的路径留空。
+T001/T002/T003快速短片保留。P012教师模型及其人工标签保留，但P012原片不随包提供；任务单改以P015做跨视频冒烟，明确模型在P015上的精度未验证，可靠测量需自训/人工审核。
+HTML、README、命名说明、模型说明、14项任务模板和文件清单均同步，避免引用已删除媒体。
 
 ## 命名与科学语义
 
@@ -56,10 +63,10 @@ Windows 来源：packaging run `37735873042`，artifact `11531871823`，源码
 
 ## 检查与缺项
 
-- 29 段原视频与原采集 SHA256 一致；32 段独立素材经 ffprobe，并在 macOS 解码首/中/末帧，未做全帧解码或 Windows 解码声明。
+- 保留的5段原片与原采集SHA256一致；8段独立素材继承此前ffprobe和macOS首/中/末帧解码检查，未做全帧解码或Windows解码声明。
 - 配套 CSV 与 TOML 内嵌 hash 一致，24 正式实验与冻结 IC 的帧数、释放帧、长度对应；50 份 source-map 文件 hash 与 2 个 SQLite table extract hash 一致。
 - SQLite quick_check 为 ok；正式拟合表 48 行。离线 frozen verifier 为 15 files / 48 fits / 2 cases。
-- 3 个工程可由当前仓储加载，托管媒体 hash 正确；T001 原训练模型文件与 manifest 一致。
+- 保留的2个工程此前均由当前仓储加载、托管媒体hash校验通过；本轮复核所有媒体仍随包存在，T001原训练模型文件未改。
 - 两教师包通过当前应用的静态导入、受管配置/权重校验；未执行新的 runtime 自检或 Windows 推理。
 - Git bundle 通过 verify、临时 clone 与冻结证据校验。文件名符合 Windows 约束，按 `C:\APT\` 计算路径长度低于 260 字符。
 - Python 文件校验器经过有效文件、同大小篡改、缺失文件检查；PowerShell 脚本未在本机执行。
@@ -68,5 +75,5 @@ Windows 来源：packaging run `37735873042`，artifact `11531871823`，源码
 
 ## 下一步
 
-第二作者先校验文件，按 T001 CPU → T001 教师导入 → P012 实拍推理 → P011/P014 跨平台科学/导出 → 取消与 CUDA → 干净机器/压力场景执行。
+第二作者先校验文件，按 T001 CPU → T001 教师导入 → P015 实拍自训或跨视频推理冒烟 → P011 跨平台科学/导出 → 取消与 CUDA → 干净机器/压力场景执行。
 将实际结果、源码 SHA、设备、run id、诊断和截图放入独立运行目录，再据真实证据更新 `publication/STATUS.md`。
