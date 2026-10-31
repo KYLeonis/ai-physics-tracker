@@ -1,9 +1,23 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-09。
+- 最后更新：2026-10-31（第二作者素材交接；产品发行状态不变）。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## 第二作者素材交接 — 2026-10-31
+
+- 按用户要求建立仓库外 `~/Documents/APT_Coauthor_20261031/`：24正式/5压力原片、
+  3快速素材、29套轨迹/标定/参考图、正式历史结果/SQLite、3工程、2平台教师模型、
+  离线源码与Windows测试包。原来源保留，副本规范命名，新旧名称/SHA256全量登记。
+- [交接记录与命名约定](coauthor-handoff.md)；包内HTML入口、开发命令、14项Windows
+  任务单、结果模板与接收校验脚本齐备。29原片采集hash一致，32素材首/中/末帧解码，
+  50正式来源hash与2个SQLite extract匹配，工程/教师静态导入及离线源码恢复检查通过。
+- Windows包source54638e4，run37735873042/artifact11531871823，已下载校验；开发
+  bundle154f262。正文177帧完整原标签/best055权重未定位，提供的平台模型不混作正文模型。
+- **Next Recommended Action**：将整个交接文件夹转给第二作者，先做T001 CPU闭环、
+  教师导入与P011/P014重开/导出，再补取消/CUDA/干净机器；用包内模板回传实测证据。
+  G1–G5/CUDA/GUI HR/学生/安装版科学导出恢复保持pending/not_run；本分支仍不集成。
 
 ## P6.4 unsigned Mac public release — 2026-10-09
 
