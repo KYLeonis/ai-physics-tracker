@@ -16,7 +16,7 @@ import zipfile
 
 from PySide6.QtCore import QObject, QTimer, QUrl
 from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices
-from PySide6.QtWidgets import (QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
+from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
                                QPlainTextEdit, QProgressBar, QPushButton, QVBoxLayout)
 
 from ai_physics_tracker.gui import launch_context
@@ -25,6 +25,13 @@ from ai_physics_tracker.application.runtime_setup import (
 )
 
 logger = logging.getLogger(__name__)
+
+# 长任务终态必须在视觉上可分辨：成功绿、失败红、取消琥珀；置顶+任务栏闪烁保证离开窗口也能察觉。
+TERMINAL_STYLES = {
+    "success": "font-weight: bold; color: #1a7f37;",
+    "failure": "font-weight: bold; color: #c62828;",
+    "cancelled": "font-weight: bold; color: #9a6700;",
+}
 
 if TYPE_CHECKING:
     from ai_physics_tracker.gui.main_window import MainWindow
@@ -199,8 +206,16 @@ class RuntimeSetupActions(QObject):
         self._last_progress = None
         self.dialog.logView.clear()
         self.dialog.progressBar.setRange(0, 0)
+        self.dialog.phaseLabel.setStyleSheet("")
         self.dialog.phaseLabel.setText("Starting setup…" if installing else "Checking Python, Torch and DeepLabCut…")
         self._timer.start()
+
+    def _announce_terminal(self, kind: str) -> None:
+        """终态提示置顶窗口、闪烁任务栏并给状态行上色；新一轮开始时恢复默认样式。"""
+        self.dialog.phaseLabel.setStyleSheet(TERMINAL_STYLES.get(kind, ""))
+        self.dialog.raise_()
+        self.dialog.activateWindow()
+        QApplication.alert(self.dialog)
 
     def cancel(self) -> None:
         self._cancel.set()
@@ -238,10 +253,12 @@ class RuntimeSetupActions(QObject):
             result = future.result()
         except CancelledError:
             self.dialog.phaseLabel.setText("Setup cancelled. The previous AI environment is unchanged. You can retry.")
+            self._announce_terminal("cancelled")
         except Exception as error:
             logger.exception("AI environment setup failed")
             self.dialog.phaseLabel.setText(f"Setup failed: {error}\nRetry installation or export diagnostics.")
             self.dialog.logView.appendPlainText(str(error))
+            self._announce_terminal("failure")
         else:
             if self._installing:
                 os.environ.pop("AI_PHYSICS_RUNTIME_PYTHON", None)
@@ -254,6 +271,7 @@ class RuntimeSetupActions(QObject):
                 self.dialog.phaseLabel.setText(f"Verified: Torch {versions['torch']}, DLC {versions['deeplabcut']}; "
                                                f"actual device: {result['actual_device']}")
             self.dialog.progressBar.setValue(100)
+            self._announce_terminal("success")
         self.refresh()
         self.window.trackingActions.refresh()
 

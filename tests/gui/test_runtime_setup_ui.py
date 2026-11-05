@@ -63,3 +63,39 @@ def test_missing_interpreter_opens_setup(setup):
     setup.window.modelActions._runtime_python = None
     assert not setup.window.modelActions._ensure_runtime()
     assert setup.dialog.isVisible()
+
+
+def test_terminal_states_announce_with_color_and_alert(setup, monkeypatch):
+    from PySide6.QtWidgets import QApplication
+    from ai_physics_tracker.gui.runtime_setup import TERMINAL_STYLES
+    alerts = []
+    monkeypatch.setattr(QApplication, "alert", lambda *a, **k: alerts.append(a))
+
+    setup._begin(installing=True)
+    assert setup.dialog.phaseLabel.styleSheet() == ""
+
+    setup._future = Future()
+    setup._future.set_exception(RuntimeError("download failed"))
+    setup._poll()
+    assert TERMINAL_STYLES["failure"] in setup.dialog.phaseLabel.styleSheet()
+    assert alerts
+
+    alerts.clear()
+    setup._begin(installing=True)
+    assert setup.dialog.phaseLabel.styleSheet() == ""
+
+    setup._future = Future()
+    setup._future.set_exception(CancelledError())
+    setup._poll()
+    assert TERMINAL_STYLES["cancelled"] in setup.dialog.phaseLabel.styleSheet()
+    assert alerts
+
+    alerts.clear()
+    setup._begin(installing=True)
+    assert setup.dialog.phaseLabel.styleSheet() == ""
+
+    setup._future = Future()
+    setup._future.set_result(sys.executable)
+    setup._poll()
+    assert TERMINAL_STYLES["success"] in setup.dialog.phaseLabel.styleSheet()
+    assert alerts
