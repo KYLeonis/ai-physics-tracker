@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QAbstractSpinBox,
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
@@ -238,6 +239,11 @@ class MainWindow(QMainWindow):
         self.calibrationGuideLabel.hide()
         self.calibrationGuideButton = QPushButton("", self)
         self.calibrationGuideButton.hide()
+        # UX-07：四点标完自动跳下一帧（默认关；修复/审核流保持原自动行为）。
+        self.autoAdvanceCheck = QCheckBox("Auto-advance after 4/4", self)
+        self.autoAdvanceCheck.setToolTip(
+            "When a frame has all four points, jump straight to the next recommended frame "
+            "instead of waiting for the Next frame button.")
         self.calibrationSelector = QComboBox(self)
         self.drawScaleButton = QPushButton("Draw scale", self)
         self.drawScaleButton.setCheckable(True)
@@ -271,6 +277,7 @@ class MainWindow(QMainWindow):
         calLayout = QVBoxLayout()
         calLayout.addWidget(self.calibrationGuideLabel)
         calLayout.addWidget(self.calibrationGuideButton)
+        calLayout.addWidget(self.autoAdvanceCheck)
         calLayout.addWidget(self.calibrationStatusLabel)
         calLayout.addWidget(self.calibrationSelector)
         calLayout.addLayout(calButtons)
@@ -1651,6 +1658,13 @@ class MainWindow(QMainWindow):
         suffix = self._frameSetProgressSuffix(experiment)
         if state.frame_complete:
             if state.next_frame_set_index is not None:
+                if self.autoAdvanceCheck.isChecked():
+                    # UX-07：四点齐全直接跳下一推荐帧；重复刷新不重复请求。
+                    self._setCalibrationGuide(state.hint() + suffix)
+                    if (not self._has_pending_request
+                            and self._last_requested_frame != state.next_frame_set_index):
+                        self.jumpToFrame(state.next_frame_set_index)
+                    return
                 self._setCalibrationGuide(
                     state.hint() + suffix,
                     "guide_next",
