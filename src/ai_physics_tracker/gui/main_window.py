@@ -11,6 +11,9 @@ from uuid import UUID
 from PySide6.QtCore import QObject, QPoint, QPointF, QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QAbstractSpinBox,
+    QApplication,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
@@ -18,11 +21,12 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QHBoxLayout,
     QLabel,
-    QAbstractItemView,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
     QSlider,
     QSpinBox,
@@ -188,7 +192,9 @@ class MainWindow(QMainWindow):
         self.timingButton = QPushButton("Use approximate timing…", self)
         self.timingButton.hide()
         self.previousButton = QPushButton("Previous frame", self)
+        self.previousButton.setToolTip("Step one frame back (Left arrow)")
         self.nextButton = QPushButton("Next frame", self)
+        self.nextButton.setToolTip("Step one frame forward (Right arrow)")
         self.playButton = QPushButton("Play", self)
         self.frameSpinBox = QSpinBox(self)
         self.timelineSlider = QSlider(Qt.Orientation.Horizontal, self)
@@ -543,6 +549,16 @@ class MainWindow(QMainWindow):
         deletePointShortcut.activated.connect(self._onDeletePointShortcut)
         backspacePointShortcut = QShortcut(QKeySequence(Qt.Key.Key_Backspace), self)
         backspacePointShortcut.activated.connect(self._onDeletePointShortcut)
+
+        # 标注高频操作：←/→ 逐帧步进；焦点在输入控件时禁用，保留其原生方向键语义。
+        self._frameStepShortcuts = []
+        for step_key, delta in ((Qt.Key.Key_Left, -1), (Qt.Key.Key_Right, 1)):
+            stepShortcut = QShortcut(QKeySequence(step_key), self)
+            stepShortcut.activated.connect(lambda d=delta: self._step(d))
+            self._frameStepShortcuts.append(stepShortcut)
+        QApplication.instance().focusChanged.connect(self._updateFrameStepShortcuts)
+
+        reviewAcceptShortcut = QShortcut(QKeySequence(Qt.Key.Key_A), self)
 
         reviewAcceptShortcut = QShortcut(QKeySequence(Qt.Key.Key_A), self)
         reviewAcceptShortcut.activated.connect(self._onReviewAcceptShortcut)
@@ -2341,6 +2357,12 @@ class MainWindow(QMainWindow):
             self._guide_skipped_roles.clear()
             self._refreshAnnotationGuide()
         self.presentedFrameChanged.emit(frame.frame_index)
+
+    def _updateFrameStepShortcuts(self, _old, new) -> None:
+        """←/→ 步进快捷键让位于获得焦点的输入控件（spinbox/单行/多行文本）。"""
+        typing = isinstance(new, (QAbstractSpinBox, QLineEdit, QPlainTextEdit))
+        for stepShortcut in self._frameStepShortcuts:
+            stepShortcut.setEnabled(not typing)
 
     def _step(self, delta: int) -> None:
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
