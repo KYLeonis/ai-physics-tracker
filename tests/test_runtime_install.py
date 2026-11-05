@@ -344,3 +344,77 @@ def test_cancel_during_backoff_aborts_without_further_attempts(monkeypatch, tmp_
         runtime.download_artifact(artifact(data), tmp_path, cancel, report)
     assert len(calls) == 1
     assert list(tmp_path.iterdir()) == []
+
+
+def _write_ready_install(root, profile):
+    import hashlib
+    import json
+    digest = hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest()
+    folder = root / "runtimes" / "installs" / (profile["id"] + "-ready01")
+    python = folder / "environment" / "Scripts" / "python.exe"
+    python.parent.mkdir(parents=True)
+    python.write_bytes(b"stub")
+    runtime.atomic_json(folder / "install-state.json",
+                        {"status": "ready", "manifest_sha256": digest,
+                         "opencv_replacements": {}, "executable": str(python)})
+    return python
+
+
+def test_install_reuses_verified_ready_install_without_reinstall(monkeypatch, tmp_path):
+    profile = {"id": "windows-x64-cpu", "system": "Windows", "machines": ["amd64"],
+               "min_os_version": "10.0", "python": artifact(), "packages": []}
+    python = _write_ready_install(tmp_path, profile)
+    pointer = tmp_path / runtime.POINTER_RELATIVE
+    pointer.parent.mkdir(parents=True, exist_ok=True)
+    pointer.write_text("old runtime\n", encoding="utf-8")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("fresh install path used although a ready install exists")
+
+    monkeypatch.setattr(runtime, "download_artifact", forbidden)
+    monkeypatch.setattr(runtime, "extract_python", forbidden)
+    monkeypatch.setattr(runtime, "run_command", forbidden)
+
+    def accept(*args, **kwargs):
+        return {"status": "success", "executable": str(python), "python": "3.12.15", "versions": {}}
+
+    monkeypatch.setattr(runtime, "verify_runtime", accept)
+    progress = []
+    result = runtime.install_runtime(tmp_path, profile, None, runtime.RuntimeCancellation(), progress.append)
+    assert result == python
+    assert pointer.read_text(encoding="utf-8").strip() == str(python)
+    assert any(p.stage == "Re-verifying" for p in progress)
+
+
+def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path):
+    profile = {"id": "windows-x64-cpu", "system": "Windows", "machines": ["amd64"],
+               "min_os_version": "10.0", "python": artifact(), "packages": []}
+    stale = _write_ready_install(tmp_path, profile)
+    downloaded = []
+
+    def record_download(*args, **kwargs):
+        downloaded.append(args)
+        return tmp_path / "fake.tar.gz"
+
+    verify_calls = []
+
+    def verify(python, *args, **kwargs):
+        verify_calls.append(python)
+        if len(verify_calls) == 1:
+            raise runtime.RuntimeInstallError("interpreter corrupted")
+        return {"status": "success", "executable": str(python), "python": "3.12.15", "versions": {}}
+
+    def fake_extract(archive, destination, *a):
+        scripts = destination / "environment" / "Scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        (scripts / "python.exe").write_bytes(b"stub")
+
+    monkeypatch.setattr(runtime, "download_artifact", record_download)
+    monkeypatch.setattr(runtime, "extract_python", fake_extract)
+    monkeypatch.setattr(runtime, "run_command", lambda *a: None)
+    monkeypatch.setattr(runtime, "verify_runtime", verify)
+    result = runtime.install_runtime(tmp_path, profile, None, runtime.RuntimeCancellation(), lambda p: None)
+    assert downloaded and len(verify_calls) == 2
+    assert result != stale and result.is_file()
+    pointer = (tmp_path / runtime.POINTER_RELATIVE).read_text(encoding="utf-8").strip()
+    assert pointer == str(result)

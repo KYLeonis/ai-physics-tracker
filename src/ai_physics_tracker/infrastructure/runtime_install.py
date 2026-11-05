@@ -318,6 +318,46 @@ def publish_runtime(data_root: Path, python: Path, evidence: dict, cancel: Runti
         temporary.unlink(missing_ok=True)
 
 
+def _reusable_install(installs: Path, data_root: Path, profile: dict, digest: str,
+                      package_root: Path | None, opencv_wheels: Path | None,
+                      cancel: RuntimeCancellation, report: Callable[[RuntimeProgress], None]) -> Path | None:
+    """同 profile、同清单且自检复验通过的 ready 环境直接复用；不可用返回 None 走全新安装。"""
+    if not installs.is_dir():
+        return None
+    wants_replacements = opencv_wheels is not None
+    candidates = []
+    for folder in installs.iterdir():
+        if not folder.is_dir() or not folder.name.startswith(profile["id"] + "-"):
+            continue
+        try:
+            state = json.loads((folder / "install-state.json").read_text(encoding="utf-8"))
+            executable = Path(str(state["executable"]))
+        except (OSError, ValueError, KeyError):
+            continue
+        if (state.get("status") != "ready" or state.get("manifest_sha256") != digest
+                or bool(state.get("opencv_replacements")) != wants_replacements
+                or folder not in executable.parents or not executable.is_file()):
+            continue
+        candidates.append((folder.stat().st_mtime, folder, executable))
+    for _, folder, executable in sorted(candidates, reverse=True):
+        report(RuntimeProgress("Re-verifying", f"Existing environment {folder.name}"))
+        try:
+            state = json.loads((folder / "install-state.json").read_text(encoding="utf-8"))
+            versions = {a["name"]: a["version"] for a in profile["packages"]
+                        if a["name"] in {"torch", "torchvision", "deeplabcut", "numpy"}}
+            device = "cuda" if profile["id"].endswith("-cuda") else "cpu" if profile["system"] == "Windows" else "auto"
+            result = verify_runtime(executable, folder / "selftest", package_root, cancel,
+                                    device=device, expected_versions=versions)
+        except CancelledError:
+            raise
+        except RuntimeInstallError:
+            report(RuntimeProgress("Re-verifying", f"{folder.name} unusable; installing a fresh environment"))
+            continue
+        publish_runtime(data_root, executable, {**state, "selftest": result, "reused": True}, cancel)
+        return executable
+    return None
+
+
 def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
                     cancel: RuntimeCancellation, report: Callable[[RuntimeProgress], None],
                     *, opencv_wheels: Path | None = None) -> Path:
@@ -348,6 +388,10 @@ def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
                 fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as error:
             raise RuntimeInstallError("Another AI environment setup is running") from error
+        reusable = _reusable_install(parent / "installs", data_root, profile, digest,
+                                     package_root, opencv_wheels, cancel, report)
+        if reusable is not None:
+            return reusable
         folder.mkdir(parents=True)
         cache.mkdir(parents=True, exist_ok=True)
         atomic_json(folder / "install-state.json", journal)
