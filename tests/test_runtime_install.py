@@ -4,6 +4,7 @@ from concurrent.futures import CancelledError
 import hashlib
 import io
 from pathlib import Path
+import re
 import tarfile
 from threading import Event
 
@@ -15,6 +16,41 @@ from ai_physics_tracker.infrastructure import runtime_install as runtime
 def artifact(data=b"python bytes"):
     return {"filename": "python.tar.gz", "url": "https://github.com/owner/repo/archive.tar.gz",
             "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+
+
+class _FakeResponse(io.BytesIO):
+    """带 status/headers/geturl 的离线应答；payload 读尽后再读会按需抛出网络层异常。"""
+
+    def __init__(self, payload, status=200, content_range=None, eof_error=None):
+        super().__init__(payload)
+        self.status = status
+        self.headers = {"Content-Range": content_range} if content_range else {}
+        self._eof_error = eof_error
+
+    def geturl(self):
+        return "https://github.com/asset"
+
+    def read(self, size=-1):
+        block = super().read(size)
+        if not block and self._eof_error is not None:
+            raise self._eof_error
+        return block
+
+
+def _flaky_resuming_server(data, calls, *, drop_index=0, honor_range=True):
+    """第 drop_index 次请求在半途断流；若客户端带 Range 且服务器支持则返回 206 续传。"""
+    half = len(data) // 2
+
+    def serve(request, *args, **kwargs):
+        calls.append(request)
+        range_header = request.headers.get("Range")
+        if len(calls) > drop_index + 1 and range_header and honor_range:
+            offset = int(re.match(r"bytes=(\d+)-", range_header).group(1))
+            return _FakeResponse(data[offset:], status=206,
+                                 content_range=f"bytes {offset}-{len(data) - 1}/{len(data)}")
+        return _FakeResponse(data[:half], eof_error=ConnectionResetError("simulated proxy drop"))
+
+    return serve
 
 
 @pytest.mark.parametrize("change", [{"url": "http://github.com/archive"}, {"url": "https://evil.example/download"},
@@ -203,3 +239,108 @@ def test_frozen_environment_removes_bundle_path_and_python_configuration(monkeyp
     env = clean_python_environment()
     assert env["PATH"] == str(tmp_path / "system")
     assert "PYTHONHOME" not in env and "PYTHONPATH" not in env
+
+
+def test_transient_drop_is_retried_with_range_resume(monkeypatch, tmp_path):
+    import ssl
+    from urllib.error import URLError
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_BACKOFF_S", (0, 0, 0, 0))
+    data = b"x" * 4096
+    drops = [ConnectionResetError("reset"), TimeoutError("read timed out"),
+             ssl.SSLEOFError("EOF in violation"), URLError(ConnectionResetError("connect reset"))]
+    for index, drop in enumerate(drops):
+        cache = tmp_path / f"case{index}"
+        cache.mkdir()
+        calls = []
+        monkeypatch.setattr(runtime, "urlopen", _flaky_resuming_server(data, calls))
+        progress = []
+        target = runtime.download_artifact(artifact(data), cache, Event(), progress.append)
+        assert target.read_bytes() == data
+        assert len(calls) == 2
+        assert calls[1].headers.get("Range") == f"bytes={len(data) // 2}-"
+        assert any(p.stage == "Retrying download" for p in progress)
+        assert list(cache.iterdir()) == [target]
+
+
+def test_server_ignoring_range_restarts_whole_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_BACKOFF_S", (0, 0, 0, 0))
+    data = b"y" * 2048
+    calls = []
+    half = len(data) // 2
+
+    def serve(request, *args, **kwargs):
+        calls.append(request)
+        if len(calls) == 1:
+            return _FakeResponse(data[:half], eof_error=TimeoutError("stalled stream"))
+        return _FakeResponse(data)
+
+    monkeypatch.setattr(runtime, "urlopen", serve)
+    target = runtime.download_artifact(artifact(data), tmp_path, Event(), lambda p: None)
+    assert target.read_bytes() == data
+    assert [c.headers.get("Range") for c in calls] == [None, f"bytes={half}-"]
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_retry_exhaustion_raises_and_cleans_partial(monkeypatch, tmp_path):
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_ATTEMPTS", 3)
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_BACKOFF_S", (0, 0))
+    data = b"z" * 100
+    calls = []
+
+    def serve(request, *args, **kwargs):
+        calls.append(request)
+        return _FakeResponse(data[:10], eof_error=ConnectionResetError("drop"))
+
+    monkeypatch.setattr(runtime, "urlopen", serve)
+    with pytest.raises(runtime.RuntimeInstallError, match="3 attempts"):
+        runtime.download_artifact(artifact(data), tmp_path, Event(), lambda p: None)
+    assert len(calls) == 3
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_http_404_fails_immediately_while_502_is_retried(monkeypatch, tmp_path):
+    from urllib.error import HTTPError
+    data = b"w" * 512
+    calls = []
+
+    def serve_404(request, *args, **kwargs):
+        calls.append(request)
+        raise HTTPError(request.full_url, 404, "Not Found", None, None)
+
+    monkeypatch.setattr(runtime, "urlopen", serve_404)
+    with pytest.raises(HTTPError):
+        runtime.download_artifact(artifact(data), tmp_path, Event(), lambda p: None)
+    assert len(calls) == 1
+    assert list(tmp_path.iterdir()) == []
+
+    calls.clear()
+    pending = [HTTPError("https://github.com/asset", 502, "Bad Gateway", None, None)]
+
+    def serve_502_then_ok(request, *args, **kwargs):
+        calls.append(request)
+        if pending:
+            raise pending.pop(0)
+        return _FakeResponse(data)
+
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_BACKOFF_S", (0, 0, 0, 0))
+    monkeypatch.setattr(runtime, "urlopen", serve_502_then_ok)
+    target = runtime.download_artifact(artifact(data), tmp_path, Event(), lambda p: None)
+    assert target.read_bytes() == data
+    assert len(calls) == 2
+
+
+def test_cancel_during_backoff_aborts_without_further_attempts(monkeypatch, tmp_path):
+    data = b"q" * 256
+    calls = []
+    cancel = Event()
+    monkeypatch.setattr(runtime, "urlopen", _flaky_resuming_server(data, calls))
+
+    def report(progress):
+        if progress.stage == "Retrying download":
+            cancel.set()
+
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_BACKOFF_S", (30.0, 30.0))
+    with pytest.raises(CancelledError):
+        runtime.download_artifact(artifact(data), tmp_path, cancel, report)
+    assert len(calls) == 1
+    assert list(tmp_path.iterdir()) == []

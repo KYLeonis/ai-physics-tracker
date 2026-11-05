@@ -10,11 +10,13 @@ import platform
 import re
 import shutil
 import signal
+import ssl
 import subprocess
 import tarfile
 from threading import Event, Lock
 import time
 from typing import Callable
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from uuid import uuid4
@@ -58,6 +60,9 @@ class RuntimeProgress:
 TRUSTED_DOWNLOAD_HOSTS = frozenset({
     "github.com", "files.pythonhosted.org", "download.pytorch.org", "download-r2.pytorch.org",
 })
+# 代理/无线网络常见间歇性 TLS 中断：单包内自动重试并断点续传，避免整轮安装重来。
+DOWNLOAD_RETRY_ATTEMPTS = 5
+DOWNLOAD_RETRY_BACKOFF_S = (1.0, 2.0, 4.0, 8.0)
 MAX_EXTRACT_BYTES = 1024 * 1024 * 1024
 MAX_EXTRACT_FILES = 30000
 POINTER_RELATIVE = Path("runtimes/active.txt")
@@ -145,6 +150,48 @@ def extract_python(archive: Path, destination: Path, cancel: Event) -> None:
             stream.extract(member, destination, filter="data")
 
 
+def _is_transient_download_error(error: BaseException) -> bool:
+    """仅重试网络/代理层的间歇性故障；清单、校验、本地磁盘与 4xx 类错误立即失败。"""
+    if isinstance(error, (CancelledError, RuntimeInstallError)):
+        return False
+    if isinstance(error, HTTPError):
+        return error.code is not None and error.code >= 500
+    if isinstance(error, URLError):
+        reason = error.reason
+        if isinstance(reason, HTTPError):
+            return reason.code is not None and reason.code >= 500
+        return isinstance(reason, OSError)
+    # TimeoutError/ConnectionError/ssl.SSLError 覆盖读超时、连接复位与握手中断。
+    return isinstance(error, (TimeoutError, ConnectionError, ssl.SSLError))
+
+
+def _copy_download_stream(artifact: dict, partial: Path, resume_from: int, headers: dict,
+                          cancel: Event, report: Callable[[RuntimeProgress], None]) -> int:
+    """单次下载尝试：按服务器对 Range 的实际应答续传或整文件重下，返回累计字节数。"""
+    with urlopen(Request(artifact["url"], headers=headers), timeout=15) as source:
+        if urlsplit(source.geturl()).scheme != "https":
+            raise RuntimeInstallError("Runtime download redirected away from HTTPS")
+        mode, size = "wb", 0
+        if resume_from and getattr(source, "status", 200) == 206:
+            content_range = source.headers.get("Content-Range", "")
+            match = re.match(r"bytes (\d+)-", content_range)
+            if match and int(match.group(1)) == resume_from:
+                mode, size = "ab", resume_from
+        if resume_from and mode == "wb":
+            report(RuntimeProgress("Downloading", f"{artifact['filename']} (server ignored resume; restarting)",
+                                   0, artifact["size"]))
+        with partial.open(mode) as output:
+            while block := source.read(256 * 1024):
+                if cancel.is_set():
+                    raise CancelledError()
+                size += len(block)
+                if size > artifact["size"]:
+                    raise RuntimeInstallError("Runtime download is larger than its manifest")
+                output.write(block)
+                report(RuntimeProgress("Downloading", artifact["filename"], size, artifact["size"]))
+    return size
+
+
 def download_artifact(artifact: dict, cache: Path, cancel: Event,
                       report: Callable[[RuntimeProgress], None]) -> Path:
     validate_artifact(artifact)
@@ -152,27 +199,38 @@ def download_artifact(artifact: dict, cache: Path, cancel: Event,
     if target.is_file() and target.stat().st_size == artifact["size"] and sha256_file(target) == artifact["sha256"]:
         return target
     partial = target.with_name(target.name + ".part")
-    # 不复用未验证的部分下载；重试会使用已经验证的其他缓存文件。
+    # 跨调用仍不复用未验证的部分下载；单次调用内的重试经 Range 断点续传。
+    last_error: BaseException | None = None
     try:
-        with urlopen(Request(artifact["url"], headers={"User-Agent": "AI-Physics-Tracker/0.1"}), timeout=15) as source:
-            if urlsplit(source.geturl()).scheme != "https":
-                raise RuntimeInstallError("Runtime download redirected away from HTTPS")
-            with partial.open("wb") as output:
-                size = 0
-                while block := source.read(256 * 1024):
-                    if cancel.is_set():
-                        raise CancelledError()
-                    size += len(block)
-                    if size > artifact["size"]:
-                        raise RuntimeInstallError("Runtime download is larger than its manifest")
-                    output.write(block)
-                    report(RuntimeProgress("Downloading", artifact["filename"], size, artifact["size"]))
-        if size != artifact["size"] or sha256_file(partial) != artifact["sha256"]:
-            raise RuntimeInstallError(f"Incomplete download or SHA256 mismatch: {artifact['filename']}; retry installation")
-        if cancel.is_set():
-            raise CancelledError()
-        os.replace(partial, target)
-        return target
+        for attempt in range(1, DOWNLOAD_RETRY_ATTEMPTS + 1):
+            resume_from = partial.stat().st_size if partial.is_file() else 0
+            headers = {"User-Agent": "AI-Physics-Tracker/0.1"}
+            if resume_from:
+                headers["Range"] = f"bytes={resume_from}-"
+            try:
+                size = _copy_download_stream(artifact, partial, resume_from, headers, cancel, report)
+            except Exception as error:
+                if not _is_transient_download_error(error):
+                    raise
+                last_error = error
+                if attempt >= DOWNLOAD_RETRY_ATTEMPTS or cancel.is_set():
+                    break
+                backoff_s = DOWNLOAD_RETRY_BACKOFF_S[min(attempt - 1, len(DOWNLOAD_RETRY_BACKOFF_S) - 1)]
+                report(RuntimeProgress("Retrying download",
+                                       f"{artifact['filename']} (attempt {attempt + 1}/{DOWNLOAD_RETRY_ATTEMPTS}: "
+                                       f"{type(error).__name__})", resume_from, artifact["size"]))
+                if cancel.wait(backoff_s):
+                    raise CancelledError() from error
+                continue
+            if size != artifact["size"] or sha256_file(partial) != artifact["sha256"]:
+                raise RuntimeInstallError(f"Incomplete download or SHA256 mismatch: {artifact['filename']}; retry installation")
+            if cancel.is_set():
+                raise CancelledError()
+            os.replace(partial, target)
+            return target
+        raise RuntimeInstallError(
+            f"Download failed after {DOWNLOAD_RETRY_ATTEMPTS} attempts: {artifact['filename']}; "
+            f"last error: {last_error!r}; check network/proxy and retry installation")
     finally:
         partial.unlink(missing_ok=True)
 
