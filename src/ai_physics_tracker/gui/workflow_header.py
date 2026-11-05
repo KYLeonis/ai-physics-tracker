@@ -131,7 +131,7 @@ class WorkflowHeader(QWidget):
                 button.setText(spec.label)
                 button.setProperty("actionId", spec.action_id)
                 button.setEnabled(spec.enabled)
-                button.setToolTip(spec.reason or "")
+                button.setToolTip(spec.reason or spec.hint)
 
     def setAnalysisChip(self, state: str | None) -> None:
         self.analysisChipLabel.setText(

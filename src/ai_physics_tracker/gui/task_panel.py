@@ -573,6 +573,7 @@ class TaskPanel(QDockWidget):
             self.cardPrimaryButton.setText(primary.label)
             self.cardPrimaryButton.setVisible(True)
             self.cardPrimaryButton.setEnabled(primary.enabled)
+            self.cardPrimaryButton.setToolTip(primary.reason or primary.hint)
             if not primary.enabled and primary.reason:
                 self.cardReasonLabel.setText(primary.reason)
                 self.cardReasonLabel.show()
@@ -585,7 +586,7 @@ class TaskPanel(QDockWidget):
             button.setText(spec.label)
             button.setProperty("actionId", spec.action_id)
             button.setEnabled(spec.enabled)
-            button.setToolTip(spec.reason or "")
+            button.setToolTip(spec.reason or spec.hint)
             button.show()
         extra = card.secondary[len(secondary_buttons):]
         for button in secondary_buttons[len(card.secondary):]:

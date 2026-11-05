@@ -245,12 +245,17 @@ class WorkflowState:
 
 @dataclass(frozen=True)
 class ActionSpec:
-    """卡片动作：id + 用户语言标签 + 禁用原因（禁用必须邻接显示原因）。"""
+    """卡片动作：id + 用户语言标签 + 禁用原因（禁用必须邻接显示原因）。
+
+    hint 是面向新手的"这一步做什么、为什么"一句话；启用时作 tooltip 展示，
+    禁用时仍以 reason 优先（禁用必须邻接显示原因）。
+    """
 
     action_id: str
     label: str
     enabled: bool = True
     reason: str | None = None
+    hint: str = ""
 
 
 @dataclass(frozen=True)

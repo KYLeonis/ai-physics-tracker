@@ -1215,6 +1215,8 @@ class MainWindow(QMainWindow):
         self.calibrationGuideLabel.show()
         self.calibrationGuideLabel.updateGeometry()
         QTimer.singleShot(0, self._fitCalibrationGuideHeight)
+        # 同步镜像到视频下方状态栏：引导不能只住在右侧标定框里（验收反馈 UX-04）。
+        self.statusBar().showMessage(message)
         self._calibration_guide_action = action
         self.calibrationGuideButton.setText(action_label)
         self.calibrationGuideButton.setVisible(action is not None)

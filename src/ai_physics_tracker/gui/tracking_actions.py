@@ -14,6 +14,18 @@ from PySide6.QtCore import QObject, QTimer, Qt
 logger = logging.getLogger(__name__)
 from PySide6.QtWidgets import QMessageBox
 
+
+def visible_limitations(limitations, workspace: str):
+    """Acquire（标注/训练）阶段隐藏属于后续分析阶段的 Setup 前提，避免过早惊吓新手。
+
+    进入 Analysis 工作区后显示全部限制；其他限制（时序未授权、无采用测量等）
+    任何阶段都保留，因为它们在当前阶段就可操作。
+    """
+    items = tuple(str(item) for item in limitations)
+    if workspace == "acquire":
+        return tuple(item for item in items if not item.startswith("Setup missing: "))
+    return items
+
 from ai_physics_tracker.application.tracking_job import (
     prepare_experiment_frame_selection,
     prepare_tracking_request, run_tracking_worker, prepare_tracking_candidate,
@@ -550,7 +562,9 @@ class TrackingActions(QObject):
         else:
             window.workflowHeader.setTaskStrip("")
         window.workflowHeader.setStatus(context, trajectory_text, state.analysis.state)
-        window.workflowHeader.setLimitations(state.analysis.limitations)
+        window.workflowHeader.setLimitations(
+            visible_limitations(state.analysis.limitations,
+                                getattr(window, "_workspace", "acquire")))
 
     # --- C2：系统计划 → 显式执行（与 Advanced 同一入口与校验）---
 
