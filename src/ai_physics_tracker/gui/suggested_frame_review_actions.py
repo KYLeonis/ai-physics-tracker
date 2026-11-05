@@ -479,6 +479,7 @@ class DifficultFrameReviewActions(QObject):
                 "#ffb000",
                 source="preview",
                 frame_index=candidate.frame_index,
+                label="AI",  # UX-13a：菱形恒橙色，无文字时看不出它代表谁
             )
         )
 
@@ -580,6 +581,11 @@ class DifficultFrameReviewActions(QObject):
             self.window.seekFrame(c.frame_index)
         self._controller.set_correcting(True)
         self.window.videoView.set_annotation_mode(True)
+        # UX-14：进入修正模式需要到视频上点击——主窗口置顶并闪任务栏
+        from PySide6.QtWidgets import QApplication
+        self.window.raise_()
+        self.window.activateWindow()
+        QApplication.alert(self.window)
         self.window.statusBar().showMessage(
             f"Correct Mode: Click on video to place corrected point for Frame {c.frame_index} (Esc to cancel)"
         )

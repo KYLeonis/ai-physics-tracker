@@ -62,3 +62,26 @@ def test_auto_advance_after_four_point_completion(qtbot, tmp_path, long_video_pa
     window.autoAdvanceCheck.setChecked(True)
     window._refreshAnnotationGuide()
     assert jumps == [7]
+
+
+def test_review_prediction_marker_carries_text_label(qtbot):
+    from ai_physics_tracker.gui.video_view import MarkerView
+
+    view = VideoView()
+    qtbot.addWidget(view)
+    view.show()
+    view.setFrame(_frame())
+    view.set_review_prediction(MarkerView(30.0, 20.0, "#ffb000",
+                                          source="preview", frame_index=3, label="AI"))
+    item = view._review_prediction_item
+    texts = [c.text() for c in item.childItems()
+             if type(c).__name__ == "QGraphicsSimpleTextItem"]
+    assert texts == ["AI"]
+
+    # 无 label 的预览 marker 不显示文字
+    view.set_review_prediction(MarkerView(31.0, 21.0, "#ffb000",
+                                          source="preview", frame_index=3))
+    item = view._review_prediction_item
+    texts = [c.text() for c in item.childItems()
+             if type(c).__name__ == "QGraphicsSimpleTextItem"]
+    assert texts == []  # 无 label 的预览点不创建文字子项

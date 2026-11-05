@@ -61,6 +61,7 @@ class MarkerView:
     is_current_frame: bool = False
     source: str = "manual"
     frame_index: int | None = None
+    label: str = ""
 
 
 @dataclass(frozen=True)
@@ -590,7 +591,7 @@ class VideoView(QGraphicsView):
         # 屏幕固定大小：忽略 view transform（ItemIgnoresTransformations）。
         item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
         item.setZValue(10.0)
-        if marker.source == "manual":
+        if marker.source == "manual" or marker.label:
             # 帧号标签为 marker 子图元，跟随位置移动；文本在 _update_marker_item 刷新
             label = QGraphicsSimpleTextItem(item)
             label.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
@@ -623,7 +624,13 @@ class VideoView(QGraphicsView):
             item.setCursor(Qt.CursorShape.CrossCursor)
         for child in item.childItems():
             if isinstance(child, QGraphicsSimpleTextItem):
-                child.setText(str(marker.frame_index) if marker.frame_index is not None else "")
+                # manual 点显示帧号；带 label 的 AI 预测点显示文字标识（UX-13a）。
+                if marker.label:
+                    child.setText(marker.label)
+                elif marker.source == "manual" and marker.frame_index is not None:
+                    child.setText(str(marker.frame_index))
+                else:
+                    child.setText("")
                 # 帧号位于圆圈正上方并按文本宽度居中（用户 HR 反馈）
                 text_rect = child.boundingRect()
                 child.setPos(-text_rect.width() / 2,
