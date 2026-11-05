@@ -122,7 +122,10 @@ def start_python_process(argv: list[str], *, env: dict[str, str], log: IO[bytes]
                 raise ExternalWorkerError("Could not reset frozen DLL search path")
         try:
             return subprocess.Popen(argv, stdout=log, stderr=subprocess.STDOUT, env=env,
-                                    shell=False, start_new_session=os.name == "posix")
+                                    shell=False, start_new_session=os.name == "posix",
+                                    # GUI host 无控制台；不给 CREATE_NO_WINDOW 时 Windows 会为
+                                    # python.exe 弹出一个空白黑窗，用户误关即杀死后台任务。
+                                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         finally:
             if dll is not None and not dll.SetDllDirectoryW(previous):
                 logger.error("Could not restore frozen DLL search path")

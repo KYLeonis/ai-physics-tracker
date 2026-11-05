@@ -537,3 +537,23 @@ def test_probe_does_not_accept_dropped_frame_with_one_tick_strict_tolerance(
     report = FFprobeTimingProbe(executable=Path("ffprobe")).probe(video_path)
 
     assert report.status == "vfr_suspected"
+
+
+def test_ffprobe_subprocess_suppresses_console_window_on_windows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import os
+
+    if os.name != "nt":
+        pytest.skip("Windows-specific console suppression")
+    video_path = tmp_path / "video.fake"
+    video_path.touch()
+    captured: dict = {}
+
+    def recording_popen(command, **kwargs):
+        captured.update(kwargs)
+        return _CompletedProcess("", "", 0)
+
+    monkeypatch.setattr(ffprobe_timing.subprocess, "Popen", recording_popen)
+    FFprobeTimingProbe(executable=Path("ffprobe")).probe(video_path)
+    assert captured.get("creationflags", 0) & subprocess.CREATE_NO_WINDOW
