@@ -65,3 +65,24 @@ def test_calibration_guide_mirrors_to_status_bar(qtbot, synthetic_video_path):
     window._setCalibrationGuide("Frame 3: click the body_top (1/4 done)")
     assert window.statusBar().currentMessage() == "Frame 3: click the body_top (1/4 done)"
     assert window.calibrationGuideLabel.text() == "Frame 3: click the body_top (1/4 done)"
+
+
+def test_activity_progress_shows_counter_and_percent(qtbot):
+    from ai_physics_tracker.gui.task_panel import TaskPanel
+
+    panel = TaskPanel()
+    qtbot.addWidget(panel)
+    panel.setActivity("Training", 4, 50, 0.0134, 0.001, unit="epoch")
+    assert panel.stageLabel.text() == "Training · epoch 4/50 · 8%"
+    assert panel.progressBar.maximum() == 50 and panel.progressBar.value() == 4
+    assert "loss" in panel.metricsLabel.text()
+
+    panel.setActivity("Inference", 120, 200, unit="frame")
+    assert panel.stageLabel.text() == "Inference · frame 120/200 · 60%"
+
+    panel.setActivity("Training")
+    assert panel.stageLabel.text() == "Training"
+    assert panel.progressBar.format() == "Working…"
+
+    panel.setActivity("Completed")
+    assert panel.progressBar.value() == 1 and panel.progressBar.maximum() == 1

@@ -1232,8 +1232,11 @@ class TrackingActions(QObject):
             if message.run_id != self._request.run.run_id:
                 continue
             if isinstance(message, TaskProgress):
-                self.panel.setActivity("Training" if self._request.run.task_type == "train" else "Inference",
-                    message.step, message.total_steps, message.loss, message.learning_rate)
+                is_train = self._request.run.task_type == "train"
+                # 训练的 step/total 来自 DLC 的 "Epoch e/E" 行；推理则为帧号。
+                self.panel.setActivity("Training" if is_train else "Inference",
+                    message.step, message.total_steps, message.loss, message.learning_rate,
+                    unit="epoch" if is_train else "frame")
             elif isinstance(message, TaskLog):
                 if self._log_run_id == message.run_id:
                     self.panel.appendLog(message.message)

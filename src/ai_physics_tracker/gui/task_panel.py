@@ -722,20 +722,32 @@ class TaskPanel(QDockWidget):
         total: int | None = None,
         loss: float | None = None,
         learning_rate: float | None = None,
+        unit: str = "",
     ) -> None:
-        """显示任务阶段、可选进度及训练指标；未知分母使用忙碌条。"""
+        """显示任务阶段、可选进度及训练指标；未知分母使用忙碌条。
 
-        self.stageLabel.setText(stage.strip() or "Working")
+        UX-12：进度计数直接并入状态行（如 "Training · epoch 4/50 · 8%"），
+        未知总量时进度条文字显示 Working… 而不是无意义的百分比。
+        """
+
+        base = stage.strip() or "Working"
         self.progressBar.setFormat("%p%")
         if step is not None and total is not None and total > 0:
+            step = max(0, min(step, total))
+            pct = int(round(100 * step / total))
+            counter = f"{unit} " if unit else ""
+            self.stageLabel.setText(f"{base} · {counter}{step}/{total} · {pct}%")
             self.progressBar.setRange(0, total)
-            self.progressBar.setValue(max(0, min(step, total)))
+            self.progressBar.setValue(step)
         elif stage in {"Idle", "Completed", "Cancelled"} or stage.startswith(("Failed", "Cannot start", "Discarded")):
+            self.stageLabel.setText(base)
             self.progressBar.setRange(0, 1)
             self.progressBar.setValue(1 if stage == "Completed" else 0)
         else:
+            self.stageLabel.setText(base)
             self.progressBar.setRange(*_UNKNOWN_PROGRESS)
             self.progressBar.setValue(0)
+            self.progressBar.setFormat("Working…")
 
         metrics = []
         if loss is not None:
