@@ -238,7 +238,9 @@ def download_artifact(artifact: dict, cache: Path, cancel: Event,
 def _stop_process(process: subprocess.Popen) -> None:
     if os.name == "nt":
         outcome = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                                 capture_output=True, timeout=10)
+                                 capture_output=True, timeout=10,
+                                 # taskkill.exe 是控制台程序；不加标志取消安装时会闪黑窗（UX-02）。
+                                 creationflags=subprocess.CREATE_NO_WINDOW)
         if outcome.returncode and process.poll() is None:
             raise RuntimeInstallError("Could not cancel installer process tree")
     else:

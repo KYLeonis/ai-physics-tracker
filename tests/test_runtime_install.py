@@ -418,3 +418,34 @@ def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path)
     assert result != stale and result.is_file()
     pointer = (tmp_path / runtime.POINTER_RELATIVE).read_text(encoding="utf-8").strip()
     assert pointer == str(result)
+
+
+def test_taskkill_cleanup_runs_without_console_window(monkeypatch):
+    import os
+    import subprocess
+
+    if os.name != "nt":
+        pytest.skip("Windows-specific console suppression")
+    captured = {}
+
+    class _FakeRun:
+        returncode = 0
+
+    class _FakeProcess:
+        pid = 4242
+
+        def poll(self):
+            return None
+
+        def wait(self, timeout=None):
+            return 0
+
+    def fake_run(argv, **kwargs):
+        captured["argv"] = argv
+        captured.update(kwargs)
+        return _FakeRun()
+
+    monkeypatch.setattr(runtime.subprocess, "run", fake_run)
+    runtime._stop_process(_FakeProcess())
+    assert captured["argv"][0] == "taskkill"
+    assert captured.get("creationflags", 0) & subprocess.CREATE_NO_WINDOW

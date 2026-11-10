@@ -440,6 +440,8 @@ class ExternalJobHandle:
                     ["taskkill", "/PID", str(self._process.pid), "/T", "/F"],
                     capture_output=True,
                     check=False,
+                    # taskkill.exe 是控制台程序；不加标志取消/清理时会闪黑窗（UX-02）。
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                 )
                 logger.info(
                     "taskkill pid=%s returncode=%s stdout=%r stderr=%r",
