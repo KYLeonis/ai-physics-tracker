@@ -17,6 +17,8 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 最新范围：P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。收尾进度与下一步以`publication/STATUS.md`为准。
 
+2026-11-11 Windows跟进：第二作者10个适配提交位于`codex/windows-followup`（154f262→6a7a031），双方远程main同为7abd517；新分支Windows CI FAIL，环境复用/快捷键等F1–F4须先修复，实机门禁仍待验。见[审查与同步说明](publication/windows-coauthor-review-and-sync.md)。本轮仅审查/文档，未合并代码；不整分支合入main，不改历史验证结果。
+
 | 阶段 | 名称 | 一句话目标 |
 | --- | --- | --- |
 | Phase 0 | Project Initialization | 仓库、文档、Git 初始化（✅ 已完成） |

@@ -9,6 +9,8 @@ source/tag/CI/assets, independent review and public-download checksum readback.
 This is a Mac prerelease, not completion of all Windows/student/production gates.
 Historical spike evidence below remains unchanged.
 
+2026-11-11 Windows follow-up：[第二作者适配审查与当前验证矩阵](../../windows-coauthor-review-and-sync.md)。`6a7a031` Windows CI **FAIL**（1495 passed / 2 failed / 6 skipped / 1 xfailed），Mac job cancelled；实机G1–G5/CUDA仍待验。以下矩阵与`results.json`保留2026-09-20原始探针结果，不用新代码或mock断言倒填PASS。
+
 ## Environment inventory
 
 Host：Mac arm64。EJP无.venv；system Python3.14不属于产品支持范围。外置worker复用主仓库已有Python3.12.13 venv，DLC3.0.1、torch2.13.0、torchvision0.28.0；PySide6 6.11.2、OpenCV4.11.0.86、NumPy1.26.4、SciPy1.17.1、Pandas2.3.3。仅作为本机已测试组合，不直接宣称Windows同版本可安装或全DLC功能兼容。

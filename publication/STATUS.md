@@ -1,11 +1,31 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-31（第二作者素材交接；产品发行状态不变）。
+- 最后更新：2026-11-11（第二作者 Windows 适配审查与同步方案；未合并产品代码）。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
+## 当前工作：第二作者 Windows 适配审查 — 2026-11-11
+
+- [修改清单、审查问题、验证矩阵与 main 同步步骤](windows-coauthor-review-and-sync.md)。
+  用户确认按仓库证据更新，未验证项保留待验。双方远程 main 同为 `7abd517`；第二作者
+  实际增量在 `codex/windows-followup`，从交接基线 `154f262` 到 `6a7a031` 共10提交、21文件。
+- 新增安装下载重试/续传、ready环境复用、Windows黑窗抑制与标注/进度体验改进。
+  新分支 [Windows CI42848090521](https://github.com/stianyu798-arch/ai-physics-tracker/actions/runs/42848090521)
+  **FAIL：1495 passed / 2 failed / 6 skipped / 1 xfailed**；同源Mac job cancelled。
+  本机8个改动测试文件151pass/2fail/3skip，另复现既有两项失败；ready环境复用探针也失败。
+- 必修F1旧selftest目录导致复用失败、F2重复A快捷键、F3进度旧断言、F4两项新增测试不适配Mac。
+  Windows G1–G5/CUDA/GUI HR/教师导入/跨平台重开/完整导出恢复仍待验；不改历史结果为PASS。
+- Publication Context：目标为审查外部增量及可执行同步方案；source为上述固定SHA；
+  科学profile/golden/ADR-0020、工程与worker合同不变；证据为完整diff、原生CI日志、定向回归
+  与临时目录探针；本轮不改源码、不合并、不打包、不启动训练或新发行。文档工作不新增HR门禁。
+- **Next Recommended Action**：在独立工作目录先修F1–F4，按报告拆分main通用与论文专属补丁；
+  通用修复先在当前main适配验证，再受控同步论文线。最终源码双平台CI/必要独立审查与真人HR
+  通过后再集成；Windows实机证据逐项补齐。当前发行分支仍不集成，v0.1.0保持原样。
+
 ## 第二作者素材交接 — 2026-10-31
+
+以下为交接时点记录；当前结论及下一步以上方2026-11-11审查为准。
 
 - 仓库外 `~/Documents/APT_Coauthor_20261031/` 按用户追加要求精简为约2.53GB：
   仅保留P011/P013/P015/V001/V002五段约65°原片及3快速素材，删除其余24原片和
