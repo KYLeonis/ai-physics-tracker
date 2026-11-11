@@ -2,6 +2,8 @@
 
 > 2026-11-11：第二作者Windows适配审查完成，[报告与main同步步骤](../../publication/windows-coauthor-review-and-sync.md)。双方远程main同为7abd517；10个新增提交在论文基线上的codex/windows-followup。新分支Windows CI为FAIL，已复现环境复用与快捷键问题；未验实机项目继续待验。下一步先修F1–F4，再拆分通用/论文补丁验证集成。本轮仅文档；以下main状态为历史快照，不覆盖远程main实际进度。
 
+> 双作者联动建议已补入上述报告第8节：同一主仓库、任务分支与PR接力，逐项记录修复SHA/验证/Windows复测。尚无源码修复提交；未配置协作者权限或发送通知。
+
 > 2026-10-31：第二作者开发/Windows测试交接包已按用户追加要求精简至约2.53GB，仅附5段约65°代表原片和3短片，位于 `~/Documents/APT_Coauthor_20261031/`；素材与校验详见[交接记录](../../publication/coauthor-handoff.md)。下一步由第二作者按包内任务单完成CPU/教师导入/跨平台重开，再补CUDA与干净机器证据。实机门禁状态不变，通用main历史停点不变。
 
 # Current Status
