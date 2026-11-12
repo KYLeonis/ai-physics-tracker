@@ -21,6 +21,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
+from ai_physics_tracker.infrastructure.errors import ExternalWorkerError
 from ai_physics_tracker.infrastructure.external_worker import ExternalWorkerRunner, build_request
 
 
@@ -348,12 +349,13 @@ def _reusable_install(installs: Path, data_root: Path, profile: dict, digest: st
             versions = {a["name"]: a["version"] for a in profile["packages"]
                         if a["name"] in {"torch", "torchvision", "deeplabcut", "numpy"}}
             device = "cuda" if profile["id"].endswith("-cuda") else "cpu" if profile["system"] == "Windows" else "auto"
-            result = verify_runtime(executable, folder / "selftest", package_root, cancel,
+            # 保留安装时和历次复验的证据，worker 拒绝复用非空 job 目录。
+            result = verify_runtime(executable, folder / f"selftest-reuse-{uuid4().hex}", package_root, cancel,
                                     device=device, expected_versions=versions)
         except CancelledError:
             raise
-        except RuntimeInstallError:
-            report(RuntimeProgress("Re-verifying", f"{folder.name} unusable; installing a fresh environment"))
+        except (RuntimeInstallError, ExternalWorkerError, OSError) as error:
+            report(RuntimeProgress("Re-verifying", f"{folder.name} unusable ({error}); installing a fresh environment"))
             continue
         publish_runtime(data_root, executable, {**state, "selftest": result, "reused": True}, cancel)
         return executable

@@ -3,6 +3,7 @@
 from concurrent.futures import CancelledError
 import hashlib
 import io
+import json
 from pathlib import Path
 import re
 import tarfile
@@ -11,6 +12,7 @@ from threading import Event
 import pytest
 
 from ai_physics_tracker.infrastructure import runtime_install as runtime
+from ai_physics_tracker.infrastructure.errors import ExternalWorkerError
 
 
 def artifact(data=b"python bytes"):
@@ -347,22 +349,28 @@ def test_cancel_during_backoff_aborts_without_further_attempts(monkeypatch, tmp_
 
 
 def _write_ready_install(root, profile):
-    import hashlib
-    import json
     digest = hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest()
     folder = root / "runtimes" / "installs" / (profile["id"] + "-ready01")
-    python = folder / "environment" / "Scripts" / "python.exe"
+    python = folder / ("environment/Scripts/python.exe" if runtime.os.name == "nt" else "environment/bin/python")
     python.parent.mkdir(parents=True)
     python.write_bytes(b"stub")
+    (folder / "selftest").mkdir()
+    (folder / "selftest" / "request.json").write_text("{}\n", encoding="utf-8")
     runtime.atomic_json(folder / "install-state.json",
                         {"status": "ready", "manifest_sha256": digest,
                          "opencv_replacements": {}, "executable": str(python)})
     return python
 
 
-def test_install_reuses_verified_ready_install_without_reinstall(monkeypatch, tmp_path):
-    profile = {"id": "windows-x64-cpu", "system": "Windows", "machines": ["amd64"],
-               "min_os_version": "10.0", "python": artifact(), "packages": []}
+@pytest.fixture
+def install_profile():
+    return {"id": "test-cpu", "system": runtime.platform.system(),
+            "machines": [runtime.platform.machine().lower()], "min_os_version": "14.0",
+            "python": artifact(), "packages": []}
+
+
+def test_install_reuses_verified_ready_install_without_reinstall(monkeypatch, tmp_path, install_profile):
+    profile = install_profile
     python = _write_ready_install(tmp_path, profile)
     pointer = tmp_path / runtime.POINTER_RELATIVE
     pointer.parent.mkdir(parents=True, exist_ok=True)
@@ -386,9 +394,11 @@ def test_install_reuses_verified_ready_install_without_reinstall(monkeypatch, tm
     assert any(p.stage == "Re-verifying" for p in progress)
 
 
-def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path):
-    profile = {"id": "windows-x64-cpu", "system": "Windows", "machines": ["amd64"],
-               "min_os_version": "10.0", "python": artifact(), "packages": []}
+@pytest.mark.parametrize("failure", [runtime.RuntimeInstallError("interpreter corrupted"),
+                                     ExternalWorkerError("invalid worker result"),
+                                     OSError("interpreter cannot start")])
+def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path, install_profile, failure):
+    profile = install_profile
     stale = _write_ready_install(tmp_path, profile)
     downloaded = []
 
@@ -401,13 +411,14 @@ def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path)
     def verify(python, *args, **kwargs):
         verify_calls.append(python)
         if len(verify_calls) == 1:
-            raise runtime.RuntimeInstallError("interpreter corrupted")
+            raise failure
         return {"status": "success", "executable": str(python), "python": "3.12.15", "versions": {}}
 
     def fake_extract(archive, destination, *a):
-        scripts = destination / "environment" / "Scripts"
-        scripts.mkdir(parents=True, exist_ok=True)
-        (scripts / "python.exe").write_bytes(b"stub")
+        relative = "environment/Scripts/python.exe" if runtime.os.name == "nt" else "environment/bin/python"
+        python = destination / relative
+        python.parent.mkdir(parents=True, exist_ok=True)
+        python.write_bytes(b"stub")
 
     monkeypatch.setattr(runtime, "download_artifact", record_download)
     monkeypatch.setattr(runtime, "extract_python", fake_extract)
@@ -418,6 +429,69 @@ def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path)
     assert result != stale and result.is_file()
     pointer = (tmp_path / runtime.POINTER_RELATIVE).read_text(encoding="utf-8").strip()
     assert pointer == str(result)
+
+
+def test_repeated_reuse_keeps_old_selftest_and_uses_exclusive_worker_jobs(monkeypatch, tmp_path, install_profile):
+    from ai_physics_tracker.infrastructure import external_worker
+
+    python = _write_ready_install(tmp_path, install_profile)
+    folder = python.parent.parent.parent
+    old_request = folder / "selftest" / "request.json"
+    jobs = []
+
+    class ExitedProcess:
+        returncode = 0
+
+        def poll(self):
+            return self.returncode
+
+        def wait(self, timeout=None):
+            return self.returncode
+
+    def start(argv, **kwargs):
+        request = Path(argv[-1])
+        assert request.is_file()
+        jobs.append(request.parent)
+        return ExitedProcess()
+
+    def read_result(handle):
+        handle.join()
+        return {"status": "success", "executable": str(python), "python": "3.12.15", "versions": {}}
+
+    # 保留真实 verify_runtime 与 runner 的目录/请求检查，只替换 AI 子进程及其输出。
+    monkeypatch.setattr(external_worker, "start_python_process", start)
+    monkeypatch.setattr(external_worker.ExternalJobHandle, "read_result", read_result)
+    monkeypatch.setattr(runtime, "download_artifact", lambda *a: pytest.fail("reusable environment reinstalled"))
+    for _ in range(2):
+        assert runtime.install_runtime(tmp_path, install_profile, None, runtime.RuntimeCancellation(), lambda p: None) == python
+    assert len(jobs) == len(set(jobs)) == 2
+    assert all(job.parent == folder and job != old_request.parent for job in jobs)
+    assert old_request.read_text(encoding="utf-8") == "{}\n"
+
+
+@pytest.mark.parametrize("failure", [CancelledError(), ExternalWorkerError("invalid worker result")])
+def test_failed_reuse_and_fallback_preserve_pointer_and_release_lock(monkeypatch, tmp_path, install_profile, failure):
+    python = _write_ready_install(tmp_path, install_profile)
+    pointer = tmp_path / runtime.POINTER_RELATIVE
+    pointer.write_text("old runtime\n", encoding="utf-8")
+
+    def reject(*args, **kwargs):
+        raise failure
+
+    def download(*args, **kwargs):
+        if isinstance(failure, CancelledError):
+            pytest.fail("cancelled reuse started a fresh installation")
+        raise runtime.RuntimeInstallError("fresh install failed")
+
+    monkeypatch.setattr(runtime, "verify_runtime", reject)
+    monkeypatch.setattr(runtime, "download_artifact", download)
+    expected = CancelledError if isinstance(failure, CancelledError) else runtime.RuntimeInstallError
+    message = None if expected is CancelledError else "fresh install failed"
+    for _ in range(2):
+        with pytest.raises(expected, match=message):
+            runtime.install_runtime(tmp_path, install_profile, None, runtime.RuntimeCancellation(), lambda p: None)
+        assert pointer.read_text(encoding="utf-8") == "old runtime\n"
+        assert python.is_file()
 
 
 def test_taskkill_cleanup_runs_without_console_window(monkeypatch):
