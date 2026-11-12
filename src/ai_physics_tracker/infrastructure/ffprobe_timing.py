@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import shutil
 import subprocess
 import time
@@ -168,6 +169,8 @@ class FFprobeTimingProbe:
                 encoding="utf-8",
                 errors="replace",
                 shell=False,
+                # 输出已走管道；不加该标志 Windows 会为 ffprobe.exe 闪出空白控制台窗口。
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
         except (OSError, ValueError) as error:
             logger.warning("could not start ffprobe command=%s: %s", command, error)

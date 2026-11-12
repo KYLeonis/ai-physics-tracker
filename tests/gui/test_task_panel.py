@@ -86,7 +86,7 @@ def test_activity_progress_unknown_state_and_bounded_log(qtbot: QtBot) -> None:
     panel = _panel(qtbot)
 
     panel.setActivity("Training", step=3, total=10, loss=0.125, learning_rate=0.001)
-    assert panel.stageLabel.text() == "Training"
+    assert panel.stageLabel.text() == "Training · 3/10 · 30%"
     assert panel.progressBar.maximum() == 10
     assert panel.progressBar.value() == 3
     assert "loss=0.125" in panel.metricsLabel.text()

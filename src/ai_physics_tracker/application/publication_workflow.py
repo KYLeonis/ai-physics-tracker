@@ -105,14 +105,21 @@ def publication_task_card(session: ProjectSession, experiment: PendulumExperimen
     has_frames = bool(experiment.frame_set and experiment.frame_set.frames)
     train_reason = blocked or ("Label at least two complete four-point frames first" if len(joined.complete) < 2 else None)
     steps = (
-        ActionSpec("pick_landmark_frames", f"1 · Recommend {INITIAL_LANDMARK_FRAME_COUNT} frames", not blocked, blocked),
+        ActionSpec("pick_landmark_frames", f"1 · Recommend {INITIAL_LANDMARK_FRAME_COUNT} frames", not blocked, blocked,
+                   hint="Pick the most informative frames once, so you label few frames yet cover the whole swing."),
         ActionSpec("guided_marking", "2 · Label recommended frames", has_frames and not blocked,
-                   blocked or (None if has_frames else "Recommend frames first")),
-        ActionSpec("train_current_labels", "3 · Train / retrain with current labels", not train_reason, train_reason),
+                   blocked or (None if has_frames else "Recommend frames first"),
+                   hint="Teach by example: on each recommended frame click the four points in the prompted order "
+                        "(tip, body_top, body_bottom, pivot). The model learns from your clicks."),
+        ActionSpec("train_current_labels", "3 · Train / retrain with current labels", not train_reason, train_reason,
+                   hint="The AI learns your labels. A short run (epochs=1, CPU) only checks the pipeline; "
+                        "longer training gives better accuracy."),
         ActionSpec("run_joint_inference", "4 · Verify & run inference", bool(models) and not blocked,
-                   blocked or (None if models else "Train or import a teacher model first")),
+                   blocked or (None if models else "Train or import a teacher model first"),
+                   hint="The trained model marks every frame by itself and produces a candidate trajectory for review."),
         ActionSpec("review_joint_candidate", "5 · Mine difficult frames / choose a batch", infer is not None and not blocked,
-                   blocked or (None if infer else "Run inference first")),
+                   blocked or (None if infer else "Run inference first"),
+                   hint="Compare AI points with yours on the hardest frames; your corrections feed the next training round."),
     )
     changed = train is not None and train.config.get("label_digest") != canonical_label_digest(joined)
     trained_models = {str(m.model_id) for m in models if train is not None and m.source_train_run_id == train.run_id}

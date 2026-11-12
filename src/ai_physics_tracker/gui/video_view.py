@@ -61,6 +61,7 @@ class MarkerView:
     is_current_frame: bool = False
     source: str = "manual"
     frame_index: int | None = None
+    label: str = ""
 
 
 @dataclass(frozen=True)
@@ -123,6 +124,18 @@ class VideoView(QGraphicsView):
         self._is_vertical_dragging = False
         self._annotation_mode = False
         self._fit_pending = True
+        # UX-08：全幅细准线（"无限长"十字），标注/两点拾取时随鼠标移动。
+        # 0 宽 pen 即 cosmetic：任意缩放下恒为 1 物理像素。
+        self._crosshair_v = QGraphicsLineItem()
+        self._crosshair_h = QGraphicsLineItem()
+        guide_pen = QPen(QColor(255, 225, 77, 200))
+        guide_pen.setWidthF(0.0)
+        for guide_line in (self._crosshair_v, self._crosshair_h):
+            guide_line.setPen(guide_pen)
+            guide_line.setZValue(5.0)  # 视频之上、标注 marker（z=10）之下
+            guide_line.hide()
+            self._scene.addItem(guide_line)
+        self.viewport().setMouseTracking(True)
         self.setMinimumSize(240, 160)
         self.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
@@ -388,6 +401,9 @@ class VideoView(QGraphicsView):
         """
 
         self._annotation_mode = enabled
+        if not enabled:
+            self._crosshair_v.hide()
+            self._crosshair_h.hide()
         if enabled:
             self._calibration_mode = None
             self._clear_scale_preview()
@@ -575,7 +591,7 @@ class VideoView(QGraphicsView):
         # 屏幕固定大小：忽略 view transform（ItemIgnoresTransformations）。
         item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
         item.setZValue(10.0)
-        if marker.source == "manual":
+        if marker.source == "manual" or marker.label:
             # 帧号标签为 marker 子图元，跟随位置移动；文本在 _update_marker_item 刷新
             label = QGraphicsSimpleTextItem(item)
             label.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
@@ -608,7 +624,13 @@ class VideoView(QGraphicsView):
             item.setCursor(Qt.CursorShape.CrossCursor)
         for child in item.childItems():
             if isinstance(child, QGraphicsSimpleTextItem):
-                child.setText(str(marker.frame_index) if marker.frame_index is not None else "")
+                # manual 点显示帧号；带 label 的 AI 预测点显示文字标识（UX-13a）。
+                if marker.label:
+                    child.setText(marker.label)
+                elif marker.source == "manual" and marker.frame_index is not None:
+                    child.setText(str(marker.frame_index))
+                else:
+                    child.setText("")
                 # 帧号位于圆圈正上方并按文本宽度居中（用户 HR 反馈）
                 text_rect = child.boundingRect()
                 child.setPos(-text_rect.width() / 2,
@@ -935,7 +957,31 @@ class VideoView(QGraphicsView):
                 return
         super().mousePressEvent(event)
 
+    def _update_crosshair(self, view_pos: QPoint) -> None:
+        """标注/拾取模式下显示贯穿整幅画面的 1px 准线；离开画面或关闭模式即隐藏。"""
+        active = self._annotation_mode or self._calibration_mode is not None
+        if not active or self._pixmap_item is None:
+            self._crosshair_v.hide()
+            self._crosshair_h.hide()
+            return
+        scene_pos = self.mapToScene(view_pos)
+        rect = self._pixmap_item.boundingRect()
+        if not rect.contains(scene_pos):
+            self._crosshair_v.hide()
+            self._crosshair_h.hide()
+            return
+        self._crosshair_v.setLine(scene_pos.x(), rect.top(), scene_pos.x(), rect.bottom())
+        self._crosshair_h.setLine(rect.left(), scene_pos.y(), rect.right(), scene_pos.y())
+        self._crosshair_v.show()
+        self._crosshair_h.show()
+
+    def leaveEvent(self, event: QEvent) -> None:
+        self._crosshair_v.hide()
+        self._crosshair_h.hide()
+        super().leaveEvent(event)
+
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        self._update_crosshair(event.position().toPoint())
         if self._calibration_mode == "scale" and self._scale_draw_start is not None:
             scene_pos = self.mapToScene(event.position().toPoint())
             self._update_scale_preview(self._scale_draw_start, (scene_pos.x(), scene_pos.y()))

@@ -1,11 +1,23 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-11-11（第二作者 Windows 适配审查与同步方案；未合并产品代码）。
+- 最后更新：2026-11-12（PR #46修复、独立复审及双平台tests CI通过；PR未合并）。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
-## 当前工作：第二作者 Windows 适配审查 — 2026-11-11
+## Current work / Agent handoff — Windows F1–F4 repair
+
+- Status: **ready_for_native_retest**；本轮实现完成，分支写入已交还；原10提交与审查历史保留。
+- 工作目录 `/Users/leonis/Documents/ai-physics-tracker-windows-followup`，分支 `codex/windows-followup`，起点 `6a7a031`。
+- [执行计划与验证](plans/windows-followup-repair.md)；[PR #46协作评论](https://github.com/KYLeonis/ai-physics-tracker/pull/46#issuecomment-6822430107)。其他Agent先读最新PR评论与本入口，再更新分支，勿继续从旧6a7a031开发。
+- 修复：F2/F3=`4bd0d41`；F1/F4=`dfe301b`；独立审查清理失败边界=`079baf6`。最终产品源码`079baf6b3edd42d97c59912b9f2db4c7903ebae5`；后续仅文档同步。
+- 验证：本机全量1509passed/3Windows专项skip/1既有strictxfail，9subtests；[独立R2修改后通过](../docs/reviews/windows-followup-repair-review.md)；[同源CI43210994098](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43210994098)双平台success：Mac1505pass/7skip/1xfail，Windows1506pass/6skip/1xfail。
+- `9876f58`仅将目标分支既有审查/交接文档同步到工作分支并解决STATUS冲突，未把PR合入目标/main。最终代码没有新依赖/算法/schema或跳过策略变更。
+- Next Recommended Action：第二作者Agent从主仓库拉取本分支并读取交接表，基于已验证源码准备Windows候选，补原生复用/Repair、A/S/C与方向键等复测及日志；main通用补丁另按同步报告开任务。未合并PR、未发布；Windows实机/CUDA/GUI HR不因CI通过自动关闭。
+
+## 审查历史：第二作者 Windows 适配审查 — 2026-11-11
+
+以下为修复前证据；当前进度以上方Agent handoff为准。
 
 - [修改清单、审查问题、验证矩阵与 main 同步步骤](windows-coauthor-review-and-sync.md)。
   用户确认按仓库证据更新，未验证项保留待验。双方远程 main 同为 `7abd517`；第二作者

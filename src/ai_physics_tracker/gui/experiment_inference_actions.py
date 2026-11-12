@@ -657,6 +657,9 @@ class ExperimentInferenceActions(QObject):
         # 窗口(click-through 默认关闭)——主动激活主窗口,视频立即可点
         self.window.raise_()
         self.window.activateWindow()
+        # UX-14：Windows 下再闪任务栏，用户注意力才能从审核对话框回到视频
+        from PySide6.QtWidgets import QApplication
+        QApplication.alert(self.window)
         self.window.statusBar().showMessage(
             f"Correct mode: click the '{role}' position in the video for "
             f"frame {self._review_current} (Esc to stop)")
@@ -802,6 +805,8 @@ class ExperimentInferenceActions(QObject):
             self._continue_relabeling()
             self.window.raise_()
             self.window.activateWindow()
+            from PySide6.QtWidgets import QApplication
+            QApplication.alert(self.window)
             return
         frames = self._dialog.checkedFrames()
         if not frames:

@@ -10,15 +10,18 @@ import platform
 import re
 import shutil
 import signal
+import ssl
 import subprocess
 import tarfile
 from threading import Event, Lock
 import time
 from typing import Callable
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
+from ai_physics_tracker.infrastructure.errors import ExternalWorkerError
 from ai_physics_tracker.infrastructure.external_worker import ExternalWorkerRunner, build_request
 
 
@@ -58,6 +61,9 @@ class RuntimeProgress:
 TRUSTED_DOWNLOAD_HOSTS = frozenset({
     "github.com", "files.pythonhosted.org", "download.pytorch.org", "download-r2.pytorch.org",
 })
+# 代理/无线网络常见间歇性 TLS 中断：单包内自动重试并断点续传，避免整轮安装重来。
+DOWNLOAD_RETRY_ATTEMPTS = 5
+DOWNLOAD_RETRY_BACKOFF_S = (1.0, 2.0, 4.0, 8.0)
 MAX_EXTRACT_BYTES = 1024 * 1024 * 1024
 MAX_EXTRACT_FILES = 30000
 POINTER_RELATIVE = Path("runtimes/active.txt")
@@ -145,6 +151,48 @@ def extract_python(archive: Path, destination: Path, cancel: Event) -> None:
             stream.extract(member, destination, filter="data")
 
 
+def _is_transient_download_error(error: BaseException) -> bool:
+    """仅重试网络/代理层的间歇性故障；清单、校验、本地磁盘与 4xx 类错误立即失败。"""
+    if isinstance(error, (CancelledError, RuntimeInstallError)):
+        return False
+    if isinstance(error, HTTPError):
+        return error.code is not None and error.code >= 500
+    if isinstance(error, URLError):
+        reason = error.reason
+        if isinstance(reason, HTTPError):
+            return reason.code is not None and reason.code >= 500
+        return isinstance(reason, OSError)
+    # TimeoutError/ConnectionError/ssl.SSLError 覆盖读超时、连接复位与握手中断。
+    return isinstance(error, (TimeoutError, ConnectionError, ssl.SSLError))
+
+
+def _copy_download_stream(artifact: dict, partial: Path, resume_from: int, headers: dict,
+                          cancel: Event, report: Callable[[RuntimeProgress], None]) -> int:
+    """单次下载尝试：按服务器对 Range 的实际应答续传或整文件重下，返回累计字节数。"""
+    with urlopen(Request(artifact["url"], headers=headers), timeout=15) as source:
+        if urlsplit(source.geturl()).scheme != "https":
+            raise RuntimeInstallError("Runtime download redirected away from HTTPS")
+        mode, size = "wb", 0
+        if resume_from and getattr(source, "status", 200) == 206:
+            content_range = source.headers.get("Content-Range", "")
+            match = re.match(r"bytes (\d+)-", content_range)
+            if match and int(match.group(1)) == resume_from:
+                mode, size = "ab", resume_from
+        if resume_from and mode == "wb":
+            report(RuntimeProgress("Downloading", f"{artifact['filename']} (server ignored resume; restarting)",
+                                   0, artifact["size"]))
+        with partial.open(mode) as output:
+            while block := source.read(256 * 1024):
+                if cancel.is_set():
+                    raise CancelledError()
+                size += len(block)
+                if size > artifact["size"]:
+                    raise RuntimeInstallError("Runtime download is larger than its manifest")
+                output.write(block)
+                report(RuntimeProgress("Downloading", artifact["filename"], size, artifact["size"]))
+    return size
+
+
 def download_artifact(artifact: dict, cache: Path, cancel: Event,
                       report: Callable[[RuntimeProgress], None]) -> Path:
     validate_artifact(artifact)
@@ -152,27 +200,38 @@ def download_artifact(artifact: dict, cache: Path, cancel: Event,
     if target.is_file() and target.stat().st_size == artifact["size"] and sha256_file(target) == artifact["sha256"]:
         return target
     partial = target.with_name(target.name + ".part")
-    # 不复用未验证的部分下载；重试会使用已经验证的其他缓存文件。
+    # 跨调用仍不复用未验证的部分下载；单次调用内的重试经 Range 断点续传。
+    last_error: BaseException | None = None
     try:
-        with urlopen(Request(artifact["url"], headers={"User-Agent": "AI-Physics-Tracker/0.1"}), timeout=15) as source:
-            if urlsplit(source.geturl()).scheme != "https":
-                raise RuntimeInstallError("Runtime download redirected away from HTTPS")
-            with partial.open("wb") as output:
-                size = 0
-                while block := source.read(256 * 1024):
-                    if cancel.is_set():
-                        raise CancelledError()
-                    size += len(block)
-                    if size > artifact["size"]:
-                        raise RuntimeInstallError("Runtime download is larger than its manifest")
-                    output.write(block)
-                    report(RuntimeProgress("Downloading", artifact["filename"], size, artifact["size"]))
-        if size != artifact["size"] or sha256_file(partial) != artifact["sha256"]:
-            raise RuntimeInstallError(f"Incomplete download or SHA256 mismatch: {artifact['filename']}; retry installation")
-        if cancel.is_set():
-            raise CancelledError()
-        os.replace(partial, target)
-        return target
+        for attempt in range(1, DOWNLOAD_RETRY_ATTEMPTS + 1):
+            resume_from = partial.stat().st_size if partial.is_file() else 0
+            headers = {"User-Agent": "AI-Physics-Tracker/0.1"}
+            if resume_from:
+                headers["Range"] = f"bytes={resume_from}-"
+            try:
+                size = _copy_download_stream(artifact, partial, resume_from, headers, cancel, report)
+            except Exception as error:
+                if not _is_transient_download_error(error):
+                    raise
+                last_error = error
+                if attempt >= DOWNLOAD_RETRY_ATTEMPTS or cancel.is_set():
+                    break
+                backoff_s = DOWNLOAD_RETRY_BACKOFF_S[min(attempt - 1, len(DOWNLOAD_RETRY_BACKOFF_S) - 1)]
+                report(RuntimeProgress("Retrying download",
+                                       f"{artifact['filename']} (attempt {attempt + 1}/{DOWNLOAD_RETRY_ATTEMPTS}: "
+                                       f"{type(error).__name__})", resume_from, artifact["size"]))
+                if cancel.wait(backoff_s):
+                    raise CancelledError() from error
+                continue
+            if size != artifact["size"] or sha256_file(partial) != artifact["sha256"]:
+                raise RuntimeInstallError(f"Incomplete download or SHA256 mismatch: {artifact['filename']}; retry installation")
+            if cancel.is_set():
+                raise CancelledError()
+            os.replace(partial, target)
+            return target
+        raise RuntimeInstallError(
+            f"Download failed after {DOWNLOAD_RETRY_ATTEMPTS} attempts: {artifact['filename']}; "
+            f"last error: {last_error!r}; check network/proxy and retry installation")
     finally:
         partial.unlink(missing_ok=True)
 
@@ -180,7 +239,9 @@ def download_artifact(artifact: dict, cache: Path, cancel: Event,
 def _stop_process(process: subprocess.Popen) -> None:
     if os.name == "nt":
         outcome = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                                 capture_output=True, timeout=10)
+                                 capture_output=True, timeout=10,
+                                 # taskkill.exe 是控制台程序；不加标志取消安装时会闪黑窗（UX-02）。
+                                 creationflags=subprocess.CREATE_NO_WINDOW)
         if outcome.returncode and process.poll() is None:
             raise RuntimeInstallError("Could not cancel installer process tree")
     else:
@@ -221,7 +282,10 @@ def verify_runtime(python: Path, job_dir: Path, package_root: Path | None, cance
                    *, device: str = "auto", expected_versions: dict | None = None) -> dict:
     request, _ = build_request("selftest_runtime", job_id=uuid4(), device=device, package_root=package_root,
                                extra={"verify_dlc": True})
-    handle = ExternalWorkerRunner(python, package_root=package_root).start(job_dir, request)
+    try:
+        handle = ExternalWorkerRunner(python, package_root=package_root).start(job_dir, request)
+    except (ExternalWorkerError, OSError) as error:
+        raise RuntimeInstallError(f"AI environment self-test could not start: {error}") from error
     deadline = time.monotonic() + 180
     while handle.is_alive():
         if cancel.wait(0.1) or time.monotonic() > deadline:
@@ -232,7 +296,10 @@ def verify_runtime(python: Path, job_dir: Path, package_root: Path | None, cance
     if cancel.is_set():
         handle.cancel()
         raise CancelledError()
-    result = handle.read_result()
+    try:
+        result = handle.read_result()
+    except (ExternalWorkerError, OSError) as error:
+        raise RuntimeInstallError(f"AI environment self-test result is invalid: {error}") from error
     if result.get("status") != "success":
         raise RuntimeInstallError(f"AI environment self-test failed: {result.get('error')}; see {handle.worker_log_path}")
     if Path(result["executable"]).absolute() != python.absolute():
@@ -258,6 +325,47 @@ def publish_runtime(data_root: Path, python: Path, evidence: dict, cancel: Runti
         cancel.commit(lambda: os.replace(temporary, pointer))
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _reusable_install(installs: Path, data_root: Path, profile: dict, digest: str,
+                      package_root: Path | None, opencv_wheels: Path | None,
+                      cancel: RuntimeCancellation, report: Callable[[RuntimeProgress], None]) -> Path | None:
+    """同 profile、同清单且自检复验通过的 ready 环境直接复用；不可用返回 None 走全新安装。"""
+    if not installs.is_dir():
+        return None
+    wants_replacements = opencv_wheels is not None
+    candidates = []
+    for folder in installs.iterdir():
+        if not folder.is_dir() or not folder.name.startswith(profile["id"] + "-"):
+            continue
+        try:
+            state = json.loads((folder / "install-state.json").read_text(encoding="utf-8"))
+            executable = Path(str(state["executable"]))
+        except (OSError, ValueError, KeyError):
+            continue
+        if (state.get("status") != "ready" or state.get("manifest_sha256") != digest
+                or bool(state.get("opencv_replacements")) != wants_replacements
+                or folder not in executable.parents or not executable.is_file()):
+            continue
+        candidates.append((folder.stat().st_mtime, folder, executable))
+    for _, folder, executable in sorted(candidates, reverse=True):
+        report(RuntimeProgress("Re-verifying", f"Existing environment {folder.name}"))
+        try:
+            state = json.loads((folder / "install-state.json").read_text(encoding="utf-8"))
+            versions = {a["name"]: a["version"] for a in profile["packages"]
+                        if a["name"] in {"torch", "torchvision", "deeplabcut", "numpy"}}
+            device = "cuda" if profile["id"].endswith("-cuda") else "cpu" if profile["system"] == "Windows" else "auto"
+            # 保留安装时和历次复验的证据，worker 拒绝复用非空 job 目录。
+            result = verify_runtime(executable, folder / f"selftest-reuse-{uuid4().hex}", package_root, cancel,
+                                    device=device, expected_versions=versions)
+        except CancelledError:
+            raise
+        except RuntimeInstallError as error:
+            report(RuntimeProgress("Re-verifying", f"{folder.name} unusable ({error}); installing a fresh environment"))
+            continue
+        publish_runtime(data_root, executable, {**state, "selftest": result, "reused": True}, cancel)
+        return executable
+    return None
 
 
 def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
@@ -290,6 +398,10 @@ def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
                 fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as error:
             raise RuntimeInstallError("Another AI environment setup is running") from error
+        reusable = _reusable_install(parent / "installs", data_root, profile, digest,
+                                     package_root, opencv_wheels, cancel, report)
+        if reusable is not None:
+            return reusable
         folder.mkdir(parents=True)
         cache.mkdir(parents=True, exist_ok=True)
         atomic_json(folder / "install-state.json", journal)

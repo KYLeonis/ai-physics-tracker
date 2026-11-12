@@ -573,6 +573,7 @@ class TaskPanel(QDockWidget):
             self.cardPrimaryButton.setText(primary.label)
             self.cardPrimaryButton.setVisible(True)
             self.cardPrimaryButton.setEnabled(primary.enabled)
+            self.cardPrimaryButton.setToolTip(primary.reason or primary.hint)
             if not primary.enabled and primary.reason:
                 self.cardReasonLabel.setText(primary.reason)
                 self.cardReasonLabel.show()
@@ -585,7 +586,7 @@ class TaskPanel(QDockWidget):
             button.setText(spec.label)
             button.setProperty("actionId", spec.action_id)
             button.setEnabled(spec.enabled)
-            button.setToolTip(spec.reason or "")
+            button.setToolTip(spec.reason or spec.hint)
             button.show()
         extra = card.secondary[len(secondary_buttons):]
         for button in secondary_buttons[len(card.secondary):]:
@@ -721,20 +722,32 @@ class TaskPanel(QDockWidget):
         total: int | None = None,
         loss: float | None = None,
         learning_rate: float | None = None,
+        unit: str = "",
     ) -> None:
-        """显示任务阶段、可选进度及训练指标；未知分母使用忙碌条。"""
+        """显示任务阶段、可选进度及训练指标；未知分母使用忙碌条。
 
-        self.stageLabel.setText(stage.strip() or "Working")
+        UX-12：进度计数直接并入状态行（如 "Training · epoch 4/50 · 8%"），
+        未知总量时进度条文字显示 Working… 而不是无意义的百分比。
+        """
+
+        base = stage.strip() or "Working"
         self.progressBar.setFormat("%p%")
         if step is not None and total is not None and total > 0:
+            step = max(0, min(step, total))
+            pct = int(round(100 * step / total))
+            counter = f"{unit} " if unit else ""
+            self.stageLabel.setText(f"{base} · {counter}{step}/{total} · {pct}%")
             self.progressBar.setRange(0, total)
-            self.progressBar.setValue(max(0, min(step, total)))
+            self.progressBar.setValue(step)
         elif stage in {"Idle", "Completed", "Cancelled"} or stage.startswith(("Failed", "Cannot start", "Discarded")):
+            self.stageLabel.setText(base)
             self.progressBar.setRange(0, 1)
             self.progressBar.setValue(1 if stage == "Completed" else 0)
         else:
+            self.stageLabel.setText(base)
             self.progressBar.setRange(*_UNKNOWN_PROGRESS)
             self.progressBar.setValue(0)
+            self.progressBar.setFormat("Working…")
 
         metrics = []
         if loss is not None:

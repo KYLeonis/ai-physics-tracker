@@ -210,7 +210,7 @@ def test_joint_inference_real_progress_eta_and_terminal_reset(qtbot, tmp_path, s
     assert panel.progressBar.value() == step
     log.write_text(f"APT_PROGRESS {controller._run.run_id} {total}/{total} Frames predicted\n", encoding="utf-8")
     controller._poll()
-    assert panel.stageLabel.text() == "Saving / checking predictions"
+    assert panel.stageLabel.text() == "Saving / checking predictions · 5/5 · 100%"
     assert session.tracking_runs()[-1].status == "running"  # 100%帧不等于成功
     handle._alive_count = 0
     controller._poll()

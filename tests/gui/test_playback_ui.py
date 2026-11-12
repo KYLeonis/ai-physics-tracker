@@ -169,3 +169,27 @@ def test_speed_menu_is_exclusive_and_defaults_to_original(
     checked = [rate for rate, action in window._speedActions.items() if action.isChecked()]
 
     assert checked == [1.0]
+
+
+def test_arrow_keys_step_frames_and_yield_to_input_widgets(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # UX-06 回归：←/→ 步进帧；焦点在输入控件时快捷键禁用
+    window = _opened_window(qtbot, synthetic_video_path)
+    window.nextButton.setFocus()
+    from PySide6.QtWidgets import QApplication as _QA
+    qtbot.waitUntil(lambda: _QA.focusWidget() is window.nextButton)
+
+    qtbot.keyClick(window, Qt.Key.Key_Right)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 1 / 4")
+    qtbot.keyClick(window, Qt.Key.Key_Right)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 2 / 4")
+    qtbot.keyClick(window, Qt.Key.Key_Left)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 1 / 4")
+
+    line = window.frameSpinBox
+    line.setFocus()
+    qtbot.waitUntil(lambda: not window._frameStepShortcuts[0].isEnabled())
+    line.setValue(0)
+    qtbot.keyClick(line, Qt.Key.Key_Right)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 0 / 4")

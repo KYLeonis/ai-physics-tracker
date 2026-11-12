@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | Apple Silicon Mac，macOS 14.0 或更新 | CPU / MPS；不需要预装Python | 原生构建、独立AI环境、用户训练/推理HR通过；另一台M5/macOS27冷装通过但需去隔离。最低系统14.0是包要求，未在14.0真机验收 |
 | Intel Mac | 不提供此版本 | arm64 DMG不能作为Intel安装包 |
-| Windows x64，Windows10/11目标 | CPU / NVIDIA CUDA13.0候选 | 旧版54638e4双平台CI通过；2026-11-11核查的第二作者新分支Windows CI为FAIL，未集成；完整实机门禁仍待验。见[审查与验证矩阵](windows-coauthor-review-and-sync.md)；portable zip，无安装器 |
+| Windows x64，Windows10/11目标 | CPU / NVIDIA CUDA13.0候选 | 旧版54638e4及修复源码079baf6双平台tests CI通过；PR #46修复尚未集成/重新打包，完整实机门禁仍单列。见[修复与验证](plans/windows-followup-repair.md)；现有portable zip不含本轮修复，无安装器 |
 
 P6.4公开 DMG 实测：DMG **196,260,240 bytes（约187 MiB）**、应用本体 **336,650,126 bytes（约321 MiB）**；额外携带修复后的OpenCV安装包及对应源码材料。Mac AI环境固定下载 **415,025,090 bytes（约396 MiB）**；本轮隔离的新环境含Python共 **1,559,531,087 bytes（约1.45 GiB）**，另有约396 MiB下载缓存。建议首次安装预留至少 **4 GiB空闲空间**，另给视频、模型和训练结果留空间；不是训练硬件最低规格测试。修复会保留旧环境，因此还需空间。预训练权重在首次训练时可能另外下载，未计入上述固定量。
 

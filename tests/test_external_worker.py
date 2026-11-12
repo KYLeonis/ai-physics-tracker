@@ -677,3 +677,31 @@ def test_b1_model_snapshots_allows_four_bodyparts_for_training(monkeypatch) -> N
         _model_snapshots(
             Path("/fake/config.yaml"), 1, 0, allowed_bodyparts=("target",)
         )
+
+
+def test_worker_python_process_suppresses_console_window_on_windows(monkeypatch):
+    import io
+    import os
+    import subprocess
+    import sys
+
+    if os.name != "nt":
+        pytest.skip("Windows-specific console suppression")
+    from ai_physics_tracker.infrastructure import external_worker
+
+    captured = {}
+
+    class _StubProcess:
+        pid = 4242
+
+        def poll(self):
+            return 0
+
+    def recording_popen(argv, **kwargs):
+        captured.update(kwargs)
+        return _StubProcess()
+
+    monkeypatch.setattr(external_worker.subprocess, "Popen", recording_popen)
+    external_worker.start_python_process([sys.executable, "-c", "pass"],
+                                         env={}, log=io.BytesIO())
+    assert captured.get("creationflags", 0) & subprocess.CREATE_NO_WINDOW

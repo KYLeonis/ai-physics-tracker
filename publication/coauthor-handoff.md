@@ -4,6 +4,8 @@
 
 2026-11-11回收代码核查：第二作者新增10提交已完成[审查与main同步说明](windows-coauthor-review-and-sync.md)。新分支Windows CI FAIL，先修F1–F4；未见实机任务结果回传，G1–G5/CUDA等仍待验。以下为原交接包记录，未重新制作或修改仓库外素材包。
 
+2026-11-12修复：PR #46源码079baf6的独立R2与双平台CI通过；提交、计数及第二作者Agent接手步骤见[修复计划](plans/windows-followup-repair.md)。先更新主仓库codex/windows-followup，再准备同源候选做原生复测；原素材包与旧Windows ZIP没有重新制作。
+
 ## 交付位置与入口
 
 本机交接目录：`~/Documents/APT_Coauthor_20261031/`。整个文件夹转交即可；Windows 建议放在 `C:\APT\`。
@@ -77,5 +79,5 @@ HTML、README、命名说明、模型说明、14项任务模板和文件清单�
 
 ## 下一步
 
-先按[审查报告](windows-coauthor-review-and-sync.md)修复F1–F4并分线验证；新候选就绪后，校验素材，按 T001 CPU → T001 教师导入 → P015 实拍自训或跨视频推理冒烟 → P011 跨平台科学/导出 → 取消与 CUDA → 干净机器/压力场景执行。
+F1–F4代码修复及双平台CI已完成；按[交接计划](plans/windows-followup-repair.md)更新主仓库分支并准备新候选。新候选就绪后，校验素材，按 T001 CPU → T001 教师导入 → P015 实拍自训或跨视频推理冒烟 → P011 跨平台科学/导出 → 取消与 CUDA → 干净机器/压力场景执行。
 将实际结果、源码 SHA、设备、run id、诊断和截图放入独立运行目录，再据真实证据更新 `publication/STATUS.md`。
