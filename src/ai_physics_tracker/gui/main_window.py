@@ -566,8 +566,6 @@ class MainWindow(QMainWindow):
         QApplication.instance().focusChanged.connect(self._updateFrameStepShortcuts)
 
         reviewAcceptShortcut = QShortcut(QKeySequence(Qt.Key.Key_A), self)
-
-        reviewAcceptShortcut = QShortcut(QKeySequence(Qt.Key.Key_A), self)
         reviewAcceptShortcut.activated.connect(self._onReviewAcceptShortcut)
         reviewSkipShortcut = QShortcut(QKeySequence(Qt.Key.Key_S), self)
         reviewSkipShortcut.activated.connect(self._onReviewSkipShortcut)
