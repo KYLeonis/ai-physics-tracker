@@ -6,6 +6,7 @@
 - 这里的 P6 是论文产品线 Distribution and First Release，**不是 main 的 Phase 6 Advanced Physics Analysis**。
 - 当前授权：用户明确要求跳过付费Apple认证并公开Mac测试版；2026-10-09 v0.1.0已发布。实际执行记录见[P6.4 mini-plan](p6.4-release-preparation.md)与[STATUS](../STATUS.md)。Windows及其他完整门禁未通过，保留待补。
 - 以下Windows前置时点、License待定、Qt锁、四profile和not_run等原规划描述由后续用户裁定、ADR-0021/0022和实施mini-plan覆盖：实际三份锁（Mac CPU/MPS共享一份），原生OS锁，源码MIT，DLC3.0.1 LGPL；额度只在需要时读取当前接口，不沿用旧快照。
+- 2026-11-11：[第二作者Windows适配审查](../windows-coauthor-review-and-sync.md)完成，10个新提交尚未集成；新分支Windows CI FAIL，F1–F4先修，实机G1–G5/CUDA等仍待验。下方历史计划/勾选不因代码适配而自动通过。
 
 ## 1. 交付目标与实施顺序
 

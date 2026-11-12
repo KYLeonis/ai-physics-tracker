@@ -9,6 +9,8 @@
 当前：P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。[权威状态](STATUS.md)、[P6.4 mini-plan](plans/p6.4-release-preparation.md)、[安装指南](install-guide.md)。
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
+- [第二作者交接](coauthor-handoff.md)：2026-10-31整理的规范命名素材包、Windows测试入口、源码基线与已知缺项。
+- [Windows适配审查与main同步](windows-coauthor-review-and-sync.md)：2026-11-11核对10个新增提交；新分支Windows CI为FAIL，先修F1–F4；实机缺项仍待验，未合并代码。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
 - [Scientific Asset Inventory](spec/scientific-asset-inventory.md)：论文方法/结果到源代码、配置、数据库表和输出的只读对应。
 - [Scientific profiles](spec/scientific-profiles.md)与[golden evidence](evidence/README.md)：P0.1固定的legacy/student契约、source map及只读验证入口。

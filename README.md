@@ -2,6 +2,8 @@
 
 > P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。 权威进度见publication/STATUS.md。
 
+> Windows适配最新核查（2026-11-11）：第二作者新增10提交尚未集成；新分支Windows CI为FAIL，实机缺项待验。修改内容、必修问题及通用main/论文线分开同步的步骤见[审查与同步说明](publication/windows-coauthor-review-and-sync.md)。上方CI通过记录仅对应旧版54638e4。
+
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 
 AI Physics Tracker 结合现代深度学习视觉跟踪方法与传统运动学视频分析软件的使用方式，让用户能够从实验视频中快速获得准确的物体轨迹和物理数据。软件使用方式上对标 Tracker 等专业物理分析软件的桌面交互体验，技术上以 DeepLabCut 3.x（PyTorch 路线）作为核心跟踪基础。

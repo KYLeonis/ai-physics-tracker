@@ -2,6 +2,8 @@
 
 日期：2026-10-02；状态：未执行。Mac HR已通过，不能据此勾选Windows门禁。
 
+2026-11-11更新：第二作者已提交10个Windows/体验改进，见[审查与同步说明](../windows-coauthor-review-and-sync.md)。新分支Windows CI FAIL，须先修F1–F4；G1–G5/CUDA等实机证据仍待验。下方下载入口为历史测试包，不含新增提交；修复后需重新构建同源Windows候选再验收，不能用旧包证明新代码通过。
+
 ## 下载与启动
 
 不需要pull源码或安装Git/Python。登录GitHub，下载已通过原生构建的Actions artifact：

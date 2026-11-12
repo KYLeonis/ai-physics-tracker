@@ -13,6 +13,48 @@
 - 目标：修F1环境复用独占自检/失败语义、F2重复A快捷键、F3旧进度断言、F4测试平台隔离，直到同源Mac/Windows tests CI通过。保留第二作者原10提交并追加修复提交。
 - Next Recommended Action：完成修复和定向/全量验证、独立只读review，push并核对双平台CI；把修复SHA与结果回填PR。未合并、未发布；Windows实机/CUDA/GUI HR不因CI通过自动关闭。
 
+## 审查历史：第二作者 Windows 适配审查 — 2026-11-11
+
+以下为修复前证据；当前进度以上方Agent handoff为准。
+
+- [修改清单、审查问题、验证矩阵与 main 同步步骤](windows-coauthor-review-and-sync.md)。
+  用户确认按仓库证据更新，未验证项保留待验。双方远程 main 同为 `7abd517`；第二作者
+  实际增量在 `codex/windows-followup`，从交接基线 `154f262` 到 `6a7a031` 共10提交、21文件。
+- 新增安装下载重试/续传、ready环境复用、Windows黑窗抑制与标注/进度体验改进。
+  新分支 [Windows CI42848090521](https://github.com/stianyu798-arch/ai-physics-tracker/actions/runs/42848090521)
+  **FAIL：1495 passed / 2 failed / 6 skipped / 1 xfailed**；同源Mac job cancelled。
+  本机8个改动测试文件151pass/2fail/3skip，另复现既有两项失败；ready环境复用探针也失败。
+- 必修F1旧selftest目录导致复用失败、F2重复A快捷键、F3进度旧断言、F4两项新增测试不适配Mac。
+  Windows G1–G5/CUDA/GUI HR/教师导入/跨平台重开/完整导出恢复仍待验；不改历史结果为PASS。
+- 按用户追加的双作者联动需求，报告第8节补充同一主仓库/任务分支/PR接力建议、F1–F4修复交接表
+  与可转发说明；f98cc32为上一轮审查文档提交，尚无源码修复。协作者邀请须用户手动设置；
+  本轮未改权限、创建PR、评论或通知第二作者。
+- Publication Context：目标为审查外部增量及可执行同步方案；source为上述固定SHA；
+  科学profile/golden/ADR-0020、工程与worker合同不变；证据为完整diff、原生CI日志、定向回归
+  与临时目录探针；本轮不改源码、不合并、不打包、不启动训练或新发行。文档工作不新增HR门禁。
+- **Next Recommended Action**：在独立工作目录先修F1–F4，按报告拆分main通用与论文专属补丁；
+  通用修复先在当前main适配验证，再受控同步论文线。最终源码双平台CI/必要独立审查与真人HR
+  通过后再集成；Windows实机证据逐项补齐。协作建议见报告第8节，采用后在同一任务PR登记
+  修复SHA/验证/对方复测。当前发行分支仍不集成，v0.1.0保持原样。
+
+## 第二作者素材交接 — 2026-10-31
+
+以下为交接时点记录；当前结论及下一步以上方2026-11-11审查为准。
+
+- 仓库外 `~/Documents/APT_Coauthor_20261031/` 按用户追加要求精简为约2.53GB：
+  仅保留P011/P013/P015/V001/V002五段约65°原片及3快速素材，删除其余24原片和
+  小角度P014预制工程；29套实验数据/正式历史结果/SQLite、2工程、2平台教师模型、
+  离线源码与Windows测试包保留。原始素材目录未动，新旧名称/SHA256全量登记。
+- [交接记录与命名约定](coauthor-handoff.md)；包内HTML入口、开发命令、14项Windows
+  任务单、结果模板与接收校验脚本已按精简范围同步，375文件最终校验0失败。
+  保留5原片采集hash及8素材既有抽帧检查通过，50正式来源hash/2个SQLite extract、
+  工程/教师静态导入及离线源码恢复证据保留。数据索引显式标记视频是否随包。
+- Windows包source54638e4，run37735873042/artifact11531871823，已下载校验；开发
+  bundle154f262。正文177帧完整原标签/best055权重未定位，提供的平台模型不混作正文模型。
+- **Next Recommended Action**：将整个交接文件夹转给第二作者，先做T001 CPU闭环、
+  教师导入与P011重开/导出，再补取消/CUDA/干净机器；用包内模板回传实测证据。
+  G1–G5/CUDA/GUI HR/学生/安装版科学导出恢复保持pending/not_run；本分支仍不集成。
+
 ## P6.4 unsigned Mac public release — 2026-10-09
 
 - 用户明确授权“需要付费就算了，直接帮我发布吧”，随后“继续”；按该授权完成
