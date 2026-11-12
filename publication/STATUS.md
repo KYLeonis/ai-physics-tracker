@@ -1,9 +1,17 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-10-09。
+- 最后更新：2026-11-12（PR #46 F1–F4修复进行中）。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
+
+## Current work / Agent handoff — Windows F1–F4 repair
+
+- Status: **in_progress**；Owner: first-author Codex implementation agent。
+- 工作目录 `/Users/leonis/Documents/ai-physics-tracker-windows-followup`，分支 `codex/windows-followup`，起点 `6a7a031`。
+- [执行计划与Review Gate](plans/windows-followup-repair.md)；[PR #46协作评论](https://github.com/KYLeonis/ai-physics-tracker/pull/46#issuecomment-6822430107)。本轮接手该分支写入，其他Agent请先读最新PR评论和本入口，避免并发push。
+- 目标：修F1环境复用独占自检/失败语义、F2重复A快捷键、F3旧进度断言、F4测试平台隔离，直到同源Mac/Windows tests CI通过。保留第二作者原10提交并追加修复提交。
+- Next Recommended Action：完成修复和定向/全量验证、独立只读review，push并核对双平台CI；把修复SHA与结果回填PR。未合并、未发布；Windows实机/CUDA/GUI HR不因CI通过自动关闭。
 
 ## P6.4 unsigned Mac public release — 2026-10-09
 
