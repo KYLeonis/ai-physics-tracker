@@ -394,10 +394,7 @@ def test_install_reuses_verified_ready_install_without_reinstall(monkeypatch, tm
     assert any(p.stage == "Re-verifying" for p in progress)
 
 
-@pytest.mark.parametrize("failure", [runtime.RuntimeInstallError("interpreter corrupted"),
-                                     ExternalWorkerError("invalid worker result"),
-                                     OSError("interpreter cannot start")])
-def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path, install_profile, failure):
+def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path, install_profile):
     profile = install_profile
     stale = _write_ready_install(tmp_path, profile)
     downloaded = []
@@ -411,7 +408,7 @@ def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path,
     def verify(python, *args, **kwargs):
         verify_calls.append(python)
         if len(verify_calls) == 1:
-            raise failure
+            raise runtime.RuntimeInstallError("interpreter corrupted")
         return {"status": "success", "executable": str(python), "python": "3.12.15", "versions": {}}
 
     def fake_extract(archive, destination, *a):
@@ -469,7 +466,7 @@ def test_repeated_reuse_keeps_old_selftest_and_uses_exclusive_worker_jobs(monkey
     assert old_request.read_text(encoding="utf-8") == "{}\n"
 
 
-@pytest.mark.parametrize("failure", [CancelledError(), ExternalWorkerError("invalid worker result")])
+@pytest.mark.parametrize("failure", [CancelledError(), runtime.RuntimeInstallError("invalid worker result")])
 def test_failed_reuse_and_fallback_preserve_pointer_and_release_lock(monkeypatch, tmp_path, install_profile, failure):
     python = _write_ready_install(tmp_path, install_profile)
     pointer = tmp_path / runtime.POINTER_RELATIVE
@@ -492,6 +489,66 @@ def test_failed_reuse_and_fallback_preserve_pointer_and_release_lock(monkeypatch
             runtime.install_runtime(tmp_path, install_profile, None, runtime.RuntimeCancellation(), lambda p: None)
         assert pointer.read_text(encoding="utf-8") == "old runtime\n"
         assert python.is_file()
+
+
+@pytest.mark.parametrize("stage", ["start", "result"])
+@pytest.mark.parametrize("failure", [ExternalWorkerError("invalid worker state"), OSError("interpreter unavailable")])
+def test_verification_normalizes_recoverable_worker_errors(monkeypatch, tmp_path, stage, failure):
+    class Handle:
+        def is_alive(self):
+            return False
+
+        def read_result(self):
+            raise failure
+
+    class Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def start(self, *args):
+            if stage == "start":
+                raise failure
+            return Handle()
+
+    monkeypatch.setattr(runtime, "ExternalWorkerRunner", Runner)
+    with pytest.raises(runtime.RuntimeInstallError, match=str(failure)) as caught:
+        runtime.verify_runtime(tmp_path / "python", tmp_path / "check", None, Event())
+    assert caught.value.__cause__ is failure
+
+
+@pytest.mark.parametrize("cancel_requested", [False, True])
+def test_reuse_cannot_reinstall_when_worker_cleanup_fails(monkeypatch, tmp_path, install_profile, cancel_requested):
+    from types import SimpleNamespace
+
+    _write_ready_install(tmp_path, install_profile)
+    pointer = tmp_path / runtime.POINTER_RELATIVE
+    pointer.write_text("old runtime\n", encoding="utf-8")
+    cancel = runtime.RuntimeCancellation()
+    if cancel_requested:
+        cancel.set()
+    # 仅替换安装模块的时钟，覆盖超时清理失败而不等待180秒。
+    clock = iter((0., 181.))
+    monkeypatch.setattr(runtime, "time", SimpleNamespace(monotonic=lambda: next(clock)))
+
+    class Handle:
+        def is_alive(self):
+            return True
+
+        def cancel(self):
+            raise ExternalWorkerError("worker process tree is still alive")
+
+    class Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def start(self, *args):
+            return Handle()
+
+    monkeypatch.setattr(runtime, "ExternalWorkerRunner", Runner)
+    monkeypatch.setattr(runtime, "download_artifact", lambda *a: pytest.fail("cleanup failure started a fresh install"))
+    with pytest.raises(ExternalWorkerError, match="still alive"):
+        runtime.install_runtime(tmp_path, install_profile, None, cancel, lambda p: None)
+    assert pointer.read_text(encoding="utf-8") == "old runtime\n"
 
 
 def test_taskkill_cleanup_runs_without_console_window(monkeypatch):

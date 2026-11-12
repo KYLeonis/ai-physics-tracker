@@ -282,7 +282,10 @@ def verify_runtime(python: Path, job_dir: Path, package_root: Path | None, cance
                    *, device: str = "auto", expected_versions: dict | None = None) -> dict:
     request, _ = build_request("selftest_runtime", job_id=uuid4(), device=device, package_root=package_root,
                                extra={"verify_dlc": True})
-    handle = ExternalWorkerRunner(python, package_root=package_root).start(job_dir, request)
+    try:
+        handle = ExternalWorkerRunner(python, package_root=package_root).start(job_dir, request)
+    except (ExternalWorkerError, OSError) as error:
+        raise RuntimeInstallError(f"AI environment self-test could not start: {error}") from error
     deadline = time.monotonic() + 180
     while handle.is_alive():
         if cancel.wait(0.1) or time.monotonic() > deadline:
@@ -293,7 +296,10 @@ def verify_runtime(python: Path, job_dir: Path, package_root: Path | None, cance
     if cancel.is_set():
         handle.cancel()
         raise CancelledError()
-    result = handle.read_result()
+    try:
+        result = handle.read_result()
+    except (ExternalWorkerError, OSError) as error:
+        raise RuntimeInstallError(f"AI environment self-test result is invalid: {error}") from error
     if result.get("status") != "success":
         raise RuntimeInstallError(f"AI environment self-test failed: {result.get('error')}; see {handle.worker_log_path}")
     if Path(result["executable"]).absolute() != python.absolute():
@@ -354,7 +360,7 @@ def _reusable_install(installs: Path, data_root: Path, profile: dict, digest: st
                                     device=device, expected_versions=versions)
         except CancelledError:
             raise
-        except (RuntimeInstallError, ExternalWorkerError, OSError) as error:
+        except RuntimeInstallError as error:
             report(RuntimeProgress("Re-verifying", f"{folder.name} unusable ({error}); installing a fresh environment"))
             continue
         publish_runtime(data_root, executable, {**state, "selftest": result, "reused": True}, cancel)
