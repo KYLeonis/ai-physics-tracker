@@ -1,8 +1,8 @@
 > P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。 权威进度见publication/STATUS.md。
 
-> 2026-11-11：第二作者Windows适配审查完成，[报告与main同步步骤](../../publication/windows-coauthor-review-and-sync.md)。双方远程main同为7abd517；10个新增提交在论文基线上的codex/windows-followup。新分支Windows CI为FAIL，已复现环境复用与快捷键问题；未验实机项目继续待验。下一步先修F1–F4，再拆分通用/论文补丁验证集成。本轮仅文档；以下main状态为历史快照，不覆盖远程main实际进度。
+> 2026-11-12：PR #46修复收尾，[执行计划与验证](../../publication/plans/windows-followup-repair.md)。源码079baf6已修F1–F4，独立R2及CI43210994098双平台通过，本机1509pass；分支codex/windows-followup已供第二作者接手复测，尚未合并或发布。下一步更新该主仓库分支并做Windows原生复用/Repair与快捷键等复测，main通用补丁另开任务。以下main状态为历史快照，不覆盖远程main实际进度。
 
-> 双作者联动建议已补入上述报告第8节：同一主仓库、任务分支与PR接力，逐项记录修复SHA/验证/Windows复测。尚无源码修复提交；未配置协作者权限或发送通知。
+> 双作者联动已落实为主仓库任务分支与PR #46；修复4bd0d41/dfe301b/079baf6、独立审查、验证结果已逐项记录，并通过PR评论@第二作者。最新状态与写入交接见publication/STATUS.md；实机证据继续单列。
 
 > 2026-10-31：第二作者开发/Windows测试交接包已按用户追加要求精简至约2.53GB，仅附5段约65°代表原片和3短片，位于 `~/Documents/APT_Coauthor_20261031/`；素材与校验详见[交接记录](../../publication/coauthor-handoff.md)。下一步由第二作者按包内任务单完成CPU/教师导入/跨平台重开，再补CUDA与干净机器证据。实机门禁状态不变，通用main历史停点不变。
 

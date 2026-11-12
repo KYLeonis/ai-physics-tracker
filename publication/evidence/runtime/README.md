@@ -11,6 +11,8 @@ Historical spike evidence below remains unchanged.
 
 2026-11-11 Windows follow-up：[第二作者适配审查与当前验证矩阵](../../windows-coauthor-review-and-sync.md)。`6a7a031` Windows CI **FAIL**（1495 passed / 2 failed / 6 skipped / 1 xfailed），Mac job cancelled；实机G1–G5/CUDA仍待验。以下矩阵与`results.json`保留2026-09-20原始探针结果，不用新代码或mock断言倒填PASS。
 
+2026-11-12修复证据：[源码079baf6的tests43210994098](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43210994098)双平台success，Mac1505pass/7skip/1既有xfail，Windows1506pass/6skip/1既有xfail；独立R2通过与原生复测交接见[执行计划](../../plans/windows-followup-repair.md)。此次是代码/自动验证完成，不改下方历史探针实机状态。
+
 ## Environment inventory
 
 Host：Mac arm64。EJP无.venv；system Python3.14不属于产品支持范围。外置worker复用主仓库已有Python3.12.13 venv，DLC3.0.1、torch2.13.0、torchvision0.28.0；PySide6 6.11.2、OpenCV4.11.0.86、NumPy1.26.4、SciPy1.17.1、Pandas2.3.3。仅作为本机已测试组合，不直接宣称Windows同版本可安装或全DLC功能兼容。

@@ -1,6 +1,6 @@
 # 第二作者 Windows 适配审查与 main 同步说明
 
-检查日期：2026-11-11。本文回答“他改了什么、目前是否通过、接下来如何同步”。用户已确认：**按仓库证据更新，未验证项保留待验**。本轮只审查与同步文档，不合并或修改产品代码。
+原审查日期：2026-11-11。第1–8节保留当时的审查与协作建议；2026-11-12修复进展见第9节和[执行计划](plans/windows-followup-repair.md)。用户已确认：**按仓库证据更新，未验证项保留待验**。原审查轮次只写文档，后续源码修复在PR #46单独追加提交。
 
 ## 1. 结论
 
@@ -225,3 +225,18 @@ git status
 ### 现在可以转给第二作者的说明
 
 > 我们已经审查你Windows分支的10个提交，原始贡献都保留。目前先定位了F1–F4，尚未改源码；最新Windows CI有两项失败，另发现环境复用和Mac测试问题。具体位置、复现证据及同步方案都在本文。建议后续在同一个主仓库用任务分支+PR接力：我方修复后逐项填写commit与Mac/自动测试结果，再请你按指定SHA/包补Windows实测；通用补丁进main，四点/独立AI环境改动留在论文线。
+
+## 9. 2026-11-12修复与交接
+
+第二作者已取得主仓库写权限，已在主仓库创建[Draft PR #46](https://github.com/KYLeonis/ai-physics-tracker/pull/46)，目标为 `codex/ejp-p6-4-release`。第一作者授权我方修复F1–F4直到双平台CI通过，并要求公开协作进度。原始10提交保留；本轮工作分支为主仓库的 `codex/windows-followup`，不再要求双方维护两份日常任务分支。
+
+| 问题 | 修复提交 | 当前验证 |
+| --- | --- | --- |
+| F1 复用旧自检目录 | `dfe301b` + `079baf6` | 每次复验独占新目录；保留旧证据；启动/结果错误可恢复，取消/超时清理失败直接传播；独立复审通过 |
+| F2 重复A快捷键 | `4bd0d41` | 删除重复注册，保留方向键与输入焦点保护；GUI相关43 passed |
+| F3 进度旧断言 | `4bd0d41` | 对齐新显示，保留指标、未知进度、日志上限检查 |
+| F4 测试平台隔离 | `dfe301b` | 使用本机profile与解释器路径；不跳过跨平台复用逻辑；原生双平台CI通过 |
+
+独立[Review Record](../docs/reviews/windows-followup-repair-review.md)记录了首轮新发现、修复及R2通过；最终产品源码 `079baf6` 的[CI43210994098](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43210994098)**双平台success**：Mac1505 passed/7 skipped/1既有xfail，Windows1506 passed/6 skipped/1既有xfail。本机全量1509 passed/3 Windows专项skip/1既有strictxfail，9 subtests，354.18秒。执行计划全部修复验收项已完成；不把历史失败记录改成通过。
+
+已通过PR评论@第二作者同步接手与修复SHA，收尾后交还分支写入；对方Agent需先读PR最新评论、`publication/STATUS.md` 和修复计划，再更新**主仓库**分支。本轮未合并PR、未发布，也未把修复自动同步到对方fork。Windows实机/CUDA/新GUI等验收继续单列，不能以CI替代。
