@@ -210,11 +210,15 @@ def download_artifact(artifact: dict, cache: Path, cancel: Event,
                 headers["Range"] = f"bytes={resume_from}-"
             try:
                 size = _copy_download_stream(artifact, partial, resume_from, headers, cancel, report)
+                if size < artifact["size"]:
+                    raise ConnectionError(f"Incomplete download: {artifact['filename']} ({size}/{artifact['size']} bytes)")
             except Exception as error:
                 if not _is_transient_download_error(error):
                     raise
                 last_error = error
-                if attempt >= DOWNLOAD_RETRY_ATTEMPTS or cancel.is_set():
+                if cancel.is_set():
+                    raise CancelledError() from error
+                if attempt >= DOWNLOAD_RETRY_ATTEMPTS:
                     break
                 backoff_s = DOWNLOAD_RETRY_BACKOFF_S[min(attempt - 1, len(DOWNLOAD_RETRY_BACKOFF_S) - 1)]
                 report(RuntimeProgress("Retrying download",
@@ -328,12 +332,11 @@ def publish_runtime(data_root: Path, python: Path, evidence: dict, cancel: Runti
 
 
 def _reusable_install(installs: Path, data_root: Path, profile: dict, digest: str,
-                      package_root: Path | None, opencv_wheels: Path | None,
+                      package_root: Path | None, replacements: dict[str, dict],
                       cancel: RuntimeCancellation, report: Callable[[RuntimeProgress], None]) -> Path | None:
     """同 profile、同清单且自检复验通过的 ready 环境直接复用；不可用返回 None 走全新安装。"""
     if not installs.is_dir():
         return None
-    wants_replacements = opencv_wheels is not None
     candidates = []
     for folder in installs.iterdir():
         if not folder.is_dir() or not folder.name.startswith(profile["id"] + "-"):
@@ -344,7 +347,7 @@ def _reusable_install(installs: Path, data_root: Path, profile: dict, digest: st
         except (OSError, ValueError, KeyError):
             continue
         if (state.get("status") != "ready" or state.get("manifest_sha256") != digest
-                or bool(state.get("opencv_replacements")) != wants_replacements
+                or state.get("opencv_replacements") != replacements
                 or folder not in executable.parents or not executable.is_file()):
             continue
         candidates.append((folder.stat().st_mtime, folder, executable))
@@ -399,7 +402,7 @@ def install_runtime(data_root: Path, profile: dict, package_root: Path | None,
         except OSError as error:
             raise RuntimeInstallError("Another AI environment setup is running") from error
         reusable = _reusable_install(parent / "installs", data_root, profile, digest,
-                                     package_root, opencv_wheels, cancel, report)
+                                     package_root, replacements, cancel, report)
         if reusable is not None:
             return reusable
         folder.mkdir(parents=True)

@@ -1,6 +1,7 @@
 """UX-07/08 标注辅助回归：4/4 自动下一帧勾选、全幅细准线。"""
 
 import numpy as np
+import pytest
 from PySide6.QtCore import QPoint
 
 from test_model_actions_ui import _experiment_window, long_video_path  # noqa: F401
@@ -33,6 +34,24 @@ def test_crosshair_guides_follow_mouse_only_in_annotation_mode(qtbot):
 
     view.set_annotation_mode(False)
     assert not view._crosshair_v.isVisible()
+
+
+@pytest.mark.parametrize("mode", ["scale", "origin", "pivot", "vertical"])
+def test_leaving_calibration_hides_stationary_crosshair(qtbot, mode):
+    view = VideoView()
+    qtbot.addWidget(view)
+    view.resize(320, 240)
+    view.show()
+    view.setFrame(_frame())
+    view.set_calibration_mode(mode)
+    centre = QPoint(view.viewport().width() // 2, view.viewport().height() // 2)
+    view._update_crosshair(centre)
+    assert view._crosshair_v.isVisible() and view._crosshair_h.isVisible()
+
+    view.set_calibration_mode(None)
+
+    assert not view._crosshair_v.isVisible()
+    assert not view._crosshair_h.isVisible()
 
 
 def test_auto_advance_after_four_point_completion(qtbot, tmp_path, long_video_path, monkeypatch):

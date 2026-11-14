@@ -361,6 +361,9 @@ class VideoView(QGraphicsView):
         self._calibration_mode = mode
         if mode is not None:
             self._annotation_mode = False
+        elif not self._annotation_mode:
+            self._crosshair_v.hide()
+            self._crosshair_h.hide()
         self._clear_scale_preview()
         self._update_cursors()
 

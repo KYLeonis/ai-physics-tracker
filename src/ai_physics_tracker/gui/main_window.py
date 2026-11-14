@@ -12,6 +12,7 @@ from PySide6.QtCore import QObject, QPoint, QPointF, QSignalBlocker, Qt, QTimer,
 from PySide6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QAbstractSlider,
     QAbstractSpinBox,
     QApplication,
     QCheckBox,
@@ -37,6 +38,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QSplitter,
     QStackedWidget,
+    QTabBar,
+    QTextEdit,
 )
 
 from ai_physics_tracker.application.playback import AsyncVideoSession, DecodeDelivery
@@ -2373,10 +2376,11 @@ class MainWindow(QMainWindow):
         self.presentedFrameChanged.emit(frame.frame_index)
 
     def _updateFrameStepShortcuts(self, _old, new) -> None:
-        """←/→ 步进快捷键让位于获得焦点的输入控件（spinbox/单行/多行文本）。"""
-        typing = isinstance(new, (QAbstractSpinBox, QLineEdit, QPlainTextEdit))
+        """←/→ 步进让位于有原生方向键语义的输入、选择、表格与分页控件。"""
+        native_arrows = isinstance(new, (QAbstractSpinBox, QLineEdit, QTextEdit, QPlainTextEdit,
+                                         QComboBox, QAbstractSlider, QAbstractItemView, QTabBar))
         for stepShortcut in self._frameStepShortcuts:
-            stepShortcut.setEnabled(not typing)
+            stepShortcut.setEnabled(not native_arrows)
 
     def _step(self, delta: int) -> None:
         if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:

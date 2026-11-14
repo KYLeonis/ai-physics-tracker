@@ -39,7 +39,7 @@ class _FakeResponse(io.BytesIO):
         return block
 
 
-def _flaky_resuming_server(data, calls, *, drop_index=0, honor_range=True):
+def _flaky_resuming_server(data, calls, *, drop_index=0, honor_range=True, drop_error=None):
     """第 drop_index 次请求在半途断流；若客户端带 Range 且服务器支持则返回 206 续传。"""
     half = len(data) // 2
 
@@ -50,7 +50,8 @@ def _flaky_resuming_server(data, calls, *, drop_index=0, honor_range=True):
             offset = int(re.match(r"bytes=(\d+)-", range_header).group(1))
             return _FakeResponse(data[offset:], status=206,
                                  content_range=f"bytes {offset}-{len(data) - 1}/{len(data)}")
-        return _FakeResponse(data[:half], eof_error=ConnectionResetError("simulated proxy drop"))
+        error = drop_error if drop_error is not None else ConnectionResetError("simulated proxy drop")
+        return _FakeResponse(data[:half], eof_error=error)
 
     return serve
 
@@ -63,14 +64,23 @@ def test_download_rejects_untrusted_manifest(change):
 
 
 def test_truncated_download_never_becomes_cached_runtime(monkeypatch, tmp_path):
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_ATTEMPTS", 3)
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_BACKOFF_S", (0, 0))
+    calls = []
+
     class Response(io.BytesIO):
         def geturl(self):
             return "https://github.com/asset"
 
-    monkeypatch.setattr(runtime, "urlopen", lambda *a, **k: Response(b"short"))
+    def serve(*args, **kwargs):
+        calls.append(args)
+        return Response(b"short")
+
+    monkeypatch.setattr(runtime, "urlopen", serve)
     with pytest.raises(runtime.RuntimeInstallError, match="Incomplete"):
         runtime.download_artifact(artifact(), tmp_path, Event(), lambda p: None)
     assert not list(tmp_path.iterdir())
+    assert len(calls) == 3
 
 
 def test_verified_cache_is_reused_without_network(monkeypatch, tmp_path):
@@ -254,7 +264,7 @@ def test_transient_drop_is_retried_with_range_resume(monkeypatch, tmp_path):
         cache = tmp_path / f"case{index}"
         cache.mkdir()
         calls = []
-        monkeypatch.setattr(runtime, "urlopen", _flaky_resuming_server(data, calls))
+        monkeypatch.setattr(runtime, "urlopen", _flaky_resuming_server(data, calls, drop_error=drop))
         progress = []
         target = runtime.download_artifact(artifact(data), cache, Event(), progress.append)
         assert target.read_bytes() == data
@@ -262,6 +272,62 @@ def test_transient_drop_is_retried_with_range_resume(monkeypatch, tmp_path):
         assert calls[1].headers.get("Range") == f"bytes={len(data) // 2}-"
         assert any(p.stage == "Retrying download" for p in progress)
         assert list(cache.iterdir()) == [target]
+
+
+@pytest.mark.parametrize("honor_range", [True, False])
+def test_short_eof_is_retried_and_validated(monkeypatch, tmp_path, honor_range):
+    monkeypatch.setattr(runtime, "DOWNLOAD_RETRY_BACKOFF_S", (0, 0, 0, 0))
+    data = b"verified bytes" * 256
+    half = len(data) // 2
+    calls = []
+
+    def serve(request, *args, **kwargs):
+        calls.append(request)
+        if len(calls) == 1:
+            return _FakeResponse(data[:half])  # read(amt)也可能正常返回提前EOF。
+        if honor_range:
+            return _FakeResponse(data[half:], status=206,
+                                 content_range=f"bytes {half}-{len(data) - 1}/{len(data)}")
+        return _FakeResponse(data)
+
+    monkeypatch.setattr(runtime, "urlopen", serve)
+    target = runtime.download_artifact(artifact(data), tmp_path, Event(), lambda p: None)
+    assert target.read_bytes() == data
+    assert [call.headers.get("Range") for call in calls] == [None, f"bytes={half}-"]
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_full_length_hash_mismatch_fails_without_retry(monkeypatch, tmp_path):
+    calls = []
+
+    def serve(*args, **kwargs):
+        calls.append(args)
+        return _FakeResponse(b"corrupt")
+
+    monkeypatch.setattr(runtime, "urlopen", serve)
+    with pytest.raises(runtime.RuntimeInstallError, match="SHA256"):
+        runtime.download_artifact(artifact(b"correct"), tmp_path, Event(), lambda p: None)
+    assert len(calls) == 1
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_cancel_during_network_error_reports_cancelled(monkeypatch, tmp_path, wrapped):
+    from urllib.error import URLError
+
+    cancel = Event()
+    calls = []
+
+    def serve(*args, **kwargs):
+        calls.append(args)
+        cancel.set()
+        raise URLError(ConnectionResetError("reset")) if wrapped else TimeoutError("read timed out")
+
+    monkeypatch.setattr(runtime, "urlopen", serve)
+    with pytest.raises(CancelledError):
+        runtime.download_artifact(artifact(), tmp_path, cancel, lambda p: None)
+    assert len(calls) == 1
+    assert not list(tmp_path.iterdir())
 
 
 def test_server_ignoring_range_restarts_whole_file(monkeypatch, tmp_path):
@@ -348,7 +414,7 @@ def test_cancel_during_backoff_aborts_without_further_attempts(monkeypatch, tmp_
     assert list(tmp_path.iterdir()) == []
 
 
-def _write_ready_install(root, profile):
+def _write_ready_install(root, profile, replacements=None):
     digest = hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest()
     folder = root / "runtimes" / "installs" / (profile["id"] + "-ready01")
     python = folder / ("environment/Scripts/python.exe" if runtime.os.name == "nt" else "environment/bin/python")
@@ -358,7 +424,7 @@ def _write_ready_install(root, profile):
     (folder / "selftest" / "request.json").write_text("{}\n", encoding="utf-8")
     runtime.atomic_json(folder / "install-state.json",
                         {"status": "ready", "manifest_sha256": digest,
-                         "opencv_replacements": {}, "executable": str(python)})
+                         "opencv_replacements": replacements or {}, "executable": str(python)})
     return python
 
 
@@ -426,6 +492,66 @@ def test_broken_ready_install_falls_back_to_fresh_install(monkeypatch, tmp_path,
     assert result != stale and result.is_file()
     pointer = (tmp_path / runtime.POINTER_RELATIVE).read_text(encoding="utf-8").strip()
     assert pointer == str(result)
+
+
+@pytest.mark.parametrize("changed_identity", [None, "sha256", "ffmpeg"])
+def test_opencv_reuse_requires_current_replacement_identity(monkeypatch, tmp_path, install_profile, changed_identity):
+    installed = {"opencv-python-headless": {"filename": "opencv.whl", "sha256": "a" * 64,
+                                           "ffmpeg": {"sha256": "b" * 64}}}
+    stale = _write_ready_install(tmp_path, install_profile, installed)
+    current = json.loads(json.dumps(installed))
+    if changed_identity is not None:
+        current["opencv-python-headless"][changed_identity] = (
+            "c" * 64 if changed_identity == "sha256" else {"sha256": "d" * 64})
+    # Manifest/file verification has its own tests; exercise the reuse decision with its validated output.
+    monkeypatch.setattr(runtime, "verified_opencv_wheels", lambda *a: current)
+    downloads = []
+
+    def download(*args):
+        assert changed_identity is not None, "identical replacement reinstalled"
+        downloads.append(args)
+        return tmp_path / "python.tar.gz"
+
+    def extract(archive, destination, cancel):
+        relative = "environment/Scripts/python.exe" if runtime.os.name == "nt" else "environment/bin/python"
+        python = destination / relative
+        python.parent.mkdir(parents=True)
+        python.write_bytes(b"stub")
+
+    def verify(python, *args, **kwargs):
+        assert python != stale or changed_identity is None, "stale replacement was reused"
+        return {"status": "success", "executable": str(python)}
+
+    monkeypatch.setattr(runtime, "download_artifact", download)
+    monkeypatch.setattr(runtime, "extract_python", extract)
+    monkeypatch.setattr(runtime, "run_command", lambda *a: None)
+    monkeypatch.setattr(runtime, "verify_runtime", verify)
+    result = runtime.install_runtime(tmp_path, install_profile, None, runtime.RuntimeCancellation(), lambda p: None,
+                                     opencv_wheels=tmp_path / "wheels")
+    assert (result == stale) == (changed_identity is None)
+    assert bool(downloads) == (changed_identity is not None)
+    state = json.loads((result.parent.parent.parent / "install-state.json").read_text(encoding="utf-8"))
+    assert state["opencv_replacements"] == current
+    assert (tmp_path / runtime.POINTER_RELATIVE).read_text(encoding="utf-8").strip() == str(result)
+    assert stale.is_file()
+
+
+def test_changed_opencv_replacement_fallback_failure_preserves_active_runtime(monkeypatch, tmp_path, install_profile):
+    stale = _write_ready_install(tmp_path, install_profile, {"opencv-python-headless": {"sha256": "a" * 64}})
+    pointer = tmp_path / runtime.POINTER_RELATIVE
+    pointer.write_text(str(stale) + "\n", encoding="utf-8")
+    monkeypatch.setattr(runtime, "verified_opencv_wheels", lambda *a: {"opencv-python-headless": {"sha256": "b" * 64}})
+    monkeypatch.setattr(runtime, "verify_runtime", lambda *a, **k: pytest.fail("stale replacement reused"))
+
+    def reject(*args):
+        raise runtime.RuntimeInstallError("fresh download failed")
+
+    monkeypatch.setattr(runtime, "download_artifact", reject)
+    with pytest.raises(runtime.RuntimeInstallError, match="fresh download failed"):
+        runtime.install_runtime(tmp_path, install_profile, None, runtime.RuntimeCancellation(), lambda p: None,
+                                opencv_wheels=tmp_path / "wheels")
+    assert pointer.read_text(encoding="utf-8") == str(stale) + "\n"
+    assert stale.is_file()
 
 
 def test_repeated_reuse_keeps_old_selftest_and_uses_exclusive_worker_jobs(monkeypatch, tmp_path, install_profile):

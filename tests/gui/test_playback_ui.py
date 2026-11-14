@@ -6,7 +6,17 @@
 
 from pathlib import Path
 
+import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QSlider,
+    QTabBar,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+)
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
@@ -193,3 +203,60 @@ def test_arrow_keys_step_frames_and_yield_to_input_widgets(
     line.setValue(0)
     qtbot.keyClick(line, Qt.Key.Key_Right)
     qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 0 / 4")
+
+
+@pytest.mark.parametrize("kind", ["combo", "slider", "table", "tabs", "rich_text"])
+def test_frame_shortcuts_preserve_focused_controls_native_arrows(
+    qtbot: QtBot, synthetic_video_path: Path, kind: str
+) -> None:
+    window = _opened_window(qtbot, synthetic_video_path)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 0 / 4")
+    if kind == "combo":
+        control = QComboBox(window)
+        control.addItems(["A", "B", "C"])
+        control.setCurrentIndex(1)
+        position = control.currentIndex
+    elif kind == "slider":
+        control = QSlider(Qt.Orientation.Horizontal, window)
+        control.setRange(0, 2)
+        control.setValue(1)
+        position = control.value
+    elif kind == "table":
+        control = QTableWidget(1, 3, window)
+        for column, text in enumerate("ABC"):
+            control.setItem(0, column, QTableWidgetItem(text))
+        control.setCurrentCell(0, 1)
+        position = control.currentColumn
+    elif kind == "tabs":
+        control = QTabBar(window)
+        for text in "ABC":
+            control.addTab(text)
+        control.setCurrentIndex(1)
+        position = control.currentIndex
+    else:
+        control = QTextEdit(window)
+        control.setPlainText("ABC")
+        cursor = control.textCursor()
+        cursor.setPosition(1)
+        control.setTextCursor(cursor)
+        position = lambda: control.textCursor().position()
+    control.resize(360, 90)
+    control.show()
+    control.setFocus()
+    qtbot.waitUntil(lambda: QApplication.focusWidget() is control)
+
+    qtbot.keyClick(control, Qt.Key.Key_Right)
+    if kind != "combo":
+        qtbot.waitUntil(lambda: position() == 2)
+    qtbot.waitUntil(lambda: not window._has_pending_request)
+    assert window.frameLabel.text() == "Frame: 0 / 4"
+    qtbot.keyClick(control, Qt.Key.Key_Left)
+    if kind != "combo":
+        qtbot.waitUntil(lambda: position() == 1)
+    qtbot.waitUntil(lambda: not window._has_pending_request)
+    assert window.frameLabel.text() == "Frame: 0 / 4"
+    if kind == "combo":
+        # macOS 的闭合组合框可忽略左右键；上下选择仍须保留原生行为。
+        control.setCurrentIndex(1)
+        qtbot.keyClick(control, Qt.Key.Key_Down)
+        qtbot.waitUntil(lambda: position() == 2)
