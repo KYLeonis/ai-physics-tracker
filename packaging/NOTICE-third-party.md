@@ -12,7 +12,7 @@ P6.4精确版本源码、重建/修改方式和发行材料见随包 `SOURCE-MAT
 | --- | --- | --- | --- |
 | PySide6-Essentials / Qt 6 / shiboken6 | 6.11.2 | LGPL-3.0-only（构建亦提供 GPL-2/3 选项；本项目按 LGPL 动态链接使用） | `LGPL-3.0.txt` + `GPL-3.0.txt`（LGPL-3 以 GPL-3 为引用前提，两者均随包）；Qt 源码可获取于 https://download.qt.io ；wheel 本身不携带许可文本，故从 gnu.org 收录正本 |
 | opencv-python-headless（cv2，含其捆绑的 FFmpeg/libav* 等 dylib） | 4.14.0.94 | OpenCV: Apache-2.0；**新Mac候选替换为同ABI的FFmpeg7.1.1 LGPL2.1+；旧包为GPL，不复用** | `opencv-python-headless-4.14.0.94.LICENSE.txt` 与 `LICENSE-3RD-PARTY.txt`不足以替代实际闭包核对；原包`libavcodec`含GPL/x264/x265；修复后的实际许可/库hash见`opencv-lgpl/manifest.json`，原notices保留 |
-| FFprobe（时序探测，独立进程） | macOS: 7.1.1 源码自建 / Windows: BtbN n8.1.3-14 | LGPL（macOS 构建为 `--disable-gpl --disable-nonfree`，configure 确认 "LGPL version 2.1 or later"；Windows 为 BtbN FFmpeg-Builds win64-lgpl 包） | 见下"FFprobe 分发决定" |
+| FFprobe（时序探测，独立进程） | macOS: 7.1.1 源码自建 / Windows: BtbN n8.1.3-27 | LGPL（macOS 构建为 `--disable-gpl --disable-nonfree`，configure 确认 "LGPL version 2.1 or later"；Windows 为 FFmpeg-Builds win64-lgpl 包，LGPL-3.0+） | 见下"FFprobe 分发决定" |
 | NumPy | 2.4.6 | BSD-3-Clause（含捆绑组件） | `numpy-2.4.6.LICENSE.txt` + `numpy-2.4.6-extra-licenses/`（wheel 原件） |
 | SciPy | 1.17.1 | BSD-3-Clause（含捆绑组件） | `scipy-1.17.1.LICENSE.txt` |
 | scikit-learn / joblib / threadpoolctl | 1.9.0 / 1.5.3 / 3.6.0 | BSD-3-Clause（各包原文） | host 原已声明 scikit-learn，P6.2 补齐构建锁及 pip check；同版本原文在 `resources/runtime/licenses/macos/packages/` 的各 dist-info 中 |
@@ -42,11 +42,19 @@ P6.4精确版本源码、重建/修改方式和发行材料见随包 `SOURCE-MAT
   decoder（时序探测所需）；configure 输出确认 "LGPL version 2.1 or later"，
   脚本在该确认缺失时拒绝出货。LGPL 对应源码即上述官方 tarball + 脚本内的
   configure 参数（仓库内可复现）。
-- **Windows（x64）**：`scripts/build_ffprobe_lgpl.ps1` 取 BtbN FFmpeg-Builds
-  日期化 release `autobuild-2026-10-01-13-06` 的版本化资产
-  `ffmpeg-n8.1.3-14-g330caae0c1-win64-lgpl-8.1.zip`（SHA-256
-  `84e4495b…4006d`，GitHub asset digest），LGPL 变体，仅提取 `bin/ffprobe.exe`；
-  对应源码可由该仓库同 tag 的源码资产获得。
+- **Windows（x64）**：`scripts/build_ffprobe_lgpl.ps1` 取
+  [FFmpeg-Builds（原 BtbN）](https://github.com/FFmpeg-Builds/FFmpeg-Builds)
+  月末保留 release `autobuild-2026-10-31-12-59` 的版本化资产
+  `ffmpeg-n8.1.3-27-g8dca1586f4-win64-lgpl-8.1.zip`（167,778,744 bytes，SHA-256
+  `d4c2a42673917b4a97104a3e9f082729a9730796b98664e37c0b7eba6c6c613d`，GitHub asset digest），
+  LGPL 变体，仅提取 `bin/ffprobe.exe`。包内原始 `LICENSE.txt` 为 LGPL-3.0，应用随附
+  `licenses/LGPL-3.0.txt` 与 `licenses/GPL-3.0.txt`。
+  [该 tag 的构建脚本与依赖配方](https://github.com/FFmpeg-Builds/FFmpeg-Builds/tree/autobuild-2026-10-31-12-59)
+  与 [FFmpeg 源码 commit 8dca1586f4](https://github.com/FFmpeg/FFmpeg/tree/8dca1586f4)
+  是源码入口，不将构建脚本归档误称为全部依赖源码。
+  2026-11-14复核原10/01日常包已被删除；上游仅保留最近14个日常包，而月末最后一包
+  [保留两年](https://github.com/FFmpeg-Builds/FFmpeg-Builds#release-retention-policy)。
+  后续更新固定月末包与哈希；不回退到浮动 `latest` 或关闭校验。
 
 单元测试/开发 CI（tests.yml）仍可使用 ffmpeg-static 的 ffprobe（不随产物分发，
 无再分发问题）；`scripts/setup_ffprobe.py` 保留用于该用途。

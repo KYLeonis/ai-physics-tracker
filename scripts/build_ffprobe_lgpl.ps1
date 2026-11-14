@@ -2,15 +2,17 @@
 #
 # 原因：ffmpeg-static 的 Windows 二进制取自 gyan.dev，该站全部构建现为 GPLv3，
 # 且我们无法提供其精确构建配置作为 corresponding source。本脚本改用 BtbN
-# FFmpeg-Builds 的版本化 win64-lgpl 包（LGPL-2.1+，GitHub 发布 SHA-256），
+# FFmpeg-Builds 的版本化 win64-lgpl 包（LGPL-3.0+，GitHub 发布 SHA-256），
 # 只提取 bin\ffprobe.exe。
 $ErrorActionPreference = "Stop"
 
-# 固定的日期化 autobuild release + 版本化 asset（SHA-256 来自 GitHub asset digest）
-$Tag = "autobuild-2026-10-01-13-06"
-$Asset = "ffmpeg-n8.1.3-14-g330caae0c1-win64-lgpl-8.1.zip"
-$Sha256 = "84e4495b9883dbf3997435943d2d7057cc55a4c31973f7422f56b1b56974006d"
-$Url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/$Tag/$Asset"
+# 固定月末保留包：上游日常包只保留14天，月末最后一包保留两年。
+# https://github.com/FFmpeg-Builds/FFmpeg-Builds#release-retention-policy
+# 更新时选择月末版本并复核 GitHub asset digest；不使用浮动 latest。
+$Tag = "autobuild-2026-10-31-12-59"
+$Asset = "ffmpeg-n8.1.3-27-g8dca1586f4-win64-lgpl-8.1.zip"
+$Sha256 = "d4c2a42673917b4a97104a3e9f082729a9730796b98664e37c0b7eba6c6c613d"
+$Url = "https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/$Tag/$Asset"
 
 $Dest = if ($args[0]) { $args[0] } else { throw "usage: build_ffprobe_lgpl.ps1 <output-dir>" }
 $Marker = Join-Path $Dest "ffprobe.built-sha"
