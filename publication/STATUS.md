@@ -1,11 +1,22 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-11-11（第二作者 Windows 适配审查与同步方案；未合并产品代码）。
+- 最后更新：2026-11-14（用户确认论文候选工作线内部集成范围、分工及门禁，准备完整审查与同源候选）。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
-## 当前工作：第二作者 Windows 适配审查 — 2026-11-11
+## Current work / Agent handoff — Windows internal integration
+
+- Status: **preparing_review_and_candidates**；Owner: first-author Codex coordination/implementation agent。
+- 用户Q1–Q3已确认：[本轮集成计划](plans/windows-followup-integration.md)。仅将PR #46合入`codex/ejp-p6-4-release`；main补丁、公开发行及论文长期集成线另排。
+- PR source为`codex/windows-followup` / `2edd01b`，F1–F4及清理失败边界已修；[同源tests43212468799](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43212468799)双平台通过。旧11/11失败记录保留为历史。
+- 补覆盖原始10提交的完整Independent Review；从同一PR head建立临时候选ref触发现有双平台tests/packaging，核对产物与SHA，提供简短HR步骤。候选准备期间PR产品源码冻结，变更需先通过PR协调。
+- Next Recommended Action：完整审查和候选构建并行推进；准备就绪后，第二作者Windows实测、用户Mac交互确认。两边反馈和本轮门禁均通过才合并；缺反馈时停在HR。CUDA/G5/学生pilot按既有延期单列，不改为PASS。
+- 当前两个长期worktree的产品代码未更改、PR未合并、未发布。协调文档在本工作分支，候选源码/修复保留在PR分支。
+
+## 审查历史：第二作者 Windows 适配审查 — 2026-11-11
+
+以下为修复前记录，当前进度以上方Agent handoff及集成计划为准。
 
 - [修改清单、审查问题、验证矩阵与 main 同步步骤](windows-coauthor-review-and-sync.md)。
   用户确认按仓库证据更新，未验证项保留待验。双方远程 main 同为 `7abd517`；第二作者

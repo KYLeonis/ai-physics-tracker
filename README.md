@@ -2,7 +2,7 @@
 
 > P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。 权威进度见publication/STATUS.md。
 
-> Windows适配最新核查（2026-11-11）：第二作者新增10提交尚未集成；新分支Windows CI为FAIL，实机缺项待验。修改内容、必修问题及通用main/论文线分开同步的步骤见[审查与同步说明](publication/windows-coauthor-review-and-sync.md)。上方CI通过记录仅对应旧版54638e4。
+> Windows适配当前进度（2026-11-14）：PR #46源码2edd01b的修复及双平台tests已通过；用户确认先做论文候选工作线内部集成。正在补完整审查与同源候选，Windows/Mac真人验收通过后才合并，尚未重新发行。见[集成计划](publication/plans/windows-followup-integration.md)。
 
 **A desktop video tracking and physics analysis platform for experiments, kinematics, video measurement, and science education.**
 

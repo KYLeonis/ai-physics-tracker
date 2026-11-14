@@ -19,6 +19,8 @@ AI Physics Tracker 是一个面向物理实验、运动学分析、视频测量�
 
 2026-11-11 Windows跟进：第二作者10个适配提交位于`codex/windows-followup`（154f262→6a7a031），双方远程main同为7abd517；新分支Windows CI FAIL，环境复用/快捷键等F1–F4须先修复，实机门禁仍待验。见[审查与同步说明](publication/windows-coauthor-review-and-sync.md)。本轮仅审查/文档，未合并代码；不整分支合入main，不改历史验证结果。
 
+2026-11-14当前范围：PR #46源码2edd01b的F1–F4修复和双平台tests已通过；用户Q1–Q3确认仅向`codex/ejp-p6-4-release`内部集成。先补完整PR独立审查、同源码tests/packaging与候选核对，再由第二作者做Windows实测、用户确认Mac新交互，两边通过才合并。见[集成计划](publication/plans/windows-followup-integration.md)。main/公开发行另排，CUDA/G5/学生pilot继续单列；历史FAIL不回写。
+
 | 阶段 | 名称 | 一句话目标 |
 | --- | --- | --- |
 | Phase 0 | Project Initialization | 仓库、文档、Git 初始化（✅ 已完成） |
