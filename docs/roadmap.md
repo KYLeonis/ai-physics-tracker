@@ -2,7 +2,7 @@
 
 > P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。 权威进度见publication/STATUS.md。
 
-> 2026-11-14：[Windows内部集成计划](../publication/plans/windows-followup-integration.md)已获用户范围/分工/门禁确认。PR #46源码2edd01b修复与双平台tests通过，完整审查与同源候选准备中，收到Windows/Mac真人验收通过反馈后再合入论文候选工作分支。main与正式发行另排，不勾选未执行的验收项。
+> 2026-11-14：[Windows内部集成计划](../publication/plans/windows-followup-integration.md)范围/分工/门禁已确认；完整审查F1–F7修复并复审关闭，候选源码38628ba。同源tests/packaging、产物核对与Mac本机包冒烟均PASS，收到Windows/Mac本轮真人验收通过反馈后再合入论文候选工作分支。main与正式发行另排，不勾选未执行的验收项。
 
 本文档细化各开发阶段的目标、交付物、验收标准与主要技术风险。
 状态标记：✅ 完成 / 🔄 进行中 / ⬜ 未开始

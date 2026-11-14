@@ -1,11 +1,11 @@
 # Windows follow-up — internal integration
 
 - Date: 2026-11-14
-- Status: preparing_review_and_candidates
+- Status: awaiting_human_review
 - Coordination worktree / branch: `/Users/leonis/Documents/ai-physics-tracker-ejp` / `codex/ejp-p6-4-release`
 - Source worktree / branch: `/Users/leonis/Documents/ai-physics-tracker-windows-followup` / `codex/windows-followup`
 - PR: [#46](https://github.com/KYLeonis/ai-physics-tracker/pull/46)
-- Candidate source: `2edd01b1d53eba7a877b10d14e574f30f9d7e9c0`
+- Candidate source: `38628baf3a4b25543a49aef5bfa9b703bfa762b2`
 - Review base: `23c0a227179c96e9a8a501634850b58825d1f38a`; original contribution range: `154f262..6a7a031`.
 
 ## Confirmed user decisions
@@ -22,10 +22,10 @@ No new dependencies, GitHub settings changes, force pushes, project/data writes 
 
 ## Slices / acceptance
 
-- [ ] S1 Full independent review of `23c0a22..candidate`: all blockers resolved; findings/dispositions recorded in `docs/reviews/windows-followup-integration-review.md`.
-- [ ] S2 Same exact source passes both native tests and packaging. The current `packaging.yml` push filter already accepts `codex/ejp-p6-*`; create temporary candidate ref `codex/ejp-p6-windows-followup-candidate` at the pinned PR head to trigger existing workflows without merging first or editing main.
-- [ ] S3 Download candidates, check archive integrity, exact artifact IDs/size/SHA256, embedded source/provenance and available native smoke/signature evidence. Record failures honestly. Changes to product code require a new candidate generation and relevant revalidation.
-- [ ] S4 Provide each human reviewer no more than five operations with expected outcomes and closed questions. Windows covers ready-runtime reuse/Repair/cancel/retry, hidden-console behavior, keyboard/review/marking interactions, and a small CPU flow using test copies. Mac confirms the affected interactions and ready-runtime behavior. User/second-author feedback must identify tested source/package.
+- [x] S1 Full independent review of `23c0a22..candidate`: all blockers resolved; findings/dispositions recorded in `docs/reviews/windows-followup-integration-review.md` (R2/R3 approve after fixes; F1–F7 Closed).
+- [x] S2 Same exact source passes both native tests and packaging. Existing push filter accepts temporary candidate ref `codex/ejp-p6-windows-followup-candidate`; both workflows below are success at38628ba without merging or editing main.
+- [x] S3 Downloaded both candidates; exact artifact IDs/size/SHA256, archive CRC, source identity and native smoke/signature evidence verified and recorded in the acceptance document. Windows text source uses CRLF, verified after LF normalization; no undocumented byte-exact claim. Product code changes require a new candidate generation.
+- [x] S4 Each human has five operations, expected outcomes and closed questions in the acceptance document. Windows covers runtime reuse/Repair/cancel/retry, hidden-console behavior, keyboard/review/marking and a small CPU flow; Mac confirms affected interactions and runtime behavior. Feedback must identify tested source/package.
 - [ ] S5 Both human acceptances recorded; no automated UI action substitutes for HR. If either reports a problem, fix and rebuild/retest the affected scope before merging.
 - [ ] S6 Merge PR #46 into `codex/ejp-p6-4-release` only after S1–S5; preserve original authorship, resolve documentation conflicts and verify the integrated code/tests against the accepted candidate. Confirm integration tests/packaging, synchronize docs and stop. Do not merge into main or `publication/ejp-damped-pendulum` in this task.
 
@@ -39,6 +39,9 @@ No new dependencies, GitHub settings changes, force pushes, project/data writes 
 
 - Prior source verification: [tests43212468799](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43212468799), `2edd01b`, Mac1505 passed/7 skipped/1 existing xfailed; Windows1506 passed/6 skipped/1 existing xfailed.
 - Prior repair review: R2 modified then approved, limited to the repair range. This does not close S1.
-- Current native candidates: pending. No new Windows package was found when this plan was opened.
-- Candidate provenance and human feedback will be recorded in a companion acceptance document before HR.
-- Next action: full PR independent review and immutable candidate builds in parallel; then verify artifacts and issue HR requests. Keep PR #46 updated with owner, source SHA, workflow/artifact links and outstanding gates. Wait for both human results before merge.
+- Complete PR review R1 found F1–F6; `109ef88` fixes all six. Independent R2 closed them (72 passed / 1 Windows-only skip). Implementation-agent targeted suite: 116 passed / 1 Windows-only skip. See [Review Record](../../docs/reviews/windows-followup-integration-review.md).
+- Candidate generations (history retained): `2edd01b` tests43600270555 success, packaging43600270512 cancelled after review findings; `109ef88` tests43601805962 both-platform success, packaging43601805936 Windows failed because the old FFprobe URL returned404, Mac cancelled. Neither generation is issued for HR.
+- `38628ba` fixes packaging F7 by pinning the retained October31 monthly LGPL FFprobe build and synchronizing NOTICE. The downloaded input is167778744 bytes, SHA256 `d4c2a42673917b4a97104a3e9f082729a9730796b98664e37c0b7eba6c6c613d`; ZIP CRC passed. Related ffprobe/launch/provenance tests61 passed / 1 Windows-only skip. Existing dependencies, architecture and MIT license remain unchanged.
+- Same-source [tests43602320267](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320267) and [packaging43602320306](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320306) both success at38628ba. Mac1523 passed/7 skipped/1 existing xfailed; Windows1524 passed/6 skipped/1 existing xfailed. Both native packages passed frozen smoke; downloaded artifacts and local Mac packaged smoke verified.
+- Candidate provenance and human feedback: [acceptance document](windows-followup-human-review.md). Mac fixture was copied from the existing synthetic T001 project, all132 files verified before preparation; only the review copy has12 manual points at frames0–2 removed, allowing the four-point behavior to be tested. Original project/video/model data remain untouched.
+- Next action: stop and wait for Mac M1–M5 and Windows W1–W5 actual feedback on38628ba. F7 R3 approved, native validation/artifact verification passed. Keep PR #46 as handoff; on failure fix/rebuild/retest the affected scope. After both HR gates pass, resolve documentation-only integration conflicts and merge only into codex/ejp-p6-4-release, then verify the integrated tree. No source merging has occurred.

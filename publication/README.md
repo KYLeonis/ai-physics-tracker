@@ -10,7 +10,7 @@
 
 - [STATUS](STATUS.md)：本线当前状态与确切下一步。
 - [第二作者交接](coauthor-handoff.md)：2026-10-31整理的规范命名素材包、Windows测试入口、源码基线与已知缺项。
-- [Windows内部集成计划](plans/windows-followup-integration.md)：2026-11-14用户确认本轮只向论文候选工作分支集成；源码2edd01b已通过修复/双平台tests，完整审查和同源候选准备中，随后Windows/Mac真人验收。
+- [Windows内部集成计划](plans/windows-followup-integration.md)：2026-11-14确认本轮只向论文候选工作分支集成；完整审查F1–F7已修复、复审关闭，候选源码38628ba，同源tests/packaging、产物核对与Mac本机包冒烟均PASS；等待按[真人验收步骤](plans/windows-followup-human-review.md)完成Windows/Mac反馈。
 - [Windows适配审查与main同步](windows-coauthor-review-and-sync.md)：2026-11-11的原始提交审查与后续分线同步建议，历史失败记录保留。
 - [Platform requirements](spec/platform-requirements.md)：产品/科学契约与release-level验收。
 - [Scientific Asset Inventory](spec/scientific-asset-inventory.md)：论文方法/结果到源代码、配置、数据库表和输出的只读对应。

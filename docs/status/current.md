@@ -1,4 +1,4 @@
-> 2026-11-14：用户已确认PR #46只做论文候选工作线内部集成。源码2edd01b的修复/双平台tests已通过；正在补完整PR审查和同源Mac/Windows候选，随后第二作者Windows实测、用户Mac确认，两边通过才合入codex/ejp-p6-4-release。见[集成计划](../../publication/plans/windows-followup-integration.md)与[权威状态](../../publication/STATUS.md)。main、公开发布、CUDA/G5/学生pilot另排；下方11/11及main旧状态是历史快照。
+> 2026-11-14：PR #46完整审查F1–F7已修复、复审关闭，候选源码38628ba，同源Mac/Windows tests/packaging、产物核对与Mac本机包冒烟均PASS。下一步停在人审门禁，等待第二作者Windows、用户Mac按[真人验收步骤](../../publication/plans/windows-followup-human-review.md)反馈，两边通过才合入codex/ejp-p6-4-release。见[集成计划](../../publication/plans/windows-followup-integration.md)与[权威状态](../../publication/STATUS.md)。main、公开发布、CUDA/G5/学生pilot另排；下方11/11及main旧状态是历史快照。
 
 > P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。 权威进度见publication/STATUS.md。
 

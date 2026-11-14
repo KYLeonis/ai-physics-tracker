@@ -1,17 +1,18 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-11-14（用户确认论文候选工作线内部集成范围、分工及门禁，准备完整审查与同源候选）。
+- 最后更新：2026-11-14（完整PR审查F1–F7修复/复审关闭，候选38628ba双平台自动验证及包核对通过，等待双方HR）。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
 
 ## Current work / Agent handoff — Windows internal integration
 
-- Status: **preparing_review_and_candidates**；Owner: first-author Codex coordination/implementation agent。
+- Status: **awaiting_human_review**；Owner: first-author Codex coordination/implementation agent。
 - 用户Q1–Q3已确认：[本轮集成计划](plans/windows-followup-integration.md)。仅将PR #46合入`codex/ejp-p6-4-release`；main补丁、公开发行及论文长期集成线另排。
-- PR source为`codex/windows-followup` / `2edd01b`，F1–F4及清理失败边界已修；[同源tests43212468799](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43212468799)双平台通过。旧11/11失败记录保留为历史。
-- 补覆盖原始10提交的完整Independent Review；从同一PR head建立临时候选ref触发现有双平台tests/packaging，核对产物与SHA，提供简短HR步骤。候选准备期间PR产品源码冻结，变更需先通过PR协调。
-- Next Recommended Action：完整审查和候选构建并行推进；准备就绪后，第二作者Windows实测、用户Mac交互确认。两边反馈和本轮门禁均通过才合并；缺反馈时停在HR。CUDA/G5/学生pilot按既有延期单列，不改为PASS。
+- PR source为`codex/windows-followup` / `38628ba`。覆盖原始10提交的[完整审查R1–R3](../docs/reviews/windows-followup-integration-review.md)F1–F7全部Closed：109ef88修复焦点/短EOF/异常测试/取消/替换wheel身份/准线，38628ba修复上游删除日常FFprobe包导致的Windows打包404并同步NOTICE。
+- 本机定向116 passed/1 Windows-only skip；reviewer独立72 passed/1 skip；FFprobe/launch/provenance相关61 passed/1 skip。109ef88的tests43601805962已双平台success；其packaging Windows失败/Mac取消，旧包不用于HR。历史失败/取消记录不改写。
+- 最新同源[tests43602320267](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320267)与[packaging43602320306](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320306)双平台PASS：Mac1523 passed/7 skipped/1既有xfail，Windows1524 passed/6 skipped/1既有xfail。原生包冒烟、下载artifact哈希/CRC、114个worker源码核对通过；Windows仅换行规范化差异。Mac2198项inventory、ad_hoc签名和本机包冒烟PASS。artifact14116778309（Mac）/14116992725（Windows）；包链接/hash/操作与反馈记在[真人验收文档](plans/windows-followup-human-review.md)，[机器可读证据](evidence/runtime/windows-followup-2026-11-14.json)。源码冻结，变更先通过PR协调。
+- Next Recommended Action：停在人审门禁，等待38628ba的Mac M1–M5与Windows W1–W5实际反馈。人审请求和指定包在PR #46交接；失败则修复/重建/复验。两边本轮反馈均通过后才解决文档集成冲突并合入codex/ejp-p6-4-release，再核对集成源码与CI；main/论文长期线/公开发布均另排。CUDA/G5/学生pilot继续单列，不改为PASS。
 - 当前两个长期worktree的产品代码未更改、PR未合并、未发布。协调文档在本工作分支，候选源码/修复保留在PR分支。
 
 ## 审查历史：第二作者 Windows 适配审查 — 2026-11-11

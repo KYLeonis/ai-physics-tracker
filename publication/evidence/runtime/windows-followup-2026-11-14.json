@@ -1,0 +1,176 @@
+{
+  "date": "2026-11-14",
+  "status": "awaiting_human_review",
+  "repository": "KYLeonis/ai-physics-tracker",
+  "pr": 46,
+  "source_commit": "38628baf3a4b25543a49aef5bfa9b703bfa762b2",
+  "source_branch": "codex/windows-followup",
+  "candidate_branch": "codex/ejp-p6-windows-followup-candidate",
+  "merge_target": "codex/ejp-p6-4-release",
+  "merged": false,
+  "public_release": false,
+  "review": {
+    "record": "docs/reviews/windows-followup-integration-review.md",
+    "verdict": "approve_after_fixes",
+    "closed_findings": [
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "F6",
+      "F7"
+    ],
+    "fix_commits": [
+      "109ef88f4e727b658a68fa7686eb8614f05ce8f8",
+      "38628baf3a4b25543a49aef5bfa9b703bfa762b2"
+    ]
+  },
+  "tests": {
+    "run_id": 43602320267,
+    "conclusion": "success",
+    "macos": {
+      "job_id": 132469528659,
+      "passed": 1523,
+      "skipped": 7,
+      "existing_strict_xfailed": 1,
+      "seconds": 164.75
+    },
+    "windows": {
+      "job_id": 132469528813,
+      "passed": 1524,
+      "skipped": 6,
+      "existing_strict_xfailed": 1,
+      "seconds": 419.88
+    }
+  },
+  "packaging": {
+    "run_id": 43602320306,
+    "conclusion": "success",
+    "macos_job_id": 132469528998,
+    "windows_job_id": 132469528777
+  },
+  "artifacts": [
+    {
+      "name": "macos-artifact.zip",
+      "id": 14116778309,
+      "size": 195710616,
+      "sha256": "2bc6a130c2e50f2315fcd8a89fbdf37a09ef464e0512ea6285ff9637a78e5a83",
+      "platform": "macos",
+      "crc": "PASS",
+      "files": [
+        {
+          "name": "AIPhysicsTracker-0.1.0-arm64.dmg",
+          "size": 196575804,
+          "sha256": "721843fcdccc26e8e75d562d6b80e3831aa1803c51b7ae906db973c0d9a1f492"
+        },
+        {
+          "name": "AIPhysicsTracker-0.1.0-ffmpeg-sources.zip",
+          "size": 11034911,
+          "sha256": "f5885e4c2429e5651a19140002dcbbd65d61c8a66570a1e42221e9081e0a4b4a"
+        },
+        {
+          "name": "release-manifest.json",
+          "size": 537509,
+          "sha256": "6fe6638d909eb323679dd38a7c85a1ecf5d71676d5b3de643e7209118da7c76b"
+        }
+      ]
+    },
+    {
+      "name": "windows-artifact.zip",
+      "id": 14116992725,
+      "size": 209679592,
+      "sha256": "3a1c44126793534616357bbf9415bab922b02f8258798622527ebbbfca6c4d43",
+      "platform": "windows",
+      "crc": "PASS",
+      "files": [
+        {
+          "name": "AIPhysicsTracker-0.1.0-win64.zip",
+          "size": 210805208,
+          "sha256": "a68b1505269e1911c9ef91ac2be46afcb85e9b43a59a80603657caf7366a1063"
+        }
+      ]
+    }
+  ],
+  "macos_verification": {
+    "source": "38628baf3a4b25543a49aef5bfa9b703bfa762b2",
+    "os": "macOS-27.2.1-arm64-arm-64bit-Mach-O",
+    "file_inventory": "PASS",
+    "inventory_entries": 2198,
+    "tracked_source_identity": "PASS",
+    "worker_source_files": 114,
+    "worker_source_identity": "PASS (byte-exact)",
+    "code_signature": "PASS (ad_hoc; not notarized)",
+    "local_packaged_smoke": "PASS",
+    "smoke": {
+      "status": "ok",
+      "video_read_write_seek": [
+        "MP4/mp4v",
+        "AVI/MJPEG"
+      ],
+      "opencv_ffmpeg_license": "LGPL version 2.1 or later",
+      "runtime_profiles": [
+        "macos-arm64"
+      ],
+      "joint_csv_frames": 1,
+      "forbidden_modules": [],
+      "ffprobe": "/Users/leonis/Documents/ai-physics-tracker-ejp/dist/windows-followup-hr/38628ba/AI Physics Tracker.app/Contents/Frameworks/resources/ffprobe/ffprobe",
+      "external_worker": {
+        "status": "success",
+        "executable": "/Users/leonis/Documents/ai-physics-tracker/.venv/bin/python",
+        "worker_sha256": "f6826c16f59178a03d1c488d5f1a53fd00114735f658a504e086f2d6f1e7768f"
+      }
+    }
+  },
+  "windows_verification": {
+    "source": "38628baf3a4b25543a49aef5bfa9b703bfa762b2",
+    "archive_crc": "PASS",
+    "worker_source_files": 114,
+    "worker_source_identity": "PASS after CRLF-to-LF normalization (114 Windows checkout files)",
+    "runtime_notice_license_identity": "PASS after CRLF-to-LF normalization",
+    "ffprobe_upstream_identity": "PASS",
+    "ffprobe_exe_sha256": "48d6297c8e6538ca8c351300e80ea3ff67a4f0c54337f653f8df7d687ae0afbb",
+    "windows_native_smoke": "PASS (CI job132469528777)",
+    "local_windows_execution": "NOT_RUN (macOS host)"
+  },
+  "source_companion_crc": "PASS",
+  "dmg_and_source_companion_manifest_identity": "PASS",
+  "human_review": {
+    "macos": "pending",
+    "windows": "pending",
+    "instructions": "publication/plans/windows-followup-human-review.md"
+  },
+  "separate_pending_gates": [
+    "CUDA hardware",
+    "G5 clean machine",
+    "student pilot",
+    "installed teacher-import",
+    "complete installed scientific export/recovery"
+  ],
+  "superseded_generations": [
+    {
+      "source": "2edd01b1d53eba7a877b10d14e574f30f9d7e9c0",
+      "tests_run": 43600270555,
+      "tests": "success",
+      "packaging_run": 43600270512,
+      "packaging": "cancelled after review findings",
+      "issued_for_hr": false
+    },
+    {
+      "source": "109ef88f4e727b658a68fa7686eb8614f05ce8f8",
+      "tests_run": 43601805962,
+      "tests": "success",
+      "packaging_run": 43601805936,
+      "windows_packaging": "failed (upstream asset404)",
+      "macos_packaging": "cancelled",
+      "issued_for_hr": false
+    }
+  ],
+  "limitations": [
+    "Code review, tests and native packaging are not Human Review.",
+    "Mac signature is ad_hoc; no notarization claim.",
+    "Windows runtime execution evidence is CI native smoke, not local Mac execution.",
+    "Windows text sources differ by CRLF checkout; 114 worker files match after LF normalization.",
+    "Windows packaging does not generate Mac build-info/release manifest."
+  ]
+}
