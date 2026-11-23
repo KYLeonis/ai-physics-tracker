@@ -177,7 +177,7 @@ class VideoView(QGraphicsView):
                 Qt.TransformationMode.SmoothTransformation
             )
             if self._annotation_mode:
-                self._pixmap_item.setCursor(Qt.CursorShape.CrossCursor)
+                self._pixmap_item.setCursor(Qt.CursorShape.BlankCursor)
         else:
             self._pixmap_item.setPixmap(pixmap)
         self._removePlaceholder()
@@ -371,8 +371,9 @@ class VideoView(QGraphicsView):
         return self._calibration_mode
 
     def _update_cursors(self) -> None:
+        # UX-16：拾取模式下 1px 准线即指针，隐藏粗大的系统十字光标。
         shape = (
-            Qt.CursorShape.CrossCursor
+            Qt.CursorShape.BlankCursor
             if (self._annotation_mode or self._calibration_mode is not None)
             else Qt.CursorShape.ArrowCursor
         )
@@ -624,7 +625,7 @@ class VideoView(QGraphicsView):
             if marker.frame_index is not None else marker.source
         )
         if self._annotation_mode or self._calibration_mode is not None:
-            item.setCursor(Qt.CursorShape.CrossCursor)
+            item.setCursor(Qt.CursorShape.BlankCursor)
         for child in item.childItems():
             if isinstance(child, QGraphicsSimpleTextItem):
                 # manual 点显示帧号；带 label 的 AI 预测点显示文字标识（UX-13a）。

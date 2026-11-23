@@ -104,3 +104,22 @@ def test_review_prediction_marker_carries_text_label(qtbot):
     texts = [c.text() for c in item.childItems()
              if type(c).__name__ == "QGraphicsSimpleTextItem"]
     assert texts == []  # 无 label 的预览点不创建文字子项
+
+
+def test_pick_modes_hide_system_cursor_in_favour_of_hairlines(qtbot):
+    # UX-16：拾取/标注模式隐藏系统十字光标，1px 准线即指针
+    from PySide6.QtCore import Qt as _Qt
+
+    view = VideoView()
+    qtbot.addWidget(view)
+    view.show()
+    view.setFrame(_frame())
+    view.set_annotation_mode(True)
+    assert view._pixmap_item.cursor().shape() == _Qt.CursorShape.BlankCursor
+
+    view.set_calibration_mode("scale")
+    assert view._pixmap_item.cursor().shape() == _Qt.CursorShape.BlankCursor
+
+    view.set_calibration_mode(None)
+    view.set_annotation_mode(False)
+    assert view._pixmap_item.cursor().shape() == _Qt.CursorShape.ArrowCursor
