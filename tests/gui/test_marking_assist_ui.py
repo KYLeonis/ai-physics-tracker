@@ -106,56 +106,139 @@ def test_review_prediction_marker_carries_text_label(qtbot):
     assert texts == []  # 无 label 的预览点不创建文字子项
 
 
+def _send_mouse_move(view: VideoView, view_pos: QPoint) -> None:
+    from PySide6.QtCore import QEvent, QPointF, Qt
+    from PySide6.QtGui import QMouseEvent
+    from PySide6.QtWidgets import QApplication
+
+    pos = QPointF(view_pos)
+    event = QMouseEvent(
+        QEvent.Type.MouseMove,
+        pos,
+        pos,
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    QApplication.sendEvent(view.viewport(), event)
+
+
 def test_pick_modes_hide_system_cursor_in_favour_of_hairlines(qtbot):
-    # UX-16：拾取/标注模式隐藏系统十字光标，1px 准线即指针
-    from PySide6.QtCore import QEvent, Qt as _Qt
-    from ai_physics_tracker.gui.video_view import PendulumOverlayView
+    # UX-16：拾取/标注模式仅在有帧且位于画面内时隐藏系统光标，退出恢复 ArrowCursor
+    from PySide6.QtCore import Qt as _Qt
 
     view = VideoView()
     qtbot.addWidget(view)
     view.resize(400, 300)
     view.show()
 
-    # 未加载帧时即使开启拾取模式，viewport 光标仍保持可见（避免黑屏/占位时指针失踪）
     view.set_annotation_mode(True)
     assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
 
     view.setFrame(_frame())
     assert view._pixmap_item.cursor().shape() == _Qt.CursorShape.BlankCursor
-    assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
-
-    # 鼠标进入视频画面内：显示 1px 准线且 viewport 切为 BlankCursor
-    inside = view.mapFromScene(32.0, 24.0)
-    view._update_crosshair(inside)
+    _send_mouse_move(view, view.mapFromScene(32.0, 24.0))
     assert view._crosshair_v.isVisible() and view._crosshair_h.isVisible()
     assert view.viewport().cursor().shape() == _Qt.CursorShape.BlankCursor
 
-    # 鼠标移到视频外黑边留白区：隐藏准线且 viewport 恢复可见 ArrowCursor
+    for mode in ("scale", "origin", "pivot", "vertical"):
+        view.set_calibration_mode(mode)
+        assert view._pixmap_item.cursor().shape() == _Qt.CursorShape.BlankCursor
+        _send_mouse_move(view, view.mapFromScene(32.0, 24.0))
+        assert view._crosshair_v.isVisible() and view._crosshair_h.isVisible()
+        assert view.viewport().cursor().shape() == _Qt.CursorShape.BlankCursor
+
+    view.set_calibration_mode(None)
+    assert view._pixmap_item.cursor().shape() == _Qt.CursorShape.ArrowCursor
+    assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
+
+
+def test_cursor_remains_visible_in_black_margin_and_after_leave(qtbot):
+    # UX-16：经真实 MouseMove 从画面移出到黑边或 Leave 后重入黑边，指针不得隐身
+    from PySide6.QtCore import QEvent, Qt as _Qt
+    from PySide6.QtWidgets import QApplication
+
+    view = VideoView()
+    qtbot.addWidget(view)
+    view.resize(400, 300)
+    view.show()
+    view.setFrame(_frame())
+    view.set_annotation_mode(True)
+
+    inside = view.mapFromScene(32.0, 24.0)
     outside = view.mapFromScene(-10.0, -10.0)
-    view._update_crosshair(outside)
+
+    _send_mouse_move(view, inside)
+    assert view._crosshair_v.isVisible()
+    assert view.viewport().cursor().shape() == _Qt.CursorShape.BlankCursor
+
+    _send_mouse_move(view, outside)
     assert not view._crosshair_v.isVisible() and not view._crosshair_h.isVisible()
     assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
 
-    # 标定模式与 pendulum 持久图元同样隐藏系统光标；离开视口恢复可见光标
-    view.set_calibration_mode("scale")
-    view.set_pendulum_overlay(PendulumOverlayView(fixed_pivot_px=(20.0, 15.0)))
-    assert view._pixmap_item.cursor().shape() == _Qt.CursorShape.BlankCursor
-    assert all(item.cursor().shape() == _Qt.CursorShape.BlankCursor
-               for item in view._pendulum_items)
-    view._update_crosshair(inside)
+    # 移回画面后再触发 viewport Leave（如滑到滚动条），然后重入黑边区域
+    _send_mouse_move(view, inside)
     assert view.viewport().cursor().shape() == _Qt.CursorShape.BlankCursor
-    view.leaveEvent(QEvent(QEvent.Type.Leave))
+    QApplication.sendEvent(view.viewport(), QEvent(QEvent.Type.Leave))
     assert not view._crosshair_v.isVisible()
     assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
 
-    # clearFrame 后同样隐藏准线并恢复 viewport 可见光标
-    view._update_crosshair(inside)
+    _send_mouse_move(view, outside)
+    assert not view._crosshair_v.isVisible()
+    assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
+
+
+def test_overlay_items_outside_frame_or_after_clear_keep_visible_cursor(qtbot):
+    # 伸出画面外的叠加图元及 clearFrame 后的残留 marker 不得在无准线时触发 BlankCursor
+    from PySide6.QtCore import Qt as _Qt
+    from ai_physics_tracker.gui.video_view import MarkerView, PendulumOverlayView
+
+    view = VideoView()
+    qtbot.addWidget(view)
+    view.resize(400, 300)
+    view.show()
+    view.setFrame(_frame())
+    view.set_annotation_mode(True)
+    view.set_markers([MarkerView(32.0, 24.0, "#e6194b", True, "manual", 0)])
+    # 垂直参考线靠近底边，使 "down — NOT confirmed" 标签落到画面外黑边区
+    view.set_pendulum_overlay(
+        PendulumOverlayView(vertical_top_px=(58.0, 44.0), vertical_bottom_px=(60.0, 46.0))
+    )
+
+    # 画面内移到 marker 上：准线显示、光标隐藏
+    _send_mouse_move(view, view.mapFromScene(32.0, 24.0))
+    assert view._crosshair_v.isVisible()
+    assert view.viewport().cursor().shape() == _Qt.CursorShape.BlankCursor
+
+    # 移到画面外标签位置：准线隐藏、光标必须保持 ArrowCursor
+    _send_mouse_move(view, view.mapFromScene(75.0, 44.0))
+    assert not view._crosshair_v.isVisible()
+    assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
+
+    # clearFrame 后残留 marker 上方也必须恢复可见光标
+    _send_mouse_move(view, view.mapFromScene(32.0, 24.0))
     view.clearFrame()
+    assert not view.hasFrame()
     assert not view._crosshair_v.isVisible()
+    _send_mouse_move(view, view.mapFromScene(32.0, 24.0))
     assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
 
-    view.set_calibration_mode(None)
-    view.set_annotation_mode(False)
+
+def test_shrinking_frame_hides_out_of_bounds_crosshair_and_restores_cursor(qtbot):
+    from PySide6.QtCore import Qt as _Qt
+
+    view = VideoView()
+    qtbot.addWidget(view)
+    view.resize(400, 300)
+    view.show()
+    view.setFrame(_frame(100, 80))
+    view.zoomOriginal()
+    view.set_annotation_mode(True)
+
+    _send_mouse_move(view, view.mapFromScene(80.0, 60.0))
+    assert view._crosshair_v.isVisible()
+    assert view.viewport().cursor().shape() == _Qt.CursorShape.BlankCursor
+
+    view.setFrame(_frame(40, 30))
+    assert not view._crosshair_v.isVisible() and not view._crosshair_h.isVisible()
     assert view.viewport().cursor().shape() == _Qt.CursorShape.ArrowCursor
-    assert all(item.cursor().shape() == _Qt.CursorShape.ArrowCursor
-               for item in view._pendulum_items)
