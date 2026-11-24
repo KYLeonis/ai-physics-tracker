@@ -324,7 +324,8 @@ def test_frame_delivery_keeps_crosshair_in_annotation_mode(qtbot: QtBot) -> None
 
     assert view.is_annotation_mode()
     assert view._pixmap_item is not None
-    assert view._pixmap_item.cursor().shape() == Qt.CursorShape.CrossCursor
+    # UX-16：标注模式下用 1px 全幅准线替代系统粗十字，图像图元保持 BlankCursor
+    assert view._pixmap_item.cursor().shape() == Qt.CursorShape.BlankCursor
 
 
 def test_manual_markers_carry_frame_number_labels(qtbot: QtBot) -> None:

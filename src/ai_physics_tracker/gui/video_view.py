@@ -176,8 +176,6 @@ class VideoView(QGraphicsView):
             self._pixmap_item.setTransformationMode(
                 Qt.TransformationMode.SmoothTransformation
             )
-            if self._annotation_mode:
-                self._pixmap_item.setCursor(Qt.CursorShape.BlankCursor)
         else:
             self._pixmap_item.setPixmap(pixmap)
         self._removePlaceholder()
@@ -196,7 +194,9 @@ class VideoView(QGraphicsView):
         self._current_frame = None
         self.set_calibration(None)
         self._clear_scale_preview()
+        self._hide_crosshair()
         self._scene.setSceneRect(QRectF(0.0, 0.0, 0.0, 0.0))
+        self._update_cursors()
         self.zoomFit()
         self.setPlaceholder("Open a video to begin")
 
@@ -362,8 +362,7 @@ class VideoView(QGraphicsView):
         if mode is not None:
             self._annotation_mode = False
         elif not self._annotation_mode:
-            self._crosshair_v.hide()
-            self._crosshair_h.hide()
+            self._hide_crosshair()
         self._clear_scale_preview()
         self._update_cursors()
 
@@ -371,43 +370,55 @@ class VideoView(QGraphicsView):
         return self._calibration_mode
 
     def _update_cursors(self) -> None:
-        # UX-16：拾取模式下 1px 准线即指针，隐藏粗大的系统十字光标。
+        # UX-16：拾取模式下 1px 准线即指针，画面与叠加图元使用 BlankCursor；
+        # 但无帧或鼠标位于黑边（准线未显示）时，viewport 保留 ArrowCursor 以免指针彻底隐身。
+        pick_active = self._annotation_mode or self._calibration_mode is not None
         shape = (
             Qt.CursorShape.BlankCursor
-            if (self._annotation_mode or self._calibration_mode is not None)
+            if pick_active
             else Qt.CursorShape.ArrowCursor
         )
-        if self._annotation_mode or self._calibration_mode is not None:
+        if pick_active:
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
         else:
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-        # viewport 级光标兜底:scene 边缘(黑边)与 item hover 空隙也显示
-        # 当前交互状态的光标(HR 反馈 2026-09-29:鼠标移入视频区即见十字,
-        # 不依赖先点击主窗口;item hover 时 item cursor 优先生效,同形不冲突)
-        self.viewport().setCursor(shape)
+        hairlines_visible = (
+            pick_active
+            and self._pixmap_item is not None
+            and (self._crosshair_v.isVisible() or self._crosshair_h.isVisible())
+        )
+        self.viewport().setCursor(
+            Qt.CursorShape.BlankCursor
+            if hairlines_visible
+            else Qt.CursorShape.ArrowCursor
+        )
         if self._pixmap_item is not None:
             self._pixmap_item.setCursor(shape)
-        for item in self._marker_items:
-            item.setCursor(shape)
-        for item in self._preview_marker_items:
+        for item in (
+            *self._marker_items,
+            *self._preview_marker_items,
+            *self._calibration_items,
+            *self._pendulum_items,
+            self._crosshair_v,
+            self._crosshair_h,
+        ):
             item.setCursor(shape)
         if self._review_prediction_item is not None:
             self._review_prediction_item.setCursor(shape)
-        for item in self._calibration_items:
-            item.setCursor(shape)
+        if self._scale_preview_item is not None:
+            self._scale_preview_item.setCursor(shape)
 
     def set_annotation_mode(self, enabled: bool) -> None:
         """标注模式：左键点击落点（发 annotationClicked），禁用拖拽平移。
 
-        十字光标设在图像/marker item 上：QGraphicsScene 的 hover 管理
-        会用 item 光标覆盖 viewport 光标，只设 viewport 会在移动鼠标时
-        被 scene 重置回箭头（Human Review 反馈的闪变 bug）。
+        交互光标设在图像/marker 等场景图元上：QGraphicsScene 的 hover 管理
+        会用 item 光标覆盖 viewport 光标，仅设 viewport 会在移动鼠标时被
+        scene 重置（Human Review 反馈的闪变 bug）。
         """
 
         self._annotation_mode = enabled
         if not enabled:
-            self._crosshair_v.hide()
-            self._crosshair_h.hide()
+            self._hide_crosshair()
         if enabled:
             self._calibration_mode = None
             self._clear_scale_preview()
@@ -624,8 +635,11 @@ class VideoView(QGraphicsView):
             f"{marker.source} · frame {marker.frame_index}"
             if marker.frame_index is not None else marker.source
         )
-        if self._annotation_mode or self._calibration_mode is not None:
-            item.setCursor(Qt.CursorShape.BlankCursor)
+        item.setCursor(
+            Qt.CursorShape.BlankCursor
+            if (self._annotation_mode or self._calibration_mode is not None)
+            else Qt.CursorShape.ArrowCursor
+        )
         for child in item.childItems():
             if isinstance(child, QGraphicsSimpleTextItem):
                 # manual 点显示帧号；带 label 的 AI 预测点显示文字标识（UX-13a）。
@@ -878,6 +892,8 @@ class VideoView(QGraphicsView):
             self._scene.addItem(label)
             self._pendulum_items.append(label)
 
+        self._update_cursors()
+
     def pendulum_overlay_items_count(self) -> int:
         return len(self._pendulum_items)
 
@@ -902,6 +918,11 @@ class VideoView(QGraphicsView):
             pen.setCosmetic(True)
             self._scale_preview_item.setPen(pen)
             self._scale_preview_item.setZValue(25.0)
+            self._scale_preview_item.setCursor(
+                Qt.CursorShape.BlankCursor
+                if (self._annotation_mode or self._calibration_mode is not None)
+                else Qt.CursorShape.ArrowCursor
+            )
             self._scene.addItem(self._scale_preview_item)
         self._scale_preview_item.setLine(p1[0], p1[1], p2[0], p2[1])
 
@@ -961,27 +982,30 @@ class VideoView(QGraphicsView):
                 return
         super().mousePressEvent(event)
 
+    def _hide_crosshair(self) -> None:
+        self._crosshair_v.hide()
+        self._crosshair_h.hide()
+        self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
+
     def _update_crosshair(self, view_pos: QPoint) -> None:
         """标注/拾取模式下显示贯穿整幅画面的 1px 准线；离开画面或关闭模式即隐藏。"""
         active = self._annotation_mode or self._calibration_mode is not None
         if not active or self._pixmap_item is None:
-            self._crosshair_v.hide()
-            self._crosshair_h.hide()
+            self._hide_crosshair()
             return
         scene_pos = self.mapToScene(view_pos)
         rect = self._pixmap_item.boundingRect()
         if not rect.contains(scene_pos):
-            self._crosshair_v.hide()
-            self._crosshair_h.hide()
+            self._hide_crosshair()
             return
         self._crosshair_v.setLine(scene_pos.x(), rect.top(), scene_pos.x(), rect.bottom())
         self._crosshair_h.setLine(rect.left(), scene_pos.y(), rect.right(), scene_pos.y())
         self._crosshair_v.show()
         self._crosshair_h.show()
+        self.viewport().setCursor(Qt.CursorShape.BlankCursor)
 
     def leaveEvent(self, event: QEvent) -> None:
-        self._crosshair_v.hide()
-        self._crosshair_h.hide()
+        self._hide_crosshair()
         super().leaveEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
