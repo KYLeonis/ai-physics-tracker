@@ -3,7 +3,7 @@
 - Subphase / Issue：Windows follow-up integration / PR #46
 - Review 范围：R1完整PR `23c0a227179c96e9a8a501634850b58825d1f38a..2edd01b1d53eba7a877b10d14e574f30f9d7e9c0`，覆盖原作者十提交 `154f262..6a7a031`、其后的修复与文档同步；R2复审 `2edd01b1d53eba7a877b10d14e574f30f9d7e9c0..109ef88f4e727b658a68fa7686eb8614f05ce8f8`；R3复审打包pin/NOTICE `109ef88f4e727b658a68fa7686eb8614f05ce8f8..38628baf3a4b25543a49aef5bfa9b703bfa762b2`。
 - Context：`AGENTS.md`、`CODE_STANDARD.md`、`docs/workflow.md` §5.1/§6、`docs/templates/review.md`、ADR-0021/0022/0023、`publication/spec/runtime-boundary.md`、`publication/plans/p6.2-managed-runtime.md`、`publication/plans/windows-followup-integration.md`。
-- 轮次：R1 2026-11-14（首轮）· R2 2026-11-14（复审）· R3 2026-11-14（Windows FFprobe pin/NOTICE复审）
+- 轮次：R1 2026-11-14（首轮）· R2 2026-11-14（复审）· R3 2026-11-14（Windows FFprobe pin/NOTICE复审）· R4 2026-11-24（UX-16 光标隐藏与黑边修复复审）· R5 2026-11-25（Windows HR 反馈五项修复复审）
 
 ## Checklist
 
@@ -138,11 +138,25 @@
 - 验证：GitHub release API 1项asset元数据核对（tag、asset ID、文件名、大小、digest）；本机ZIP完整SHA-256与167,778,744-byte大小匹配，ZIP `testzip()`无CRC错误；检查了包内单个ffprobe.exe、嵌入build configuration/许可标识，FFmpeg源码commit可解析；确认PyInstaller spec收集完整`packaging/licenses/`。本轮未运行pytest或Windows PowerShell打包脚本，因为变更仅为pin/NOTICE且reviewer运行于macOS；Windows原生packaging重跑结果不在本轮声明范围内。
 - 来源依据：上游[release retention policy](https://github.com/FFmpeg-Builds/FFmpeg-Builds#release-retention-policy)、[固定release](https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/tag/autobuild-2026-10-31-12-59)、[构建配方tag](https://github.com/FFmpeg-Builds/FFmpeg-Builds/tree/autobuild-2026-10-31-12-59)、[FFmpeg源码commit](https://github.com/FFmpeg/FFmpeg/commit/8dca1586f468bfcbb78ae3ed618af1361d9f140a)。
 
+### R4 — 2026-11-24 · UX-16 光标隐藏与黑边/缓存边界复审
+
+- 范围 / 基线：只读复审 `38628baf..5739bf55`（含原作者 `35bb617b` UX-16 提交与后续修复 `b559a1af`、`5739bf55`）。
+- 发现与处置：R4 首轮发现 `35bb617b` 漏改 `tests/gui/test_video_view.py:327` 旧 `CrossCursor` 断言，且 `b559a1af` 存在两个 `[P1]` 缺陷（`QGraphicsView` `originalCursor` 缓存将黑边复位回 `BlankCursor`；叠加图元伸出画面或 `clearFrame()` 后残留仍设 `BlankCursor`）与 `[P2]` 私有方法直调测试掩盖事件分发。`5739bf55` 改为仅在 `_pixmap_item` 上设置 `BlankCursor`、移出叠加图元 `setCursor`、将 `_update_crosshair` 后置于 `super().mouseMoveEvent`、`viewportEvent` 拦截 `Leave` 并在 `setFrame` 中 `zoomFit()` 后重同步准线，并改为真实 `QApplication.sendEvent` 测试。
+- 结论：所有 `[P1]`–`[P2]` 缺陷与运行时 `[P3]` 均已关闭（仅留非阻塞 `[P3]` 观察：无帧先移动鼠标后再不移动直接 `setFrame()` 时，直到下次移动前可能保持 `BlankCursor`）。
+- 验证：独立只读核验 `40 passed`（`test_video_view.py`、`test_marking_assist_ui.py`）；全量本机 `1531 passed, 3 skipped, 1 xfailed`；GitHub `tests` [45341735195](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45341735195) 双平台 `success`。
+
+### R5 — 2026-11-25 · Windows 真人验收反馈五项修复复审
+
+- 范围 / 基线：只读复审 `5739bf55..d293dd1f`（`781f001c` 五项修复 + `d293dd1f` Windows CI dock 宽度测试适配），覆盖 `UX-18`（联合训练 `worker.log` 进度读取与 `ModelActions._poll` 刷新）、`UX-13b`（联合审核菱形 `label="AI"`）、`UX-19`（`TaskPanel` 2×2 激活按钮网格与 `ScrollBarAsNeeded`）、W2 时间轴滑条键盘 `valueChanged` 跟随、非 macOS 隐藏 `mps`（`available_device_choices`）。
+- 发现与处置：R5 首轮发现 `[P1]` `tests/test_model_worker_progress.py` 重复定义导致 `read_inference_progress` 断言被遮蔽及 3 项 `[P3]`（`_onTimelineValueChanged` 缺 `snapshot is None` 守卫、按钮裁切断言未映射 viewport 坐标、`test_task_panel.py` 未以 `monkeypatch` 覆盖非 macOS 回退）。上述问题均已在 `781f001c` 关闭；随后的 Windows CI 暴露 `test_workflow_ui.py` 硬编码等待 `panel.width() >= 380` 超时，`d293dd1f` 放宽为既有 `>= 280` 并在视口不足时验证横向滚动条兜底。
+- 结论：无未关闭 `[P0]`–`[P2]` 缺陷；代码与测试复审通过。
+- 验证：本机全量 `d293dd1f` `1536 passed, 3 skipped, 1 xfailed`（210.74s）；GitHub `tests` [45577863310](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577863310) / [45577876431](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577876431) 双平台 `success`（Mac `1532 passed, 7 skipped, 1 xfailed`；Windows `1532 passed, 6 skipped, 1 xfailed`）。
+
 ## Final Verdict（收口时填写）
 
 - [ ] 通过（无未处置Blocker）
 - [x] 修改后通过（findings按Decision处置完毕，复审确认）
 - [ ] 需要重做（说明理由）
 
-- 最终结论：完整源码范围的F1–F6已在`109ef88f4e727b658a68fa7686eb8614f05ce8f8`修复并经R2关闭；F7对应的Windows FFprobe pin/NOTICE已在`38628baf3a4b25543a49aef5bfa9b703bfa762b2`修复并经R3关闭。记录批准代码与NOTICE审查范围。Windows原生打包重跑、Windows原生测试/GUI、Mac Human Review及runtime实装仍由集成计划独立门禁确认，本记录不声明这些门禁通过。
-- 日期 / 依据轮次：2026-11-14 / R3
+- 最终结论：完整源码范围的F1–F6（`109ef88`）、F7（`38628ba`）、R4 UX-16 光标与缓存边界（`5739bf5`）及 R5 Windows HR 反馈五项修复（`d293dd1`）均已修复并经独立只读复审关闭。Mac M1–M5 与 `d293dd1` Windows 补充真人验收仍由集成计划独立门禁确认，本记录不声明这些门禁通过。
+- 日期 / 依据轮次：2026-11-25 / R5

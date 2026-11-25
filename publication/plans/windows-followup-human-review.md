@@ -1,33 +1,33 @@
 # PR #46 — 同源候选与真人验收
 
-- Date: 2026-11-14
-- Status: awaiting_human_review（自动验证与包核对已完成，等待双方实际反馈）
-- Source: `38628baf3a4b25543a49aef5bfa9b703bfa762b2`
+- Date: 2026-11-25（自 2026-11-14 基线更新）
+- Status: awaiting_human_review（已合入 `35bb617` 与 Windows HR 五项修复至 `d293dd1`，双平台 CI/打包通过，等待 Mac M1–M5 与 Windows `d293dd1` 补充验收）
+- Source: `d293dd1f4904f6be5608ba6269a1363262c5f9f5`（替代原 `38628ba`）
 - Target: `codex/ejp-p6-4-release`；[PR #46](https://github.com/KYLeonis/ai-physics-tracker/pull/46)
 - 范围与分工以[集成计划](windows-followup-integration.md)为准；[完整审查](../../docs/reviews/windows-followup-integration-review.md)。
 
-## 自动验证与包身份
+## 自动验证与包身份（当前候选 `d293dd1`）
 
 | 验证 | 状态 / 证据 |
 | --- | --- |
-| macOS / Windows tests | [43602320267](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320267)：双平台PASS；Mac1523 passed/7 skipped/1既有strict xfailed（164.75s），Windows1524 passed/6 skipped/1既有strict xfailed（419.88s） |
-| macOS / Windows packaging | [43602320306](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320306)：双平台构建/原生冒烟PASS |
-| Mac DMG、artifact、SHA256、签名与本机冒烟 | [artifact14116778309](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320306/artifacts/14116778309)，下载ZIP195710616 bytes，SHA256 `2bc6a130c2e50f2315fcd8a89fbdf37a09ef464e0512ea6285ff9637a78e5a83`；DMG196575804 bytes，SHA256 `721843fcdccc26e8e75d562d6b80e3831aa1803c51b7ae906db973c0d9a1f492`。CRC、manifest源/产物/2198项App inventory、114个worker源码逐字节核对与ad_hoc签名验证PASS；macOS27.2.1 arm64本机packaged smoke PASS。没有Apple公证。 |
-| Windows portable ZIP、artifact、SHA256、worker源码身份 | [artifact14116992725](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320306/artifacts/14116992725)，下载ZIP209679592 bytes，SHA256 `3a1c44126793534616357bbf9415bab922b02f8258798622527ebbbfca6c4d43`；内层portable ZIP210805208 bytes，SHA256 `a68b1505269e1911c9ef91ac2be46afcb85e9b43a59a80603657caf7366a1063`。双层ZIP CRC、FFprobe与固定上游二进制逐字节核对PASS；114个worker及runtime/NOTICE/license文本在CRLF→LF规范化后与同源源码一致，差异仅Windows checkout换行。Windows原生冒烟由CI完成，本机没有执行exe。 |
+| macOS / Windows tests | [45577876431](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577876431)（候选分支）与 [45577863310](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577863310)（PR 分支）：双平台 PASS；Mac `1532 passed / 7 skipped / 1 xfailed`，Windows `1532 passed / 6 skipped / 1 xfailed`；本机 `1536 passed, 3 skipped, 1 xfailed`（210.74s） |
+| macOS / Windows packaging | [45577876955](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577876955)：双平台原生构建/冒烟 PASS（Mac `smoke: ok`、`worker_sha256` 一致；Windows `smoke: ok`） |
+| Mac artifact（`d293dd1`） | [artifact15005611459](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577876955/artifacts/15005611459)，外层 ZIP `194,678,713` bytes，CI 上传校验 SHA256 `e89c5089ee0f3084a7941b7a21dafe55e337b13d4b43bee0b0ca1ec7714d3abc` |
+| Windows artifact（`d293dd1`） | [artifact15005281891](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577876955/artifacts/15005281891)，外层 ZIP `209,702,041` bytes，CI 上传校验 SHA256 `01069037c2d334ddc08559ecb0a932962325a9715c348fa3582f3053ea1041ac` |
 
-机器可读证据：[windows-followup-2026-11-14.json](../evidence/runtime/windows-followup-2026-11-14.json)。Windows包没有Mac式build-info/release manifest；其来源证据为固定head的CI checkout、artifact digest及上述归档内容核对，不声称有未生成的签名/provenance文件。
+> 历史候选 `38628ba`（[43602320267](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320267) / [43602320306](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320306)，Mac artifact `14116778309` / Windows artifact `14116992725`）已完成本机下载、CRC 与 `2198` 项清单核对（证据见 [windows-followup-2026-11-14.json](../evidence/runtime/windows-followup-2026-11-14.json)），并由第二作者于 2026-11-24 回传 Windows W1–W5；后续新增 `35bb617`–`d293dd1` 修改，因此本轮以 `d293dd1` 新包验收为准。
 
-只使用上述source对应的新包。公开v0.1.0、10/31交接包内旧exe及已取消的2edd/109候选都不用于本轮验收。原始失败/取消记录保留在集成计划中。
+只使用上述 `d293dd1` 对应新包（Mac 亦可用 `ai-physics-tracker-windows-followup` 工作树源码直接启动验证交互）。公开 v0.1.0、10/31 交接包内旧 exe 及旧 `38628ba` / `2edd` / `109` 候选不作为本轮最终验收产物。
 
 ## 启动与测试副本
 
-Mac候选已从核验后的DMG复制到独立目录，磁盘映像已弹出。退出旧版后启动：
+Mac 测试可直接从 GitHub 下载 [artifact15005611459](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577876955/artifacts/15005611459) 中的 DMG 启动，或直接从已验证的 `d293dd1` 源码启动：
 
 ```sh
-open -n "/Users/leonis/Documents/ai-physics-tracker-ejp/dist/windows-followup-hr/38628ba/AI Physics Tracker.app"
+cd /Users/leonis/Documents/ai-physics-tracker-windows-followup && PYTHONPATH=src /Users/leonis/Documents/ai-physics-tracker/.venv/bin/python -m ai_physics_tracker
 ```
 
-不需要配置Python或重装开发venv。在File → Open Project中打开测试工程：
+在 `File → Open Project` 中打开测试工程（注意：36 帧若全部标满会导致 M5/W5 难例池为空，测试 M3 时可保留第 2 帧不标，或在 M5 前删除 1 帧人工点以便触发审核）：
 
 `/Users/leonis/Documents/ai-physics-tracker-ejp/dist/windows-followup-hr/38628ba/T001_mac_review_copy/project.json`
 
@@ -61,8 +61,8 @@ Windows下载上表artifact后先解开GitHub外层ZIP，再解开其中`AIPhysi
 
 ```text
 Platform / OS / CPU:
-Source: 38628baf3a4b25543a49aef5bfa9b703bfa762b2
-Artifact ID / inner package SHA256:
+Source: d293dd1f4904f6be5608ba6269a1363262c5f9f5
+Artifact ID / ZIP SHA256:
 Test project copy:
 M1–M5 or W1–W5: PASS / FAIL / NOT_RUN (each)
 Diagnostics / first failing action (if any):
@@ -70,7 +70,7 @@ Diagnostics / first failing action (if any):
 
 | 真人验收 | 当前状态 |
 | --- | --- |
-| 第一作者Mac M1–M5 | pending，未收到本候选反馈 |
-| 第二作者Windows W1–W5 | pending，未收到本候选反馈 |
+| 第一作者Mac M1–M5 | pending，未收到反馈 |
+| 第二作者Windows W1–W5 | `38628ba`（artifact `14116992725`）2026-11-24 回传：W1 PASS（二次复用/Repair/Check取消/导出诊断 `NOT_RUN`）、W2 PASS、W3 PASS、W4 PASS（`UX-18` FAIL）、W5 PASS；等待新候选 **`d293dd1`**（artifact `15005281891`）补充验证 `W1` 未测项 + `UX-16` 黑边光标 / `UX-18` 联合训练进度 / `UX-19` 横向滚动与 2×2 按钮 / `UX-13b` 联合审核 AI 标签 / 滑条键盘跟随 / 设备列表去 `mps` |
 
-两边本轮反馈通过后才进入合并。未执行写NOT_RUN，发现问题回到修复/重构候选，不将旧B/C/D报告或自动测试移作本轮真人反馈。CUDA、G5干净机器、学生pilot、teacher-import及完整科学导出恢复按各自证据另记；本轮基本保存重开不关闭完整恢复门禁。
+两边对 `d293dd1` 反馈通过后才进入合并。未执行写NOT_RUN，发现问题回到修复/重构候选，不将旧B/C/D报告或自动测试移作本轮真人反馈。CUDA、G5干净机器、学生pilot、teacher-import及完整科学导出恢复按各自证据另记；本轮基本保存重开不关闭完整恢复门禁。

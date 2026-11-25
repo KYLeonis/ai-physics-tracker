@@ -1,6 +1,6 @@
 # Publication Status — EJP Undergraduate Pendulum Platform
 
-- 最后更新：2026-11-14（完整PR审查F1–F7修复/复审关闭，候选38628ba双平台自动验证及包核对通过，等待双方HR）。
+- 最后更新：2026-11-25（R4–R5 审查关闭 UX-16 光标/黑边问题及 Windows HR 回传的 UX-18/UX-13b/UX-19/滑条/设备列表五项修复，新候选 `d293dd1` 双平台 tests 与 packaging 通过，等待 Mac M1–M5 与 Windows 补充 HR）。
 - Worktree：`ai-physics-tracker-ejp`；integration branch：`publication/ejp-damped-pendulum`。
 - 当前：**P6.4 Mac测试发行已完成（2026-10-09）：v0.1.0公开prerelease，Mac arm64 DMG与11项发行资产核对通过，source/tag54638e4同源双平台CI绿、Independent Review Approve with limitations。App为ad_hoc未公证；Windows完整实机/CUDA及新GUI HR、学生/teacher-import/完整导出恢复验收仍待补，P6正式生产门禁未全部关闭。MIT不变，工作分支暂不集成。**
 - Windows G1–G4按用户裁定延期（见 P6.1 节）；main通用产品线未修改。
@@ -8,11 +8,11 @@
 ## Current work / Agent handoff — Windows internal integration
 
 - Status: **awaiting_human_review**；Owner: first-author Codex coordination/implementation agent。
-- 用户Q1–Q3已确认：[本轮集成计划](plans/windows-followup-integration.md)。仅将PR #46合入`codex/ejp-p6-4-release`；main补丁、公开发行及论文长期集成线另排。
-- PR source为`codex/windows-followup` / `38628ba`。覆盖原始10提交的[完整审查R1–R3](../docs/reviews/windows-followup-integration-review.md)F1–F7全部Closed：109ef88修复焦点/短EOF/异常测试/取消/替换wheel身份/准线，38628ba修复上游删除日常FFprobe包导致的Windows打包404并同步NOTICE。
-- 本机定向116 passed/1 Windows-only skip；reviewer独立72 passed/1 skip；FFprobe/launch/provenance相关61 passed/1 skip。109ef88的tests43601805962已双平台success；其packaging Windows失败/Mac取消，旧包不用于HR。历史失败/取消记录不改写。
-- 最新同源[tests43602320267](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320267)与[packaging43602320306](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/43602320306)双平台PASS：Mac1523 passed/7 skipped/1既有xfail，Windows1524 passed/6 skipped/1既有xfail。原生包冒烟、下载artifact哈希/CRC、114个worker源码核对通过；Windows仅换行规范化差异。Mac2198项inventory、ad_hoc签名和本机包冒烟PASS。artifact14116778309（Mac）/14116992725（Windows）；包链接/hash/操作与反馈记在[真人验收文档](plans/windows-followup-human-review.md)，[机器可读证据](evidence/runtime/windows-followup-2026-11-14.json)。源码冻结，变更先通过PR协调。
-- Next Recommended Action：停在人审门禁，等待38628ba的Mac M1–M5与Windows W1–W5实际反馈。人审请求和指定包在PR #46交接；失败则修复/重建/复验。两边本轮反馈均通过后才解决文档集成冲突并合入codex/ejp-p6-4-release，再核对集成源码与CI；main/论文长期线/公开发布均另排。CUDA/G5/学生pilot继续单列，不改为PASS。
+- 用户已确认：[本轮集成计划](plans/windows-followup-integration.md)。仅将PR #46合入`codex/ejp-p6-4-release`；main补丁、公开发行及论文长期集成线另排。
+- PR source已更新为 `codex/windows-followup` / **`d293dd1`**（在原 `38628ba` 基础上合入第二作者 `35bb617` UX-16 光标隐藏，修复其测试断言与黑边/缓存缺陷 `5739bf5`，并按 2026-11-24 Windows HR 回传关闭 `UX-18`/`UX-13b`/`UX-19`/滑条键盘同步/非 macOS 去 `mps` 五项问题 `781f001`→`d293dd1`）。[集成审查 R1–R5](../docs/reviews/windows-followup-integration-review.md) 全部 findings Closed。
+- 2026-11-24 第二作者于 PR #46 回传了旧候选 `38628ba`（artifact `14116992725`）的 Windows W1–W5：W1 PASS（二次复用/Repair/Check 取消/导出诊断 `NOT_RUN`）、W2 PASS、W3 PASS、W4 PASS（`UX-18` FAIL）、W5 PASS。上述修复已打包为新同源候选 **`d293dd1`**。
+- 最新同源验证：`d293dd1` 本机全量 `1536 passed, 3 skipped, 1 xfailed`（210.74s）；GitHub `tests` [45577876431](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577876431) 与 [45577863310](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577863310) 双平台 PASS（Mac `1532 passed / 7 skipped / 1 xfailed`；Windows `1532 passed / 6 skipped / 1 xfailed`）；`packaging` [45577876955](https://github.com/KYLeonis/ai-physics-tracker/actions/runs/45577876955) 双平台原生构建/冒烟 PASS（Mac artifact `15005611459` SHA256 `e89c5089ee0f3084a7941b7a21dafe55e337b13d4b43bee0b0ca1ec7714d3abc`；Windows artifact `15005281891` SHA256 `01069037c2d334ddc08559ecb0a932962325a9715c348fa3582f3053ea1041ac`）。操作与反馈格式见[真人验收文档](plans/windows-followup-human-review.md)。
+- Next Recommended Action：停在人审门禁，等待第一作者 Mac M1–M5 与第二作者基于新候选 `d293dd1`（artifact `15005281891`）的 Windows 补充验收（W1 未测项 + UX-16/18/19/13b/滑条/设备列表）。两边均通过后才解决 6 份文档冲突并合入 `codex/ejp-p6-4-release`。CUDA/G5/学生pilot继续单列，不改为PASS。
 - 当前两个长期worktree的产品代码未更改、PR未合并、未发布。协调文档在本工作分支，候选源码/修复保留在PR分支。
 
 ## 审查历史：第二作者 Windows 适配审查 — 2026-11-11
