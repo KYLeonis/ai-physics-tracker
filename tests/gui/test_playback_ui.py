@@ -260,3 +260,21 @@ def test_frame_shortcuts_preserve_focused_controls_native_arrows(
         control.setCurrentIndex(1)
         qtbot.keyClick(control, Qt.Key.Key_Down)
         qtbot.waitUntil(lambda: position() == 2)
+
+
+def test_timeline_slider_keyboard_arrows_sync_presented_frame(
+    qtbot: QtBot, synthetic_video_path: Path
+) -> None:
+    # W2 反馈：时间轴滑条聚焦后按方向键，视频画面必须同步跟随滑块位置
+    window = _opened_window(qtbot, synthetic_video_path)
+    window.show()
+    window.timelineSlider.setFocus()
+    qtbot.waitUntil(lambda: QApplication.focusWidget() is window.timelineSlider)
+
+    qtbot.keyClick(window.timelineSlider, Qt.Key.Key_Right)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 1 / 4")
+    assert window.timelineSlider.value() == 1
+
+    qtbot.keyClick(window.timelineSlider, Qt.Key.Key_Left)
+    qtbot.waitUntil(lambda: window.frameLabel.text() == "Frame: 0 / 4")
+    assert window.timelineSlider.value() == 0

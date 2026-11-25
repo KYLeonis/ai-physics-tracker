@@ -614,6 +614,7 @@ class ExperimentInferenceActions(QObject):
                     pixel_x=shown.pixel_x, pixel_y=shown.pixel_y,
                     color=_REVIEW_PREVIEW_COLORS.get(role, "#ffb000"),
                     source="manual" if manual else "preview", frame_index=current.frame_index,
+                    label="" if manual else "AI",  # UX-13b：联合审核菱形与单轨一致标出 AI
                 ))
         self.window.videoView.set_preview_markers(
             markers, "Filled: manual labels · Hollow: AI predictions")

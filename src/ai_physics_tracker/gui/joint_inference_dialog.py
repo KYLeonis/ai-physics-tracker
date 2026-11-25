@@ -9,6 +9,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from ai_physics_tracker.application.teacher_models import effective_compatibility_state
+from ai_physics_tracker.gui.launch_context import available_device_choices
 
 from PySide6.QtWidgets import (
     QComboBox,
@@ -68,7 +69,7 @@ class JointInferenceDialog(QDialog):
 
         form = QFormLayout()
         self.deviceComboBox = QComboBox()
-        self.deviceComboBox.addItems(["auto", "cpu", "mps", "cuda"])
+        self.deviceComboBox.addItems(list(available_device_choices()))
         self.deviceComboBox.setCurrentText(device)
         form.addRow("Inference device", self.deviceComboBox)
         device_hint = QLabel("Auto checks available CUDA → Apple MPS → CPU in the worker runtime. "

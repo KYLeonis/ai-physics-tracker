@@ -516,6 +516,7 @@ class MainWindow(QMainWindow):
         self.timelineSlider.sliderPressed.connect(self._scrubStarted)
         self.timelineSlider.sliderMoved.connect(self._scrubPreview)
         self.timelineSlider.sliderReleased.connect(self._scrubCommitted)
+        self.timelineSlider.valueChanged.connect(self._onTimelineValueChanged)
         self.frameDelivered.connect(self._onFrameDelivered)
         self.decodeFailed.connect(self._onDecodeFailed)
         self.decodeCompleted.connect(self._onDecodeCompleted)
@@ -2417,6 +2418,15 @@ class MainWindow(QMainWindow):
 
     def _scrubCommitted(self) -> None:
         self._requestFrame(self.timelineSlider.value())
+
+    def _onTimelineValueChanged(self, frame_index: int) -> None:
+        # 鼠标拖拽已由 sliderMoved/sliderReleased 处理；此分支同步键盘方向键与滑槽点击。
+        if self.timelineSlider.isSliderDown() or self._async.snapshot() is None:
+            return
+        if hasattr(self, "reviewActions") and self.reviewActions.is_correcting:
+            self.reviewActions.cancelCorrectMode()
+        self.stopPlayback()
+        self._requestFrame(frame_index)
 
     def _chooseVideo(self) -> None:
         self.projectActions.openVideo()

@@ -6,7 +6,7 @@
 from pathlib import Path
 from uuid import uuid4
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
 from pytestqt.qtbot import QtBot
 
 from ai_physics_tracker.application.video_session import VideoSession
@@ -77,25 +77,36 @@ def test_acquire_panel_fits_1024_by_640_without_horizontal_clipping(
     window, _session, _track_id = _opened_window(
         qtbot, synthetic_video_path, tmp_path, _FakeRunner(_FakeHandle()))
     window.resize(1024, 640)
+    window.resizeDocks([window.trackingActions.panel], [400], Qt.Orientation.Horizontal)
     window.show()
     panel = window.trackingActions.panel
     scroll = panel.widget()
     # resizeDocks 由 showEvent 的 singleShot 调度；Windows CI 的 Qt event loop
     # 可能超过固定 30 ms 才应用目标宽度，因此等待可观察布局事实。
-    qtbot.waitUntil(lambda: panel.width() >= 280, timeout=1000)
+    qtbot.waitUntil(lambda: panel.width() >= 380, timeout=1000)
 
     assert 280 <= panel.width() <= 430
-    assert scroll.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    assert scroll.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAsNeeded
     assert not scroll.horizontalScrollBar().isVisible()
     assert panel.cardPrimaryButton.isVisible()
 
     panel.advancedToggleButton.click()
+    panel.resultsToggleButton.click()
     qtbot.wait(20)
-    # Qt may retain a few style-dependent logical pixels in scrollbar range even
-    # when the bar is intentionally disabled; the user-visible contract is that
-    # horizontal scrolling never appears and controls reflow inside the viewport.
+    # 展开全部区域（含 Results & history 四按钮 2x2 网格）后仍不出现横向滚动条且关键按钮不被裁切
     assert not scroll.horizontalScrollBar().isVisible()
     assert scroll.verticalScrollBar().maximum() > 0
+    for button in (panel.mineButton, panel.reviewAcceptButton, panel.reviewSkipButton,
+                   panel.reviewCorrectButton, panel.deleteManualPointButton,
+                   panel.activateButton, panel.replaceButton,
+                   panel.clearActivationButton, panel.manageValidationButton):
+        assert button.mapTo(scroll.viewport(), QPoint(button.width() - 1, 0)).x() < scroll.viewport().width()
+
+    # 极端缩窄视口时（< 内容最小宽度），允许出现横向滚动条兜底而不裁死按钮（UX-19）
+    panel.setMinimumWidth(160)
+    window.resizeDocks([panel], [180], Qt.Orientation.Horizontal)
+    qtbot.waitUntil(lambda: scroll.viewport().width() < scroll.widget().minimumSizeHint().width(), timeout=1000)
+    assert scroll.horizontalScrollBar().maximum() > 0
 
 def test_header_shows_context_and_card_follows_projection(
     qtbot: QtBot, synthetic_video_path: Path, tmp_path: Path

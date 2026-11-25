@@ -995,11 +995,11 @@ def test_inference_dialog_inherits_advanced_settings_and_cancel_preserves_them(
     from ai_physics_tracker.gui.joint_inference_dialog import JointInferenceDialog, run_joint_inference_dialog
     window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
     panel = window.trackingActions.panel
-    panel.deviceComboBox.setCurrentText("mps")
+    panel.deviceComboBox.setCurrentText("cpu")
     panel.batchSizeSpinBox.setValue(2)
     panel.confidenceSpinBox.setValue(0.3)
     def accept(dialog):
-        assert dialog.deviceComboBox.currentText() == "mps"
+        assert dialog.deviceComboBox.currentText() == "cpu"
         assert dialog.inference_parameters() == (0.3, 2)
         dialog.deviceComboBox.setCurrentText("auto")
         return dialog.DialogCode.Accepted
@@ -1010,3 +1010,22 @@ def test_inference_dialog_inherits_advanced_settings_and_cancel_preserves_them(
     monkeypatch.setattr(JointInferenceDialog, "exec", lambda d: d.DialogCode.Rejected)
     assert run_joint_inference_dialog(window, [model]) is None
     assert panel.deviceComboBox.currentText() == "auto" and not session.tracking_runs()
+
+
+def test_joint_review_preview_labels_only_ai_predictions(qtbot, tmp_path, synthetic_video_path):
+    # UX-13b：联合审核帧的 AI 预测菱形带 "AI" 标签，已有人工圆圈不带 "AI" 标签
+    window, session, experiment, model = _experiment_window(qtbot, tmp_path, synthetic_video_path)
+    controller = _install(window, _Runner())
+    run = _run_inference(controller, session, experiment, model)
+    controller.openReviewQueue(run.run_id)
+    frame = controller._review_current
+    assert frame is not None
+    # 给 pivot 补一个人工点，其余角色仍由 AI 预测填充
+    session.mark_point(experiment.roles.pivot, frame, 15.0, 18.0)
+    controller._sync_review(None, seek=False)
+
+    views = window.videoView.preview_marker_views()
+    manual_views = [m for m in views if m.source == "manual"]
+    ai_views = [m for m in views if m.source == "preview"]
+    assert len(manual_views) == 1 and manual_views[0].label == ""
+    assert len(ai_views) == 3 and all(m.label == "AI" for m in ai_views)

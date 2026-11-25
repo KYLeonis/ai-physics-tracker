@@ -2,7 +2,10 @@
 
 from uuid import uuid4
 
-from ai_physics_tracker.application.model_worker import read_inference_progress
+from ai_physics_tracker.application.model_worker import (
+    read_inference_progress,
+    read_training_progress,
+)
 from ai_physics_tracker.application.tracking_types import TaskProgress
 from ai_physics_tracker.worker import __main__ as worker
 
@@ -22,3 +25,34 @@ def test_worker_progress_log_roundtrip_and_rejects_unrelated_or_partial_records(
     assert read_inference_progress(tmp_path, run_id, 12) == (8, "Frames predicted")
     log.write_text("100%|preprocessing| 12/12\n", encoding="utf-8")
     assert read_inference_progress(tmp_path, run_id, 12) is None
+
+
+def test_worker_training_progress_log_parses_epoch_and_metrics(tmp_path, monkeypatch):
+    run_id = uuid4()
+    assert read_training_progress(tmp_path, run_id, 50) is None
+    written = []
+    monkeypatch.setattr(worker.os, "write", lambda fd, data: written.append(data))
+    worker._ResultLogQueue().put(
+        TaskProgress(
+            run_id,
+            4,
+            50,
+            loss=0.0134,
+            learning_rate=0.001,
+            message="Epoch 4/50 (lr=0.001), train loss 0.0134, valid loss 0.02",
+        )
+    )
+    log = tmp_path / "worker.log"
+    log.write_bytes(
+        b"x" * 70000
+        + b"\n"
+        + b"".join(written)
+        + f"APT_PROGRESS {uuid4()} 9/50 Epoch 9/50 (lr=0.002), train loss 0.001\n".encode()
+        + f"APT_PROGRESS {run_id} 5/20 wrong total\n".encode()
+        + f"APT_PROGRESS {run_id} 51/50 overflow\n".encode()
+        + f"APT_PROGRESS {run_id} 6/50 partial".encode()
+    )
+    assert read_training_progress(tmp_path, run_id, 50) == (4, 50, 0.0134, 0.001)
+    worker._ResultLogQueue().put(TaskProgress(run_id, 5, 50, message="Epoch finished"))
+    log.write_bytes(written[-1])
+    assert read_training_progress(tmp_path, run_id, 50) == (5, 50, None, None)

@@ -367,3 +367,30 @@ def test_old_unqualified_evaluations_remain_marked_beside_clean_rounds(qtbot: Qt
     panel.setRunDetails(unknown)
     assert "ancestor" in panel.detailsLabel.text()
     assert "Not independently comparable" in panel.detailsLabel.text()
+
+
+def test_available_device_choices_omits_mps_outside_macos(qtbot: QtBot, monkeypatch) -> None:
+    import ai_physics_tracker.gui.launch_context as launch_context
+    from ai_physics_tracker.gui.joint_inference_dialog import JointInferenceDialog
+    from ai_physics_tracker.gui.launch_context import available_device_choices
+
+    assert available_device_choices("darwin") == ("auto", "cpu", "mps", "cuda")
+    assert available_device_choices("win32") == ("auto", "cpu", "cuda")
+    assert available_device_choices("linux") == ("auto", "cpu", "cuda")
+
+    panel = _panel(qtbot)
+    items = [panel.deviceComboBox.itemText(i) for i in range(panel.deviceComboBox.count())]
+    assert tuple(items) == available_device_choices()
+    assert panel.deviceComboBox.currentText() == "auto"
+
+    monkeypatch.setattr(launch_context.sys, "platform", "win32")
+    win_panel = _panel(qtbot)
+    win_items = [win_panel.deviceComboBox.itemText(i) for i in range(win_panel.deviceComboBox.count())]
+    assert tuple(win_items) == ("auto", "cpu", "cuda")
+    assert win_panel.deviceComboBox.currentText() == "auto"
+
+    dialog = JointInferenceDialog([], device="mps")
+    qtbot.addWidget(dialog)
+    dialog_items = [dialog.deviceComboBox.itemText(i) for i in range(dialog.deviceComboBox.count())]
+    assert tuple(dialog_items) == ("auto", "cpu", "cuda")
+    assert dialog.deviceComboBox.currentText() == "auto"

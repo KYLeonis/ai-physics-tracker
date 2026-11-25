@@ -16,6 +16,7 @@ import pytest
 from ai_physics_tracker.application.video import VideoStreamInfo
 from ai_physics_tracker.domain.pendulum import ROLE_ORDER, PendulumRoles
 from ai_physics_tracker.domain.project import create_project
+from ai_physics_tracker.gui.launch_context import available_device_choices
 from ai_physics_tracker.gui.model_actions import ModelActions
 from ai_physics_tracker.gui.teacher_import_dialog import propose_identity_mapping
 from ai_physics_tracker.infrastructure.project_repository import ProjectRepository
@@ -622,7 +623,7 @@ class TestHrFeedback:
         ), labels[:3]
 
 
-@pytest.mark.parametrize("device", ["auto", "mps", "cuda", "cpu"])
+@pytest.mark.parametrize("device", available_device_choices())
 def test_joint_training_uses_advanced_parameters(qtbot, tmp_path, long_video_path, device):
     window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
     panel = window.trackingActions.panel
@@ -693,3 +694,38 @@ def test_gpu_selftest_does_not_continue_or_destroy_cpu_compatibility(
     assert session.project.model_references[-1].self_test_evidence == before
     assert session.project.model_references[-1].compatibility_state == "compatible"
     assert not window.modelActions.busy
+
+
+def test_joint_training_polls_epoch_progress_into_activity_panel(qtbot, tmp_path, long_video_path):
+    # UX-18：联合训练运行中必须读取 worker.log 的 epoch 进度并刷新 Activity 面板
+    window, session, experiment = _experiment_window(qtbot, tmp_path, long_video_path)
+    panel = window.trackingActions.panel
+    panel.epochsSpinBox.setValue(5)
+
+    class Runner:
+        def start_training(self, root, request, *, device):
+            return _FakeHandle({"status": "cancelled"}, alive_first_polls=5)
+
+    window.modelActions.deleteLater()
+    window.modelActions = ModelActions(window, runner_factory=Runner)
+    window.modelActions.runJointTraining()
+    run = session.tracking_runs()[-1]
+    log = session.project_root / "data" / "engines" / str(run.run_id) / "worker.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    log.write_text(
+        f"APT_PROGRESS {run.run_id} 2/5 Epoch 2/5 (lr=0.0005), train loss 0.042\n",
+        encoding="utf-8",
+    )
+
+    window.modelActions._poll()
+
+    assert panel.stageLabel.text() == "Training · epoch 2/5 · 40%"
+    assert panel.progressBar.maximum() == 5
+    assert panel.progressBar.value() == 2
+    assert "loss=0.042" in panel.metricsLabel.text()
+    assert "lr=0.0005" in panel.metricsLabel.text()
+    assert panel.cancelButton.isEnabled()
+
+    window.modelActions.cancel()
+    window.modelActions._poll()
+    assert panel.stageLabel.text() == "Cancelled"

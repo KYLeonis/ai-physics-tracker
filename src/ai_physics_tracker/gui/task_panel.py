@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QDockWidget,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -30,6 +31,7 @@ from ai_physics_tracker.application.refinement_history import validation_compari
 from ai_physics_tracker.application.tracking_types import (
     InferenceParams, TrainingParams, FrameSelectionResult,
 )
+from ai_physics_tracker.gui.launch_context import available_device_choices
 
 
 logger = logging.getLogger(__name__)
@@ -109,7 +111,7 @@ class TaskPanel(QDockWidget):
         self.batchSizeSpinBox.setRange(1, 1_000_000)
         self.batchSizeSpinBox.setValue(8)
         self.deviceComboBox = QComboBox()
-        self.deviceComboBox.addItems(["auto", "cpu", "mps", "cuda"])
+        self.deviceComboBox.addItems(list(available_device_choices()))
         self.deviceComboBox.setToolTip(
             "Auto: available CUDA → Apple MPS → CPU. GPU inference requires a model self-test. "
             "Windows without CUDA uses CPU; other GPU backends are not installed by this app.")
@@ -231,6 +233,7 @@ class TaskPanel(QDockWidget):
         mineButtonRow.addWidget(self.mineCancelButton)
 
         self.reviewProgressLabel = QLabel("No active review batch")
+        self.reviewProgressLabel.setWordWrap(True)
         self.candidateDetailsLabel = QLabel("Select a completed infer run to mine or review.")
         self.candidateDetailsLabel.setWordWrap(True)
 
@@ -321,10 +324,11 @@ class TaskPanel(QDockWidget):
         self._active_run_ids_by_track: dict[UUID, UUID] = {}
 
         self.activeRunLabel = QLabel("Active AI: None")
+        self.activeRunLabel.setWordWrap(True)
         self.activeValidationLabel = QLabel("Validation: None")
         self.activeValidationLabel.setWordWrap(True)
 
-        activationActionRow = QHBoxLayout()
+        activationActionRow = QGridLayout()
         self.activateButton = QPushButton("Activate")
         self.activateButton.setEnabled(False)
         self.replaceButton = QPushButton("Replace Active")
@@ -333,10 +337,11 @@ class TaskPanel(QDockWidget):
         self.clearActivationButton.setEnabled(False)
         self.manageValidationButton = QPushButton("Validation...")
 
-        activationActionRow.addWidget(self.activateButton)
-        activationActionRow.addWidget(self.replaceButton)
-        activationActionRow.addWidget(self.clearActivationButton)
-        activationActionRow.addWidget(self.manageValidationButton)
+        # 2x2 排列避免四按钮并排把 dock 撑到 388px 导致按钮裁切（UX-19）。
+        activationActionRow.addWidget(self.activateButton, 0, 0)
+        activationActionRow.addWidget(self.replaceButton, 0, 1)
+        activationActionRow.addWidget(self.clearActivationButton, 1, 0)
+        activationActionRow.addWidget(self.manageValidationButton, 1, 1)
 
         self.activateButton.clicked.connect(self._onActivateClicked)
         self.replaceButton.clicked.connect(self._onReplaceClicked)
@@ -345,6 +350,7 @@ class TaskPanel(QDockWidget):
 
         # --- Phase 5.7：任务卡（内容来自 workflow_projection.select_task_card）---
         self.cardTitleLabel = QLabel("Current: —")
+        self.cardTitleLabel.setWordWrap(True)
         card_title_font = self.cardTitleLabel.font()
         card_title_font.setBold(True)
         self.cardTitleLabel.setFont(card_title_font)
@@ -453,8 +459,9 @@ class TaskPanel(QDockWidget):
         content.setLayout(contentLayout)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        # UX-19：允许内容超出视口宽度时出现横向滚动条而非永久裁切按钮。
         scroll.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setWidget(content)
         self.setWidget(scroll)
         self._primary_action_id = ""

@@ -36,6 +36,15 @@ RUNTIME_POINTER_RELATIVE = Path("runtimes") / "active.txt"
 FORBIDDEN_HOST_ROOTS = ("torch", "torchvision", "deeplabcut")
 
 
+def available_device_choices(platform_name: str | None = None) -> tuple[str, ...]:
+    """当前平台可选的计算设备列表；``mps`` 仅 macOS 可用。"""
+
+    current = sys.platform if platform_name is None else platform_name
+    if current == "darwin":
+        return ("auto", "cpu", "mps", "cuda")
+    return ("auto", "cpu", "cuda")
+
+
 def set_application_identity() -> None:
     """设置 Qt 应用身份；必须在任何路径解析/QApplication 创建之前调用。
 

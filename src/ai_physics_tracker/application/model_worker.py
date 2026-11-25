@@ -5,6 +5,7 @@
 ``ExternalWorkerError`` 的应用层别名,调用方按此捕获。
 """
 
+from collections.abc import Iterator
 from pathlib import Path
 import re
 from typing import Any
@@ -25,8 +26,16 @@ from ai_physics_tracker.infrastructure.external_worker import (
 ModelWorkerError = ExternalWorkerError
 
 
-def read_inference_progress(job_dir: Path, run_id: UUID, frame_count: int) -> tuple[int, str] | None:
-    """只读该run最近64KiB日志中的后处理计数；坏/截断记录不影响任务。"""
+_FLOAT_PATTERN = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+_TRAINING_METRICS_PATTERN = re.compile(
+    rf"\(\s*lr\s*=\s*(?P<learning_rate>{_FLOAT_PATTERN})\s*\)\s*,\s*"
+    rf"train\s+loss\s+(?P<loss>{_FLOAT_PATTERN})",
+    re.IGNORECASE,
+)
+
+
+def _iter_progress_records(job_dir: Path, run_id: UUID) -> Iterator[tuple[int, int, str]]:
+    """倒序读取该 run 最近 64 KiB 日志中的 APT_PROGRESS 记录。"""
 
     try:
         with (job_dir / "worker.log").open("rb") as stream:
@@ -34,14 +43,34 @@ def read_inference_progress(job_dir: Path, run_id: UUID, frame_count: int) -> tu
             stream.seek(max(0, stream.tell() - 65536))
             lines = stream.read(65536).decode("utf-8", errors="replace").split("\n")[:-1]
     except OSError:
-        return None
+        return
     pattern = re.compile(rf"APT_PROGRESS {run_id} (\d{{1,10}})/(\d{{1,10}}) (.*)")
     for line in reversed(lines):
         match = pattern.fullmatch(line.rstrip("\r"))
         if match is not None:
-            step, total = int(match[1]), int(match[2])
-            if total == frame_count and 0 <= step <= total:
-                return step, match[3][:160]
+            yield int(match[1]), int(match[2]), match[3][:160]
+
+
+def read_inference_progress(job_dir: Path, run_id: UUID, frame_count: int) -> tuple[int, str] | None:
+    """只读该run最近64KiB日志中的后处理计数；坏/截断记录不影响任务。"""
+
+    for step, total, phase in _iter_progress_records(job_dir, run_id):
+        if total == frame_count and 0 <= step <= total:
+            return step, phase
+    return None
+
+
+def read_training_progress(
+    job_dir: Path, run_id: UUID, total_epochs: int
+) -> tuple[int, int, float | None, float | None] | None:
+    """读取该 run 最近 64 KiB 日志中的训练 epoch 与可选 loss / learning_rate。"""
+
+    for step, total, phase in _iter_progress_records(job_dir, run_id):
+        if total == total_epochs and 0 <= step <= total:
+            metrics = _TRAINING_METRICS_PATTERN.search(phase)
+            loss = float(metrics.group("loss")) if metrics is not None else None
+            lr = float(metrics.group("learning_rate")) if metrics is not None else None
+            return step, total, loss, lr
     return None
 
 

@@ -32,6 +32,7 @@ from ai_physics_tracker.domain.tracking_run import (
 from ai_physics_tracker.application.model_worker import (
     ModelWorkerError,
     ModelWorkerRunner,
+    read_training_progress,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,7 @@ class ModelActions(QObject):
         self._selftest_on_success: Callable[[], None] | None = None
         self._session = None                 # B1:启动时的 session 身份
         self._user_cancel = False            # M1:取消语义(强杀→cancelled 而非 failed)
+        self._last_training_step = 0
         # HR 2026-09-28:模型任务接 Activity 区(Cancel 共用面板按钮)
         panel = getattr(window, "trackingActions", None)
         self._panel = panel.panel if panel is not None else None
@@ -371,9 +373,43 @@ class ModelActions(QObject):
     # 轮询与收尾
     # ------------------------------------------------------------------
 
+    def _refresh_training_progress(self) -> None:
+        """从 worker.log 读取真实 epoch 进度并同步 Activity 面板（UX-18）。"""
+
+        if (
+            self._handle is None
+            or self._job_kind != "train"
+            or self._job_dir is None
+            or self._train_request is None
+            or self._panel is None
+            or self._user_cancel
+            or self.window.analysisSession is not self._session
+        ):
+            return
+        total_epochs = int(self._train_request.params_config.get("epochs", 0))
+        if total_epochs <= 0:
+            return
+        progress = read_training_progress(
+            self._job_dir, UUID(self._train_request.run_id), total_epochs
+        )
+        if progress is None:
+            return
+        step, total, loss, learning_rate = progress
+        if step < self._last_training_step:
+            return
+        self._last_training_step = step
+        self._panel.setActivity(
+            "Training", step, total, loss, learning_rate, unit="epoch"
+        )
+        self._activity_text = self._panel.stageLabel.text()
+        self._panel.cancelButton.setEnabled(True)
+
     def _poll(self) -> None:
         handle = self._handle
-        if handle is None or handle.is_alive():
+        if handle is None:
+            return
+        if handle.is_alive():
+            self._refresh_training_progress()
             return
         self._timer.stop()
         if self._session is not None and self.window.analysisSession is not self._session:
@@ -400,6 +436,7 @@ class ModelActions(QObject):
             self._finish_failure(error)
             return
         if self._job_kind == "train":
+            self._refresh_training_progress()
             self._finish_train_success(result, handle)
         elif self._job_kind == "selftest":
             self._finish_selftest_success(result)
@@ -511,6 +548,7 @@ class ModelActions(QObject):
         self._job_dir = None
         self._selftest_model_id = None
         self._selftest_on_success = None
+        self._last_training_step = 0
 
     # ------------------------------------------------------------------
     # 教师导入入口
